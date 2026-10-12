@@ -845,22 +845,140 @@ kbd {
   background: var(--hairline-strong);
 }
 
-.work-empty {
+/* ---- the start page: the middle column with no terminal on screen ----
+   A front door rather than a blank — the name, what the product is, the next
+   step, and the one ask the app makes. Both states share the column, so the
+   surface does not jump between "nothing open yet" and "this session has no
+   shell"; neither of them is a card, because a raised box here would be the
+   loudest thing in the app. */
+
+.startpage {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  overflow: auto;
+}
+
+/* `margin: auto` centres the column and still leaves its top reachable in a
+   short window; `justify-content: center` would put the lockup out of the
+   scroll range instead. */
+.startpage__column {
+  margin: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  padding: var(--space-6);
-  color: var(--mute);
+  width: 100%;
+  max-width: 760px;
+  padding: var(--space-6) var(--space-5);
+  text-align: center;
 }
 
-.work-empty h2 {
+.startpage__lockup {
+  margin: 0;
+  color: var(--ink);
+}
+
+.startpage__lockup svg {
+  display: block;
+}
+
+.startpage__tagline {
+  margin: var(--space-4) 0 0;
+  color: var(--body);
+  font-size: var(--text-copy);
+  letter-spacing: var(--tracking-copy);
+}
+
+/* The empty state still speaks here: the hero says what this is, this says what
+   to do about it. */
+.startpage__next {
+  margin: var(--space-2) 0 0;
+  color: var(--mute);
+  font-size: var(--text-label);
+}
+
+.startpage__title {
   margin: 0;
   color: var(--ink);
   font-size: var(--text-title-sm);
   font-weight: 600;
+}
+
+.startpage__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+
+/* A track per item while they fit, rather than a fixed count: the middle column
+   gives width back to the rails as the window narrows, and a strip that ran off
+   the edge would be worse than one that steps down. */
+.startpage__features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-4) var(--space-5);
+  width: 100%;
+  margin: var(--space-7) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.startpage__feature {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.startpage__feature svg {
+  color: var(--mute);
+}
+
+.startpage__feature-title {
+  color: var(--ink);
+  font-size: var(--text-label);
+  font-weight: 500;
+}
+
+.startpage__feature-line {
+  color: var(--mute);
+  font-size: var(--text-caption);
+  /* Chinese breaks anywhere, so a 176px column leaves one-character lines
+     ("互不干 / 扰。"). Balancing splits them into two even halves instead. */
+  text-wrap: balance;
+}
+
+.startpage__footer {
+  width: 100%;
+  margin-top: var(--space-7);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--hairline);
+}
+
+/* A pill rather than the default 6px control radius: it stands alone in a page
+   footer, where a button-shaped box reads as a form control. */
+.startpage__star.btn {
+  border-radius: var(--radius-full);
+  padding: 0 var(--space-3);
+  color: var(--body);
+}
+
+.startpage__star.btn:hover {
+  color: var(--ink);
+}
+
+.startpage__star svg {
+  color: var(--mute);
+}
+
+/* Once the repository has been opened the ask is answered: the button keeps the
+   link and says where it goes, in the voice of an address rather than a plea. */
+.startpage__star--opened {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
 }
 
 /* ---- bottom status bar: machine state, always visible ---- */
@@ -883,7 +1001,7 @@ kbd {
 .statusbar__group {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
@@ -896,10 +1014,179 @@ kbd {
 .statusbar__item {
   display: inline-flex;
   align-items: center;
+  gap: var(--space-1);
+  color: var(--body);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statusbar__meter {
+  width: 48px;
+  height: 5px;
+  border-radius: var(--radius-full);
+  background: var(--canvas-soft-2);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.statusbar__meter-bar {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--ink);
+  transition: width 200ms ease;
+}
+
+.statusbar__meter-bar--warn {
+  background: var(--warning);
+}
+
+.statusbar__meter-bar--danger {
+  background: var(--error);
+}
+
+.statusbar__sep {
+  color: var(--hairline-strong);
+  user-select: none;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.statusbar__group--interactive {
+  cursor: pointer;
+}
+
+.statusbar-popover {
+  position: fixed;
+  bottom: 32px;
+  left: var(--space-3);
+  z-index: 50;
+  min-width: 380px;
+  max-width: 440px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  display: flex;
+  flex-direction: column;
   gap: var(--space-2);
+  user-select: none;
+  animation: popover-in 140ms ease-out;
+}
+
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.statusbar-popover__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--body);
+}
+
+.statusbar-popover__header .statusbar__meter {
+  width: 56px;
+}
+
+.statusbar-popover__divider {
+  height: 1px;
+  background: var(--hairline);
+  margin: 0 calc(-1 * var(--space-3));
+}
+
+.statusbar-popover__sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statusbar-popover__row {
+  display: grid;
+  grid-template-columns: minmax(90px, 1.2fr) minmax(80px, 1fr) minmax(75px, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 3px var(--space-1);
+  border-radius: var(--radius-xs);
+  color: var(--body);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.statusbar-popover__row:hover {
+  background: var(--canvas-soft);
+  color: var(--ink);
+}
+
+.statusbar-popover__name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink);
+}
+
+.statusbar-popover__name strong {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statusbar-popover__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--mute);
+  flex-shrink: 0;
+}
+
+.statusbar-popover__dot--good {
+  background: var(--success);
+}
+
+.statusbar-popover__dot--warn {
+  background: var(--warning);
+}
+
+.statusbar-popover__dot--danger {
+  background: var(--error);
+}
+
+.statusbar-popover__model {
+  color: var(--mute);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statusbar-popover__duration {
   color: var(--body);
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.statusbar-popover__cost {
+  color: var(--mute);
+  text-align: right;
+}
+
+.statusbar-popover__empty {
+  color: var(--mute);
+  padding: var(--space-1) 0;
+  text-align: center;
 }
 
 /* ---- dialog: the create-session form, the one surface that is a detour ---- */

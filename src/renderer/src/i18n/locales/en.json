@@ -35,7 +35,18 @@
     "balanceUnit": "{{balance}} CU",
     "rateTitle": "Spend rate",
     "rateUnit": "{{rate}}/h",
-    "cliBundled": " · Bundled"
+    "cliBundled": " · Bundled",
+    "activeSessions": "{{count}} active",
+    "terminalsCount": "{{count}} terminals",
+    "terminalsTitle": "{{count}} terminals open across all sessions",
+    "projectedHours": "~{{hours}}h remaining",
+    "noOngoingRate": "No ongoing spend",
+    "tooltipSummary": "Compute Units & Spend\n--------------------\nBalance: {{balance}} CU\nSpend rate: {{rate}}/h\nActive sessions: {{assignments}}\nProjected runtime: {{projected}}",
+    "noSessions": "No sessions configured",
+    "standby": "Standby",
+    "connected": "Connected",
+    "expired": "Expired",
+    "remainingTime": "~{{time}} left"
   },
   "sidebar": {
     "widthLabel": "Sidebar width",
@@ -62,18 +73,33 @@
     "menuStopSession": "Stop session",
     "menuStoppingSession": "Stopping…",
     "menuActionLabel": "Actions for {{name}}",
-    "computeUnits": "Compute units",
     "settings": "Settings",
     "settingsTitle": "Settings (Ctrl+,)"
   },
   "banners": {
     "dismiss": "Dismiss"
   },
+  "home": {
+    "tagline": "Run a remote GPU runtime like a local machine",
+    "featureShellsTitle": "Connect to a GPU",
+    "featureShellsLine": "Pick an accelerator, request a runtime.",
+    "featureRunTitle": "Train and infer",
+    "featureRunLine": "Your scripts run as usual, no workflow change.",
+    "featureFilesTitle": "Transfer files",
+    "featureFilesLine": "Upload, download, delete — over the same connection.",
+    "featureQuotaTitle": "Track usage",
+    "featureQuotaLine": "Balance and rate in the status bar; trend in settings.",
+    "starAsk": "Star on GitHub",
+    "starAskTitle": "Enjoying ColabDesk? A star on GitHub helps.",
+    "repositoryTitle": "Open the source repository: github.com/{{repository}}",
+    "newSessionTitle": "New session (Ctrl+Shift+N)",
+    "newTerminalTitle": "New terminal (Ctrl+Shift+T)",
+    "expandSidebarTitle": "Expand sidebar (Ctrl+Shift+E)"
+  },
   "workbench": {
-    "emptyTitle": "No open terminals",
     "emptyNoShells": "\"{{name}}\" has no active terminals.",
-    "emptyChooseSession": "Select a session on the left, or create a new runtime.",
-    "emptyGetStarted": "Create a new runtime to get started.",
+    "emptyChooseSession": "Pick a session, or create a runtime.",
+    "emptyGetStarted": "Create a runtime to get started.",
     "newTerminal": "New terminal",
     "newSession": "New session",
     "expandSidebar": "Expand sidebar"

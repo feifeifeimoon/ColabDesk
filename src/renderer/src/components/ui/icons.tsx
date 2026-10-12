@@ -163,6 +163,26 @@ export function PlugIcon({ size }: IconProps) {
   );
 }
 
+/* ---- the start page ---- */
+
+/** Star the project on GitHub. */
+export function StarIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M8 2.1 9.5 6.2l4.4.2-3.5 2.7 1.2 4.2L8 10.9l-3.6 2.4 1.2-4.2-3.5-2.7 4.4-.2Z" />
+    </Svg>
+  );
+}
+
+/** The runtime's filesystem. A folder, so it cannot read as a panel toggle. */
+export function FolderIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M2 4.6a1.4 1.4 0 0 1 1.4-1.4h2.7l1.5 1.8h4.6a1.4 1.4 0 0 1 1.4 1.4v5.4a1.4 1.4 0 0 1-1.4 1.4H3.4A1.4 1.4 0 0 1 2 11.8Z" />
+    </Svg>
+  );
+}
+
 export function PlusIcon({ size }: IconProps) {
   return (
     <Svg size={size}>

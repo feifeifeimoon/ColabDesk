@@ -149,8 +149,6 @@ test("关掉一个终端，会话的连接留着；关掉最后一个才断开",
   await page.getByLabel("关闭终端 1").click();
 
   await expect(page.locator(".terminal-host")).toHaveCount(0);
-  // The rail stays on the host, so the bar reports the connection it just let
-  // go of — "断开" rather than the "未连接" of never having had one.
-  await expect(page.locator('[data-testid="terminal-status"]')).toContainText("已断开");
-  await expect(page.locator(".work-empty")).toContainText("还没有终端");
+  await expect(page.locator('[data-testid="terminal-count"]')).toContainText("0 终端");
+  await expect(page.locator(".startpage")).toContainText("还没有终端");
 });

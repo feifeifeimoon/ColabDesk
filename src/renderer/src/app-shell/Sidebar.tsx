@@ -62,7 +62,6 @@ export function Sidebar() {
   const selectedSession = useAppStore((state) => state.selectedSession);
   const tabs = useAppStore((state) => state.tabs);
   const connections = useAppStore((state) => state.connections);
-  const usage = useAppStore((state) => state.usage);
   const busyAction = useAppStore((state) => state.busyAction);
   const runSessionAction = useAppStore((state) => state.runSessionAction);
   const syncSessions = useAppStore((state) => state.syncSessions);
@@ -73,8 +72,6 @@ export function Sidebar() {
   // Collapsing unmounts the rail; that is the one panel whose contents nobody
   // expects to survive a collapse.
   if (!open) return null;
-
-  const balance = usage?.usage.balance;
 
   const connectionLabels: Record<string, string> = {
     connecting: t("statusbar.statusConnecting", "连接中"),
@@ -187,7 +184,10 @@ export function Sidebar() {
 
               <span className="session-row__sub">
                 {stateLabel && (
-                  <span className={`status ${CONNECTION_TONE[state] ? `status--${CONNECTION_TONE[state]}` : ""}`}>
+                  <span
+                    {...(session.name === selectedSession ? { "data-testid": "terminal-status" } : {})}
+                    className={`status ${CONNECTION_TONE[state] ? `status--${CONNECTION_TONE[state]}` : ""}`}
+                  >
                     {stateLabel}
                   </span>
                 )}
@@ -264,10 +264,6 @@ export function Sidebar() {
       </div>
 
       <div className="sidebar__footer">
-        <div className="sidebar__action sidebar__action--static">
-          <span>{t("sidebar.computeUnits", "计算单元")}</span>
-          <span className="mono">{balance === null || balance === undefined ? "—" : balance.toFixed(2)}</span>
-        </div>
         <button
           type="button"
           className="sidebar__action"
@@ -279,7 +275,6 @@ export function Sidebar() {
             <SettingsIcon size={15} />
             {t("sidebar.settings", "设置")}
           </span>
-          <span className="kbd">Ctrl+,</span>
         </button>
       </div>
     </aside>

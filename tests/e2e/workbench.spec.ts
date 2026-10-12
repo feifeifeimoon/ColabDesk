@@ -16,15 +16,20 @@ function dragRegion(page: Page, selector: string): Promise<string> {
 
 test("没有会话时，工作台已给出全部机器状态", async ({ page }) => {
   await expect(page.locator('[data-testid="session-row"]')).toHaveCount(2);
-  await expect(page.locator(".work-empty")).toContainText("没有打开的终端");
 
-  // 余额、速率、账号与 CLI 版本都来自桩回答，走的是真实的解析路径。
+  // 中间是起始页：有名字、有主张，也有下一步该做什么。
+  const home = page.locator(".startpage");
+  await expect(home).toContainText("把远程 GPU 运行时当本地机器用");
+  await expect(home).toContainText("选一个会话，或新建一个运行时。");
+  await expect(home.getByRole("button", { name: "新建会话" })).toBeVisible();
+  await expect(page.locator('[data-testid="star-on-github"]')).toBeVisible();
+
+  // 余额、速率与活跃会话都来自桩回答，走的是真实的解析路径；右侧是全局终端计数。
   const status = page.locator(".statusbar");
-  await expect(status).toContainText("未连接");
   await expect(status).toContainText("42.50 CU");
   await expect(status).toContainText("1.25/h");
-  await expect(status).toContainText("e2e@example.com");
-  await expect(status).toContainText("0.9.0-e2e");
+  await expect(status).toContainText("1 活跃");
+  await expect(status).toContainText("0 终端");
 });
 
 test("服务器上有、本地没有的运行时也会列出来，但不可操作", async ({ page }) => {
@@ -122,11 +127,12 @@ test("语言切换写下偏好并在重载后生效，且动态更新界面文�
 
   // 返回工作台
   await page.locator('[data-testid="close-settings"]').click();
-  await expect(page.locator(".work-empty")).toContainText("No open terminals");
+  await expect(page.locator(".startpage")).toContainText("Run a remote GPU runtime like a local machine");
+  await expect(page.locator(".startpage")).toContainText("New session");
 
   // 跨重载保留
   await reloadWorkbench(app, page);
-  await expect(page.locator(".work-empty")).toContainText("No open terminals");
+  await expect(page.locator(".startpage")).toContainText("Run a remote GPU runtime like a local machine");
 
   // 重新打开设置切回中文（简体）
   await page.locator('[data-testid="open-settings"]').click();

@@ -1,5 +1,6 @@
 /**
- * The middle column: one slot per session that has shells, plus the empty state.
+ * The middle column: one slot per session that has shells, and the start page
+ * while none of them is on screen.
  *
  * The two levels of parking are both load-bearing. A slot that is not the
  * selected session leaves the layout but keeps its shells: switching sessions
@@ -9,24 +10,18 @@
  */
 
 import { useMemo } from "react";
-import { useTranslation } from "react-i18next";
 import { useAppStore } from "../../store";
 import { FilePane } from "./FilePane";
+import { StartPage } from "./StartPage";
 import { TerminalPane } from "./TerminalPane";
 
 export function Workbench() {
-  const { t } = useTranslation();
   const tabs = useAppStore((state) => state.tabs);
   const selectedSession = useAppStore((state) => state.selectedSession);
   const activeTabId = useAppStore((state) => state.activeTabId);
   const filesOpen = useAppStore((state) => state.filesOpen);
-  const hasSessions = useAppStore((state) => state.sessions.length > 0);
-  const sidebarOpen = useAppStore((state) => state.sidebarOpen);
   const setRemotePath = useAppStore((state) => state.setRemotePath);
   const setTransferCount = useAppStore((state) => state.setTransferCount);
-  const openTab = useAppStore((state) => state.openTab);
-  const openNewSession = useAppStore((state) => state.openNewSession);
-  const toggleSidebar = useAppStore((state) => state.toggleSidebar);
 
   // Grouped here rather than in a selector: a selector that built this would
   // hand back a new reference on every store write.
@@ -40,34 +35,7 @@ export function Workbench() {
 
   return (
     <>
-      {!onScreen && (
-        <div className="work-empty">
-          <h2>{t("workbench.emptyTitle", "没有打开的终端")}</h2>
-          <p className="hint">
-            {selectedSession
-              ? t("workbench.emptyNoShells", "「{{name}}」还没有终端。", { name: selectedSession })
-              : hasSessions
-                ? t("workbench.emptyChooseSession", "在左侧选择一个会话，或新建一个运行时。")
-                : t("workbench.emptyGetStarted", "新建一个运行时开始使用。")}
-          </p>
-          <div className="row">
-            {selectedSession ? (
-              <button type="button" className="btn btn--primary" onClick={() => openTab(selectedSession)}>
-                {t("workbench.newTerminal", "新建终端")}
-              </button>
-            ) : (
-              <button type="button" className="btn btn--primary" onClick={openNewSession}>
-                {t("workbench.newSession", "新建会话")}
-              </button>
-            )}
-            {!sidebarOpen && hasSessions && (
-              <button type="button" className="btn" onClick={toggleSidebar}>
-                {t("workbench.expandSidebar", "展开会话栏")}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+      {!onScreen && <StartPage />}
 
       {[...shellsBySession].map(([session, shells]) => {
         const shown = session === selectedSession;

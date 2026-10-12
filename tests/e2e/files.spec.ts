@@ -21,8 +21,6 @@ test("文件面板列出运行时目录，面包屑进子目录", async ({ page 
 
   await expect(row(page, "sample.csv")).toHaveCount(1);
   await expect(page.locator(".breadcrumb")).toContainText("data");
-  // 状态栏的远程路径跟着文件面板走，两个组件说的是同一件事。
-  await expect(page.locator(".statusbar")).toContainText("/content/data");
 });
 
 test("新建文件夹当场出现在列表里", async ({ page }) => {
@@ -52,14 +50,12 @@ test("删除文件夹要先确认，确认后从列表消失", async ({ page }) 
   await expect(row(page, "e2e-doomed")).toHaveCount(0);
 });
 
-test("文件面板可收起，收起后状态栏不再报远程路径", async ({ page }) => {
+test("文件面板可收起再展开", async ({ page }) => {
   await openSession(page, "e2e-alpha");
   await expect(page.locator(".files-panel")).toBeVisible();
-  await expect(page.locator(".statusbar")).toContainText("/content");
 
   await page.locator('[data-testid="toggle-files"]').click();
   await expect(page.locator(".files-panel")).toHaveCount(0);
-  await expect(page.locator(".statusbar")).not.toContainText("/content");
 
   await page.locator('[data-testid="toggle-files"]').click();
   await expect(page.locator(".files-panel")).toBeVisible();

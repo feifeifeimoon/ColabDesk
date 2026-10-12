@@ -14,7 +14,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
-import { expect, openSession, test } from "./app-launch";
+import { expect, openSession, reloadWorkbench, test } from "./app-launch";
 
 const directory = join(process.cwd(), "screenshots");
 const SECTIONS = ["账号与额度", "用量趋势", "外观", "终端", "运行环境", "外部工具"];
@@ -27,9 +27,43 @@ async function capture(page: Page, name: string): Promise<void> {
   console.log(file);
 }
 
-test("@gallery 工作台与设置页截图", async ({ page }) => {
+/**
+ * Flips the theme and waits for it to have flipped.
+ *
+ * A click can be dropped on this machine's compositor, and the cost here is not
+ * a failure but a *missing* picture: the second shot would come back named after
+ * the polarity it already had. Retrying the click is what makes the pair of
+ * shots a pair. The settle afterwards is for the buttons' 120ms cross-fade —
+ * without it the shot lands on a colour that is nobody's.
+ */
+async function toggleTheme(page: Page): Promise<void> {
+  const current = () => page.evaluate(() => document.documentElement.dataset.theme);
+  const before = await current();
+  await expect(async () => {
+    await page.locator('[data-testid="toggle-theme"]').click();
+    expect(await current()).not.toBe(before);
+  }).toPass({ timeout: 5_000 });
+  await page.waitForTimeout(400);
+}
+
+test("@gallery 工作台与设置页截图", async ({ app, page }) => {
   test.slow();
   mkdirSync(directory, { recursive: true });
+
+  // The start page first, because opening a session is the moment it leaves the
+  // screen — and in both polarities, since the lockup is ink and ink flips.
+  await capture(page, "00-start-page");
+  await toggleTheme(page);
+  await capture(page, "00-start-page");
+  await toggleTheme(page);
+
+  // And once in English: the front door is the one screen that is almost all
+  // words, so it is where a translation shows its seams.
+  await page.evaluate(() => localStorage.setItem("colabdesk.language", "en"));
+  await reloadWorkbench(app, page);
+  await capture(page, "00-start-page-en");
+  await page.evaluate(() => localStorage.setItem("colabdesk.language", "zh"));
+  await reloadWorkbench(app, page);
 
   await openSession(page, "e2e-alpha");
   await expect(page.locator('[data-testid="terminal-status"]')).toContainText("已连接");

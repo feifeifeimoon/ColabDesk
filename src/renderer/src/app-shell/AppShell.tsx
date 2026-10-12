@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Status, type StatusTone } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import {
   CloseIcon,
@@ -14,17 +13,11 @@ import {
   PlusIcon,
   RestoreIcon,
   SunIcon,
+  TerminalIcon,
 } from "../components/ui/icons";
 import { closeWindow, minimizeWindow, onWindowMaximized, toggleMaximizeWindow } from "../lib/api";
 import { useAppStore } from "../store";
-import {
-  sshCommandFor,
-  useActiveAccelerator,
-  useActiveConnection,
-  useActiveRemotePath,
-  useHasWorkSurface,
-  useTransferCount,
-} from "../store/selectors";
+import { useHasWorkSurface } from "../store/selectors";
 import { BrandMark } from "./BrandMark";
 
 /** macOS keeps its native traffic lights; everyone else gets ours. */
@@ -235,7 +228,35 @@ function WindowControls() {
   );
 }
 
-const CONNECTION_TONE: Record<string, StatusTone> = {
+/**
+ * Compute the tier-adaptive progress ratio for compute units.
+ * Base tiers: 100 CU (Pro), 500 CU (Pro+), or next 100-step ceiling.
+ */
+export function computeBalanceRatio(balance: number | null | undefined): number {
+  if (balance === null || balance === undefined || !Number.isFinite(balance) || balance <= 0) {
+    return 0;
+  }
+  const tier = balance <= 100 ? 100 : balance <= 500 ? 500 : Math.ceil(balance / 100) * 100;
+  return Math.min(Math.max(balance / tier, 0), 1);
+}
+
+export function balanceMeterTone(ratio: number): "good" | "warn" | "danger" {
+  if (ratio <= 0.05) return "danger";
+  if (ratio <= 0.15) return "warn";
+  return "good";
+}
+
+const ACCELERATOR_RATES: Record<string, string> = {
+  A100: "~13.08/h",
+  V100: "~5.45/h",
+  L4: "~2.50/h",
+  T4: "~1.25/h",
+  "TPU v2": "~1.30/h",
+  CPU: "0.00/h",
+  NONE: "0.00/h",
+};
+
+const CONNECTION_TONE: Record<string, "good" | "warn" | "danger" | "neutral"> = {
   idle: "neutral",
   connecting: "warn",
   ready: "good",
@@ -243,86 +264,201 @@ const CONNECTION_TONE: Record<string, StatusTone> = {
   closed: "neutral",
 };
 
+export function formatSessionExpiry(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const target = new Date(iso).getTime();
+  if (Number.isNaN(target)) return null;
+  const diffMs = target - Date.now();
+  if (diffMs <= 0) return "已过期";
+  const totalMinutes = Math.floor(diffMs / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
+  if (hours > 0) return `剩余 ~${hours}h${mins > 0 ? ` ${mins}m` : ""}`;
+  return `剩余 ~${mins}m`;
+}
+
 /**
- * The bottom bar: the machine state that should never need a click — link
- * health, the remote path, quota, and what CLI answers. Mono, because every
- * value here is reported by a machine.
+ * The bottom bar: cockpit for quota assets, active tasks, and open terminals.
+ * Left: Mini progress bar + CU balance + spend rate + active sessions,
+ *       with hover popover showing single-line quota header + single-line per session.
+ * Right: Total terminals open across all sessions.
  */
 export function StatusBar() {
   const { t } = useTranslation();
-  const connection = useActiveConnection();
-  const accelerator = useActiveAccelerator();
-  const path = useActiveRemotePath();
-  const transfers = useTransferCount();
-  const sshCommand = useAppStore((state) =>
-    state.selectedSession ? sshCommandFor(state.selectedSession) : null,
-  );
   const usage = useAppStore((state) => state.usage);
-  const env = useAppStore((state) => state.env);
+  const tabs = useAppStore((state) => state.tabs);
+  const sessions = useAppStore((state) => state.sessions);
+  const connections = useAppStore((state) => state.connections);
 
-  const statusKey = connection?.status ?? "idle";
-  const balance = usage?.usage.balance;
-  const rate = usage?.usage.rate;
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const connectionLabels: Record<string, string> = {
-    idle: t("statusbar.statusIdle", "未连接"),
-    connecting: t("statusbar.statusConnecting", "连接中…"),
-    ready: t("statusbar.statusReady", "已连接"),
-    error: t("statusbar.statusError", "连接失败"),
-    closed: t("statusbar.statusClosed", "已断开"),
+  const balance = usage?.usage.balance ?? null;
+  const rate = usage?.usage.rate ?? 0;
+  const assignments = usage?.usage.assignments ?? 0;
+  const terminalCount = tabs.length;
+
+  const ratio = computeBalanceRatio(balance);
+  const meterTone = balanceMeterTone(ratio);
+
+  const projectedHours =
+    balance !== null && balance > 0 && rate > 0
+      ? (balance / rate).toFixed(1)
+      : null;
+
+  const projectedText = projectedHours
+    ? t("statusbar.projectedHours", "约 {{hours}} 小时", { hours: projectedHours })
+    : t("statusbar.noOngoingRate", "无持续扣费");
+
+  const openPopover = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setPopoverOpen(true), 120);
+  };
+
+  const closePopover = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setPopoverOpen(false), 160);
+  };
+
+  const cancelClose = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
   };
 
   return (
     <footer className="statusbar">
-      <div className="statusbar__group">
-        <span data-testid="terminal-status">
-          <Status tone={CONNECTION_TONE[statusKey] ?? "neutral"}>
-            {connectionLabels[statusKey] ?? statusKey}
-          </Status>
+      <div
+        className="statusbar__group statusbar__group--interactive"
+        onMouseEnter={openPopover}
+        onMouseLeave={closePopover}
+      >
+        <div
+          className="statusbar__meter"
+          role="progressbar"
+          aria-valuenow={Math.round(ratio * 100)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <div
+            className={`statusbar__meter-bar statusbar__meter-bar--${meterTone}`}
+            style={{ width: `${Math.round(ratio * 100)}%` }}
+          />
+        </div>
+
+        <span className="statusbar__item" data-testid="statusbar-balance">
+          {balance !== null
+            ? t("statusbar.balanceUnit", "{{balance}} CU", { balance: balance.toFixed(2) })
+            : "— CU"}
         </span>
-        {accelerator && <span className="statusbar__item">{accelerator}</span>}
-        {sshCommand && (
-          <span className="statusbar__item" title={t("statusbar.sshCommandTitle", "当前运行时的 SSH 别名，外部终端也可使用")}>
-            {sshCommand}
-          </span>
-        )}
-        {path && (
-          <span className="statusbar__item" title={path}>
-            {path}
-          </span>
-        )}
-        {transfers > 0 && (
-          <span className="statusbar__item">
-            {t("statusbar.transferring", "传输中 {{count}}", { count: transfers })}
-          </span>
+
+        <span className="statusbar__sep" aria-hidden="true">·</span>
+
+        <span className="statusbar__item" data-testid="statusbar-rate">
+          {rate > 0
+            ? t("statusbar.rateUnit", "~{{rate}}/h", { rate: rate.toFixed(2) })
+            : t("statusbar.rateUnit", "0.00/h", { rate: "0.00" })}
+        </span>
+
+        <span className="statusbar__sep" aria-hidden="true">·</span>
+
+        <span className="statusbar__item" data-testid="statusbar-assignments">
+          {t("statusbar.activeSessions", "{{count}} 活跃", { count: assignments })}
+        </span>
+
+        {popoverOpen && (
+          <div
+            className="statusbar-popover"
+            role="tooltip"
+            onMouseEnter={cancelClose}
+            onMouseLeave={closePopover}
+          >
+            {/* Top row: progress bar + status description */}
+            <div className="statusbar-popover__header">
+              <div
+                className="statusbar__meter"
+                role="progressbar"
+                aria-valuenow={Math.round(ratio * 100)}
+              >
+                <div
+                  className={`statusbar__meter-bar statusbar__meter-bar--${meterTone}`}
+                  style={{ width: `${Math.round(ratio * 100)}%` }}
+                />
+              </div>
+              <span>
+                {balance !== null
+                  ? t("statusbar.balanceUnit", "{{balance}} CU", { balance: balance.toFixed(2) })
+                  : "— CU"}
+              </span>
+              <span className="statusbar__sep" aria-hidden="true">·</span>
+              <span>
+                {rate > 0
+                  ? t("statusbar.rateUnit", "-{{rate}}/h", { rate: rate.toFixed(2) })
+                  : "0.00/h"}
+              </span>
+              <span className="statusbar__sep" aria-hidden="true">·</span>
+              <span>{projectedText}</span>
+            </div>
+
+            <div className="statusbar-popover__divider" aria-hidden="true" />
+
+            {/* Session rows: each session on a single line */}
+            <div className="statusbar-popover__sessions">
+              {sessions.length === 0 ? (
+                <div className="statusbar-popover__empty">
+                  {t("statusbar.noSessions", "暂无配置的会话")}
+                </div>
+              ) : (
+                sessions.map((session) => {
+                  const connection = connections[session.name];
+                  const state = connection?.status ?? "closed";
+                  const tone = CONNECTION_TONE[state] ?? "neutral";
+                  const accelerator =
+                    session.accelerator === "NONE" || !session.accelerator ? "CPU" : session.accelerator;
+                  const shape =
+                    session.machine_shape && session.machine_shape !== "STANDARD"
+                      ? ` · ${session.machine_shape.replace("_", "-")}`
+                      : "";
+                  const expiry = formatSessionExpiry(session.token_expires_at);
+                  const durationLabel =
+                    expiry ?? (state === "ready" ? t("statusbar.connected", "已连接") : t("statusbar.standby", "待命"));
+                  const cost = ACCELERATOR_RATES[accelerator] ?? "0.00/h";
+
+                  return (
+                    <div key={session.name} className="statusbar-popover__row">
+                      <span className="statusbar-popover__name">
+                        <span className={`statusbar-popover__dot statusbar-popover__dot--${tone}`} />
+                        <strong title={session.name}>{session.name}</strong>
+                      </span>
+                      <span className="statusbar-popover__model">
+                        {accelerator}{shape}
+                      </span>
+                      <span className="statusbar-popover__duration">
+                        {durationLabel}
+                      </span>
+                      <span className="statusbar-popover__cost">
+                        {cost}
+                      </span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
         )}
       </div>
 
       <div className="statusbar__spacer" />
 
-      <div className="statusbar__group">
-        {usage?.needs_login && <span className="statusbar__item">{t("statusbar.needsLogin", "未授权")}</span>}
-        {balance !== null && balance !== undefined && (
-          <span className="statusbar__item" title={t("statusbar.balanceTitle", "计算单元余额")}>
-            {t("statusbar.balanceUnit", "{{balance}} CU", { balance: balance.toFixed(2) })}
-          </span>
-        )}
-        {rate !== null && rate !== undefined && rate > 0 && (
-          <span className="statusbar__item" title={t("statusbar.rateTitle", "消耗速率")}>
-            {t("statusbar.rateUnit", "{{rate}}/h", { rate: rate.toFixed(2) })}
-          </span>
-        )}
-        {env?.account && (
-          <span className="statusbar__item" title={env.account.subject ?? env.account.email}>
-            {env.account.email}
-          </span>
-        )}
-        {env?.cli_version && (
-          <span className="statusbar__item" title={env.cli_path ?? ""}>
-            colab {env.cli_version}
-            {env.cli_source === "bundled" ? t("statusbar.cliBundled", " · 内置") : ""}
-          </span>
-        )}
+      <div
+        className="statusbar__group"
+        title={t("statusbar.terminalsTitle", "所有会话总计 {{count}} 个终端", { count: terminalCount })}
+      >
+        <span className="statusbar__item" data-testid="terminal-count">
+          <TerminalIcon size={13} />
+          <span>{t("statusbar.terminalsCount", "{{count}} 终端", { count: terminalCount })}</span>
+        </span>
       </div>
     </footer>
   );

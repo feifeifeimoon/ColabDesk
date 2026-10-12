@@ -70,13 +70,13 @@ describe("i18n resolution and translation", () => {
     await setRendererUiLanguage("zh");
     expect(i18n.language).toBe("zh");
     expect(translate("topbar.brand")).toBe("ColabDesk");
-    expect(translate("workbench.emptyTitle")).toBe("没有打开的终端");
+    expect(translate("home.tagline")).toBe("把远程 GPU 运行时当本地机器用");
     expect(translate("workbench.emptyNoShells", undefined, { name: "test-runtime" })).toBe("「test-runtime」还没有终端。");
 
     await setRendererUiLanguage("en");
     expect(i18n.language).toBe("en");
     expect(translate("topbar.brand")).toBe("ColabDesk");
-    expect(translate("workbench.emptyTitle")).toBe("No open terminals");
+    expect(translate("home.tagline")).toBe("Run a remote GPU runtime like a local machine");
     expect(translate("workbench.emptyNoShells", undefined, { name: "test-runtime" })).toBe('"test-runtime" has no active terminals.');
 
     // Reset back to zh

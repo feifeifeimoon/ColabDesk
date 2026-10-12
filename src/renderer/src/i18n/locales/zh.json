@@ -35,7 +35,18 @@
     "balanceUnit": "{{balance}} CU",
     "rateTitle": "消耗速率",
     "rateUnit": "{{rate}}/h",
-    "cliBundled": " · 内置"
+    "cliBundled": " · 内置",
+    "activeSessions": "{{count}} 活跃",
+    "terminalsCount": "{{count}} 终端",
+    "terminalsTitle": "所有会话总计 {{count}} 个终端",
+    "projectedHours": "约 {{hours}} 小时",
+    "noOngoingRate": "无持续扣费",
+    "tooltipSummary": "算力资产与消耗\n--------------------\n当前可用余额: {{balance}} CU\n预计扣费速率: {{rate}}/h\n活跃计费会话: {{assignments}} 台\n预计可用时间: {{projected}}",
+    "noSessions": "暂无配置的会话",
+    "standby": "待命",
+    "connected": "已连接",
+    "expired": "已过期",
+    "remainingTime": "剩余 ~{{time}}"
   },
   "sidebar": {
     "widthLabel": "会话栏宽度",
@@ -62,17 +73,32 @@
     "menuStopSession": "停止会话",
     "menuStoppingSession": "停止中…",
     "menuActionLabel": "{{name}} 的操作",
-    "computeUnits": "计算单元",
     "settings": "设置",
     "settingsTitle": "设置（Ctrl+,）"
   },
   "banners": {
     "dismiss": "知道了"
   },
+  "home": {
+    "tagline": "把远程 GPU 运行时当本地机器用",
+    "featureShellsTitle": "连接 GPU 机器",
+    "featureShellsLine": "选加速器申请运行时，终端直接开在上面。",
+    "featureRunTitle": "跑训练和推理",
+    "featureRunLine": "脚本照常跑，不用改工作流。",
+    "featureFilesTitle": "传输文件",
+    "featureFilesLine": "上传、下载、删除，和终端共用一条 SSH 连接。",
+    "featureQuotaTitle": "查看用量",
+    "featureQuotaLine": "余额与速率在状态栏，趋势在设置里。",
+    "starAsk": "在 GitHub 上点个 Star",
+    "starAskTitle": "喜欢 ColabDesk？在 GitHub 上点个 Star 支持一下。",
+    "repositoryTitle": "打开源码仓库：github.com/{{repository}}",
+    "newSessionTitle": "新建会话（Ctrl+Shift+N）",
+    "newTerminalTitle": "新建终端（Ctrl+Shift+T）",
+    "expandSidebarTitle": "展开会话栏（Ctrl+Shift+E）"
+  },
   "workbench": {
-    "emptyTitle": "没有打开的终端",
     "emptyNoShells": "「{{name}}」还没有终端。",
-    "emptyChooseSession": "在左侧选择一个会话，或新建一个运行时。",
+    "emptyChooseSession": "选一个会话，或新建一个运行时。",
     "emptyGetStarted": "新建一个运行时开始使用。",
     "newTerminal": "新建终端",
     "newSession": "新建会话",

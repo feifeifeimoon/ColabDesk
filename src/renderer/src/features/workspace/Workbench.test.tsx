@@ -82,7 +82,7 @@ describe("empty workbench", () => {
 
   it("points at the rail once sessions exist", () => {
     store.current = { ...base, sessions: [{}] };
-    expect(render()).toContain("在左侧选择一个会话");
+    expect(render()).toContain("选一个会话");
   });
 
   it("offers another shell when the selected session has none", () => {
