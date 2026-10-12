@@ -1,0 +1,67 @@
+import { app, BrowserWindow, shell } from "electron";
+import { join } from "node:path";
+import { watchWindowState } from "./ipc/handlers/window";
+
+const isMac = process.platform === "darwin";
+
+/**
+ * The window icon is a dev-checkout concern only. electron-builder bakes `resources/icon.*`
+ * into the executable and the app bundle, so a packaged build already reports the right icon
+ * on its own and setting one here would just be a second source of truth. In a dev checkout
+ * nothing sets it, which is the case this covers.
+ */
+export function devIconPath(): string | undefined {
+  if (app.isPackaged) return undefined;
+  return join(app.getAppPath(), "resources", process.platform === "win32" ? "icon.ico" : "icon.png");
+}
+
+/**
+ * The app draws its own title bar (its top bar is also the tab strip), so the
+ * OS frame goes away: fully frameless on Windows and Linux, and on macOS just
+ * the inset traffic lights, which macOS users expect to stay native.
+ */
+export function createWindow(): BrowserWindow {
+  // BrowserWindow ignores `icon` on macOS; that platform's dock is set in index.ts instead.
+  const icon = isMac ? undefined : devIconPath();
+  const window = new BrowserWindow({
+    width: 1180,
+    height: 780,
+    minWidth: 900,
+    minHeight: 600,
+    title: "ColabDesk",
+    autoHideMenuBar: true,
+    backgroundColor: "#0b0e13",
+    ...(icon ? { icon } : {}),
+    ...(isMac
+      ? { titleBarStyle: "hiddenInset" as const, trafficLightPosition: { x: 14, y: 14 } }
+      : { frame: false }),
+    webPreferences: {
+      preload: join(__dirname, "../preload/index.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+    },
+  });
+
+  watchWindowState(window);
+
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    void shell.openExternal(url);
+    return { action: "deny" };
+  });
+
+  if (process.env.ELECTRON_RENDERER_URL) {
+    void window.loadURL(process.env.ELECTRON_RENDERER_URL);
+  } else {
+    void window.loadFile(join(__dirname, "../renderer/index.html"));
+  }
+
+  return window;
+}
+
+/** Chromium's viz compositor breaks on some virtualized desktops. */
+export function disableHardwareAccelerationForVirtualDisplays(): void {
+  app.disableHardwareAcceleration();
+  app.commandLine.appendSwitch("disable-gpu");
+  app.commandLine.appendSwitch("disable-gpu-compositing");
+}

@@ -1,0 +1,30 @@
+# 依赖
+node_modules/
+
+# 构建产物：electron-vite 出 out/，electron-builder 出 dist/
+out/
+dist/
+
+# Playwright 的痕迹、逐用例产物与 HTML 报告
+test-results/
+playwright-report/
+
+# `npm run gallery` 出的图——评审用的证据，按需重新生成，没有图片基线
+screenshots/
+
+# 品牌资产：故意不入库——文件仍在本地 brand/（logo 真源、变体与过程档案），只是先不进 git
+brand/
+
+# Python 字节码
+__pycache__/
+
+# 本机 shim：写死了绝对路径与 PATH，不属于构建
+npm.ps1
+
+# 系统噪声
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+npm-debug.log*

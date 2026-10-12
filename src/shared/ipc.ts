@@ -1,0 +1,43 @@
+/** IPC channel names, shared so main and preload cannot drift apart. */
+
+export const IPC = {
+  envStatus: "env:status",
+  listSessions: "sessions:list",
+  usage: "usage:get",
+  usageTrend: "usage:trend",
+  createSession: "session:create",
+  stopSession: "session:stop",
+  restartKernel: "session:restartKernel",
+  syncSessions: "sessions:sync",
+  startLogin: "auth:start",
+  submitLoginCode: "auth:submit",
+  cancelLogin: "auth:cancel",
+  sshSetup: "ssh:setup",
+  sshRemove: "ssh:remove",
+  sshOpenTerminal: "ssh:openTerminal",
+  sshConnect: "ssh:connect",
+  sshDisconnect: "ssh:disconnect",
+  termOpen: "term:open",
+  termWrite: "term:write",
+  termResize: "term:resize",
+  termClose: "term:close",
+  sftpList: "sftp:list",
+  sftpMkdir: "sftp:mkdir",
+  sftpDelete: "sftp:delete",
+  sftpDownload: "sftp:download",
+  sftpUpload: "sftp:upload",
+  pickUploadTargets: "dialog:pickUpload",
+  windowMinimize: "window:minimize",
+  windowToggleMaximize: "window:toggleMaximize",
+  windowClose: "window:close",
+} as const;
+
+export const EVENTS = {
+  authUrl: "auth:url",
+  authDone: "auth:done",
+  sshData: "ssh:data",
+  sshClosed: "ssh:closed",
+  sshStatus: "ssh:status",
+  transferProgress: "transfer:progress",
+  windowMaximized: "window:maximized",
+} as const;

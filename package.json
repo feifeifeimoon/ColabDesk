@@ -1,0 +1,46 @@
+{
+  "name": "colabdesk",
+  "version": "0.2.0",
+  "description": "非官方 Google Colab 桌面客户端：会话、额度、终端与文件传输",
+  "main": "./out/main/index.js",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "test": "vitest run --config config/vitest.config.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "e2e": "playwright test --config config/playwright.config.ts --project=app",
+    "gallery": "playwright test --config config/playwright.config.ts --project=gallery",
+    "package:win": "npm run build && electron-builder --config config/electron-builder.config.cjs --win --publish never",
+    "package:mac": "npm run build && electron-builder --config config/electron-builder.config.cjs --mac --publish never"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "i18next": "^26.4.3",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-i18next": "^17.0.16",
+    "ssh2": "^1.17.0",
+    "ws": "^8.22.0",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "@playwright/test": "^1.64.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/ssh2": "^1.15.6",
+    "@types/ws": "^8.5.13",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "typescript": "~6.0.3",
+    "vite": "^7.3.7",
+    "vitest": "^5.0.3"
+  }
+}

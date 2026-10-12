@@ -1,0 +1,69 @@
+/** The typed surface the renderer sees; everything else stays in main. */
+
+import { clipboard, contextBridge, ipcRenderer, webUtils } from "electron";
+import { EVENTS, IPC } from "@shared/ipc";
+import type { ColabDeskApi, SessionList } from "@shared/api";
+
+const invoke = <T>(channel: string, ...args: unknown[]): Promise<T> =>
+  ipcRenderer.invoke(channel, ...args) as Promise<T>;
+
+function subscribe<T>(channel: string, listener: (payload: T) => void): () => void {
+  const wrapped = (_event: unknown, payload: T): void => listener(payload);
+  ipcRenderer.on(channel, wrapped);
+  return () => ipcRenderer.removeListener(channel, wrapped);
+}
+
+const api: ColabDeskApi = {
+  envStatus: () => invoke(IPC.envStatus),
+  listSessions: () => invoke<SessionList>(IPC.listSessions),
+  usage: () => invoke(IPC.usage),
+  usageTrend: () => invoke(IPC.usageTrend),
+
+  createSession: (options) => invoke(IPC.createSession, options),
+  stopSession: (name) => invoke(IPC.stopSession, name),
+  restartKernel: (name) => invoke(IPC.restartKernel, name),
+  syncSessions: () => invoke(IPC.syncSessions),
+
+  startLogin: () => invoke(IPC.startLogin),
+  submitLoginCode: (code) => invoke(IPC.submitLoginCode, code),
+  cancelLogin: () => invoke(IPC.cancelLogin),
+  onAuthUrl: (listener) => subscribe(EVENTS.authUrl, listener),
+  onAuthDone: (listener) => subscribe(EVENTS.authDone, listener),
+
+  sshSetup: (name) => invoke(IPC.sshSetup, name),
+  sshRemove: (name) => invoke(IPC.sshRemove, name),
+  sshOpenTerminal: (name) => invoke(IPC.sshOpenTerminal, name),
+  sshConnect: (name) => invoke(IPC.sshConnect, name),
+  sshDisconnect: (name) => invoke(IPC.sshDisconnect, name),
+  onSshStatus: (listener) => subscribe(EVENTS.sshStatus, listener),
+
+  openTerminal: (session, cols, rows) => invoke(IPC.termOpen, { session, cols, rows }),
+  writeTerminal: (channelId, data) => invoke(IPC.termWrite, { channelId, data }),
+  resizeTerminal: (channelId, cols, rows) => invoke(IPC.termResize, { channelId, cols, rows }),
+  closeTerminal: (channelId) => invoke(IPC.termClose, channelId),
+  onTerminalData: (listener) => subscribe(EVENTS.sshData, listener),
+  onTerminalClosed: (listener) => subscribe(EVENTS.sshClosed, listener),
+
+  listDirectory: (session, path) => invoke(IPC.sftpList, { session, path }),
+  makeDirectory: (session, path) => invoke(IPC.sftpMkdir, { session, path }),
+  deletePath: (session, path) => invoke(IPC.sftpDelete, { session, path }),
+  download: (session, remote, name) => invoke(IPC.sftpDownload, { session, remote, name }),
+  upload: (targets) => invoke(IPC.sftpUpload, targets),
+  pickUploadTargets: (session, remoteDir) => invoke(IPC.pickUploadTargets, { session, remoteDir }),
+  onTransferProgress: (listener) => subscribe(EVENTS.transferProgress, listener),
+
+  pathForFile: (file) => webUtils.getPathForFile(file),
+
+  readClipboard: () => Promise.resolve(clipboard.readText()),
+  writeClipboard: (text) => {
+    clipboard.writeText(text);
+    return Promise.resolve();
+  },
+
+  minimizeWindow: () => invoke(IPC.windowMinimize),
+  toggleMaximizeWindow: () => invoke(IPC.windowToggleMaximize),
+  closeWindow: () => invoke(IPC.windowClose),
+  onWindowMaximized: (listener) => subscribe(EVENTS.windowMaximized, listener),
+};
+
+contextBridge.exposeInMainWorld("colabdesk", api);

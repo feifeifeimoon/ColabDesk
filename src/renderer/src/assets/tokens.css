@@ -1,0 +1,149 @@
+/**
+ * ColabDesk design tokens — the canonical source of truth.
+ *
+ * The ladder, the ink primary, the stacked-shadow elevation levels and the
+ * Geist type family come from the team's GitSquad design system
+ * (`D:\odyssey\GitSquad\DESIGN.md`); the terminal surface and the two
+ * machine-state tones are ColabDesk's own. Roles and rules: `docs/DESIGN.md`.
+ *
+ * Light is the default; dark is a polarity flip of the same ladder, not a
+ * second palette. Permanently-dark surfaces (the terminal pane) carry a
+ * `dark` class and get the same values as `[data-theme="dark"]`.
+ */
+
+:root {
+  /* Scrollbars, form controls and the like are the OS's to draw: tell it which
+     polarity the surface is, or a themed app keeps light widgets in the dark. */
+  color-scheme: light;
+
+  /* ---- brand & accent ------------------------------------------------- */
+  --primary: #171717; /* the single ink primary: affirmative actions */
+  --on-primary: #ffffff;
+  --link: #0070f3; /* inline links, and the "info / healthy" semantic */
+  --link-deep: #0761d1;
+  --link-bg-soft: #d3e5ff;
+
+  /* ---- surface ladder: back to front ---------------------------------- */
+  --chrome: #ffffff; /* sidebar and page chrome */
+  --page: #fafafa; /* what content sits on (body) */
+  --canvas: #ffffff; /* card, dialog, panel, popover, input */
+  --canvas-soft: #f5f5f5; /* wells and insets — never a card */
+  --canvas-soft-2: #efefef; /* a second inset step, water table headers */
+  --hairline: #ebebeb; /* every 1px divider */
+  --hairline-strong: #a1a1a1; /* hover borders, resize handles, focus ring */
+  --border: var(--hairline);
+
+  /* ---- text ----------------------------------------------------------- */
+  --ink: #171717;
+  --body: #4d4d4d;
+  --mute: #888888;
+  --muted: var(--canvas-soft);
+  --muted-foreground: var(--mute);
+
+  /* ---- semantic -------------------------------------------------------- */
+  --success: var(--link); /* deliberately the link blue: there is no green */
+  --warning: #f5a623;
+  --warning-soft: #ffefcf;
+  --warning-deep: #ab570a;
+  --error: #ee0000;
+  --error-soft: #f7d4d6;
+  --violet: #7928ca;
+  --violet-soft: #d8ccf1;
+  --cyan-deep: #29bc9b;
+  --cyan-soft: #aaffec;
+
+  /* ---- the terminal has its own axis ------------------------------------ */
+  /* Its colours are a preference rather than a polarity, so they are not
+     declared here at all: see `terminal-themes.css`. Nothing below flips them. */
+
+  /* ---- type ----------------------------------------------------------- */
+  --font-sans: Geist Variable, Geist, Inter, system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  --font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+
+  --text-display: 26px; /* the headline figure — a usage total */
+  --text-title: 19px; /* page title */
+  --text-title-sm: 16px; /* dialog / card heading */
+  --text-copy: 14px; /* the console's body size */
+  --text-label: 13px; /* section headings, field labels */
+  --text-caption: 12px; /* badges, table headings, dense metadata */
+  --text-micro: 11px; /* card meta: keys, counts, times */
+
+  --tracking-display: -0.96px;
+  --tracking-title: -0.6px;
+  --tracking-copy: -0.28px;
+
+  /* ---- space: a 4px base unit ----------------------------------------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 40px;
+  --space-8: 48px;
+
+  /* ---- radius: 6px controls, 12px surfaces, pills ---------------------- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* ---- elevation: stacked small offsets + an inset hairline ring ------- */
+  --shadow-1: inset 0 0 0 1px #00000014;
+  --shadow-2: inset 0 0 0 1px #00000014, 0 1px 1px #00000005, 0 2px 2px #0000000a;
+  --shadow-3: inset 0 0 0 1px #00000014, 0 2px 2px #0000000a, 0 8px 8px -8px #0000000a;
+  --shadow-4: inset 0 0 0 1px #00000014, 0 2px 2px #0000000a, 0 8px 16px -4px #0000000a;
+  --shadow-5:
+    inset 0 0 0 1px #00000014, 0 1px 1px #00000005, 0 8px 16px -4px #0000000a,
+    0 24px 32px -8px #0000000f;
+
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--hairline-strong) 40%, transparent);
+}
+
+/* The polarity flip. `[data-theme]` is set from the OS by `lib/theme.ts`; the
+   bare `.dark` selector is how a subtree opts out of it and keeps these values
+   whatever the reader chose. The terminal does not use it — it has its own axis
+   (`terminal-themes.css`), because its surface is chosen rather than derived. */
+:root[data-theme="dark"],
+.dark {
+  color-scheme: dark;
+
+  --chrome: #0a0a0a;
+  --page: #0f0f0f;
+  --canvas: #171717;
+  --canvas-soft: #0a0a0a;
+  --canvas-soft-2: #262626;
+
+  --ink: #ededed;
+  --body: #a1a1a1;
+  --mute: #888888;
+
+  --hairline: #ffffff14;
+  --hairline-strong: #ffffff2e;
+
+  --primary: #ededed;
+  --on-primary: #171717;
+  --link: #3291ff;
+  --link-deep: #3291ff;
+  --link-bg-soft: #0d1f33;
+
+  --warning: #f7b955;
+  --warning-soft: #2b1d08;
+  --warning-deep: #f7b955;
+  --error: #ff6166;
+  --error-soft: #2c1215;
+  --violet: #a970ff;
+  --violet-soft: #241a33;
+  --cyan-deep: #3dd9b6;
+  --cyan-soft: #0d2b26;
+
+  --shadow-1: inset 0 0 0 1px #ffffff14;
+  --shadow-2: inset 0 0 0 1px #ffffff14, 0 1px 1px #00000040, 0 2px 2px #00000033;
+  --shadow-3: inset 0 0 0 1px #ffffff14, 0 2px 2px #00000033, 0 8px 8px -8px #00000040;
+  --shadow-4: inset 0 0 0 1px #ffffff14, 0 2px 2px #00000033, 0 8px 16px -4px #00000040;
+  --shadow-5:
+    inset 0 0 0 1px #ffffff14, 0 1px 1px #00000040, 0 8px 16px -4px #00000040,
+    0 24px 32px -8px #00000059;
+}

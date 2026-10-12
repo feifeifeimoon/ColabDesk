@@ -1,0 +1,430 @@
+/**
+ * The fake Colab runtime: a real SSH server behind a real WebSocket tunnel.
+ *
+ * `connection.ts` hands the runtime proxy's WebSocket straight to `ssh2`, so a
+ * test runtime is only a matter of providing both layers locally — an
+ * `ssh2.Server` that speaks SSH, and an HTTP server that accepts the upgrade
+ * and pipes its bytes into it. The app dials this exactly the way it dials
+ * Colab; the session's `url` in the seeded store is the only thing that makes
+ * this "the runtime".
+ */
+
+import { once, type EventEmitter } from "node:events";
+import { createServer } from "node:http";
+import { createConnection, type AddressInfo } from "node:net";
+import type { Duplex } from "node:stream";
+import {
+  Server as SshServer,
+  utils,
+  type Attributes,
+  type PseudoTtyInfo,
+  type ServerChannel,
+  type Session,
+  type SFTPWrapper,
+  type WindowChangeInfo,
+} from "ssh2";
+import { createWebSocketStream, WebSocketServer } from "ws";
+import { generateHostKey } from "./mode";
+import { RuntimeFilesystem, RUNTIME_HOME, normalizePath, type RuntimeNode } from "./runtime-filesystem";
+
+const { OPEN_MODE, STATUS_CODE } = utils.sftp;
+
+const DIRECTORY_MODE = 0o040755;
+const FILE_MODE = 0o100644;
+const HOSTNAME = "e2e-runtime";
+const SSH_PATH = "/colab/ssh";
+
+/** For a `REALPATH` on something that does not exist yet. */
+const EMPTY_ATTRS: Attributes = { mode: 0, uid: 0, gid: 0, size: 0, atime: 0, mtime: 0 };
+
+export interface MockRuntime {
+  /** The address that goes into the seeded session store. */
+  url: string;
+  /** Shells opened since start: proves a tab switch did not reconnect. */
+  shellsOpened(): number;
+  close(): Promise<void>;
+}
+
+/** How the app reached us, as the runtime proxy would report it. */
+function refuse(socket: Duplex, status: number, reason: string, body: string): void {
+  socket.end(
+    `HTTP/1.1 ${status} ${reason}\r\n`
+      + "Connection: close\r\n"
+      + `Content-Length: ${Buffer.byteLength(body)}\r\n`
+      + "\r\n"
+      + body,
+  );
+}
+
+export async function startMockRuntime(): Promise<MockRuntime> {
+  const filesystem = new RuntimeFilesystem();
+  let shellsOpened = 0;
+
+  const sshd = new SshServer({ hostKeys: [generateHostKey()] }, (client) => {
+    // The runtime authenticates by public key; the key itself is never checked,
+    // because what the tests exercise is everything after the handshake.
+    client.on("authentication", (context) => context.accept());
+    client.on("ready", () => {
+      client.on("session", (accept) => {
+        attachSession(accept(), filesystem, () => {
+          shellsOpened += 1;
+          return shellsOpened;
+        });
+      });
+    });
+    // A client that walks away mid-handshake is the app's problem to report.
+    client.on("error", () => {});
+  });
+
+  await listen(sshd);
+  const sshPort = (sshd.address() as AddressInfo).port;
+
+  // The tunnel stands in for the runtime proxy: same upgrade, same gate on the
+  // public-key header, and the same byte pipe on the other side.
+  const proxy = createServer();
+  const tunnel = new WebSocketServer({ noServer: true });
+  proxy.on("upgrade", (request, socket, head) => {
+    const path = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
+    if (path !== SSH_PATH) {
+      refuse(socket, 404, "Not Found", "no such proxy endpoint");
+      return;
+    }
+    if (!request.headers["x-colab-ssh-pubkey"]) {
+      refuse(socket, 400, "Bad Request", "missing pubkey");
+      return;
+    }
+    tunnel.handleUpgrade(request, socket, head, (websocket) => {
+      tunnel.emit("connection", websocket, request);
+    });
+  });
+
+  tunnel.on("connection", (websocket) => {
+    const upstream = createConnection({ host: "127.0.0.1", port: sshPort });
+    const stream = createWebSocketStream(websocket);
+    stream.pipe(upstream).pipe(stream);
+    upstream.on("error", () => stream.destroy());
+    stream.on("error", () => upstream.destroy());
+  });
+
+  await listen(proxy);
+  const proxyPort = (proxy.address() as AddressInfo).port;
+
+  return {
+    url: `http://127.0.0.1:${proxyPort}`,
+    shellsOpened: () => shellsOpened,
+    close: async () => {
+      for (const socket of tunnel.clients) socket.terminate();
+      tunnel.close();
+      await Promise.all([closeServer(proxy), closeServer(sshd)]);
+    },
+  };
+}
+
+/** A runtime accepts one SSH connection per session; two would need HTTP 429,
+    which this mock leaves out so a test never depends on connection timing. */
+function attachSession(session: Session, filesystem: RuntimeFilesystem, onShell: () => number): void {
+  const window = { cols: 80, rows: 24 };
+
+  session.on("pty", (accept, _reject, info: PseudoTtyInfo) => {
+    window.cols = info.cols;
+    window.rows = info.rows;
+    accept();
+  });
+  // A window change expects no reply: ssh2 hands this handler an `accept` that
+  // is undefined (the reply callbacks only exist when `wantReply` is set), so
+  // calling it throws inside the packet handler and takes the whole connection
+  // down with it — which is what a resize storm looked like from the app.
+  session.on("window-change", (_accept, _reject, info: WindowChangeInfo) => {
+    window.cols = info.cols;
+    window.rows = info.rows;
+  });
+  session.on("shell", (accept) => {
+    attachShell(accept(), filesystem, window, onShell());
+  });
+  session.on("sftp", (accept) => attachSftp(accept(), filesystem));
+  session.on("exec", (accept) => {
+    // Nothing in the app execs over SSH; a client that tries gets a clean exit.
+    const stream = accept();
+    stream.exit(0);
+    stream.end();
+  });
+}
+
+interface ShellWindow {
+  cols: number;
+  rows: number;
+}
+
+/**
+ * A line editor and a handful of commands, which is as much shell as the tests
+ * need. It echoes what is typed and keeps a working directory, because those
+ * two are what let a spec tell "the same shell came back" from "the pane
+ * reconnected to a new one".
+ */
+function attachShell(
+  stream: ServerChannel,
+  filesystem: RuntimeFilesystem,
+  window: ShellWindow,
+  ordinal: number,
+): void {
+  let cwd = RUNTIME_HOME;
+  let line = "";
+  let escape = false;
+  let carriageReturn = false;
+
+  const write = (text: string): void => {
+    stream.write(text);
+  };
+  const prompt = (): void => write(`\r\nroot@${HOSTNAME}:${cwd}# `);
+
+  const run = (input: string): void => {
+    const [command, ...rest] = input.trim().split(/\s+/);
+    // `2>/dev/null` and friends are noise here; the app's startup line has one.
+    const args = rest.filter((token) => !/^\d?>/.test(token));
+
+    switch (command) {
+      case "":
+        return;
+      case "echo":
+        write(`${args.join(" ")}\r\n`);
+        return;
+      case "pwd":
+        write(`${cwd}\r\n`);
+        return;
+      case "cd": {
+        const target = args[0] ?? "/";
+        if (filesystem.directory(target, cwd)) cwd = normalizePath(target, cwd);
+        else write(`cd: ${target}: No such file or directory\r\n`);
+        return;
+      }
+      case "ls": {
+        const entries = filesystem.list(args[0] ?? cwd, cwd);
+        write(entries ? `${[...entries.keys()].sort().join("  ")}\r\n` : `ls: ${args[0]}: no such file\r\n`);
+        return;
+      }
+      case "whoami":
+        write("root\r\n");
+        return;
+      case "uname":
+        write("Linux e2e-runtime 6.1.0 #1 SMP x86_64 GNU/Linux\r\n");
+        return;
+      case "stty":
+        return;
+      default:
+        write(`bash: ${command}: command not found\r\n`);
+    }
+  };
+
+  // The ordinal and the window size are the two facts a spec needs to tell a
+  // surviving shell from a reconnected one.
+  write(`ColabDesk E2E runtime · shell #${ordinal} · ${window.cols}x${window.rows}\r\n`);
+  prompt();
+
+  stream.on("data", (chunk: Buffer) => {
+    for (const character of chunk.toString("utf8")) {
+      // Arrow keys and friends arrive as ESC [ X; nothing here reacts to them.
+      if (escape) {
+        if (character !== "[") escape = false;
+        continue;
+      }
+      if (character === "\x1b") {
+        escape = true;
+        continue;
+      }
+      if (character === "\r" || character === "\n") {
+        // A bare LF after a CR is the same Enter, not a second one.
+        if (character === "\n" && carriageReturn) {
+          carriageReturn = false;
+          continue;
+        }
+        carriageReturn = character === "\r";
+        write("\r\n");
+        run(line);
+        line = "";
+        prompt();
+        continue;
+      }
+      if (character === "\x7f") {
+        if (line.length > 0) {
+          line = line.slice(0, -1);
+          write("\b \b");
+        }
+        continue;
+      }
+      if (character === "\x03") {
+        line = "";
+        write("^C");
+        prompt();
+        continue;
+      }
+      if (character === "\t") continue;
+
+      carriageReturn = false;
+      line += character;
+      write(character);
+    }
+  });
+}
+
+interface DirectoryHandle {
+  kind: "dir";
+  entries: Map<string, RuntimeNode>;
+  delivered: boolean;
+}
+
+interface FileHandle {
+  kind: "file";
+  node: Exclude<RuntimeNode, { kind: "dir" }>;
+}
+
+/**
+ * The SFTP subset the app uses: listings, folder creation, deletes, and the
+ * open/read/write triple `fastGet` and `fastPut` build on. Anything else is
+ * answered `OP_UNSUPPORTED` rather than silently accepted.
+ */
+function attachSftp(sftp: SFTPWrapper, filesystem: RuntimeFilesystem): void {
+  const handles = new Map<string, DirectoryHandle | FileHandle>();
+  let nextHandle = 1;
+
+  const attrsFor = (node: RuntimeNode): Attributes => ({
+    mode: node.kind === "dir" ? DIRECTORY_MODE : FILE_MODE,
+    uid: 0,
+    gid: 0,
+    size: node.kind === "file" ? node.content.length : 0,
+    atime: node.mtime,
+    mtime: node.mtime,
+  });
+
+  const longNameFor = (name: string, node: RuntimeNode): string =>
+    `${node.kind === "dir" ? "drwxr-xr-x" : "-rw-r--r--"} 1 root root ${node.kind === "file" ? node.content.length : 4096} ${name}`;
+
+  /** A directory entry as SFTP wants it; a path that does not exist still has a name. */
+  const entryFor = (name: string, node: RuntimeNode | null) => ({
+    filename: name,
+    longname: node ? longNameFor(name, node) : name,
+    attrs: node ? attrsFor(node) : EMPTY_ATTRS,
+  });
+
+  const keep = (handle: DirectoryHandle | FileHandle): Buffer => {
+    const id = String(nextHandle++);
+    handles.set(id, handle);
+    return Buffer.from(id);
+  };
+  const held = (id: Buffer): DirectoryHandle | FileHandle | undefined => handles.get(id.toString());
+  const missing = (reqid: number): void => sftp.status(reqid, STATUS_CODE.NO_SUCH_FILE);
+  const failed = (reqid: number): void => sftp.status(reqid, STATUS_CODE.FAILURE);
+
+  sftp.on("REALPATH", (reqid: number, path: string) => {
+    const real = normalizePath(path, RUNTIME_HOME);
+    sftp.name(reqid, [entryFor(real, filesystem.node(real))]);
+  });
+
+  sftp.on("STAT", (reqid: number, path: string) => {
+    const node = filesystem.node(path, RUNTIME_HOME);
+    if (node) sftp.attrs(reqid, attrsFor(node));
+    else missing(reqid);
+  });
+  sftp.on("LSTAT", (reqid: number, path: string) => {
+    // Nothing here is a symlink, so LSTAT is STAT.
+    const node = filesystem.node(path, RUNTIME_HOME);
+    if (node) sftp.attrs(reqid, attrsFor(node));
+    else missing(reqid);
+  });
+  sftp.on("FSTAT", (reqid: number, handle: Buffer) => {
+    const entry = held(handle);
+    if (!entry) return failed(reqid);
+    if (entry.kind === "file") return sftp.attrs(reqid, attrsFor(entry.node));
+    failed(reqid);
+  });
+
+  sftp.on("OPENDIR", (reqid: number, path: string) => {
+    const entries = filesystem.list(path, RUNTIME_HOME);
+    if (!entries) return missing(reqid);
+    sftp.handle(reqid, keep({ kind: "dir", entries, delivered: false }));
+  });
+  sftp.on("READDIR", (reqid: number, handle: Buffer) => {
+    const entry = held(handle);
+    if (entry?.kind !== "dir") return failed(reqid);
+    // The client keeps asking until it sees EOF, as SFTP requires.
+    if (entry.delivered) return sftp.status(reqid, STATUS_CODE.EOF);
+    entry.delivered = true;
+    sftp.name(
+      reqid,
+      [...entry.entries.entries()].map(([name, node]) => entryFor(name, node)),
+    );
+  });
+
+  sftp.on("OPEN", (reqid: number, filename: string, flags: number) => {
+    const existing = filesystem.node(filename, RUNTIME_HOME);
+
+    if (flags & OPEN_MODE.WRITE || flags & OPEN_MODE.APPEND) {
+      const node = existing ?? filesystem.create(filename, RUNTIME_HOME);
+      if (!node || node.kind !== "file") return failed(reqid);
+      if (flags & OPEN_MODE.TRUNC) node.content = Buffer.alloc(0);
+      return sftp.handle(reqid, keep({ kind: "file", node }));
+    }
+
+    if (existing?.kind !== "file") return missing(reqid);
+    sftp.handle(reqid, keep({ kind: "file", node: existing }));
+  });
+
+  sftp.on("READ", (reqid: number, handle: Buffer, offset: number, length: number) => {
+    const entry = held(handle);
+    if (entry?.kind !== "file") return failed(reqid);
+    const { content } = entry.node;
+    if (offset >= content.length) return sftp.status(reqid, STATUS_CODE.EOF);
+    sftp.data(reqid, content.subarray(offset, Math.min(offset + length, content.length)));
+  });
+
+  sftp.on("WRITE", (reqid: number, handle: Buffer, offset: number, data: Buffer) => {
+    const entry = held(handle);
+    if (entry?.kind !== "file") return failed(reqid);
+    const { node } = entry;
+    // `fastPut` writes chunks at arbitrary offsets, so the file grows to fit.
+    if (offset + data.length > node.content.length) {
+      node.content = Buffer.concat([node.content, Buffer.alloc(offset + data.length - node.content.length)]);
+    }
+    data.copy(node.content, offset);
+    node.mtime = Math.floor(Date.now() / 1000);
+    sftp.status(reqid, STATUS_CODE.OK);
+  });
+
+  sftp.on("CLOSE", (reqid: number, handle: Buffer) => {
+    handles.delete(handle.toString());
+    sftp.status(reqid, STATUS_CODE.OK);
+  });
+
+  sftp.on("MKDIR", (reqid: number, path: string) => {
+    const result = filesystem.mkdir(path, RUNTIME_HOME);
+    if (result === "ok") sftp.status(reqid, STATUS_CODE.OK);
+    else if (result === "exists") failed(reqid);
+    else missing(reqid);
+  });
+  sftp.on("RMDIR", (reqid: number, path: string) => {
+    const entries = filesystem.list(path, RUNTIME_HOME);
+    // A non-empty directory is refused, so the app's own recursion is what the
+    // tests exercise when deleting a folder.
+    if (!entries || entries.size > 0) return failed(reqid);
+    if (filesystem.remove(path, RUNTIME_HOME)) sftp.status(reqid, STATUS_CODE.OK);
+    else missing(reqid);
+  });
+  sftp.on("REMOVE", (reqid: number, path: string) => {
+    const node = filesystem.node(path, RUNTIME_HOME);
+    if (!node || node.kind !== "file") return missing(reqid);
+    if (filesystem.remove(path, RUNTIME_HOME)) sftp.status(reqid, STATUS_CODE.OK);
+    else failed(reqid);
+  });
+
+  sftp.on("EXTENDED", (reqid: number) => sftp.status(reqid, STATUS_CODE.OP_UNSUPPORTED));
+  sftp.on("error", () => {});
+}
+
+/** Binds to an ephemeral port so parallel runs cannot collide on a fixed one. */
+async function listen(server: EventEmitter & { listen(port: number, host: string): unknown }): Promise<void> {
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+}
+
+function closeServer(server: { close(callback: (error?: Error) => void): void }): Promise<void> {
+  return new Promise((resolve) => server.close(() => resolve()));
+}

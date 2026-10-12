@@ -1,0 +1,24 @@
+import { resolve } from "node:path";
+import { defineConfig } from "vitest/config";
+
+/** The config lives in `config/`, so paths are resolved from the project root. */
+const root = resolve(import.meta.dirname, "..");
+
+export default defineConfig({
+  root,
+  resolve: {
+    alias: {
+      "@shared": resolve(root, "src/shared"),
+    },
+  },
+  test: {
+    // `.tsx` too: a component rendered with `renderToStaticMarkup` needs no DOM,
+    // so the design rules that live in markup are testable right here.
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    environment: "node",
+    // One stylesheet is also a data file: the terminal's palettes are asserted
+    // against the CSS itself, which needs it processed rather than stubbed out.
+    // Scoped to that file, so no other test pays for it.
+    css: { include: [/terminal-themes\.css/] },
+  },
+});

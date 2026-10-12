@@ -1,0 +1,225 @@
+/**
+ * The chrome's icons, as inline SVG on `currentColor`.
+ *
+ * Unicode glyphs (`▤`, `▥`, `⚙`) render differently on every platform and fall
+ * back to whatever the system font has; the top bar is made of icons, so they
+ * are drawn instead.
+ */
+
+type IconProps = { size?: number; className?: string };
+
+function Svg({ size = 16, className, children }: IconProps & { children: React.ReactNode }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+      className={className}
+    >
+      {children}
+    </svg>
+  );
+}
+
+/** Sync / reconcile sessions with the server. */
+export function SyncIcon({ size, className }: IconProps) {
+  return (
+    <Svg size={size} className={className}>
+      <path d="M2.5 7.5a5.5 5.5 0 0 1 9.4-3.4L13.5 5.5" />
+      <path d="M10.5 5.5h3v-3" />
+      <path d="M13.5 8.5a5.5 5.5 0 0 1-9.4 3.4L2.5 10.5" />
+      <path d="M5.5 10.5h-3v3" />
+    </Svg>
+  );
+}
+
+/** Collapse/expand the left rail: a panel with its divider. */
+export function PanelLeftIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <rect x="1.75" y="2.75" width="12.5" height="10.5" rx="1.75" />
+      <path d="M6.25 2.75v10.5" />
+    </Svg>
+  );
+}
+
+/** Collapse/expand the right panel, mirrored. */
+export function PanelRightIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <rect x="1.75" y="2.75" width="12.5" height="10.5" rx="1.75" />
+      <path d="M9.75 2.75v10.5" />
+    </Svg>
+  );
+}
+
+/** Settings. A ring with teeth, not a circle with rays: at 15px the latter is
+    indistinguishable from the theme toggle's sun. */
+export function SettingsIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <circle cx="8" cy="8" r="4.6" />
+      <circle cx="8" cy="8" r="1.75" />
+      <path d="M8 1.6v1.9M12.53 3.47l-1.35 1.35M14.4 8h-1.9M12.53 12.53l-1.35-1.35M8 14.4v-1.9M3.47 12.53l1.35-1.35M1.6 8h1.9M3.47 3.47l1.35 1.35" />
+    </Svg>
+  );
+}
+
+/* ---- theme: what the top bar's toggle switches to ---- */
+
+export function SunIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <circle cx="8" cy="8" r="3" />
+      <path d="M8 1.4v1.5M8 13.1v1.5M1.4 8h1.5M13.1 8h1.5M3.35 3.35l1.05 1.05M11.6 11.6l1.05 1.05M12.65 3.35l-1.05 1.05M4.4 11.6L3.35 12.65" />
+    </Svg>
+  );
+}
+
+export function MoonIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M13.3 9.5A5.6 5.6 0 0 1 6.5 2.7a5.6 5.6 0 1 0 6.8 6.8Z" />
+    </Svg>
+  );
+}
+
+/** Appearance: a half-filled disc. The section is not the toggle, so it does
+    not borrow the toggle's sun. */
+export function ContrastIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <circle cx="8" cy="8" r="6.25" />
+      <path d="M8 1.75a6.25 6.25 0 0 1 0 12.5Z" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
+/* ---- settings sections ---- */
+
+export function ChevronLeftIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M10 3.5 5.5 8l4.5 4.5" />
+    </Svg>
+  );
+}
+
+/** Account and quota. */
+export function AccountIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <circle cx="8" cy="5.4" r="2.6" />
+      <path d="M2.9 13.6a5.1 5.1 0 0 1 10.2 0" />
+    </Svg>
+  );
+}
+
+/** Spend over time. */
+export function ChartIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M2.5 13.5h11" />
+      <path d="M4.75 13.5V8.5M8 13.5V3.5M11.25 13.5v-3.5" />
+    </Svg>
+  );
+}
+
+/** The terminal: a prompt chevron over a cursor line. */
+export function TerminalIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <rect x="1.75" y="2.75" width="12.5" height="10.5" rx="1.75" />
+      <path d="M5 6.5 6.75 8 5 9.5M8.75 9.75h2.5" />
+    </Svg>
+  );
+}
+
+/** The runtime and its CLI. */
+export function ChipIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <rect x="4.75" y="4.75" width="6.5" height="6.5" rx="1" />
+      <path d="M6.75 1.9v2.85M9.25 1.9v2.85M6.75 11.25v2.85M9.25 11.25v2.85M1.9 6.75h2.85M1.9 9.25h2.85M11.25 6.75h2.85M11.25 9.25h2.85" />
+    </Svg>
+  );
+}
+
+/** Outside tools that reach the runtime over the same SSH config. */
+export function PlugIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M5.5 2.5v3M10.5 2.5v3" />
+      <path d="M3.75 5.5h8.5v1.75a4.25 4.25 0 0 1-4.25 4.25A4.25 4.25 0 0 1 3.75 7.25Z" />
+      <path d="M8 11.5v2" />
+    </Svg>
+  );
+}
+
+export function PlusIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M8 3.5v9M3.5 8h9" />
+    </Svg>
+  );
+}
+
+export function CloseIcon({ size = 12 }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M4 4l8 8M12 4l-8 8" />
+    </Svg>
+  );
+}
+
+export function MoreIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <circle cx="3.5" cy="8" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="8" cy="8" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="12.5" cy="8" r="0.9" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
+/* ---- window controls (the app draws its own title bar) ---- */
+
+export function MinimizeIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M3.5 8h9" />
+    </Svg>
+  );
+}
+
+export function MaximizeIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <rect x="3.5" y="3.5" width="9" height="9" rx="0.5" />
+    </Svg>
+  );
+}
+
+export function RestoreIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <rect x="3" y="5.5" width="7.5" height="7.5" rx="0.5" />
+      <path d="M5.75 5.5V3.5h7.25v7.25h-2" />
+    </Svg>
+  );
+}
+
+export function CloseWindowIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M4 4l8 8M12 4l-8 8" />
+    </Svg>
+  );
+}
