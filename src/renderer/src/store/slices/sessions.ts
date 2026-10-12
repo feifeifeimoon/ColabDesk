@@ -4,10 +4,21 @@ import { failureHint, failureLabel } from "../../lib/failure";
 import { translate } from "../../i18n/i18n";
 import type { AppState, SessionsSlice } from "../types";
 
+/**
+ * Both halves of the rail: the records on disk and the server's own list. They
+ * are independent reads — the second one is a network round trip — so neither
+ * is made to wait for the other.
+ */
+async function loadRail(get: () => AppState): Promise<void> {
+  await Promise.all([get().loadSessions(), get().loadUntracked()]);
+}
+
 export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> = (set, get) => ({
   sessions: [],
   sessionsLoading: true,
   sessionsSyncing: false,
+  untrackedSessions: [],
+  untrackedError: null,
   busyAction: null,
   notice: null,
 
@@ -25,14 +36,30 @@ export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> 
     }
   },
 
+  /**
+   * The runtimes the server has that the local store does not. A failure here
+   * is deliberately not a banner — this read loses to every network blip, and
+   * what the person needs to know is that the *list* may be short, which the
+   * rail says in place of an empty state that would claim there is nothing.
+   */
+  loadUntracked: async () => {
+    try {
+      const result = await api.listUntracked();
+      set({ untrackedSessions: result.sessions, untrackedError: result.error });
+    } catch (cause) {
+      set({ untrackedSessions: [], untrackedError: api.messageOf(cause) });
+    }
+  },
+
   syncSessions: async () => {
     set({ sessionsSyncing: true });
     try {
       const report = await api.syncSessions();
       if (!report.ok && !report.error) set({ error: report.output.trim() || "同步失败。" });
       else set({ error: report.error });
-      await get().loadSessions();
-      await get().refreshEnvironment();
+      // Both reads wait for that call — it is what prunes the store and mints a
+      // fresh token — but they do not wait for each other.
+      await Promise.all([loadRail(get), get().refreshEnvironment()]);
     } catch (cause) {
       set({ error: api.messageOf(cause) });
     } finally {
@@ -81,8 +108,7 @@ export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> 
           set({ notice: { tone: "info", text: translate("sessions.stoppedSuccess", `会话「${name}」已停止。`, { name }) } });
           get().closeSessionTabs(name);
         }
-        await get().loadSessions();
-        await get().refreshEnvironment();
+        await Promise.all([loadRail(get), get().refreshEnvironment()]);
       } else if (action === "restart-kernel") {
         const report = await api.restartKernel(name);
         if (report.error) set({ notice: { tone: "danger", text: report.error } });
@@ -115,8 +141,7 @@ export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> 
   sessionCreated: async (name) => {
     const before = new Set(get().sessions.map((session) => session.name));
     get().closeNewSession();
-    await get().loadSessions();
-    await get().refreshEnvironment();
+    await Promise.all([loadRail(get), get().refreshEnvironment()]);
     if (name) {
       get().openSession(name);
       return;

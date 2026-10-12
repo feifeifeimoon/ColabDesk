@@ -2,10 +2,13 @@
  * Read-only access to the state the `colab` CLI keeps on disk.
  *
  * The session list renders straight from `~/.config/colab-cli/sessions.json`
- * so a refresh never pays a Python interpreter start-up. The file's `token`
- * field is a bearer credential for the runtime proxy: it stays inside the main
- * process (the SSH bridge needs it) and is stripped from anything the renderer
- * receives.
+ * so a refresh never pays a Python interpreter start-up. That file is only the
+ * local half of the list — runtimes the store has never heard of exist in it
+ * nowhere — so the server's own half is read in `assignments.ts`.
+ *
+ * The file's `token` field is a bearer credential for the runtime proxy: it
+ * stays inside the main process (the SSH bridge needs it) and is stripped from
+ * anything the renderer receives.
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -42,6 +45,8 @@ function normalize(name: string, raw: Record<string, unknown>): RawSession {
   const lastExecution = raw.last_execution;
   return {
     name,
+    // Whatever is in this file is, by definition, what the local store knows.
+    untracked: false,
     token: str("token", ""),
     url: str("url", ""),
     endpoint: str("endpoint", ""),
@@ -124,5 +129,26 @@ export function authState(): AuthState {
     };
   } catch {
     return { token_file_exists: true, expiry: null, has_refresh_token: false };
+  }
+}
+
+/**
+ * The access token the CLI last minted, or null when it is missing or stale.
+ *
+ * A stale token can still be refreshed, but only by the CLI — this app
+ * deliberately does not do that, so callers treat null as "ask again later"
+ * and every read that needs it fails soft.
+ */
+export function accessToken(): string | null {
+  if (!authState().token_file_exists) return null;
+  try {
+    const value = JSON.parse(readFileSync(tokenFile(), "utf8")) as Record<string, unknown>;
+    const token = value.token;
+    const expiry = value.expiry;
+    if (typeof token !== "string" || !token) return null;
+    if (typeof expiry === "string" && Date.parse(expiry) <= Date.now()) return null;
+    return token;
+  } catch {
+    return null;
   }
 }

@@ -44,6 +44,9 @@ export function startAppEvents(): () => void {
 
   void store.getState().refreshEnvironment();
   void store.getState().loadSessions();
+  // The rail's other half: runtimes the server has that no local record
+  // mentions. Its own read, so a slow answer cannot hold up the list on disk.
+  void store.getState().loadUntracked();
 
   return () => {
     stopSystemTheme();

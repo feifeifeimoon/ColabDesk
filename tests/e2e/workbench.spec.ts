@@ -27,6 +27,26 @@ test("没有会话时，工作台已给出全部机器状态", async ({ page }) 
   await expect(status).toContainText("0.9.0-e2e");
 });
 
+test("服务器上有、本地没有的运行时也会列出来，但不可操作", async ({ page }) => {
+  // 桩在 assignments 里多报了一个 endpoint，本地 sessions.json 里没有它——
+  // 这正是真实环境里 `colab sessions` 打 `[?]` 的那些运行时。
+  const untrackedRow = page.locator('[data-testid="untracked-row"]');
+  await expect(untrackedRow).toHaveCount(1);
+  await expect(untrackedRow).toContainText("m-s-kkb-e2e0c1-untracked");
+  await expect(untrackedRow).toContainText("未在本地记录");
+  await expect(untrackedRow).toContainText("CPU");
+  // 这一行不是控件：没有行内动作。
+  await expect(untrackedRow.locator(".menu__trigger")).toHaveCount(0);
+  // 有本地记录的运行时仍然是会话行，不会同时出现在未记录的那一边。
+  await expect(page.locator('[data-testid="session-row"]')).toHaveCount(2);
+
+  // 点一次同步（走真实的 `colab sessions` 加重新读取这条路径）：两半都还在。
+  await page.locator('[data-testid="sync-sessions"]').click();
+  await expect(page.locator('[data-testid="sidebar-overlay"]')).toHaveCount(0);
+  await expect(untrackedRow).toHaveCount(1);
+  await expect(page.locator('[data-testid="session-row"]')).toHaveCount(2);
+});
+
 test("顶栏是拖拽区，栏内控件退出拖拽", async ({ page }) => {
   expect(await dragRegion(page, ".topbar")).toBe("drag");
   // 标签条横跨栏的中间且必须保持拖拽，否则两端的控件之间没有可抓的地方。

@@ -16,6 +16,7 @@ function subscribe<T>(channel: string, listener: (payload: T) => void): () => vo
 const api: ColabDeskApi = {
   envStatus: () => invoke(IPC.envStatus),
   listSessions: () => invoke<SessionList>(IPC.listSessions),
+  listUntracked: () => invoke<SessionList>(IPC.listUntracked),
   usage: () => invoke(IPC.usage),
   usageTrend: () => invoke(IPC.usageTrend),
 

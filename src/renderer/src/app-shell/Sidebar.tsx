@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, type StatusTone } from "../components/ui/Badge";
+import { Badge, Status, type StatusTone } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { PlusIcon, SettingsIcon, SyncIcon } from "../components/ui/icons";
 import { Menu } from "../components/ui/Menu";
@@ -57,6 +57,8 @@ export function Sidebar() {
   const setPanelWidth = useAppStore((state) => state.setPanelWidth);
   const sessions = useAppStore((state) => state.sessions);
   const loading = useAppStore((state) => state.sessionsLoading);
+  const untrackedSessions = useAppStore((state) => state.untrackedSessions);
+  const untrackedError = useAppStore((state) => state.untrackedError);
   const selectedSession = useAppStore((state) => state.selectedSession);
   const tabs = useAppStore((state) => state.tabs);
   const connections = useAppStore((state) => state.connections);
@@ -134,7 +136,18 @@ export function Sidebar() {
 
         {!loading && sessions.length === 0 && (
           <p className="hint" style={{ padding: "var(--space-2)" }}>
-            {t("sidebar.empty", "还没有会话。点上面的 + 创建一个运行时。")}
+            {t("sidebar.empty", "本地还没有会话。点上面的 + 创建一个运行时。")}
+          </p>
+        )}
+
+        {/*
+          Only while the rail would otherwise read as empty, which is the one
+          case where it would be claiming to be complete: with local rows on
+          screen the list is honest, and this read loses to every network blip.
+        */}
+        {untrackedError && sessions.length === 0 && (
+          <p className="hint" style={{ padding: "var(--space-2)" }}>
+            {untrackedError}
           </p>
         )}
 
@@ -220,6 +233,34 @@ export function Sidebar() {
             </div>
           );
         })}
+
+        {/*
+          The runtimes the server has that no local record mentions — what
+          `colab sessions` prints with a `[?]` where a name would be. They are
+          listed because they are running and spending quota; they are not
+          controls because everything this app does to a session needs a record
+          that does not exist for them.
+        */}
+        {untrackedSessions.map((session) => (
+          <div
+            key={session.name}
+            data-testid="untracked-row"
+            className="session-row session-row--untracked"
+            title={t(
+              "sidebar.untrackedTitle",
+              "服务器上有这个运行时，本地没有它的记录：ColabDesk 连不上也停不掉它。要关掉它请到 Colab 网页版。",
+            )}
+          >
+            <div className="session-row__main">
+              <span aria-hidden="true" className="status status--warn" />
+              <span className="session-row__name session-row__name--endpoint">{session.name}</span>
+            </div>
+            <span className="session-row__sub">
+              <Status tone="warn">{t("sidebar.untracked", "未在本地记录")}</Status>
+              <Badge tone="ink">{acceleratorLabel(session)}</Badge>
+            </span>
+          </div>
+        ))}
       </div>
 
       <div className="sidebar__footer">

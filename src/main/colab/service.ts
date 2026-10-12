@@ -11,6 +11,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { CommandReport, EnvStatus, Session, SshSetup, UsageReport } from "@shared/types";
 import { accountStatus } from "./account";
+import { fetchAssignments, type Assignment } from "./assignments";
 import { combined, needsLogin, parseUsage, parseVersion, readManifestVersion, resolveCli, runCli, type ResolvedCli } from "./cli";
 import { isTransientNetworkFailure } from "./network-retry";
 import { authState, configDir, findRawSession, loadRawSessions, loadSessions, sessionsFile } from "./sessions";
@@ -30,6 +31,29 @@ const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 // The retry rule moved to `network-retry` so the direct API reads can share it;
 // it stays exported here because this is where callers learned to ask.
 export { isTransientNetworkFailure };
+
+/**
+ * A live runtime with no local record, in the shape a row expects. Nothing on
+ * it is knowable beyond what the server said: no kernel, no last execution, and
+ * no credential — the proxy token from the same response is not read, because
+ * nothing here may act on a runtime it has no record of.
+ */
+function untrackedSession(assignment: Assignment): Session {
+  return {
+    name: assignment.endpoint,
+    untracked: true,
+    url: assignment.url,
+    endpoint: assignment.endpoint,
+    variant: assignment.variant,
+    accelerator: assignment.accelerator,
+    machine_shape: assignment.machine_shape,
+    kernel_id: null,
+    session_id: null,
+    token_expires_at: null,
+    running: null,
+    last_execution: null,
+  };
+}
 
 export class Service {
   constructor(private readonly bundledDir?: string) {}
@@ -125,6 +149,33 @@ export class Service {
   listSessions(): { sessions: Session[]; error: string | null } {
     const { error } = loadRawSessions();
     return { sessions: loadSessions(), error };
+  }
+
+  /**
+   * Runtimes the server has that the local store has never heard of — the `[?]`
+   * rows of `colab sessions`.
+   *
+   * They cannot be folded into the store: the CLI's own sync only ever prunes,
+   * and with an empty store it writes nothing at all, so an assignment created
+   * outside the CLI stays invisible to every `colab` command. Without this read
+   * it is invisible here too — which is a runtime spending compute units behind
+   * an empty session list.
+   */
+  async listUntracked(): Promise<{ sessions: Session[]; error: string | null }> {
+    const assignments = await fetchAssignments();
+    if (!assignments) {
+      return {
+        sessions: [],
+        error: "读不到服务器上的运行时列表（令牌过期或网络不通）。点上面的同步重试。",
+      };
+    }
+
+    const known = new Set(loadRawSessions().sessions.map((session) => session.endpoint));
+    const sessions = assignments
+      .filter((assignment) => !known.has(assignment.endpoint))
+      .map(untrackedSession)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    return { sessions, error: null };
   }
 
   async usage(): Promise<UsageReport> {

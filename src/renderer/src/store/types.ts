@@ -68,11 +68,20 @@ export interface SessionsSlice {
   sessions: Session[];
   sessionsLoading: boolean;
   sessionsSyncing: boolean;
+  /**
+   * The other half of the rail: runtimes the server has that no local record
+   * mentions. They are not sessions the app can act on, so they are held apart
+   * rather than folded into `sessions`.
+   */
+  untrackedSessions: Session[];
+  /** Set when that read failed — the rail may be missing runtimes, and says so. */
+  untrackedError: string | null;
   /** `${session}:${action}` while a row action is in flight. */
   busyAction: string | null;
   notice: Notice | null;
 
   loadSessions(): Promise<void>;
+  loadUntracked(): Promise<void>;
   /** Reconciles against the server, then reloads the list and the environment. */
   syncSessions(): Promise<void>;
   runSessionAction(name: string, action: SessionAction): Promise<void>;

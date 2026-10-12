@@ -1,5 +1,6 @@
 /**
- * Assertions on the left rail: sessions list, sync state, and refreshing overlay.
+ * Assertions on the left rail: sessions list, untracked runtimes, sync state,
+ * and the refreshing overlay.
  */
 
 import { createElement } from "react";
@@ -14,6 +15,13 @@ vi.mock("../store", () => ({
   useAppStore: (select: (state: unknown) => unknown) => select(store.current),
 }));
 
+const UNTRACKED = {
+  name: "m-s-kkb-usc1c1-1ysqo4pb8zt5n",
+  untracked: true,
+  endpoint: "m-s-kkb-usc1c1-1ysqo4pb8zt5n",
+  accelerator: "NONE",
+};
+
 const baseStore = {
   sidebarOpen: true,
   panelWidths: { sidebar: 260, files: 340 },
@@ -21,6 +29,8 @@ const baseStore = {
   sessions: [{ name: "session-1", endpoint: "127.0.0.1" }],
   sessionsLoading: false,
   sessionsSyncing: false,
+  untrackedSessions: [] as unknown[],
+  untrackedError: null as string | null,
   selectedSession: null,
   tabs: [],
   connections: {},
@@ -31,6 +41,11 @@ const baseStore = {
   openNewSession: vi.fn(),
   openSettings: vi.fn(),
 };
+
+/** The rail's own markup for the untracked-runtime rows, up to the footer. */
+function untrackedMarkup(html: string): string {
+  return html.slice(html.indexOf('data-testid="untracked-row"'), html.indexOf("sidebar__footer"));
+}
 
 describe("Sidebar", () => {
   beforeEach(() => {
@@ -60,5 +75,55 @@ describe("Sidebar", () => {
     expect(html).not.toContain('data-testid="sidebar-overlay"');
     expect(html).not.toContain("spin-sync");
     expect(html).toContain('aria-label="同步"');
+  });
+
+  it("服务器上有、本地没有的运行时，以只读的一行列出", () => {
+    store.current = { ...baseStore, sessions: [], untrackedSessions: [UNTRACKED] };
+    const html = renderToStaticMarkup(createElement(Sidebar));
+
+    expect(html).toContain('data-testid="untracked-row"');
+    // 没有名字，所以用 endpoint 当标识，而且是机器的语气：mono。
+    expect(html).toContain("session-row__name--endpoint");
+    expect(html).toContain(UNTRACKED.endpoint);
+    // 状态是点 + 文字，颜色不单独承载语义。
+    expect(html).toContain("未在本地记录");
+    expect(html).toContain("status--warn");
+    expect(html).toContain("CPU");
+  });
+
+  it("未在本地记录的那一行不是控件：没有菜单、没有按钮、指针不是手型", () => {
+    store.current = { ...baseStore, sessions: [], untrackedSessions: [UNTRACKED] };
+    const html = renderToStaticMarkup(createElement(Sidebar));
+
+    expect(untrackedMarkup(html)).not.toContain("<button");
+    expect(untrackedMarkup(html)).not.toContain("menu__trigger");
+    expect(html).toContain("session-row--untracked");
+  });
+
+  it("空态说的是「本地」没有，而不是「没有」", () => {
+    store.current = { ...baseStore, sessions: [], untrackedSessions: [] };
+    const html = renderToStaticMarkup(createElement(Sidebar));
+    expect(html).toContain("本地还没有会话");
+  });
+
+  it("服务器那一半没读到时空态必须说出来，并给出下一步", () => {
+    store.current = {
+      ...baseStore,
+      sessions: [],
+      untrackedSessions: [],
+      untrackedError: "读不到服务器上的运行时列表（令牌过期或网络不通）。点上面的同步重试。",
+    };
+    const html = renderToStaticMarkup(createElement(Sidebar));
+    expect(html).toContain("读不到服务器上的运行时列表");
+    expect(html).toContain("点上面的同步重试");
+  });
+
+  it("本地有会话时不报服务器那一半的失败——列表本身是诚实的", () => {
+    store.current = {
+      ...baseStore,
+      untrackedError: "读不到服务器上的运行时列表（令牌过期或网络不通）。点上面的同步重试。",
+    };
+    const html = renderToStaticMarkup(createElement(Sidebar));
+    expect(html).not.toContain("读不到服务器上的运行时列表");
   });
 });

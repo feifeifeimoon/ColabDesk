@@ -2,6 +2,12 @@
 
 export interface Session {
   name: string;
+  /**
+   * True when the server has this runtime but the local store has no record of
+   * it: `colab` can neither name nor stop it, so its `name` is the endpoint —
+   * the only identity it has.
+   */
+  untracked: boolean;
   url: string;
   endpoint: string;
   variant: string;

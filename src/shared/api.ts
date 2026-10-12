@@ -50,6 +50,12 @@ export interface TransferTargets {
 export interface ColabDeskApi {
   envStatus(): Promise<EnvStatus>;
   listSessions(): Promise<SessionList>;
+  /**
+   * Runtimes the server has that no local record mentions. `error` is set and
+   * `sessions` empty when the answer could not be had — the rail then says so
+   * instead of claiming there is nothing.
+   */
+  listUntracked(): Promise<SessionList>;
   usage(): Promise<UsageReport>;
   /** Compute-unit spend per day/week/month, from the readings this app recorded. */
   usageTrend(): Promise<UsageTrend>;

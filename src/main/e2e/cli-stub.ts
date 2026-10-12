@@ -112,6 +112,44 @@ function readStore(): Record<string, Record<string, unknown>> {
   }
 }
 
+/**
+ * An assignment the local store has never heard of: the `[?]` row of `colab
+ * sessions`, and the whole reason `sessions:untracked` exists.
+ */
+const UNTRACKED_ASSIGNMENT = {
+  endpoint: "m-s-kkb-e2e0c1-untracked",
+  accelerator: "NONE",
+  variant: 0,
+  machineShape: 0,
+};
+
+/** The reverse of the app's own mapping: the backend sends codes, not names. */
+const VARIANT_CODES: Record<string, number> = { DEFAULT: 0, GPU: 1, TPU: 2 };
+const SHAPE_CODES: Record<string, number> = { STANDARD: 0, HIGH_RAM: 1 };
+
+function codeFor(value: unknown, codes: Record<string, number>, fallback: number): number {
+  return codes[String(value)] ?? fallback;
+}
+
+/**
+ * The session backend's `assignments` response, in the shape the real one
+ * returns — the int enums and the `runtimeProxyInfo` the app deliberately does
+ * not read included. The seeded sessions are in it as well, so the merge under
+ * test is the real one: a runtime with a local record stays a session, and only
+ * the one below lands in the untracked list.
+ */
+export function mockAssignments(): unknown {
+  const store = readStore();
+  const assignments = Object.values(store).map((entry) => ({
+    endpoint: entry.endpoint,
+    accelerator: entry.accelerator,
+    variant: codeFor(entry.variant, VARIANT_CODES, 0),
+    machineShape: codeFor(entry.machine_shape, SHAPE_CODES, 0),
+    runtimeProxyInfo: { token: entry.token, tokenExpiresInSeconds: 3600, url: entry.url },
+  }));
+  return { assignments: [...assignments, UNTRACKED_ASSIGNMENT] };
+}
+
 function ok(stdout: string): CliOutput {
   return { code: 0, stdout: `${stdout}\n`, stderr: "", timedOut: false };
 }

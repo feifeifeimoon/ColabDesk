@@ -444,6 +444,26 @@ kbd {
   opacity: 1;
 }
 
+/*
+  A runtime the server has but the local store does not. The hover wash and the
+  pointer cursor are how this list says "clickable" everywhere else, so an
+  untracked row has neither — there is nothing to click. Its name is an endpoint,
+  which is a machine identifier, so it is set in mono.
+*/
+.session-row--untracked:hover {
+  background: none;
+  color: var(--body);
+}
+
+.session-row--untracked .session-row__main {
+  cursor: default;
+}
+
+.session-row__name--endpoint {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+}
+
 /* ---------- ui: menu ---------- */
 
 .menu {

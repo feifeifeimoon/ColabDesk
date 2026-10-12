@@ -1,8 +1,8 @@
 /**
  * The two questions the `colab` CLI cannot answer, asked directly.
  *
- * Everything else in the app goes through the CLI — it owns OAuth, allocation
- * and the session store. Two things it knows and discards instead:
+ * The CLI owns OAuth, allocation and the session store; identity and
+ * entitlement are the two facts it knows and then throws away:
  *
  *   - Identity: `colab whoami` prints the email, but only as text, and pays a
  *     Python start-up and a tokeninfo round trip for the privilege. The CLI
@@ -16,16 +16,14 @@
  * the UI shows nothing rather than guessing.
  */
 
-import { readFileSync } from "node:fs";
 import type { AcceleratorEligibility, AccountInfo } from "@shared/types";
 import { e2eMockEnabled } from "../e2e/mode";
 import { parseEligibility } from "./accelerator-eligibility";
+import { backendGetJson } from "./backend";
 import { retryTransientRead } from "./network-retry";
-import { authState, tokenFile } from "./sessions";
+import { accessToken, authState } from "./sessions";
 
 const TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo";
-/** `client.py` builds this as `{colab_domain}/tun/m/...`; keep the pair together. */
-const CCU_INFO_URL = "https://colab.research.google.com/tun/m/ccu-info";
 const REQUEST_TIMEOUT_MS = 30_000;
 
 /** A network read, not a session operation: one retry rescues an intermittent TLS reset. */
@@ -33,16 +31,6 @@ const READ_ATTEMPTS = 2;
 
 /** Entitlement moves on a subscription change, not on a clock. */
 const ELIGIBILITY_TTL_MS = 12 * 60 * 60 * 1000;
-
-/**
- * How the CLI reaches the backend. `authuser` is not optional: the Colab backend
- * answers 400 without it (`colab_cli/client.py` adds the same parameter to every
- * request it makes).
- */
-const CCU_HEADERS = {
-  Accept: "application/json",
-  "X-Colab-Client-Agent": "colab-cli",
-};
 
 interface CacheEntry<T> {
   value: T;
@@ -62,26 +50,15 @@ export function resetAccountCache(): void {
   cache.eligibility = null;
 }
 
-/** The access token the CLI last minted, or null when it is missing or stale. */
-function accessToken(): string | null {
-  if (!authState().token_file_exists) return null;
-  try {
-    const value = JSON.parse(readFileSync(tokenFile(), "utf8")) as Record<string, unknown>;
-    const token = value.token;
-    const expiry = value.expiry;
-    if (typeof token !== "string" || !token) return null;
-    // A stale access token can still be refreshed, but only by the CLI — which
-    // this module deliberately does not do; the next CLI call will.
-    if (typeof expiry === "string" && Date.parse(expiry) <= Date.now()) return null;
-    return token;
-  } catch {
-    return null;
-  }
-}
-
-async function readJson(url: string, timeoutMs: number): Promise<unknown> {
+/**
+ * tokeninfo is the one read that does not go through `backend.ts`: it takes the
+ * token as a query parameter and rejects a Bearer header alongside it, and it
+ * is not on the session backend's domain, so it has neither that auth nor an
+ * XSSI guard.
+ */
+async function readTokenInfo(url: string, timeoutMs: number): Promise<unknown> {
   const response = await fetch(url, {
-    headers: CCU_HEADERS,
+    headers: { Accept: "application/json" },
     signal: AbortSignal.timeout(timeoutMs),
   });
   if (!response.ok) {
@@ -108,10 +85,8 @@ export async function fetchAccountInfo(): Promise<AccountInfo | null> {
 
   let body: unknown;
   try {
-    // tokeninfo takes the token as a query parameter and rejects a Bearer
-    // header alongside it, so this one call does not use {@link readJson}.
     body = await retryTransientRead(
-      () => readJson(`${TOKENINFO_URL}?access_token=${encodeURIComponent(token)}`, REQUEST_TIMEOUT_MS),
+      () => readTokenInfo(`${TOKENINFO_URL}?access_token=${encodeURIComponent(token)}`, REQUEST_TIMEOUT_MS),
       READ_ATTEMPTS,
     );
   } catch {
@@ -133,8 +108,6 @@ export async function fetchAccountInfo(): Promise<AccountInfo | null> {
 
 /**
  * Which accelerators this account may allocate, from the session backend.
- *
- * The `authuser` parameter is not decoration: without it the backend answers 400.
  */
 export async function fetchAcceleratorEligibility(): Promise<AcceleratorEligibility | null> {
   // Same idea as `fetchAccountInfo`: the shape of a live answer, parsed by the
@@ -148,20 +121,11 @@ export async function fetchAcceleratorEligibility(): Promise<AcceleratorEligibil
     });
   }
 
-  const token = accessToken();
-  if (!token) return null;
-
-  let body: unknown;
   try {
-    body = await retryTransientRead(
-      () => readJson(`${CCU_INFO_URL}?authuser=0`, REQUEST_TIMEOUT_MS),
-      READ_ATTEMPTS,
-    );
+    return parseEligibility(await backendGetJson("/tun/m/ccu-info"));
   } catch {
     return null;
   }
-
-  return parseEligibility(body);
 }
 
 export interface AccountStatus {

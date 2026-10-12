@@ -3,6 +3,7 @@
 export const IPC = {
   envStatus: "env:status",
   listSessions: "sessions:list",
+  listUntracked: "sessions:untracked",
   usage: "usage:get",
   usageTrend: "usage:trend",
   createSession: "session:create",

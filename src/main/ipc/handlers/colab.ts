@@ -18,6 +18,7 @@ export function registerColabHandlers({ service, usageHistory, bundledDir }: Ipc
 
   ipcMain.handle(IPC.envStatus, () => service.envStatus());
   ipcMain.handle(IPC.listSessions, () => service.listSessions());
+  ipcMain.handle(IPC.listUntracked, () => service.listUntracked());
   // Every reading the renderer asks for is also a point on the usage curve, so
   // the status bar's refresh rate is what the history is sampled at.
   ipcMain.handle(IPC.usage, async () => {

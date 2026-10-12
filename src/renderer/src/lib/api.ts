@@ -12,6 +12,7 @@ const bridge = (): ColabDeskApi => window.colabdesk;
 
 export const envStatus = () => bridge().envStatus();
 export const listSessions = () => bridge().listSessions();
+export const listUntracked = () => bridge().listUntracked();
 export const usage = () => bridge().usage();
 export const usageTrend = () => bridge().usageTrend();
 
