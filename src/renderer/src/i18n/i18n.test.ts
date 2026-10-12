@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { i18n, setRendererUiLanguage, translate } from "./i18n";
 import { resolveUiLocale } from "./supported-languages";
 import { normalizeUiLanguage, UI_LANGUAGE_CHINESE, UI_LANGUAGE_ENGLISH, UI_LANGUAGE_SYSTEM } from "@shared/ui-language";
@@ -39,7 +39,31 @@ describe("i18n resolution and translation", () => {
   it("resolves locales correctly", () => {
     expect(resolveUiLocale(UI_LANGUAGE_CHINESE)).toBe("zh");
     expect(resolveUiLocale(UI_LANGUAGE_ENGLISH)).toBe("en");
+  });
+
+  /**
+   * The host locale is stubbed instead of read: which language a machine happens
+   * to run is not a fact about this app. Reading it made the assertion below
+   * pass on a Chinese developer machine and fail on the English CI runner —
+   * `expected 'en' to be 'zh'` — which is a test describing the host, not the rule.
+   */
+  it("跟随系统时读宿主的语言，中英之外回落到默认的 zh", () => {
+    const resolvedFor = (language: string): string => {
+      vi.stubGlobal("navigator", { language });
+      const resolved = resolveUiLocale(UI_LANGUAGE_SYSTEM);
+      vi.unstubAllGlobals();
+      return resolved;
+    };
+
+    expect(resolvedFor("zh-CN")).toBe("zh");
+    expect(resolvedFor("zh-Hant-TW")).toBe("zh");
+    expect(resolvedFor("en-US")).toBe("en");
+    expect(resolvedFor("de-DE")).toBe("zh");
+
+    // A runtime that reports no language is still the default, not a crash.
+    vi.stubGlobal("navigator", {});
     expect(resolveUiLocale(UI_LANGUAGE_SYSTEM)).toBe("zh");
+    vi.unstubAllGlobals();
   });
 
   it("translates Chinese and English dynamically", async () => {
