@@ -24,11 +24,13 @@ import {
   ChipIcon,
   ContrastIcon,
   PlugIcon,
+  SyncIcon,
   TerminalIcon,
 } from "../components/ui/icons";
 import { Callout } from "../components/ui/Notice";
 import { RawOutput } from "../components/ui/RawOutput";
 import { LoginPanel } from "../features/login/LoginPanel";
+import { UpdatePanel } from "../features/updates/UpdatePanel";
 import { UsageTrendPanel } from "../features/usage/UsageTrendPanel";
 import { TerminalSettings } from "./TerminalSettings";
 import { UI_LANGUAGE_CHOICES } from "../i18n/supported-languages";
@@ -38,7 +40,7 @@ import type { ThemePreference } from "../lib/theme";
 import { useAppStore } from "../store";
 
 /** Font sizes the terminal accepts; the choice survives restarts. */
-export type SectionId = "account" | "usage" | "appearance" | "terminal" | "runtime" | "external";
+export type SectionId = "account" | "usage" | "appearance" | "terminal" | "runtime" | "external" | "about";
 
 interface Section {
   id: SectionId;
@@ -116,6 +118,21 @@ const GROUPS_DEF: { id: string; titleKey: string; defaultTitle: string; sections
         descKey: "settings.sectionExternalDesc",
         defaultDesc: "配置本地 ~/.ssh/config，支持通过外部终端或 VS Code 远程连接。",
         icon: PlugIcon,
+      },
+    ],
+  },
+  {
+    id: "app",
+    titleKey: "settings.groupApp",
+    defaultTitle: "应用",
+    sections: [
+      {
+        id: "about",
+        titleKey: "settings.sectionAboutTitle",
+        defaultTitle: "关于",
+        descKey: "settings.sectionAboutDesc",
+        defaultDesc: "这一份应用自身的版本，以及它是怎么更新的。",
+        icon: SyncIcon,
       },
     ],
   },
@@ -350,7 +367,6 @@ export function SettingsPage({ initialSection = "account" }: { initialSection?: 
   function runtimeBody() {
     return (
       <Panel>
-        <PanelRow label={t("settings.runtimeAppVersion", "应用版本")} value={env?.app_version || "—"} />
         <PanelRow
           label={t("settings.runtimeCliCmd", "colab 命令")}
           description={t("settings.runtimeCliCmdDesc", "本地调用的 Colab CLI 路径。")}
@@ -437,8 +453,24 @@ export function SettingsPage({ initialSection = "account" }: { initialSection?: 
     );
   }
 
+  function aboutBody() {
+    return (
+      <div className="settings__block">
+        <Panel>
+          <PanelRow
+            label={t("settings.runtimeAppVersion", "应用版本")}
+            value={env?.app_version || "—"}
+          />
+        </Panel>
+        <UpdatePanel />
+      </div>
+    );
+  }
+
   function body() {
     switch (section.id) {
+      case "about":
+        return aboutBody();
       case "usage":
         return <UsageTrendPanel />;
       case "appearance":

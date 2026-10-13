@@ -1,14 +1,18 @@
 /**
- * The settings page's runtime section, rendered as markup.
+ * The settings page's runtime and about sections, rendered as markup.
  *
- * The rule worth pinning is that the application's own version is on screen next
- * to the CLI's. A report that only carries the CLI version cannot be acted on,
+ * Two rules live here. The application's own version must be on screen next to
+ * the CLI's — a report that only carries the CLI version cannot be acted on,
  * and the two numbers look alike enough that "one is missing" is easy to ship.
+ * And the updater's state must say what it is doing, including when there is no
+ * updater at all: a panel that showed a check button on a platform that cannot
+ * update would be offering something that does nothing.
  */
 
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { UpdateStatus } from "@shared/types";
 import "../i18n/i18n";
 
 const store = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
@@ -17,15 +21,16 @@ vi.mock("../store", () => ({
   useAppStore: (select: (state: unknown) => unknown) => select(store.current),
 }));
 
-import { SettingsPage } from "./SettingsPage";
+import { SettingsPage, type SectionId } from "./SettingsPage";
 
 const noop = () => {};
 
-beforeEach(() => {
-  store.current = {
+function baseState(update: UpdateStatus) {
+  return {
     settingsOpen: true,
     closeSettings: noop,
     env: {
+      app_version: "0.3.0",
       cli_path: "C:\\bundled\\python.exe",
       cli_source: "bundled",
       cli_version: "0.7.4",
@@ -37,7 +42,6 @@ beforeEach(() => {
       token_expiry: null,
       has_refresh_token: false,
       hint: null,
-      app_version: "0.3.0",
     },
     usage: null,
     selectedSession: null,
@@ -48,21 +52,101 @@ beforeEach(() => {
     setLanguage: noop,
     setPanelWidth: noop,
     refreshEnvironment: noop,
+    update,
+    dismissedVersion: null,
+    checkForUpdates: noop,
+    downloadUpdate: noop,
+    installUpdate: noop,
+    setUpdateStatus: noop,
+    dismissUpdate: noop,
   };
+}
+
+beforeEach(() => {
+  store.current = baseState({ state: "idle" });
 });
 
-const render = (): string =>
-  renderToStaticMarkup(createElement(SettingsPage, { initialSection: "runtime" }));
+const render = (section: SectionId): string =>
+  renderToStaticMarkup(createElement(SettingsPage, { initialSection: section }));
+const text = (html: string): string => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
 
 describe("the runtime section", () => {
   it("shows the application version and the CLI version, distinguishably", () => {
-    const text = render().replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
-    expect(text).toContain("0.3.0");
-    expect(text).toContain("0.7.4");
+    const rendered = text(render("about")) + text(render("runtime"));
+    expect(rendered).toContain("0.3.0");
+    expect(rendered).toContain("0.7.4");
+  });
+});
+
+describe("the about section", () => {
+  it("offers a check when there is an updater and nothing to report", () => {
+    const html = render("about");
+    expect(text(html)).toContain("0.3.0");
+    expect(html).toContain('data-testid="update-check"');
   });
 
-  it("does not claim a version it was not given", () => {
-    store.current.env = { ...(store.current.env as Record<string, unknown>), app_version: "" };
-    expect(render()).not.toContain("0.3.0");
+  it("names the version when one is available, and offers to download it", () => {
+    store.current = baseState({ state: "available", version: "0.4.0", releaseUrl: null });
+    const rendered = text(render("about"));
+    expect(rendered).toContain("0.4.0");
+    expect(render("about")).toContain('data-testid="update-download"');
+  });
+
+  it("does not offer to check while a download is already running", () => {
+    store.current = baseState({ state: "downloading", version: "0.4.0", percent: 40 });
+    expect(render("about")).not.toContain('data-testid="update-check"');
+  });
+
+  it("offers a restart once the build has downloaded, not another download", () => {
+    store.current = baseState({ state: "downloaded", version: "0.4.0" });
+    const html = render("about");
+    expect(html).toContain('data-testid="update-install"');
+    expect(html).not.toContain('data-testid="update-download"');
+  });
+
+  it("says a build cannot update rather than offering a button that does nothing", () => {
+    store.current = baseState({ state: "unavailable" });
+    const html = render("about");
+    expect(text(html)).toContain("暂不支持自动更新");
+    expect(html).not.toContain('data-testid="update-download"');
+  });
+
+  it("turns a failure the user asked for into a sentence, and keeps it retryable", () => {
+    store.current = baseState({
+      state: "error",
+      reason: "network",
+      detail: "net::ERR_INTERNET_DISCONNECTED",
+      userInitiated: true,
+      version: "0.4.0",
+    });
+    const rendered = text(render("about"));
+    expect(rendered).toContain("连不上更新服务器");
+    // The raw transport string is there for a bug report, below the sentence.
+    expect(rendered).toContain("ERR_INTERNET_DISCONNECTED");
+    expect(render("about")).toContain('data-testid="update-retry"');
+  });
+
+  it("keeps a background failure quiet, because nobody was waiting for it", () => {
+    store.current = baseState({
+      state: "error",
+      reason: "network",
+      detail: "net::ERR_INTERNET_DISCONNECTED",
+      userInitiated: false,
+      version: null,
+    });
+    const rendered = text(render("about"));
+    expect(rendered).not.toContain("连不上更新服务器");
+    expect(rendered).toContain("稍后会自动重试");
+  });
+
+  it("does not offer a retry when the failure left no version to ask for", () => {
+    store.current = baseState({
+      state: "error",
+      reason: "unknown",
+      detail: "boom",
+      userInitiated: true,
+      version: null,
+    });
+    expect(render("about")).not.toContain('data-testid="update-retry"');
   });
 });

@@ -9,12 +9,13 @@
  */
 
 import { create } from "zustand";
-import { onSshStatus } from "../lib/api";
+import { onSshStatus, onUpdateStatus, updateStatus } from "../lib/api";
 import { watchSystemTheme } from "../lib/theme";
 import { createEnvironmentSlice } from "./slices/environment";
 import { createPreferencesSlice } from "./slices/preferences";
 import { createSessionsSlice } from "./slices/sessions";
 import { createSurfacesSlice } from "./slices/surfaces";
+import { createUpdateSlice } from "./slices/update";
 import { createWorkspaceSlice } from "./slices/workspace";
 import type { AppState } from "./types";
 
@@ -27,6 +28,7 @@ export const useAppStore = create<AppState>()((...args) => ({
   ...createEnvironmentSlice(...args),
   ...createPreferencesSlice(...args),
   ...createSurfacesSlice(...args),
+  ...createUpdateSlice(...args),
 }));
 
 /**
@@ -41,6 +43,10 @@ export function startAppEvents(): () => void {
   const stopSystemTheme = watchSystemTheme(() => store.getState().applySystemTheme());
   const usageTimer = window.setInterval(() => void store.getState().loadUsage(), USAGE_REFRESH_MS);
   const stopSshStatus = onSshStatus((state) => store.getState().setConnection(state));
+  // Read once as well as subscribed: the updater checks on a daily timer, so a
+  // listener alone would leave the panel blank for up to a day.
+  void updateStatus().then((status) => store.getState().setUpdateStatus(status));
+  const stopUpdateStatus = onUpdateStatus((status) => store.getState().setUpdateStatus(status));
 
   void store.getState().refreshEnvironment();
   void store.getState().loadSessions();
@@ -52,6 +58,7 @@ export function startAppEvents(): () => void {
     stopSystemTheme();
     window.clearInterval(usageTimer);
     stopSshStatus();
+    stopUpdateStatus();
   };
 }
 

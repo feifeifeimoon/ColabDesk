@@ -316,7 +316,10 @@
     "externalRemoved": "SSH config removed.",
     "externalAliasHint": "Alias {{alias}} · {{path}}",
     "externalRawOutputLabel": "Config block written",
-    "runtimeAppVersion": "App version"
+    "runtimeAppVersion": "App version",
+    "groupApp": "App",
+    "sectionAboutTitle": "About",
+    "sectionAboutDesc": "Which build this is, and how it updates itself."
   },
   "failure": {
     "networkInterrupted": "Network request interrupted: TLS connection to colab.research.google.com was reset. Retry if sporadic; check proxy/VPN if persistent.",

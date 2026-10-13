@@ -8,7 +8,7 @@
  * `get()` while the type still says where each field came from.
  */
 
-import type { EnvStatus, Session, SshState, UsageReport } from "@shared/types";
+import type { EnvStatus, Session, SshState, UpdateStatus, UsageReport } from "@shared/types";
 import type { PanelSide } from "../lib/panel-width";
 import type { Theme, ThemePreference } from "../lib/theme";
 import type { TerminalAppearance } from "../lib/terminal-appearance";
@@ -140,4 +140,22 @@ export interface SurfacesSlice {
   closeNewSession(): void;
 }
 
-export type AppState = WorkspaceSlice & SessionsSlice & EnvironmentSlice & PreferencesSlice & SurfacesSlice;
+export interface UpdateSlice {
+  /** What the main process last reported; the only source of truth. */
+  update: UpdateStatus;
+  /** A version the user waved away, so the prompt does not return for it. */
+  dismissedVersion: string | null;
+
+  setUpdateStatus(status: UpdateStatus): void;
+  dismissUpdate(version: string): void;
+  checkForUpdates(): Promise<void>;
+  downloadUpdate(): Promise<void>;
+  installUpdate(): Promise<void>;
+}
+
+export type AppState = WorkspaceSlice &
+  SessionsSlice &
+  EnvironmentSlice &
+  PreferencesSlice &
+  SurfacesSlice &
+  UpdateSlice;
