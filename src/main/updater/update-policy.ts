@@ -38,21 +38,21 @@ export function retryDelayMs(consecutiveFailures: number): number {
 export interface UpdateCapability {
   isPackaged: boolean;
   platform: NodeJS.Platform;
-  /** Set only by the E2E harness; a real build never has one. */
-  e2eFeed: string | null;
+  /** True only under the E2E harness, which swaps in a backend of its own. */
+  e2e: boolean;
 }
 
 /**
  * Whether this process should run the updater at all.
  *
  * Two gates, for two different reasons. Packaged-only because a dev checkout
- * has no `app-update.yml` and no installed version to replace — the E2E feed
- * exists to lift exactly this one, so the flow can be driven without cutting a
- * release. And macOS is excluded outright: Electron's updater there is
- * Squirrel.Mac, which throws while constructing itself when the running app has
- * no code signature, so an unsigned build has no updater to run.
+ * has no `app-update.yml` and no installed version to replace — the E2E harness
+ * lifts exactly this one, so the flow can be driven without cutting a release.
+ * And macOS is excluded outright: Electron's updater there is Squirrel.Mac,
+ * which throws while constructing itself when the running app has no code
+ * signature, so an unsigned build has no updater to run.
  */
-export function canUseUpdater({ isPackaged, platform, e2eFeed }: UpdateCapability): boolean {
-  if (!isPackaged && e2eFeed === null) return false;
+export function canUseUpdater({ isPackaged, platform, e2e }: UpdateCapability): boolean {
+  if (!isPackaged && !e2e) return false;
   return platform !== "darwin";
 }

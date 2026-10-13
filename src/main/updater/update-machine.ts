@@ -7,7 +7,7 @@
  * directly instead of inferred from a running app.
  */
 
-import type { UpdateStatus } from "@shared/types";
+import type { UpdateFailureReason, UpdateStatus } from "@shared/types";
 
 /** What the backend reports. One discriminant, for the same reason as the state. */
 export type UpdateEvent =
@@ -16,7 +16,7 @@ export type UpdateEvent =
   | { type: "not-available" }
   | { type: "progress"; percent: number }
   | { type: "downloaded"; version: string }
-  | { type: "error"; message: string };
+  | { type: "error"; reason: UpdateFailureReason; detail: string };
 
 export interface UpdateMachine {
   status(): UpdateStatus;
@@ -91,7 +91,13 @@ export function createUpdateMachine(releaseUrl: string | null = null): UpdateMac
         case "error":
           // The version survives so the UI can offer a retry rather than
           // stranding the user until the next scheduled check.
-          status = { state: "error", message: event.message, userInitiated, version: known };
+          status = {
+            state: "error",
+            reason: event.reason,
+            detail: event.detail,
+            userInitiated,
+            version: known,
+          };
           break;
       }
       return status;

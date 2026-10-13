@@ -116,7 +116,7 @@ describe("failing", () => {
     const { updater, backend, clock } = build();
     updater.start();
     backend.emit({ type: "checking" });
-    backend.emit({ type: "error", message: "网络请求被中断。" });
+    backend.emit({ type: "error", reason: "network", detail: "net::ERR_INTERNET_DISCONNECTED" });
     const delay = clock.nextDelay();
     expect(delay).toBeGreaterThan(0);
     expect(delay).toBeLessThanOrEqual(RETRY_BASE_MS + 1);
@@ -130,7 +130,7 @@ describe("failing", () => {
     const delays: number[] = [];
     for (let i = 0; i < 6; i += 1) {
       backend.emit({ type: "checking" });
-      backend.emit({ type: "error", message: "失败。" });
+      backend.emit({ type: "error", reason: "network", detail: "net::ERR_INTERNET_DISCONNECTED" });
       delays.push(Math.round(clock.nextDelay()));
       clock.advance(clock.nextDelay() + 1);
     }
@@ -143,7 +143,7 @@ describe("failing", () => {
     const { updater, backend, clock } = build();
     updater.start();
     backend.emit({ type: "checking" });
-    backend.emit({ type: "error", message: "失败。" });
+    backend.emit({ type: "error", reason: "network", detail: "net::ERR_INTERNET_DISCONNECTED" });
     clock.advance(RETRY_BASE_MS + 1);
     backend.emit({ type: "checking" });
     backend.emit({ type: "not-available" });

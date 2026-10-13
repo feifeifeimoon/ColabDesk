@@ -9,8 +9,11 @@ import { UsageHistory } from "./colab/usage-history";
 import { seedMockColabConfig } from "./e2e/cli-stub";
 import { e2eMockEnabled, prepareE2EHost } from "./e2e/mode";
 import { startMockRuntime } from "./e2e/runtime-server";
+import { registerUpdateHandlers } from "./ipc/handlers/updates";
 import { registerIpc } from "./ipc/register";
 import { bundledCliDir } from "./runtime-paths";
+import { setupUpdater } from "./updater/setup-updater";
+import type { Updater } from "./updater/updater";
 import { SshManager } from "./ssh/manager";
 import { createWindow, devIconPath, disableHardwareAccelerationForVirtualDisplays } from "./window";
 
@@ -32,6 +35,12 @@ const usageHistory = new UsageHistory(
 );
 const login = registerIpc({ service, ssh, usageHistory, bundledDir });
 
+// Registered now and filled in during startup: the renderer can ask about
+// updates as soon as the window opens, which is before the updater — assembled
+// behind an async import — exists.
+let updater: Updater | null = null;
+registerUpdateHandlers(() => updater);
+
 app.whenReady().then(async () => {
   // The fake runtime listens before the window opens, because the session store
   // seeded below carries its address.
@@ -40,6 +49,11 @@ app.whenReady().then(async () => {
     seedMockColabConfig(runtime.url);
     app.on("before-quit", () => void runtime.close());
   }
+
+  updater = await setupUpdater(() => {
+    login.cancel();
+    ssh.dropAll();
+  });
 
   // macOS takes the window icon from the dock rather than BrowserWindow, and only in dev.
   const icon = devIconPath();
@@ -61,4 +75,8 @@ app.on("window-all-closed", () => {
 app.on("before-quit", () => {
   login.cancel();
   ssh.dropAll();
+  // Stopped alongside the sessions: an update handoff cannot replace files a
+  // live process still holds, and a pending check would only fire into a
+  // process that is on its way out.
+  updater?.stop();
 });

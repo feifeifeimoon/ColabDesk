@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CHECK_INTERVAL_MS, RETRY_BASE_MS, RETRY_MAX_MS, canUseUpdater, retryDelayMs } from "./update-policy";
 
 describe("canUseUpdater", () => {
-  const off = { isPackaged: true, platform: "win32" as NodeJS.Platform, e2eFeed: null };
+  const off = { isPackaged: true, platform: "win32" as NodeJS.Platform, e2e: false };
 
   it("runs in a packaged build on the platforms that can self-update", () => {
     expect(canUseUpdater(off)).toBe(true);
@@ -20,13 +20,13 @@ describe("canUseUpdater", () => {
 
   it("runs unpackaged when the E2E harness supplies a feed", () => {
     // The only way to exercise the flow without publishing a release.
-    expect(canUseUpdater({ ...off, isPackaged: false, e2eFeed: "http://127.0.0.1:1234" })).toBe(true);
+    expect(canUseUpdater({ ...off, isPackaged: false, e2e: true })).toBe(true);
   });
 
   it("does not let the E2E feed override the platform gate", () => {
     // Otherwise the suite would pass on a Mac while exercising a path that is
     // deliberately off there.
-    expect(canUseUpdater({ ...off, platform: "darwin", e2eFeed: "http://127.0.0.1:1234" })).toBe(false);
+    expect(canUseUpdater({ ...off, platform: "darwin", e2e: true })).toBe(false);
   });
 });
 

@@ -74,9 +74,10 @@ describe("the update state machine", () => {
     const machine = createUpdateMachine();
     machine.apply({ type: "available", version: "0.3.0" });
     machine.noteDownloadRequested();
-    expect(machine.apply({ type: "error", message: "网络请求被中断。" })).toEqual({
+    expect(machine.apply({ type: "error", reason: "network", detail: "net::ERR_INTERNET_DISCONNECTED" })).toEqual({
       state: "error",
-      message: "网络请求被中断。",
+      reason: "network",
+      detail: "net::ERR_INTERNET_DISCONNECTED",
       userInitiated: true,
       version: "0.3.0",
     });
@@ -89,13 +90,13 @@ describe("the update state machine", () => {
     machine.apply({ type: "available", version: "0.3.0" });
     // … but the user is the one who asked to download it.
     machine.noteDownloadRequested();
-    expect(machine.apply({ type: "error", message: "下载失败。" })).toMatchObject({ userInitiated: true });
+    expect(machine.apply({ type: "error", reason: "network", detail: "net::ERR_INTERNET_DISCONNECTED" })).toMatchObject({ userInitiated: true });
   });
 
   it("does not report a background check's failure as if the user asked", () => {
     const machine = createUpdateMachine();
     machine.checking(false);
-    expect(machine.apply({ type: "error", message: "检查失败。" })).toMatchObject({ userInitiated: false });
+    expect(machine.apply({ type: "error", reason: "unknown", detail: "boom" })).toMatchObject({ userInitiated: false });
   });
 
   it("lets a later background check reset a previous user-initiated flag", () => {
