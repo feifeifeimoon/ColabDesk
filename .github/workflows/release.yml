@@ -39,8 +39,13 @@ jobs:
   draft:
     needs: guard
     runs-on: ubuntu-latest
+    # `gh` reads the repository from the git remote, and a bare runner has no
+    # checkout to provide one — the first run of this workflow died on
+    # "fatal: not a git repository". GH_REPO names it outright, which also means
+    # these jobs never need the source at all.
+    env:
+      GH_REPO: ${{ github.repository }}
     steps:
-      - uses: actions/checkout@v7
       - name: Open the draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -132,6 +137,8 @@ jobs:
     # only read outputs from the jobs it names in its own `needs`.
     needs: [build, guard]
     runs-on: ubuntu-latest
+    env:
+      GH_REPO: ${{ github.repository }}
     steps:
       # Everything before this point is invisible to users. This job is the only
       # place a release becomes public, and it refuses to.
