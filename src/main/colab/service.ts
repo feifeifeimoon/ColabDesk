@@ -8,7 +8,6 @@
 
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
 import type { CommandReport, EnvStatus, Session, SshSetup, UsageReport } from "@shared/types";
 import { accountStatus } from "./account";
 import { fetchAssignments, type Assignment } from "./assignments";
@@ -240,24 +239,15 @@ export class Service {
   }
 
   /**
-   * The command OpenSSH should run for a session. Prefers the app's own bridge
-   * (a bundled Python script — the same runtime we already ship) because the
-   * CLI's `--proxy-mode` is still broken on Windows upstream; falls back to the
-   * CLI itself so the entry is useful even without a bundled runtime.
+   * The command OpenSSH should run for a session. Uses the resolved CLI's
+   * `ssh --proxy-mode -s <name>`.
    */
   proxyCommand(name: string): string {
-    const bridge = this.bundledDir ? join(this.bundledDir, "bridge", "colab_bridge.py") : null;
-    const python = this.bundledDir
-      ? join(this.bundledDir, "python", process.platform === "win32" ? "python.exe" : "bin/python3")
-      : null;
-    if (bridge && python && existsSync(bridge) && existsSync(python)) {
-      return `"${python}" "${bridge}" -s ${name}`;
-    }
     const cli = resolveCli(this.bundledDir);
     if (cli) {
       return `"${cli.exe}" ${[...cli.prefix, "ssh", "--proxy-mode", "-s", name].join(" ")}`;
     }
-    throw new Error("没有可用的 SSH 代理命令：既无捆绑运行时，也未找到 colab 命令。");
+    throw new Error("没有可用的 SSH 代理命令：未找到 colab 命令。");
   }
 
   sshSetup(name: string): SshSetup {
