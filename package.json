@@ -12,8 +12,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "e2e": "playwright test --config config/playwright.config.ts --project=app",
     "gallery": "playwright test --config config/playwright.config.ts --project=gallery",
-    "package:win": "npm run build && electron-builder --config config/electron-builder.config.cjs --win --publish never",
-    "package:mac": "npm run build && electron-builder --config config/electron-builder.config.cjs --mac --publish never"
+    "bundle:cli": "node tools/bundle-cli.mjs",
+    "package:win": "npm run bundle:cli && npm run build && electron-builder --config config/electron-builder.config.cjs --win --publish never",
+    "package:mac": "npm run bundle:cli && npm run build && electron-builder --config config/electron-builder.config.cjs --mac --publish never"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.11.0",

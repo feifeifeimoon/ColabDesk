@@ -4,6 +4,7 @@ node_modules/
 # 构建产物：electron-vite 出 out/，electron-builder 出 dist/
 out/
 dist/
+resources/cli/
 
 # Playwright 的痕迹、逐用例产物与 HTML 报告
 test-results/

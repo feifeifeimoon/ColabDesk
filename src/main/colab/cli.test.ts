@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { combined, needsLogin, parseUsage, parseVersion } from "./cli";
+import { combined, needsLogin, parseUsage, parseVersion, readManifestVersion } from "./cli";
 
 describe("parseUsage", () => {
   it("parses the three labelled lines", () => {
@@ -41,5 +41,11 @@ describe("combined output", () => {
     expect(combined({ code: 0, stdout: "a\n", stderr: "", timedOut: false })).toBe("a");
     expect(combined({ code: 1, stdout: "", stderr: "boom\n", timedOut: false })).toBe("boom");
     expect(combined({ code: 0, stdout: "out", stderr: "err", timedOut: false })).toBe("out\nerr");
+  });
+});
+
+describe("readManifestVersion", () => {
+  it("returns null for non-existent manifest", () => {
+    expect(readManifestVersion("non-existent-dir")).toBeNull();
   });
 });
