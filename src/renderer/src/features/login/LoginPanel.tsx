@@ -39,7 +39,7 @@ export function LoginPanel({
     const unsubscribeUrl = onAuthUrl((payload) => {
       setUrl(payload.url);
       setError(null);
-      setMessage(t("login.urlOpened", "授权页面已在浏览器打开。登录后把 Google 显示的授权码粘贴到下方。"));
+      setMessage(t("login.urlOpened", "浏览器已打开授权页面，完成登录后请将授权码粘贴至下方。"));
       openExternal(payload.url);
     });
     const unsubscribeDone = onAuthDone((payload) => {
@@ -51,7 +51,7 @@ export function LoginPanel({
         setMessage(
           authenticated
             ? t("login.authSuccess", "授权成功，凭证已保存。")
-            : t("login.authFailed", "登录流程已结束，但未检测到凭证，请重试。"),
+            : t("login.authFailed", "授权流程已完成，但未检测到有效凭据，请重试。"),
         );
       });
     });
@@ -80,7 +80,7 @@ export function LoginPanel({
     setError(null);
     try {
       await submitLoginCode(code);
-      setMessage(t("login.submittingCode", "已提交授权码，等待 Google 返回结果…"));
+      setMessage(t("login.submittingCode", "已提交授权码，正在等待验证结果…"));
       setCode("");
     } catch (cause) {
       setError(messageOf(cause));

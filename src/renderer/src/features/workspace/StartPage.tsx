@@ -94,25 +94,25 @@ export function StartPage() {
         <ul className="startpage__features">
           <Feature
             icon={<ChipIcon />}
-            title={t("home.featureShellsTitle", "连接 GPU 机器")}
-            line={t("home.featureShellsLine", "选加速器申请运行时，终端直接开在上面。")}
+            title={t("home.featureShellsTitle", "申请 GPU 运行时")}
+            line={t("home.featureShellsLine", "选择算力规格，直接接入交互式终端。")}
           />
           {/* The terminal, not a play button: nothing here launches a job — the
               shell does, on the machine the first line just handed over. */}
           <Feature
             icon={<TerminalIcon />}
-            title={t("home.featureRunTitle", "跑训练和推理")}
-            line={t("home.featureRunLine", "脚本照常跑，不用改工作流。")}
+            title={t("home.featureRunTitle", "训练与推理工作流")}
+            line={t("home.featureRunLine", "保持原生终端操作习惯，无缝运行脚本。")}
           />
           <Feature
             icon={<FolderIcon />}
-            title={t("home.featureFilesTitle", "传输文件")}
-            line={t("home.featureFilesLine", "上传、下载、删除，和终端共用一条 SSH 连接。")}
+            title={t("home.featureFilesTitle", "双向文件传输")}
+            line={t("home.featureFilesLine", "基于 SFTP 协议，直接浏览、上传与下载远程文件。")}
           />
           <Feature
             icon={<ChartIcon />}
-            title={t("home.featureQuotaTitle", "查看用量")}
-            line={t("home.featureQuotaLine", "余额与速率在状态栏，趋势在设置里。")}
+            title={t("home.featureQuotaTitle", "算力与用量监控")}
+            line={t("home.featureQuotaLine", "实时跟踪计算单元（CU）余额与消耗速率。")}
           />
         </ul>
 

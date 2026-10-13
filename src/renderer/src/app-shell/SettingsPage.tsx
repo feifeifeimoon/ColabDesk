@@ -60,7 +60,7 @@ const GROUPS_DEF: { id: string; titleKey: string; defaultTitle: string; sections
         titleKey: "settings.sectionAccountTitle",
         defaultTitle: "账号与额度",
         descKey: "settings.sectionAccountDesc",
-        defaultDesc: "授权状态、计算单元余额与消耗速率，全部来自 colab CLI 的原始回答。",
+        defaultDesc: "查看 Google 账号授权状态、计算单元余额及消耗速率。",
         icon: AccountIcon,
       },
       {
@@ -68,7 +68,7 @@ const GROUPS_DEF: { id: string; titleKey: string; defaultTitle: string; sections
         titleKey: "settings.sectionUsageTitle",
         defaultTitle: "用量趋势",
         descKey: "settings.sectionUsageDesc",
-        defaultDesc: "余额读数记下的历史。额度按批结算，所以曲线是按相邻读数摊出来的。",
+        defaultDesc: "基于历史余额采样推算用量走势。",
         icon: ChartIcon,
       },
     ],
@@ -83,7 +83,7 @@ const GROUPS_DEF: { id: string; titleKey: string; defaultTitle: string; sections
         titleKey: "settings.sectionAppearanceTitle",
         defaultTitle: "外观",
         descKey: "settings.sectionAppearanceDesc",
-        defaultDesc: "跟随系统，或选择界面语言与浅色 / 深色主题；顶栏右上角的按钮切换的是同一件事。",
+        defaultDesc: "自定义界面主题与显示语言。",
         icon: ContrastIcon,
       },
       {
@@ -91,7 +91,7 @@ const GROUPS_DEF: { id: string; titleKey: string; defaultTitle: string; sections
         titleKey: "settings.sectionTerminalTitle",
         defaultTitle: "终端",
         descKey: "settings.sectionTerminalDesc",
-        defaultDesc: "终端面板的字号，以及面板内生效的键盘与鼠标操作。",
+        defaultDesc: "终端面板的配色、排版、光标及快捷键操作。",
         icon: TerminalIcon,
       },
     ],
@@ -106,7 +106,7 @@ const GROUPS_DEF: { id: string; titleKey: string; defaultTitle: string; sections
         titleKey: "settings.sectionRuntimeTitle",
         defaultTitle: "运行环境",
         descKey: "settings.sectionRuntimeDesc",
-        defaultDesc: "这台机器上的 colab CLI 从哪来、授权到什么时候——出问题时要看的事实。",
+        defaultDesc: "查看本地 Colab CLI 环境、安装来源及授权状态。",
         icon: ChipIcon,
       },
       {
@@ -114,7 +114,7 @@ const GROUPS_DEF: { id: string; titleKey: string; defaultTitle: string; sections
         titleKey: "settings.sectionExternalTitle",
         defaultTitle: "外部工具",
         descKey: "settings.sectionExternalDesc",
-        defaultDesc: "把运行时的 SSH 条目写进 ~/.ssh/config，供外部 ssh、scp 与编辑器使用。",
+        defaultDesc: "配置本地 ~/.ssh/config，支持通过外部终端或 VS Code 远程连接。",
         icon: PlugIcon,
       },
     ],
@@ -281,13 +281,13 @@ export function SettingsPage({ initialSection = "account" }: { initialSection?: 
         <Panel>
           <PanelRow
             label={t("settings.accountEmail", "当前账号")}
-            description={t("settings.accountEmailDesc", "取自访问令牌（tokeninfo），不是 CLI 写在磁盘上的字段——那个字段永远是空的。")}
+            description={t("settings.accountEmailDesc", "当前登录的 Google 账号。")}
             value={env?.account?.email ?? "—"}
             title={env?.account?.subject ?? undefined}
           />
           <PanelRow
             label={t("settings.accountAccelerators", "可用加速器")}
-            description={t("settings.accountAcceleratorsDesc", "这个账号当前有权申请的机型；灰掉的项当前不可用，申请必然失败。")}
+            description={t("settings.accountAcceleratorsDesc", "当前账号有权限申请的硬件加速规格。")}
             value={eligibilityValue()}
           />
         </Panel>
@@ -295,7 +295,7 @@ export function SettingsPage({ initialSection = "account" }: { initialSection?: 
           <p>
             {t(
               "settings.disclaimer",
-              "ColabDesk 是非官方客户端，与 Google 无关联。所有网络与授权由官方 colab CLI 完成，应用只负责调用与呈现；每一次调用的原始输出都随结果保留。",
+              "ColabDesk 是第三方开源客户端，与 Google 无官方关联。所有网络通信与身份凭据均由官方 Colab CLI 处理。",
             )}
           </p>
         </Callout>
@@ -326,7 +326,7 @@ export function SettingsPage({ initialSection = "account" }: { initialSection?: 
         />
         <PanelRow
           label={t("settings.appearanceThemeLabel", "主题")}
-          description={t("settings.appearanceThemeDesc", "跟随系统时，系统切换深浅色这里会立刻跟上；选了浅色或深色就一直是它。")}
+          description={t("settings.appearanceThemeDesc", "选择界面颜色模式，支持浅色、深色或跟随系统。")}
           actions={
             <div className="row" style={{ gap: "var(--space-1)" }}>
               {themes.map(([value, label]) => (
@@ -334,6 +334,7 @@ export function SettingsPage({ initialSection = "account" }: { initialSection?: 
                   key={value}
                   size="sm"
                   variant={value === theme ? "primary" : "outline"}
+                  data-testid={`theme-choice-${value}`}
                   onClick={() => setTheme(value)}
                 >
                   {label}
@@ -351,7 +352,7 @@ export function SettingsPage({ initialSection = "account" }: { initialSection?: 
       <Panel>
         <PanelRow
           label={t("settings.runtimeCliCmd", "colab 命令")}
-          description={t("settings.runtimeCliCmdDesc", "应用优先使用内置运行时，其次才是系统安装的 CLI")}
+          description={t("settings.runtimeCliCmdDesc", "本地调用的 Colab CLI 路径。")}
           value={
             env === null
               ? t("settings.runtimeDetecting", "检测中…")
@@ -388,13 +389,13 @@ export function SettingsPage({ initialSection = "account" }: { initialSection?: 
       <div className="settings__block">
         <Panel>
           <PanelRow
-            label={t("settings.externalSshLabel", "当前会话的 SSH 条目")}
+            label={t("settings.externalSshLabel", "SSH 主机配置")}
             description={
               activeSession
-                ? t("settings.externalSshDescActive", "为 {{session}} 写入受管标记块，供外部 ssh / scp / VS Code Remote-SSH 使用", {
+                ? t("settings.externalSshDescActive", "为当前会话「{{session}}」生成并写入 SSH 别名配置，供外部终端或 VS Code 使用", {
                     session: activeSession,
                   })
-                : t("settings.externalSshDescInactive", "先打开一个会话，再写入它的 SSH 条目")
+                : t("settings.externalSshDescInactive", "请先选择或连接一个会话，再写入对应的 SSH 配置")
             }
             actions={
               <div className="row">

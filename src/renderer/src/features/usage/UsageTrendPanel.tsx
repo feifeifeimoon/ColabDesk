@@ -74,7 +74,7 @@ export function UsageTrend({
     <Card>
       <CardHead
         title={t("usage.trendTitle", "用量趋势")}
-        description={t("usage.trendDescription", "两次余额读数的下降，就是这段时间消耗的计算单元。")}
+        description={t("usage.trendDescription", "基于历史余额采样推算的计算单元（CU）消耗走势。")}
         actions={
           <div className="row" style={{ gap: "var(--space-1)" }}>
             {granularities.map(([value, label]) => (
@@ -93,7 +93,7 @@ export function UsageTrend({
 
       {trend.first_sample === null ? (
         <EmptyState title={t("usage.emptyTitle", "还没有余额读数")}>
-          {t("usage.emptyBody", "应用每次向 colab CLI 查额度都会记一条，跑一会儿再回来，这里就有曲线了。")}
+          {t("usage.emptyBody", "每次查询额度时将自动记录采样点，产生使用历史后将在此展示消耗曲线。")}
         </EmptyState>
       ) : (
         <>
@@ -139,7 +139,7 @@ export function UsageTrend({
             })}
           </p>
           <p className="hint">
-            {t("usage.batchHint", "余额是按批结算的，读数之间的消耗按时间摊到各区间，因此曲线适合看天以上的粒度。")}
+            {t("usage.batchHint", "注：Colab 额度为分批结算，区间数据系根据相邻采样线性分摊，建议以天或更长周期查看。")}
           </p>
         </>
       )}

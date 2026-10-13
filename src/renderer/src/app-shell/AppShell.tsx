@@ -8,12 +8,10 @@ import {
   CloseWindowIcon,
   MaximizeIcon,
   MinimizeIcon,
-  MoonIcon,
   PanelLeftIcon,
   PanelRightIcon,
   PlusIcon,
   RestoreIcon,
-  SunIcon,
   TerminalIcon,
 } from "../components/ui/icons";
 import { closeWindow, minimizeWindow, onWindowMaximized, toggleMaximizeWindow } from "../lib/api";
@@ -33,7 +31,7 @@ const MAC_INSET = 78;
  *
  * While settings is up, the two panel toggles stand down: they act on a layout
  * that is not on screen. The tabs stay, because they are the way back to a
- * terminal, and the theme toggle stays because it is the whole window's.
+ * terminal.
  */
 export function TopBar() {
   const { t } = useTranslation();
@@ -44,10 +42,8 @@ export function TopBar() {
   const selectedSession = useAppStore((state) => state.selectedSession);
   const activeTabId = useAppStore((state) => state.activeTabId);
   const hasWorkSurface = useHasWorkSurface();
-  const theme = useAppStore((state) => state.resolvedTheme);
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
   const toggleFiles = useAppStore((state) => state.toggleFiles);
-  const toggleTheme = useAppStore((state) => state.toggleTheme);
   const openTab = useAppStore((state) => state.openTab);
   const closeTab = useAppStore((state) => state.closeTab);
   const focusTab = useAppStore((state) => state.focusTab);
@@ -59,8 +55,6 @@ export function TopBar() {
     () => tabs.filter((tab) => tab.session === selectedSession),
     [tabs, selectedSession],
   );
-
-  const toggled = theme === "dark" ? t("topbar.themeLight", "浅色") : t("topbar.themeDark", "深色");
 
   return (
     <header
@@ -118,7 +112,7 @@ export function TopBar() {
                 type="button"
                 className="session-tab__close"
                 aria-label={t("topbar.terminalClose", "关闭终端 {{index}}", { index: tab.ordinal })}
-                title={t("topbar.terminalCloseTitle", "关闭当前终端（保持会话连接）")}
+                title={t("topbar.terminalCloseTitle", "关闭终端")}
                 onClick={(event) => {
                   event.stopPropagation();
                   closeTab(tab.id);
@@ -137,7 +131,7 @@ export function TopBar() {
           onClick={() => selectedSession && openTab(selectedSession)}
           disabled={selectedSession === null}
           aria-label={t("topbar.newTerminal", "新建终端")}
-          title={t("topbar.newTerminalTitle", "在当前会话里新建终端（Ctrl+Shift+T）")}
+          title={t("topbar.newTerminalTitle", "新建终端（Ctrl+Shift+T）")}
         >
           <PlusIcon />
         </button>
@@ -169,16 +163,6 @@ export function TopBar() {
             <PanelRightIcon />
           </Button>
         )}
-        <Button
-          variant="ghost"
-          icon
-          data-testid="toggle-theme"
-          aria-label={t("topbar.themeToggle", "切换到{{theme}}主题", { theme: toggled })}
-          title={t("topbar.themeToggle", "切换到{{theme}}主题", { theme: toggled })}
-          onClick={toggleTheme}
-        >
-          {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-        </Button>
       </div>
 
       {!IS_MAC && <WindowControls />}
@@ -308,7 +292,7 @@ export function StatusBar() {
       : null;
 
   const projectedText = projectedHours
-    ? t("statusbar.projectedHours", "约 {{hours}} 小时", { hours: projectedHours })
+    ? t("statusbar.projectedHours", "预计可用约 {{hours}} 小时", { hours: projectedHours })
     : t("statusbar.noOngoingRate", "无持续扣费");
 
   const openPopover = () => {
@@ -367,7 +351,7 @@ export function StatusBar() {
         <span
           className="statusbar__item"
           data-testid="statusbar-assignments"
-          title={t("statusbar.activeSessionsTitle", "活跃会话：{{count}} 台", { count: assignments })}
+          title={t("statusbar.activeSessionsTitle", "活跃会话：{{count}}", { count: assignments })}
         >
           <ActivityIcon size={13} />
           <span>{assignments}</span>
@@ -459,7 +443,7 @@ export function StatusBar() {
 
       <div
         className="statusbar__group"
-        title={t("statusbar.terminalsTitle", "所有会话总计 {{count}} 个终端", { count: terminalCount })}
+        title={t("statusbar.terminalsTitle", "终端总数：{{count}}", { count: terminalCount })}
       >
         <span className="statusbar__item" data-testid="terminal-count">
           <TerminalIcon size={13} />

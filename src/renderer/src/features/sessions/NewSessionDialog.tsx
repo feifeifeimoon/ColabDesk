@@ -110,7 +110,7 @@ export function NewSessionDialog() {
   return (
     <Dialog title={t("sessions.newTitle", "新建会话")} onClose={closeNewSession}>
       <form className="stack" onSubmit={submit}>
-        <Field label={t("sessions.nameLabel", "会话名称")} hint={t("sessions.nameHint", "留空由 CLI 随机生成")}>
+        <Field label={t("sessions.nameLabel", "会话名称")} hint={t("sessions.nameHint", "留空将自动生成")}>
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -146,7 +146,7 @@ export function NewSessionDialog() {
           onChange={(e) => setHighMem(e.target.checked)}
         />
 
-        <p className="hint">{t("sessions.waitingHint", "新会话会向 Colab 申请运行时，按加速器不同可能等待数分钟。")}</p>
+        <p className="hint">{t("sessions.waitingHint", "申请云端运行时可能需要数分钟，请耐心等待。")}</p>
 
         <div className="row">
           <Button variant="primary" type="submit" disabled={pending}>

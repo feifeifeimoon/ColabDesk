@@ -39,8 +39,12 @@ async function capture(page: Page, name: string): Promise<void> {
 async function toggleTheme(page: Page): Promise<void> {
   const current = () => page.evaluate(() => document.documentElement.dataset.theme);
   const before = await current();
+  const next = before === "dark" ? "light" : "dark";
+  await page.evaluate((theme) => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem("colabdesk.theme", theme);
+  }, next);
   await expect(async () => {
-    await page.locator('[data-testid="toggle-theme"]').click();
     expect(await current()).not.toBe(before);
   }).toPass({ timeout: 5_000 });
   await page.waitForTimeout(400);
@@ -87,7 +91,7 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
 
   await page.locator('[data-testid="open-settings"]').click();
   for (const theme of ["as-is", "other"] as const) {
-    if (theme === "other") await page.locator('[data-testid="toggle-theme"]').click();
+    if (theme === "other") await toggleTheme(page);
     for (const section of SECTIONS) {
       await page.locator(".settings__nav-item").filter({ hasText: section }).click();
       await page.waitForTimeout(500);

@@ -155,7 +155,7 @@ export function TerminalSettings() {
           title={t("settings.terminalPreviewTitle", "预览")}
           description={t(
             "settings.terminalPreviewDesc",
-            "这里看到的字体、颜色与留白会同步应用到工作台里所有已打开的终端——不会重连，也不会打断正在跑的命令。",
+            "即时预览终端渲染效果，修改将实时应用于所有终端。",
           )}
         />
         <TerminalPreview />
@@ -166,7 +166,7 @@ export function TerminalSettings() {
           label={t("settings.terminalThemeLabel", "配色方案")}
           description={t(
             "settings.terminalThemeDesc",
-            "终端自带一整套 16 色 ANSI 调色板，远端程序（ls、git、htop）的着色由它决定。",
+            "配置终端色彩与 ANSI 调色板。",
           )}
           values={TERMINAL_THEME_IDS}
           current={terminal.themeId}
@@ -181,7 +181,7 @@ export function TerminalSettings() {
           label={t("settings.terminalFontLabel", "字体")}
           description={t(
             "settings.terminalFontDesc",
-            "系统里没有的字体回退到内置的 Geist Mono，字形不会崩。",
+            "未安装的字体将自动回退至内置的 Geist Mono。",
           )}
           actions={
             <Select
@@ -204,7 +204,7 @@ export function TerminalSettings() {
         />
         <PanelRow
           label={t("settings.terminalFontSizeLabel", "字号")}
-          description={t("settings.terminalFontSizeDesc", "影响所有标签页；也可以用 Ctrl+Shift+= / -")}
+          description={t("settings.terminalFontSizeDesc", "调整字体大小（快捷键：Ctrl+Shift+= / -）")}
           actions={
             <div className="row" style={{ gap: "var(--space-1)" }}>
               <Button
@@ -237,7 +237,7 @@ export function TerminalSettings() {
         />
         <Choices
           label={t("settings.terminalLineHeightLabel", "行高")}
-          description={t("settings.terminalLineHeightDesc", "行距大一点，长段日志与流式输出更好读。")}
+          description={t("settings.terminalLineHeightDesc", "调整文本行距以优化可读性。")}
           values={TERMINAL_LINE_HEIGHTS}
           current={terminal.lineHeight}
           text={(height) => label(height, LINE_HEIGHT_LABELS)}
@@ -248,7 +248,7 @@ export function TerminalSettings() {
       <Panel title={t("settings.terminalPanelViewport", "光标与视口")}>
         <Choices
           label={t("settings.terminalCursorLabel", "光标样式")}
-          description={t("settings.terminalCursorDesc", "方块是传统终端的样子，竖线更像现代编辑器。")}
+          description={t("settings.terminalCursorDesc", "选择终端光标的显示样式。")}
           values={TERMINAL_CURSOR_STYLES}
           current={terminal.cursorStyle}
           text={(style) => label(style, CURSOR_LABELS)}
@@ -256,7 +256,7 @@ export function TerminalSettings() {
         />
         <PanelRow
           label={t("settings.terminalCursorBlinkLabel", "光标闪烁")}
-          description={t("settings.terminalCursorBlinkDesc", "关掉就是常亮——录屏或截图时更干净。")}
+          description={t("settings.terminalCursorBlinkDesc", "设置终端光标是否闪烁。")}
           actions={
             <Checkbox
               checked={terminal.cursorBlink}
@@ -269,7 +269,7 @@ export function TerminalSettings() {
           label={t("settings.terminalPaddingLabel", "视口留白")}
           description={t(
             "settings.terminalPaddingDesc",
-            "文字与边框之间的呼吸区；改变它会让终端重新计算列宽。",
+            "调整终端内容区内边距。",
           )}
           values={TERMINAL_PADDINGS}
           current={terminal.padding}
@@ -278,7 +278,7 @@ export function TerminalSettings() {
         />
         <PanelRow
           label={t("settings.terminalScrollbackLabel", "回滚行数")}
-          description={t("settings.terminalScrollbackDesc", "向上能翻多少历史输出；调小会立刻丢掉超出的部分。")}
+          description={t("settings.terminalScrollbackDesc", "设置缓冲区保留的最大历史行数。")}
           actions={
             <Select
               aria-label={t("settings.terminalScrollbackLabel", "回滚行数")}

@@ -99,7 +99,7 @@ export function Sidebar() {
             disabled={syncing}
             data-testid="sync-sessions"
             aria-label={syncing ? t("sidebar.syncing", "同步中…") : t("sidebar.sync", "同步")}
-            title={syncing ? t("sidebar.syncing", "同步中…") : t("sidebar.syncTitle", "与服务器同步")}
+            title={syncing ? t("sidebar.syncing", "同步中…") : t("sidebar.syncTitle", "同步云端状态")}
             onClick={() => void syncSessions()}
           >
             <SyncIcon size={14} className={syncing ? "spin-sync" : undefined} />
@@ -133,7 +133,7 @@ export function Sidebar() {
 
         {!loading && sessions.length === 0 && (
           <p className="hint" style={{ padding: "var(--space-2)" }}>
-            {t("sidebar.empty", "本地还没有会话。点上面的 + 创建一个运行时。")}
+            {t("sidebar.empty", "本地还没有会话。点击上方「+」新建运行时。")}
           </p>
         )}
 
@@ -248,7 +248,7 @@ export function Sidebar() {
             className="session-row session-row--untracked"
             title={t(
               "sidebar.untrackedTitle",
-              "服务器上有这个运行时，本地没有它的记录：ColabDesk 连不上也停不掉它。要关掉它请到 Colab 网页版。",
+              "云端存在此运行时但本地无对应连接凭据。如需终止请前往 Colab 网页控制台。",
             )}
           >
             <div className="session-row__main">

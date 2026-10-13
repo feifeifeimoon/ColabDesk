@@ -299,14 +299,14 @@ export function FilePane({
         })}
         {path !== "/" && (
           <button className="crumb up" onClick={() => navigate(parentPath(path))}>
-            {t("files.parentDir", "↑ 上级")}
+            {t("files.parentDir", "返回上级")}
           </button>
         )}
       </div>
 
       {error && <p className="error pane-error">{error}</p>}
       {loading && <p className="hint pane-error">{t("files.loading", "读取中…")}</p>}
-      {!loading && !error && entries.length === 0 && <p className="hint pane-error">{t("files.empty", "（空目录）")}</p>}
+      {!loading && !error && entries.length === 0 && <p className="hint pane-error">{t("files.empty", "当前目录为空")}</p>}
 
       <ul className="file-list">
         {entries.map((entry) => (
@@ -372,7 +372,7 @@ export function FilePane({
         </div>
       )}
 
-      <p className="hint drop-hint">{t("files.dropHint", "把文件拖到此处即可上传到当前目录")}</p>
+      <p className="hint drop-hint">{t("files.dropHint", "拖拽文件至此处上传")}</p>
     </aside>
   );
 }

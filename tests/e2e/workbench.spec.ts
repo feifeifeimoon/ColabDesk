@@ -57,7 +57,6 @@ test("顶栏是拖拽区，栏内控件退出拖拽", async ({ page }) => {
   // 标签条横跨栏的中间且必须保持拖拽，否则两端的控件之间没有可抓的地方。
   expect(await dragRegion(page, ".topbar__tabs")).toBe("drag");
   expect(await dragRegion(page, '[data-testid="toggle-sidebar"]')).toBe("no-drag");
-  expect(await dragRegion(page, '[data-testid="toggle-theme"]')).toBe("no-drag");
 });
 
 test("无边框窗口的控制通道接通", async ({ page }) => {
@@ -96,15 +95,23 @@ test("Ctrl+Shift+E 与会话栏开关是同一件事", async ({ page }) => {
 test("主题切换写下显式偏好，并在重启后仍然生效", async ({ app, page }) => {
   const resolved = (): Promise<string> => page.evaluate(() => document.documentElement.dataset.theme ?? "");
   const before = await resolved();
+  const nextTheme = before === "dark" ? "light" : "dark";
 
-  await page.locator('[data-testid="toggle-theme"]').click();
+  // 打开设置
+  await page.locator('[data-testid="open-settings"]').click();
+  await expect(page.locator('[data-testid="settings-page"]')).toBeVisible();
+
+  // 切换到外观设置
+  await page.getByRole("button", { name: "外观" }).click();
+  await page.locator(`[data-testid="theme-choice-${nextTheme}"]`).click();
+
   const after = await resolved();
   expect(after).not.toBe(before);
   // 显式选择比 OS 优先，所以要落盘；否则重开又跟随系统了。
-  expect(await page.evaluate(() => localStorage.getItem("colabdesk.theme"))).toBe(after);
+  expect(await page.evaluate(() => localStorage.getItem("colabdesk.theme"))).toBe(nextTheme);
 
   await reloadWorkbench(app, page);
-  expect(await resolved()).toBe(after);
+  expect(await resolved()).toBe(nextTheme);
 });
 
 test("语言切换写下偏好并在重载后生效，且动态更新界面文案", async ({ app, page }) => {
