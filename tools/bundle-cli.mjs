@@ -87,7 +87,14 @@ function findStandalonePython(uvPath) {
     const output = execSync(`"${uvPath}" python find ${PYTHON_VERSION}`, { encoding: "utf8" }).trim();
     const first = output.split(/\r?\n/)[0];
     if (first && existsSync(first)) {
-      return dirname(first);
+      // `uv python find` answers with the interpreter, not the distribution
+      // root. The two platforms put it in different places: Windows keeps it at
+      // the root (`<root>/python.exe`), POSIX one level down
+      // (`<root>/bin/python3`) — which is exactly the layout `pythonExeName`
+      // expects after the copy. Taking only one `dirname` on POSIX copies the
+      // contents of `bin/`, and the tree then fails its own existence check.
+      const binDir = dirname(first);
+      return isWin ? binDir : dirname(binDir);
     }
   } catch {
     // fall through to the caller's error
