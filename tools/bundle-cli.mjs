@@ -19,7 +19,6 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
-  statSync,
   writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";

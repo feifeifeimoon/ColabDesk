@@ -60,7 +60,6 @@ export function TopBar() {
   return (
     <header
       className="topbar"
-      style={IS_MAC ? { paddingLeft: MAC_INSET } : undefined}
       onDoubleClick={(event) => {
         // Double-clicking a title bar maximizes — over the same surface that
         // drags it, i.e. everywhere the double click does not land on a control.
@@ -68,7 +67,15 @@ export function TopBar() {
         if (!target?.closest("button, [role='tab'], .menu, input")) void toggleMaximizeWindow();
       }}
     >
-      <div className="topbar__side" data-rail={sidebarOpen || settingsOpen ? "open" : "closed"}>
+      {/* The traffic lights sit over this corner on macOS, so the room for them
+          is padding *inside* the section rather than on the bar: the section
+          still ends where the rail does, which is what puts the tabs above the
+          terminal and the seam on the column below. */}
+      <div
+        className="topbar__side"
+        data-rail={sidebarOpen || settingsOpen ? "open" : "closed"}
+        style={IS_MAC ? { paddingLeft: MAC_INSET } : undefined}
+      >
         <span className="topbar__brand" title={t("topbar.brand", "ColabDesk")}>
           <BrandMark />
         </span>

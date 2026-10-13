@@ -1,0 +1,107 @@
+name: package
+
+# release.yml only runs on a tag, which leaves packaging rot to be found at
+# release time — and it has been: the POSIX Python root path and the two
+# workflow fixes behind v0.2.0 all surfaced there, in a build nobody could
+# re-run without burning another tag. This runs the same packaging on every
+# push to main and publishes nothing, so a tag is the first time a build is
+# *published*, not the first time it is *built*.
+#
+# It is not on pull requests on purpose: the cost is a 190MB runtime download
+# plus Electron's toolchains, and a merge to main is soon enough to hear about
+# it. The platform-independent checks live in ci.yml and do gate PRs.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer commit supersedes an older smoke run.
+concurrency:
+  group: package-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    strategy:
+      # One platform failing must not cancel the other: which platform broke is
+      # the useful half of the answer.
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            args: --win
+          - os: macos-latest
+            args: --mac
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      # The bundled runtime is built per platform — python.exe on Windows,
+      # python/bin/python3 elsewhere — so it cannot be cross-compiled and each
+      # matrix entry runs its own bundler.
+      #
+      # Pinned to a commit, unlike the actions/* steps above: this action
+      # publishes no floating major tag (`@v10` does not resolve), and a commit
+      # cannot be moved out from under a workflow the way a tag can.
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+
+      # Electron itself and the NSIS/macOS toolchains are the same bytes on
+      # every run; only the lockfile can move them.
+      - name: Cache the Electron downloads
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+          key: electron-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: electron-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Bundle the Colab runtime
+        run: npm run bundle:cli
+
+      - name: Build
+        run: npm run build
+
+      - name: Package without publishing
+        run: >-
+          npx electron-builder
+          --config config/electron-builder.config.cjs
+          ${{ matrix.args }}
+          --publish never
+
+      # What a release actually promises: the update feed auto-update reads,
+      # and the Python runtime *inside the app* rather than merely in the
+      # checkout. release.yml asserts the source tree before packaging; a
+      # `files`/`extraResources` edit can still drop the runtime on the way in,
+      # and these are the bytes that would ship.
+      - name: Assert the package carries the runtime and the update feed
+        shell: bash
+        run: |
+          set -euo pipefail
+          find dist -maxdepth 1 -name 'latest*.yml' | grep -q . || {
+            echo "no update feed (latest*.yml) in dist/" >&2
+            ls dist >&2
+            exit 1
+          }
+          runtime="$(find dist -name manifest.json -path '*cli/*' | head -n 1)"
+          test -n "$runtime" || {
+            echo "the bundled runtime is not inside the packaged app" >&2
+            find dist -maxdepth 4 -name cli -type d >&2
+            exit 1
+          }
+          echo "runtime in the package: $runtime"
