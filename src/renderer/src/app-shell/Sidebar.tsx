@@ -269,7 +269,7 @@ export function Sidebar() {
           className="sidebar__action"
           data-testid="open-settings"
           title={t("sidebar.settingsTitle", "设置（Ctrl+,）")}
-          onClick={openSettings}
+          onClick={() => openSettings()}
         >
           <span className="sidebar__action-label">
             <SettingsIcon size={15} />

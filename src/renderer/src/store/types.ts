@@ -129,13 +129,27 @@ export interface PreferencesSlice {
   setPanelWidth(side: PanelSide, width: number): void;
 }
 
+/** Which section of the settings rail is showing. State, so it lives here. */
+export type SectionId =
+  | "account"
+  | "usage"
+  | "appearance"
+  | "terminal"
+  | "runtime"
+  | "external"
+  | "about";
+
 export interface SurfacesSlice {
   settingsOpen: boolean;
+  /** Survives closing and reopening, so settings comes back where you left it. */
+  settingsSection: SectionId;
   newSessionOpen: boolean;
 
-  openSettings(): void;
+  /** `section` is how a caller elsewhere in the app deep-links into settings. */
+  openSettings(section?: SectionId): void;
   closeSettings(): void;
   toggleSettings(): void;
+  setSettingsSection(section: SectionId): void;
   openNewSession(): void;
   closeNewSession(): void;
 }

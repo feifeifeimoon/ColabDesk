@@ -45,7 +45,10 @@
     "standby": "待命",
     "connected": "已连接",
     "expired": "已过期",
-    "remainingTime": "剩余 ~{{time}}"
+    "remainingTime": "剩余 ~{{time}}",
+    "updateAvailableTitle": "有新版本 {{version}}",
+    "updateReadyTitle": "{{version}} 已下载，重启后生效",
+    "updateReady": "重启以更新"
   },
   "sidebar": {
     "widthLabel": "会话栏宽度",
@@ -76,7 +79,11 @@
     "settingsTitle": "设置（Ctrl+,）"
   },
   "banners": {
-    "dismiss": "知道了"
+    "dismiss": "知道了",
+    "updateOffered": "有新版本 {{version}}。",
+    "updateReady": "{{version}} 已下载，重启后生效。",
+    "updateDownload": "下载更新",
+    "updateRestart": "重启以更新"
   },
   "home": {
     "tagline": "把远程 GPU 运行时当本地机器用",

@@ -28,6 +28,8 @@ const noop = () => {};
 function baseState(update: UpdateStatus) {
   return {
     settingsOpen: true,
+    settingsSection: "account",
+    setSettingsSection: noop,
     closeSettings: noop,
     env: {
       app_version: "0.3.0",
@@ -66,8 +68,10 @@ beforeEach(() => {
   store.current = baseState({ state: "idle" });
 });
 
-const render = (section: SectionId): string =>
-  renderToStaticMarkup(createElement(SettingsPage, { initialSection: section }));
+const render = (section: SectionId): string => {
+  (store.current as { settingsSection: SectionId }).settingsSection = section;
+  return renderToStaticMarkup(createElement(SettingsPage));
+};
 const text = (html: string): string => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
 
 describe("the runtime section", () => {

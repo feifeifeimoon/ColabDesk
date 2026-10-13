@@ -38,9 +38,9 @@ import { messageOf, sshRemove, sshSetup } from "../lib/api";
 import { formatExpiry } from "../lib/format";
 import type { ThemePreference } from "../lib/theme";
 import { useAppStore } from "../store";
+import type { SectionId } from "../store/types";
 
-/** Font sizes the terminal accepts; the choice survives restarts. */
-export type SectionId = "account" | "usage" | "appearance" | "terminal" | "runtime" | "external" | "about";
+export type { SectionId } from "../store/types";
 
 interface Section {
   id: SectionId;
@@ -138,10 +138,14 @@ const GROUPS_DEF: { id: string; titleKey: string; defaultTitle: string; sections
   },
 ];
 
-export function SettingsPage({ initialSection = "account" }: { initialSection?: SectionId }) {
+export function SettingsPage() {
   const { t } = useTranslation();
   const open = useAppStore((state) => state.settingsOpen);
   const closeSettings = useAppStore((state) => state.closeSettings);
+  // Which section shows is state, not a local detail: the status bar deep-links
+  // into "about" when there is an update waiting.
+  const sectionId = useAppStore((state) => state.settingsSection);
+  const setSectionId = useAppStore((state) => state.setSettingsSection);
   const env = useAppStore((state) => state.env);
   const usage = useAppStore((state) => state.usage);
   const activeSession = useAppStore((state) => state.selectedSession);
@@ -153,7 +157,6 @@ export function SettingsPage({ initialSection = "account" }: { initialSection?: 
   const setPanelWidth = useAppStore((state) => state.setPanelWidth);
   const refreshEnvironment = useAppStore((state) => state.refreshEnvironment);
 
-  const [sectionId, setSectionId] = useState<SectionId>(initialSection);
   const [setup, setSetup] = useState<SshSetup | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);

@@ -26,7 +26,13 @@ interface Workbench {
   sandbox: string;
 }
 
-export const test = base.extend<Workbench>({
+export const test = base.extend<Workbench & { updateVersion: string }>({
+  /**
+   * What the fake updater offers, per test. Empty — the default — means "nothing
+   * newer", so specs that are not about updating never see a prompt.
+   */
+  updateVersion: ["", { option: true }],
+
   sandbox: async ({}, use) => {
     const directory = mkdtempSync(join(tmpdir(), "colabdesk-e2e-"));
     await use(directory);
@@ -34,7 +40,7 @@ export const test = base.extend<Workbench>({
     rmSync(directory, { recursive: true, force: true, maxRetries: 5 });
   },
 
-  app: async ({ sandbox }, use) => {
+  app: async ({ sandbox, updateVersion }, use) => {
     const env: Record<string, string> = {};
     for (const [key, value] of Object.entries(process.env)) {
       if (value !== undefined) env[key] = value;
@@ -44,6 +50,9 @@ export const test = base.extend<Workbench>({
     delete env.ELECTRON_RUN_AS_NODE;
     env.COLABDESK_E2E_MOCK = "1";
     env.COLABDESK_E2E_HOME = sandbox;
+    // Absent means the fake updater answers "nothing newer", which is what the
+    // specs that are not about updating should see.
+    if (updateVersion) env.COLABDESK_E2E_UPDATE_VERSION = updateVersion;
 
     const app = await electron.launch({
       args: [...(process.platform === "linux" ? LINUX_FLAGS : []), "--lang=zh-CN", projectRoot],

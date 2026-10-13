@@ -45,7 +45,10 @@
     "standby": "Standby",
     "connected": "Connected",
     "expired": "Expired",
-    "remainingTime": "~{{time}} left"
+    "remainingTime": "~{{time}} left",
+    "updateAvailableTitle": "Version {{version}} is available",
+    "updateReadyTitle": "Version {{version}} is downloaded",
+    "updateReady": "Restart to update"
   },
   "sidebar": {
     "widthLabel": "Sidebar width",
@@ -76,7 +79,11 @@
     "settingsTitle": "Settings (Ctrl+,)"
   },
   "banners": {
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "updateOffered": "Version {{version}} is available.",
+    "updateReady": "Version {{version}} is downloaded; it applies on restart.",
+    "updateDownload": "Download",
+    "updateRestart": "Restart to update"
   },
   "home": {
     "tagline": "Run a remote GPU runtime like a local machine",
