@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "react-hooks", "unicorn"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "no-empty-pattern": ["error", { "allowObjectPatternsAsParameters": true }],
+    "react/refs": "off",
+    "react/set-state-in-effect": "off"
+  },
+  "ignorePatterns": [
+    "**/node_modules",
+    "**/out",
+    "**/dist",
+    "**/test-results",
+    "**/playwright-report",
+    "**/screenshots",
+    "**/brand"
+  ]
+}

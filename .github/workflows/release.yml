@@ -175,3 +175,33 @@ jobs:
           # electron-builder's publisher is known to rewrite the prerelease flag;
           # assert the state we want rather than trusting the draft survived.
           gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease=false --latest
+
+      # Everything above checks the assets as GitHub stores them. This is the
+      # only step that reads them the way an installed app does — through the
+      # public URL, after the release stopped being a draft — so it is the one
+      # that would notice a feed nothing can fetch. A failure here does not
+      # unpublish anything: it means the release is out and updates point at
+      # nothing.
+      - name: The public feed must serve this version
+        env:
+          VERSION: ${{ needs.guard.outputs.version }}
+        shell: bash
+        run: |
+          url="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download"
+          for feed in latest.yml latest-mac.yml; do
+            for attempt in 1 2 3 4 5; do
+              if body="$(curl -fsSL "$url/$feed")"; then
+                if grep -q "^version: ${VERSION}$" <<<"$body"; then
+                  echo "$feed serves $VERSION"
+                  continue 2
+                fi
+                echo "attempt $attempt: $feed serves another version" >&2
+              else
+                # The CDN can lag the moment a draft goes public.
+                echo "attempt $attempt: $feed not reachable" >&2
+              fi
+              sleep 10
+            done
+            echo "$feed never served $VERSION" >&2
+            exit 1
+          done

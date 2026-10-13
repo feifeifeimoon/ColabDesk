@@ -139,6 +139,8 @@ export class SshManager extends EventEmitter {
   }
 
   dropAll(): void {
+    // The snapshot is the point: `drop` deletes from the map this loop walks.
+    // eslint-disable-next-line unicorn/no-useless-spread
     for (const name of [...this.connections.keys()]) this.drop(name);
   }
 }

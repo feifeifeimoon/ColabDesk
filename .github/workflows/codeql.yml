@@ -1,0 +1,41 @@
+name: codeql
+
+# Free on a public repository. Unlike everything else here this does not ask
+# whether the app still works — it asks what a crafted SSH banner, a hostile
+# `latest.yml` or a malicious file name could make it do. The app holds a
+# Colab token and an SSH key, so the answer is worth a runner.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # The query packs are updated continuously, and unchanged code can start
+    # failing them; a weekly run is what catches that on a quiet repository.
+    # 21:00 UTC on Sunday is Monday morning in Asia/Shanghai.
+    - cron: "0 21 * * 0"
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      # Where the results are uploaded. Everything else stays read-only.
+      security-events: write
+      contents: read
+      actions: read
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # JavaScript/TypeScript is analyzed from source, so there is no autobuild
+      # step and no matrix: one language, one job.
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+
+      - uses: github/codeql-action/analyze@v4

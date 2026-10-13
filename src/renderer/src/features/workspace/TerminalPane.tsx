@@ -95,17 +95,22 @@ export function TerminalPane({
   }, [t]);
 
   useEffect(() => {
+    // The cleanup clears the same buffers this effect fills, so it takes them
+    // once here rather than reading `.current` at teardown.
+    const buffers = unclaimed.current;
+    const closedIds = unclaimedClosed.current;
+
     const offData = onTerminalData(({ channelId, session: from, data }) => {
       if (from !== session) return;
       const bytes = decodeBase64(data);
 
       if (channelRef.current === null) {
-        const pending = unclaimed.current.get(channelId) ?? [];
+        const pending = buffers.get(channelId) ?? [];
         pending.push(bytes);
-        unclaimed.current.set(channelId, pending);
+        buffers.set(channelId, pending);
         unclaimedBytes.current += bytes.length;
         if (unclaimedBytes.current > UNCLAIMED_LIMIT) {
-          unclaimed.current.clear();
+          buffers.clear();
           unclaimedBytes.current = 0;
         }
         return;
@@ -117,7 +122,7 @@ export function TerminalPane({
     const offClosed = onTerminalClosed(({ channelId, session: from }) => {
       if (from !== session) return;
       if (channelRef.current === null) {
-        unclaimedClosed.current.add(channelId);
+        closedIds.add(channelId);
         return;
       }
       if (channelId !== channelRef.current) return;
@@ -127,9 +132,9 @@ export function TerminalPane({
     return () => {
       offData();
       offClosed();
-      unclaimed.current.clear();
+      buffers.clear();
       unclaimedBytes.current = 0;
-      unclaimedClosed.current.clear();
+      closedIds.clear();
     };
   }, [markClosed, session]);
 

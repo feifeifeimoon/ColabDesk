@@ -58,11 +58,18 @@ const tabs = useAppStore((state) => state.tabs);
 
 ```bash
 npm run typecheck      # tsc --noEmit（主进程 + 渲染层两个项目）
+npm run lint           # oxlint（正确性规则，配置在 .oxlintrc.json；CI 的 lint 作业跑的就是它）
 npm test               # vitest（主进程逻辑 + 渲染断言，见下）
 npm run build          # electron-vite build
 npm run e2e            # Playwright 端到端（会先构建；`SKIP_BUILD=1` 复用已有 out/）
 npm run gallery        # 出图到 screenshots/ 给人看，不进 CI（`@gallery` 标签）
 ```
+
+CI 分三条 workflow：`ci.yml` 把同一套 typecheck + 单测 + E2E 跑在 **ubuntu / windows / macos 三台**上
+（应用就发给 Windows 和 macOS，只在一个平台上绿等于没验证；lint 单独一个作业，只跑一次）。
+`package.yml` 在 push 到 main 时打包但不发布，并断言运行时确实进了包——把打包问题挡在 tag 之前；
+`release.yml` 仍然只由 tag 触发。三台 runner 的宿主语言各不相同，所以**断言一律不读宿主 locale**：
+渲染语言由夹具的 `--lang=zh-CN` 钉住。
 
 界面改动必须用 `npm run e2e` 验证，不要用桌面截图工具：这台机器的 VDI 合成器会让外部截图不稳定，
 而 Playwright 走 CDP 截图与应用自己的 DOM。

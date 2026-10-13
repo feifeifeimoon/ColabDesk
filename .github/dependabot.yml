@@ -1,0 +1,63 @@
+version: 2
+
+# Weekly, and grouped: a dependency released hours ago has not been run
+# anywhere yet, and a Monday-morning batch is one CI run instead of five.
+#
+# The two pins Dependabot cannot see — the bundled `google-colab-cli` and the
+# Python it runs on — live in tools/bundle-cli.mjs and are bumped by hand.
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+    groups:
+      react:
+        patterns:
+          - react
+          - react-dom
+          - react-i18next
+          - i18next
+          - "@types/react"
+          - "@types/react-dom"
+      electron:
+        patterns:
+          - electron
+          - electron-updater
+          - electron-builder
+          - electron-vite
+          - vite
+          - "@vitejs/plugin-react"
+      terminal:
+        patterns:
+          - "@xterm/*"
+      tests:
+        patterns:
+          - vitest
+          - "@playwright/test"
+      # Whatever is left: types, fonts, the compiler. Nothing here ships to
+      # users, so they arrive together rather than as one PR each.
+      tooling:
+        patterns:
+          - "*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns:
+          - "*"
