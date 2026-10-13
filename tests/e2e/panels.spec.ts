@@ -10,6 +10,13 @@
 import type { Page } from "@playwright/test";
 import { expect, openSession, reloadWorkbench, terminalRows, test } from "./app-launch";
 
+/**
+ * What the bar spends on the macOS traffic lights before its first control
+ * (`AppShell`'s MAC_INSET). The bar's sections are the window's columns, so
+ * this is the one place the layout starts further right than the row below.
+ */
+const CHROME_INSET = process.platform === "darwin" ? 78 : 0;
+
 async function widthOf(page: Page, selector: string): Promise<number> {
   const box = await page.locator(selector).boundingBox();
   if (!box) throw new Error(`${selector} 没有布局盒`);
@@ -111,7 +118,7 @@ test("标签条从终端正上方开始，跟着会话栏走", async ({ page }) 
   // back to its own two controls and the strip follows them.
   await page.locator('[data-testid="toggle-sidebar"]').click();
   const collapsed = await page.locator(".topbar__tabs").boundingBox();
-  expect(collapsed?.x ?? 999).toBeLessThan(120);
+  expect(collapsed?.x ?? 999).toBeLessThan(120 + CHROME_INSET);
 });
 
 test("顶栏在每个分栏处画出分界，且与下面的列是同一条线", async ({ page }) => {
