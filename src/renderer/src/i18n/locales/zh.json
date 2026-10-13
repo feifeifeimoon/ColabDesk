@@ -316,8 +316,7 @@
     "externalRemoved": "已移除 SSH 配置。",
     "externalAliasHint": "别名 {{alias}} · {{path}}",
     "externalRawOutputLabel": "写入的配置块",
-    "runtimeAppVersion": "应用版本",
-    "runtimeAppVersionDesc": "应用自身的版本号，不是内置 CLI 的版本。"
+    "runtimeAppVersion": "应用版本"
   },
   "failure": {
     "networkInterrupted": "网络请求被中断：与 colab.research.google.com 的 TLS 连接被重置。偶发时重试即可；若持续失败，请检查代理/VPN 是否正常路由 Google 域名。",
