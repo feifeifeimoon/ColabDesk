@@ -15,7 +15,7 @@
 - **appId** `com.colabdesk.app`，**productName** `ColabDesk`。
 - **版本真源是 git tag**：`v0.3.0` ↔ `package.json.version === "0.3.0"`。CI 断言两者相等，不一致就失败。
 - **publish 是写死的字面量**：`{ provider: "github", owner: "feifeifeimoon", repo: "ColabDesk", releaseType: "release" }`。**不得依赖 `package.json` 的 `repository` 字段推断**（SakuraCat 事故，spec §8.4）。
-- **`win.verifyUpdateCodeSignature: false`**，且旁边必须写明"签名到位后删掉"。理由见 spec §2.2：未签名构建在生成 `app-update.yml` 时 `computedPublisherName` 会抛 `Internal error: cannot compute subject using certificate info`。
+- **`win` 下不设 `verifyUpdateCodeSignature`**（spec §2.2）。它在未签名时是空操作，有了证书后却会关掉更新签名校验——两头都不该要。契约测试反过来钉住这一点。
 - **nsis 契约**（一旦发布不可更改，spec §3.3）：`oneClick: false`、`perMachine: false`、`allowToChangeInstallationDirectory: true`、`differentialPackage: true`、`deleteAppDataOnUninstall: false`。
 - **artifactName**：Windows `colabdesk-setup-${version}-${arch}.${ext}`；macOS `colabdesk-${version}-${arch}.${ext}`。**必须含 `${arch}`**（两个架构会撞名）。
 - **mac target 是 `dmg` + `zip`**，arch `x64` + `arm64`。`zip` 是 Squirrel.Mac 唯一认的产物（spec §2.3）。
@@ -454,11 +454,12 @@ describe("electron-builder configuration", () => {
     });
   });
 
-  it("does not verify Authenticode while the build is unsigned", () => {
-    // Deliberate, and temporary: without a certificate, electron-builder cannot
-    // derive a publisher name and the Windows build fails outright. Remove this
-    // the moment a signing certificate exists.
-    expect(config.win.verifyUpdateCodeSignature).toBe(false);
+  it("does not suppress update signature verification", () => {
+    // This flag looks like something an unsigned build needs. It is not: with no
+    // certificate, electron-builder resolves no publisher name either way, so it
+    // changes nothing today. It would only bite later — by suppressing the
+    // publisher name that enables verification once a certificate exists.
+    expect(config.win.verifyUpdateCodeSignature).not.toBe(false);
   });
 
   it("ships a zip on macOS, which is what Squirrel.Mac installs from", () => {
@@ -489,7 +490,7 @@ describe("electron-builder configuration", () => {
 - [ ] **Step 2: 跑测试确认它失败**
 
 Run: `npm test -- config/electron-builder.config.test.mjs`
-Expected: FAIL —— `config.publish` 是 `undefined`（TypeError），`win.verifyUpdateCodeSignature` 也不是 `false`
+Expected: FAIL —— `config.publish` 是 `undefined`（TypeError），`mac.target` 里没有 `zip`，nsis 的 `differentialPackage` / `deleteAppDataOnUninstall` 都缺
 
 - [ ] **Step 3: 改配置**
 
@@ -517,12 +518,13 @@ Expected: FAIL —— `config.publish` 是 `undefined`（TypeError），`win.ver
     // under the user's own profile anyway.
     target: [{ target: "nsis", arch: ["x64"] }],
     artifactName: "colabdesk-setup-${version}-${arch}.${ext}",
-    // Temporary, and only because the build is unsigned: with a certificate,
-    // electron-builder derives a publisher name for app-update.yml, and without
-    // one it cannot, so the build fails. Delete this line once signing exists —
-    // electron-updater's own warning says unsigned verification is deliberately
-    // fail-open today, which it stops being in electron-builder v28.
-    verifyUpdateCodeSignature: false,
+    // Deliberately no `verifyUpdateCodeSignature: false`. It reads like a
+    // prerequisite for unsigned builds and is not one: without a certificate
+    // electron-builder resolves no publisher name either way, so the flag
+    // changes nothing today. It would only start mattering once a certificate
+    // exists — and then it would suppress the very publisher name that turns
+    // update signature verification on. Confirmed by building with and without
+    // it: the two app-update.yml files come out byte-identical.
   },
 ```
 
@@ -1072,5 +1074,5 @@ git commit -m "Document installation and the unsigned-build warnings users will 
 
 - 任何更新代码：`electron-updater`、`src/main/updater/`、update slice、UpdateCard、状态栏那一段——全部是阶段 2。
 - macOS 自动更新：未签名时 Squirrel.Mac 根本起不来（spec §2.3），且主进程里那行 `process.platform === "darwin"` 的 return 要到阶段 2 才写。
-- 签名：阶段 3。本阶段只把 `verifyUpdateCodeSignature: false` 和它的"签名到位后删掉"注释留在配置里。
+- 签名：阶段 3。本阶段**不碰** `verifyUpdateCodeSignature`——证书到位时 electron-builder 会自动开始写 `publisherName` 并打开校验（spec §2.2）。
 - Linux 产物进 Release：AppImage target 保留在配置里，但矩阵先只跑 Windows 与 macOS。

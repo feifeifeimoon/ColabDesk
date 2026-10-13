@@ -62,19 +62,12 @@ if (publishConfig != null) {
 
 `getAppUpdatePublishConfiguration` 在 publish 列表为空时会退回探测 `package.json` 的 `repository` 字段；ColabDesk 没有这个字段，于是返回 `null`。同时 `updateInfoBuilder.js:37` 的 `const currentChannel = publishConfig.channel || "latest"` 说明 `latest.yml` 也依赖同一条链路。**加 `publish` 是整件事的第一步，不是可选项。**
 
-### 2.2 未签名 + 默认 `verifyUpdateCodeSignature` = Windows 构建失败
+### 2.2 未签名**不会**挡住构建——但有一个看起来该设、实际不能设的开关
 
-这是最容易踩的坑，链路如下：
+> **这一节推翻了一个我先前的错误结论。** 最初我读源码后写的是"加 `publish` 之后未签名的 Windows 构建会失败，必须显式设 `win.verifyUpdateCodeSignature: false`"。**这是错的**，实测两遍都不失败。错误的原因和我修正后的真实行为都在下面——留着它，是因为那个错误结论听起来非常合理，别人也会同样地掉进去。
 
-`app-builder-lib/out/winPackager.js:26`：
-```js
-get isForceCodeSigningVerification() {
-    return this.platformSpecificBuildOptions.verifyUpdateCodeSignature !== false;
-}
-```
-默认 **true**。
+真实的链路。`PublishManager.js:202`：
 
-`PublishManager.js:202`：
 ```js
 if (packager.platform === Platform.WINDOWS && publishConfig.publisherName == null) {
     const publisherName = winPackager.isForceCodeSigningVerification
@@ -84,19 +77,44 @@ if (packager.platform === Platform.WINDOWS && publishConfig.publisherName == nul
 }
 ```
 
-`codeSign/windowsSignToolManager.js:101`——没有证书时 `lazyCertInfo` 为 `null`，于是：
+`isForceCodeSigningVerification` 默认确实是 `true`（`winPackager.js:26`：`verifyUpdateCodeSignature !== false`）。所以这里**确实**会去取 `computedPublisherName`。我当时接着去读了一个**名字几乎一样、但不是同一个东西**的方法：
+
 ```js
-const publisher = publisherName || (certInfo == null ? null : certInfo.bloodyMicrosoftSubjectDn);
-if (publisher == null) {
-    throw new Error("Internal error: cannot compute subject using certificate info");
-}
+// windowsSignToolManager.js:101 —— 这个方法会抛错，但上面那一行根本不调它
+async computePublisherName(target, publisherName) {
+    const publisher = publisherName || (certInfo == null ? null : certInfo.bloodyMicrosoftSubjectDn);
+    if (publisher == null) throw new Error("Internal error: cannot compute subject using certificate info");
 ```
 
-调用点没有 try/catch。**结论：加了 `publish` 之后，未签名的 Windows 构建会在生成 `app-update.yml` 时抛错。必须显式写 `win.verifyUpdateCodeSignature: false`。**
+`computedPublisherName` 是构造器里的一个 `Lazy`（`windowsSignToolManager.js:17`），它的行为完全不同——**没有证书时返回 `null`，不抛错**：
 
-这正是 Orca 给未签名 dev channel 设的值（`config/electron-builder.config.cjs:346-355`，release channel 则保留默认并配 `signtoolOptions.publisherName: 'SignPath Foundation'`）。
+```js
+this.computedPublisherName = new Lazy(async () => {
+    const publisherName = this.platformSpecificBuildOptions.signtoolOptions?.publisherName;
+    if (publisherName === null) return null;
+    else if (publisherName != null) return asArray(publisherName);
+    const certInfo = await this.lazyCertInfo.value;
+    return certInfo == null ? null : [certInfo.commonName];   // ← null，不是抛
+});
+```
 
-要诚实地说清代价：关掉之后 electron-updater 不再校验安装包的 Authenticode 签名。但在"没有证书"这个前提下本来就没有签名可校验——这不是降低安全性，是承认现状。**签名到位后必须把它打开**，这是阶段 3 的硬要求，不是可选项。
+返回 `null` 之后，调用点的 `if (publisherName != null)` 不成立，`publisherName` 这个键就**根本不写进 `app-update.yml`**。构建照常完成。
+
+**实测确认**（不是推论）：同一份配置，带与不带 `verifyUpdateCodeSignature: false` 各跑一次完整的 `--win` 打包，两次都成功，产出的 `app-update.yml` **逐字节相同**，都是：
+
+```yaml
+owner: feifeifeimoon
+repo: ColabDesk
+provider: github
+releaseType: release
+updaterCacheDirName: colabdesk-updater     # 没有 publisherName
+```
+
+**所以这个开关不但没必要，而且不能设。** `verifyUpdateCodeSignature` 在整个 `app-builder-lib` 里只被读一次（`winPackager.js:27` 那个 getter），唯一的作用就是决定"要不要去取一次 publisher name"。它在今天是个空操作；而等到阶段 3 有了证书，它就会**抑制**那个本该写进 `app-update.yml` 的 publisher name——也就是把 electron-updater 的更新签名校验永久关掉。那正好和 §8.6 想要的相反。
+
+对阶段 3 的含义因此变得更好：**证书一到手，electron-builder 会自动开始写 `publisherName`，校验自动打开，配置不用改任何一行。**
+
+（Orca 给未签名 dev channel 设了这个值（`config/electron-builder.config.cjs:346-355`），release channel 则配 `signtoolOptions.publisherName: 'SignPath Foundation'`。在我们这个场景下它同样是空操作——不必照抄。）
 
 ### 2.3 macOS 必须有 zip，而且必须有签名
 
@@ -258,7 +276,7 @@ NSIS 的差分只在**同一套安装方式**内有效。以下选项一旦发�
   > **必须是显式写死的字面量，不能让它从 `package.json` 的 `repository` 推断。** SakuraCat 就是这么翻车的：它的 `app-update.yml` 里 owner/repo 是 `electron-react-boilerplate/electron-react-boilerplate`（§8.4），脚手架默认值没改就发出去了，而且没有任何东西报错。所以 §5.2 之外还要一条**契约测试**把这个字面量钉住——Orca 的 `electron-builder-config.test.mjs` 就是干这个的。
   >
   > 备选：运行期改用 `provider: generic` + `https://github.com/feifeifeimoon/ColabDesk/releases/latest/download`（Orca 的做法）。好处是运行时完全不碰 GitHub API、不受速率限制。代价是多一个模块、多一处可能出错。**当前不需要，等真要控制预发布通道时再换。**
-- 加 `win.verifyUpdateCodeSignature: false`，并写清楚"这是未签名状态的临时值，签名到位后必须删掉"（§2.2）。
+- `win` 下**不设** `verifyUpdateCodeSignature`。理由见 §2.2：它在未签名时是空操作，而有了证书之后会反过来关掉更新签名校验。
 - mac `target` 补 `zip`（§2.3），artifactName 带 `${arch}`。
 - 固定 `artifactName` 与 §3.3 表里的 nsis 选项。
 - `extraResources` 的兜底加 `COLABDESK_REQUIRE_BUNDLED_CLI=1` 时的硬失败分支。
@@ -363,10 +381,10 @@ CI 覆盖不到，且这四条的失败模式都很安静：
 
 ### 阶段 1：能发版、能装（不碰更新）
 
-- electron-builder 配置：`publish`、`win.verifyUpdateCodeSignature: false`、mac 补 `zip`、固定 `artifactName` 与 nsis 选项。
+- electron-builder 配置：`publish`、mac 补 `zip`、固定 `artifactName` 与 nsis 选项。
 - `tools/bundle-cli.mjs` 字节稳定化：去 `bundledAt`、加 `runtimeHash`、锁 CLI 与 Python 版本、清 `__pycache__` / 归一化 `RECORD`、`patchWindowsConsole` 加 `isWin` 判断。
 - `.github/workflows/release.yml`：tag → 双平台构建 → draft → 校验资产 → publish。
-- **打包配置的契约测试**（照 Orca 的 `electron-builder-config.test.mjs`）：断言 publish 的 owner/repo 是写死的字面量而不是推断来的、`verifyUpdateCodeSignature` 是 `false`、mac target 含 `zip`、artifactName 模板带 `${arch}`、`deleteAppDataOnUninstall` 没被打开。这几条都是"改错了不报错、发出去才发现"的类型——SakuraCat 就是活例（§8.4）。
+- **打包配置的契约测试**（照 Orca 的 `electron-builder-config.test.mjs`）：断言 publish 的 owner/repo 是写死的字面量而不是推断来的、`verifyUpdateCodeSignature` **没有**被设成 `false`、mac target 含 `zip`、artifactName 模板带 `${arch}`、`deleteAppDataOnUninstall` 没被打开。这几条都是"改错了不报错、发出去才发现"的类型——SakuraCat 就是活例（§8.4）。
 - 应用里显示版本号（about 节的最小版本：一个 `PanelRow`）。
 - **验收**：从一个 tag 能出一条 release；Windows 安装包能装、能开终端；mac dmg 能拉开。
 
@@ -381,7 +399,7 @@ CI 覆盖不到，且这四条的失败模式都很安静：
 
 选哪条签名路径、各自的门槛和代价，见 **§8**。两个平台可以分开推进，互不阻塞：
 
-- **Windows 签名**：`verifyUpdateCodeSignature` 恢复默认（打开）、设 `signtoolOptions.publisherName`、CI 里签名后回填 `latest.yml` 的 `sha512` / `size` / `blockMapSize`。
+- **Windows 签名**：**配置不用改**——证书一到位，electron-builder 会自动开始写 `publisherName`，electron-updater 的签名校验随之打开（§2.2）。需要做的只是把证书喂给构建，以及签名后回填 `latest.yml` 的 `sha512` / `size` / `blockMapSize`（如果签名改变了产物的字节）。
 - **macOS 签名 + 公证**：`hardenedRuntime` + `notarize` + entitlements + `forceCodeSigning` 全部收在一个开关后（照 Orca 的 `ORCA_MAC_RELEASE`），开关打开时走 `verify-macos-release-env.mjs` 式的 fail-fast；主进程里那行 `process.platform === "darwin"` 的 return 这时候删掉，macOS 自动更新才开。
 - 可选：Homebrew cask。
 
