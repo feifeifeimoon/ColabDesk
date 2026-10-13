@@ -12,9 +12,19 @@
  */
 
 import { execSync, spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { hashRuntimeDir } from "./runtime-hash.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const TARGET_DIR = join(ROOT, "resources", "cli");
@@ -25,6 +35,14 @@ const MANIFEST_DEST = join(TARGET_DIR, "manifest.json");
 const isWin = process.platform === "win32";
 const pythonExeName = isWin ? "python.exe" : "bin/python3";
 const force = process.argv.includes("--force");
+
+/**
+ * Pinned so two builds of the same git tag ship the same runtime. An unpinned
+ * `pip install` makes the release that goes out depend on the day it was built.
+ */
+const PYTHON_VERSION = "3.12";
+const CLI_PACKAGE = "google-colab-cli";
+const CLI_VERSION = "0.7.4";
 
 function log(msg) {
   console.log(`[bundle:cli] ${msg}`);
@@ -55,18 +73,24 @@ function findUv() {
   return null;
 }
 
-/** Locate standalone python managed by uv */
+/** Locate the pinned standalone python, installing it if this machine lacks it. */
 function findStandalonePython(uvPath) {
-  if (uvPath) {
-    try {
-      const output = execSync(`"${uvPath}" python find`, { encoding: "utf8" }).trim();
-      const first = output.split(/\r?\n/)[0];
-      if (first && existsSync(first)) {
-        return dirname(first);
-      }
-    } catch {
-      // ignore
+  if (!uvPath) return null;
+
+  const install = spawnSync(uvPath, ["python", "install", PYTHON_VERSION], { encoding: "utf8" });
+  if (install.status !== 0) {
+    error(`uv python install ${PYTHON_VERSION} 失败: ${install.stderr || install.stdout}`);
+    process.exit(1);
+  }
+
+  try {
+    const output = execSync(`"${uvPath}" python find ${PYTHON_VERSION}`, { encoding: "utf8" }).trim();
+    const first = output.split(/\r?\n/)[0];
+    if (first && existsSync(first)) {
+      return dirname(first);
     }
+  } catch {
+    // fall through to the caller's error
   }
   return null;
 }
@@ -91,6 +115,29 @@ function prunePython(dest) {
       }
     }
   }
+}
+
+/** Remove compiled bytecode, which carries build-machine paths into the package. */
+function stripBytecode(dir) {
+  let removed = 0;
+  const walk = (current) => {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const full = join(current, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name === "__pycache__") {
+          rmSync(full, { recursive: true, force: true });
+          removed += 1;
+        } else {
+          walk(full);
+        }
+      } else if (entry.name.endsWith(".pyc")) {
+        rmSync(full, { force: true });
+        removed += 1;
+      }
+    }
+  };
+  if (existsSync(dir)) walk(dir);
+  if (removed > 0) log(`Stripped ${removed} bytecode artifacts from ${dir}`);
 }
 
 /** Fix Windows issue where termios/tty is imported at top level in colab_cli 0.7.4 */
@@ -155,6 +202,7 @@ async function bundle() {
   }
   cpSync(pythonSource, PYTHON_DEST, { recursive: true, dereference: true });
   prunePython(PYTHON_DEST);
+  stripBytecode(PYTHON_DEST);
 
   const pythonBin = join(PYTHON_DEST, pythonExeName);
   if (!existsSync(pythonBin)) {
@@ -169,14 +217,28 @@ async function bundle() {
   }
   mkdirSync(SITE_DEST, { recursive: true });
 
-  const installArgs = ["pip", "install", "--target", SITE_DEST, "--link-mode", "copy", "google-colab-cli"];
+  const installArgs = [
+    "pip",
+    "install",
+    "--target",
+    SITE_DEST,
+    "--link-mode",
+    "copy",
+    // No .pyc: they embed the build machine's absolute source paths, so two
+    // builds of the same package would never be byte-identical.
+    "--no-compile",
+    `${CLI_PACKAGE}==${CLI_VERSION}`,
+  ];
   const res = spawnSync(uv, installArgs, { stdio: "inherit", encoding: "utf8" });
   if (res.status !== 0) {
-    error("使用 uv 安装 google-colab-cli 失败。");
+    error(`使用 uv 安装 ${CLI_PACKAGE}==${CLI_VERSION} 失败。`);
     process.exit(1);
   }
 
-  patchWindowsConsole(SITE_DEST);
+  // The termios/tty import is a POSIX-only concern; patching it on macOS/Linux
+  // would rewrite a file that was never broken.
+  if (isWin) patchWindowsConsole(SITE_DEST);
+  stripBytecode(SITE_DEST);
 
   // 3. Verify and read version
   log("Verifying bundled CLI invocation...");
@@ -187,23 +249,28 @@ async function bundle() {
     process.exit(1);
   }
 
-  let cliVersion = "0.7.4";
   const versionMatch = check.stdout.match(/Version:\s*([0-9a-zA-Z.-]+)/);
-  if (versionMatch) {
-    cliVersion = versionMatch[1];
+  if (versionMatch && versionMatch[1] !== CLI_VERSION) {
+    // The pin is the contract; a mismatch means the index served something else.
+    error(`预期 ${CLI_PACKAGE}==${CLI_VERSION}，但内置运行时报告 ${versionMatch[1]}`);
+    process.exit(1);
   }
-  log(`Bundled CLI verified successfully: version ${cliVersion}`);
+  log(`Bundled CLI verified successfully: version ${CLI_VERSION}`);
 
   // 4. Write manifest.json
+  // No timestamp: it changed on every build, which alone was enough to give two
+  // builds of the same tag different bytes. The hash covers both runtime trees
+  // and is what tells a later build whether the runtime actually moved.
+  const runtimeHash = `${await hashRuntimeDir(PYTHON_DEST)}:${await hashRuntimeDir(SITE_DEST)}`;
   const manifest = {
-    cliVersion,
-    pythonVersion: "3.12",
+    cliVersion: CLI_VERSION,
+    pythonVersion: PYTHON_VERSION,
     platform: process.platform,
     arch: process.arch,
-    bundledAt: new Date().toISOString(),
+    runtimeHash,
   };
   writeFileSync(MANIFEST_DEST, JSON.stringify(manifest, null, 2), "utf8");
-  log(`Wrote manifest to ${MANIFEST_DEST}`);
+  log(`Wrote manifest to ${MANIFEST_DEST} (runtimeHash ${runtimeHash.slice(0, 8)}…${runtimeHash.slice(-8)})`);
   log("CLI bundling complete!");
 }
 
