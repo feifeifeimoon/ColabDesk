@@ -40,7 +40,12 @@ export interface AcceleratorEligibility {
   fetched_at: string;
 }
 
-export interface EnvStatus {
+/**
+ * What the Colab CLI environment looks like. This is the whole of what the
+ * domain service can answer — nothing about the Electron app itself, which the
+ * IPC layer adds on its way to the renderer.
+ */
+export interface ColabEnvironment {
   cli_path: string | null;
   cli_source: "bundled" | "override" | "path" | "local-bin" | null;
   cli_version: string | null;
@@ -53,6 +58,12 @@ export interface EnvStatus {
   token_expiry: string | null;
   has_refresh_token: boolean;
   hint: string | null;
+}
+
+/** The environment as the renderer sees it, plus what only Electron knows. */
+export interface EnvStatus extends ColabEnvironment {
+  /** The Electron app's own version, from package.json. Not the CLI's. */
+  app_version: string;
 }
 
 export interface CommandReport {

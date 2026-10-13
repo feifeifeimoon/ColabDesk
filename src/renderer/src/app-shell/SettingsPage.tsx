@@ -351,6 +351,11 @@ export function SettingsPage({ initialSection = "account" }: { initialSection?: 
     return (
       <Panel>
         <PanelRow
+          label={t("settings.runtimeAppVersion", "应用版本")}
+          description={t("settings.runtimeAppVersionDesc", "应用自身的版本号，不是内置 CLI 的版本。")}
+          value={env?.app_version || "—"}
+        />
+        <PanelRow
           label={t("settings.runtimeCliCmd", "colab 命令")}
           description={t("settings.runtimeCliCmdDesc", "本地调用的 Colab CLI 路径。")}
           value={

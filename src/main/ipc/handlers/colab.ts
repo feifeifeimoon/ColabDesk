@@ -1,7 +1,8 @@
 /** Session, quota, login and `~/.ssh/config` commands — the CLI-facing surface. */
 
-import { ipcMain } from "electron";
+import { app, ipcMain } from "electron";
 import { EVENTS, IPC } from "@shared/ipc";
+import type { EnvStatus } from "@shared/types";
 import { broadcast } from "../../broadcast";
 import { resetAccountCache } from "../../colab/account";
 import { LoginFlow } from "../../colab/login";
@@ -17,7 +18,12 @@ export interface LoginHandle {
 export function registerColabHandlers({ service, usageHistory, bundledDir }: IpcContext): LoginHandle {
   let loginFlow: LoginFlow | null = null;
 
-  ipcMain.handle(IPC.envStatus, () => service.envStatus());
+  // `app.getVersion()` is an Electron concern, so it is merged in here rather
+  // than pushed down into the Colab domain service.
+  ipcMain.handle(IPC.envStatus, async (): Promise<EnvStatus> => ({
+    ...(await service.envStatus()),
+    app_version: app.getVersion(),
+  }));
   ipcMain.handle(IPC.listSessions, () => service.listSessions());
   ipcMain.handle(IPC.listUntracked, () => service.listUntracked());
   // Every reading the renderer asks for is also a point on the usage curve, so
