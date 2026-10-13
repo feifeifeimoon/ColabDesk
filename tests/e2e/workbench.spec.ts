@@ -28,8 +28,8 @@ test("没有会话时，工作台已给出全部机器状态", async ({ page }) 
   const status = page.locator(".statusbar");
   await expect(status).toContainText("42.50 CU");
   await expect(status).toContainText("1.25/h");
-  await expect(status).toContainText("1 活跃");
-  await expect(status).toContainText("0 终端");
+  await expect(status.locator('[data-testid="statusbar-assignments"]')).toHaveText("1");
+  await expect(status.locator('[data-testid="terminal-count"]')).toHaveText("0");
 });
 
 test("服务器上有、本地没有的运行时也会列出来，但不可操作", async ({ page }) => {

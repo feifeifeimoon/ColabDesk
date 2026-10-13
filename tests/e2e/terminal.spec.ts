@@ -149,6 +149,6 @@ test("关掉一个终端，会话的连接留着；关掉最后一个才断开",
   await page.getByLabel("关闭终端 1").click();
 
   await expect(page.locator(".terminal-host")).toHaveCount(0);
-  await expect(page.locator('[data-testid="terminal-count"]')).toContainText("0 终端");
+  await expect(page.locator('[data-testid="terminal-count"]')).toHaveText("0");
   await expect(page.locator(".startpage")).toContainText("还没有终端");
 });

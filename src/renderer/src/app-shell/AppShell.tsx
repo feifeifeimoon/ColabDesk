@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../components/ui/Button";
 import {
+  ActivityIcon,
   CloseIcon,
   CloseWindowIcon,
   MaximizeIcon,
@@ -363,8 +364,13 @@ export function StatusBar() {
 
         <span className="statusbar__sep" aria-hidden="true">·</span>
 
-        <span className="statusbar__item" data-testid="statusbar-assignments">
-          {t("statusbar.activeSessions", "{{count}} 活跃", { count: assignments })}
+        <span
+          className="statusbar__item"
+          data-testid="statusbar-assignments"
+          title={t("statusbar.activeSessionsTitle", "活跃会话：{{count}} 台", { count: assignments })}
+        >
+          <ActivityIcon size={13} />
+          <span>{assignments}</span>
         </span>
 
         {popoverOpen && (
@@ -457,7 +463,7 @@ export function StatusBar() {
       >
         <span className="statusbar__item" data-testid="terminal-count">
           <TerminalIcon size={13} />
-          <span>{t("statusbar.terminalsCount", "{{count}} 终端", { count: terminalCount })}</span>
+          <span>{terminalCount}</span>
         </span>
       </div>
     </footer>

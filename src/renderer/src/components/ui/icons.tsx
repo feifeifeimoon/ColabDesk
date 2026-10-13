@@ -152,6 +152,15 @@ export function ChipIcon({ size }: IconProps) {
   );
 }
 
+/** Active tasks / sessions pulse. */
+export function ActivityIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M2 8.5h3l2-4.5 2.5 8 1.5-3.5h5" />
+    </Svg>
+  );
+}
+
 /** Outside tools that reach the runtime over the same SSH config. */
 export function PlugIcon({ size }: IconProps) {
   return (
