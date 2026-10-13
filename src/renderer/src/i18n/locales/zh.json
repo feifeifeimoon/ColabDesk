@@ -294,6 +294,7 @@
     "runtimeCliCmd": "colab 命令",
     "runtimeCliCmdDesc": "应用优先使用内置运行时，其次才是系统安装的 CLI",
     "runtimeNotFound": "未找到",
+    "runtimeDetecting": "检测中…",
     "runtimeSource": "来源",
     "runtimeSourceBundled": "应用内置运行时",
     "runtimeSourceOverride": "环境变量指定",

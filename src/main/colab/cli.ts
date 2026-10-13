@@ -50,7 +50,11 @@ function bundledCli(bundledDir: string): ResolvedCli | null {
   return {
     exe: python,
     prefix: ["-m", "colab_cli.cli"],
-    env: { PYTHONPATH: site, PYTHONDONTWRITEBYTECODE: "1" },
+    env: {
+      PYTHONPATH: site,
+      PYTHONDONTWRITEBYTECODE: "1",
+      PYTHONUNBUFFERED: "1",
+    },
     label: `${python} -m colab_cli.cli`,
     source: "bundled",
   };
@@ -77,27 +81,52 @@ function pathCli(): ResolvedCli | null {
   return null;
 }
 
-/** `uv tool install` puts its shims here; this is also where the docs point. */
+/** `uv tool install` and pip put shims in well-known per-user directories. */
 function localBinCli(): ResolvedCli | null {
-  const candidate = join(homedir(), ".local", "bin", EXE_NAME);
-  if (executableExists(candidate)) {
-    return { exe: candidate, prefix: [], env: {}, label: candidate, source: "local-bin" };
+  const home = homedir();
+  const candidates: string[] = [join(home, ".local", "bin", EXE_NAME)];
+
+  if (process.platform === "win32") {
+    const appData = process.env.APPDATA;
+    const localAppData = process.env.LOCALAPPDATA;
+    if (appData) {
+      candidates.push(join(appData, "uv", "tools", "google-colab-cli", "Scripts", EXE_NAME));
+      candidates.push(join(appData, "Python", "Scripts", EXE_NAME));
+    }
+    if (localAppData) {
+      candidates.push(join(localAppData, "Programs", "Python", "Scripts", EXE_NAME));
+      candidates.push(join(localAppData, "Microsoft", "WindowsApps", EXE_NAME));
+    }
+  } else {
+    candidates.push("/opt/homebrew/bin/colab", "/usr/local/bin/colab");
+  }
+
+  for (const candidate of candidates) {
+    if (executableExists(candidate)) {
+      return { exe: candidate, prefix: [], env: {}, label: candidate, source: "local-bin" };
+    }
   }
   return null;
 }
 
 /**
- * Resolution order: bundled runtime first (the app should work on a machine
- * with no Python at all), then an explicit override, then PATH, then the
- * `uv tool install` location. E2E replaces the whole question with a stub.
+ * Resolution order:
+ * 1. Explicit developer override via COLABDESK_CLI_PATH (always wins for testing)
+ * 2. Bundled standalone Python runtime (app ships self-contained)
+ * 3. System PATH
+ * 4. Standard tool install locations (uv tool, pip, homebrew)
+ * E2E replaces the whole question with a stub.
  */
 export function resolveCli(bundledDir?: string): ResolvedCli | null {
   if (e2eMockEnabled()) return mockResolvedCli();
+  const override = overrideCli();
+  if (override) return override;
+
   if (bundledDir) {
     const bundled = bundledCli(bundledDir);
     if (bundled) return bundled;
   }
-  return overrideCli() ?? pathCli() ?? localBinCli();
+  return pathCli() ?? localBinCli();
 }
 
 export interface RunOptions {

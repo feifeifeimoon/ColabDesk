@@ -1,5 +1,8 @@
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { combined, needsLogin, parseUsage, parseVersion, readManifestVersion } from "./cli";
+import { CLI_PATH_ENV, combined, needsLogin, parseUsage, parseVersion, readManifestVersion, resolveCli } from "./cli";
 
 describe("parseUsage", () => {
   it("parses the three labelled lines", () => {
@@ -47,5 +50,47 @@ describe("combined output", () => {
 describe("readManifestVersion", () => {
   it("returns null for non-existent manifest", () => {
     expect(readManifestVersion("non-existent-dir")).toBeNull();
+  });
+});
+
+describe("resolveCli", () => {
+  it("prefers override when COLABDESK_CLI_PATH points to an executable", () => {
+    const tempDir = join(tmpdir(), `colab-cli-test-${Date.now()}`);
+    mkdirSync(tempDir, { recursive: true });
+    const fakeCli = join(tempDir, process.platform === "win32" ? "colab.exe" : "colab");
+    writeFileSync(fakeCli, "echo fake", { mode: 0o755 });
+
+    const prev = process.env[CLI_PATH_ENV];
+    try {
+      process.env[CLI_PATH_ENV] = fakeCli;
+      const resolved = resolveCli();
+      expect(resolved).not.toBeNull();
+      expect(resolved?.source).toBe("override");
+      expect(resolved?.exe).toBe(fakeCli);
+    } finally {
+      if (prev !== undefined) process.env[CLI_PATH_ENV] = prev;
+      else delete process.env[CLI_PATH_ENV];
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("resolves bundled runtime when bundledDir layout exists", () => {
+    const tempDir = join(tmpdir(), `colab-bundled-test-${Date.now()}`);
+    const pyDir = join(tempDir, "python");
+    const siteDir = join(tempDir, "site");
+    mkdirSync(pyDir, { recursive: true });
+    mkdirSync(siteDir, { recursive: true });
+    const fakePy = join(pyDir, process.platform === "win32" ? "python.exe" : "bin/python3");
+    if (process.platform !== "win32") mkdirSync(join(pyDir, "bin"), { recursive: true });
+    writeFileSync(fakePy, "", { mode: 0o755 });
+
+    const resolved = resolveCli(tempDir);
+    expect(resolved).not.toBeNull();
+    expect(resolved?.source).toBe("bundled");
+    expect(resolved?.prefix).toEqual(["-m", "colab_cli.cli"]);
+    expect(resolved?.env.PYTHONPATH).toBe(siteDir);
+    expect(resolved?.env.PYTHONUNBUFFERED).toBe("1");
+
+    rmSync(tempDir, { recursive: true, force: true });
   });
 });

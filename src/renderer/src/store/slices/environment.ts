@@ -26,8 +26,6 @@ export const createEnvironmentSlice: StateCreator<AppState, [], [], EnvironmentS
    * token.
    */
   refreshEnvironment: async () => {
-    await get().loadUsage();
-
     let authenticated = false;
     try {
       const status = await api.envStatus();
@@ -35,6 +33,16 @@ export const createEnvironmentSlice: StateCreator<AppState, [], [], EnvironmentS
       set({ env: status, error: null });
     } catch (cause) {
       set({ error: api.messageOf(cause) });
+    }
+
+    await get().loadUsage();
+
+    try {
+      const status = await api.envStatus();
+      authenticated = status.authenticated;
+      set({ env: status, error: null });
+    } catch {
+      // Keep previous env state if background refresh fails.
     }
     return authenticated;
   },

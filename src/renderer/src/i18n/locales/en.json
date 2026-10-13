@@ -294,6 +294,7 @@
     "runtimeCliCmd": "colab command",
     "runtimeCliCmdDesc": "The app prioritizes bundled runtime before system CLI",
     "runtimeNotFound": "Not found",
+    "runtimeDetecting": "Detecting...",
     "runtimeSource": "Source",
     "runtimeSourceBundled": "Bundled runtime",
     "runtimeSourceOverride": "Environment override",

@@ -352,7 +352,11 @@ export function SettingsPage({ initialSection = "account" }: { initialSection?: 
         <PanelRow
           label={t("settings.runtimeCliCmd", "colab 命令")}
           description={t("settings.runtimeCliCmdDesc", "应用优先使用内置运行时，其次才是系统安装的 CLI")}
-          value={env?.cli_path ?? t("settings.runtimeNotFound", "未找到")}
+          value={
+            env === null
+              ? t("settings.runtimeDetecting", "检测中…")
+              : (env.cli_path ?? t("settings.runtimeNotFound", "未找到"))
+          }
           title={env?.cli_path ?? undefined}
         />
         <PanelRow
