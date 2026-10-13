@@ -66,6 +66,13 @@ export const closeWindow = () => bridge().closeWindow();
 export const onWindowMaximized = (listener: Parameters<ColabDeskApi["onWindowMaximized"]>[0]) =>
   bridge().onWindowMaximized(listener);
 
+export const updateStatus = () => bridge().updateStatus();
+export const checkForUpdates = () => bridge().checkForUpdates();
+export const downloadUpdate = () => bridge().downloadUpdate();
+export const installUpdate = () => bridge().installUpdate();
+export const onUpdateStatus = (listener: Parameters<ColabDeskApi["onUpdateStatus"]>[0]) =>
+  bridge().onUpdateStatus(listener);
+
 /**
  * Error from an `invoke` rejection arrives as a plain string or an Error, and
  * Electron wraps the message with IPC plumbing (`Error invoking remote method

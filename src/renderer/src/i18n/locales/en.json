@@ -45,7 +45,10 @@
     "standby": "Standby",
     "connected": "Connected",
     "expired": "Expired",
-    "remainingTime": "~{{time}} left"
+    "remainingTime": "~{{time}} left",
+    "updateAvailableTitle": "Version {{version}} is available",
+    "updateReadyTitle": "Version {{version}} is downloaded",
+    "updateReady": "Restart to update"
   },
   "sidebar": {
     "widthLabel": "Sidebar width",
@@ -76,7 +79,11 @@
     "settingsTitle": "Settings (Ctrl+,)"
   },
   "banners": {
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "updateOffered": "Version {{version}} is available.",
+    "updateReady": "Version {{version}} is downloaded; it applies on restart.",
+    "updateDownload": "Download",
+    "updateRestart": "Restart to update"
   },
   "home": {
     "tagline": "Run a remote GPU runtime like a local machine",
@@ -316,7 +323,29 @@
     "externalRemoved": "SSH config removed.",
     "externalAliasHint": "Alias {{alias}} · {{path}}",
     "externalRawOutputLabel": "Config block written",
-    "runtimeAppVersion": "App version"
+    "runtimeAppVersion": "App version",
+    "groupApp": "App",
+    "sectionAboutTitle": "About",
+    "sectionAboutDesc": "Which build this is, and how it updates itself.",
+    "updateLabel": "Automatic updates",
+    "updateDesc": "Checked once a day in the background. Downloading and restarting are yours to decide.",
+    "updateUnavailable": "This build cannot update itself. Download it from the releases page instead.",
+    "updateIdle": "Not checked yet.",
+    "updateChecking": "Checking…",
+    "updateAvailable": "Version {{version}} is available.",
+    "updateLatest": "Up to date.",
+    "updateDownloading": "Downloading {{version}} ({{percent}}%)…",
+    "updateDownloaded": "Version {{version}} is downloaded; it applies on restart.",
+    "updateFailedQuiet": "The last background check did not succeed. It will retry on its own.",
+    "updateFailedNetwork": "Could not reach the update server. Check your network or proxy and try again; the app keeps working either way.",
+    "updateFailedMissing": "This release has no update package yet. Try again later.",
+    "updateFailedUnavailable": "This installation carries no update information. Download it from the releases page.",
+    "updateCheckAction": "Check for updates",
+    "updateDownloadAction": "Download update",
+    "updateInstallAction": "Restart to update",
+    "updateRetryAction": "Retry",
+    "updateReleaseLabel": "Release page",
+    "updateReleaseAction": "Open release page"
   },
   "failure": {
     "networkInterrupted": "Network request interrupted: TLS connection to colab.research.google.com was reset. Retry if sporadic; check proxy/VPN if persistent.",

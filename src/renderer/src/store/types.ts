@@ -8,7 +8,7 @@
  * `get()` while the type still says where each field came from.
  */
 
-import type { EnvStatus, Session, SshState, UsageReport } from "@shared/types";
+import type { EnvStatus, Session, SshState, UpdateStatus, UsageReport } from "@shared/types";
 import type { PanelSide } from "../lib/panel-width";
 import type { Theme, ThemePreference } from "../lib/theme";
 import type { TerminalAppearance } from "../lib/terminal-appearance";
@@ -129,15 +129,47 @@ export interface PreferencesSlice {
   setPanelWidth(side: PanelSide, width: number): void;
 }
 
+/** Which section of the settings rail is showing. State, so it lives here. */
+export type SectionId =
+  | "account"
+  | "usage"
+  | "appearance"
+  | "terminal"
+  | "runtime"
+  | "external"
+  | "about";
+
 export interface SurfacesSlice {
   settingsOpen: boolean;
+  /** Survives closing and reopening, so settings comes back where you left it. */
+  settingsSection: SectionId;
   newSessionOpen: boolean;
 
-  openSettings(): void;
+  /** `section` is how a caller elsewhere in the app deep-links into settings. */
+  openSettings(section?: SectionId): void;
   closeSettings(): void;
   toggleSettings(): void;
+  setSettingsSection(section: SectionId): void;
   openNewSession(): void;
   closeNewSession(): void;
 }
 
-export type AppState = WorkspaceSlice & SessionsSlice & EnvironmentSlice & PreferencesSlice & SurfacesSlice;
+export interface UpdateSlice {
+  /** What the main process last reported; the only source of truth. */
+  update: UpdateStatus;
+  /** A version the user waved away, so the prompt does not return for it. */
+  dismissedVersion: string | null;
+
+  setUpdateStatus(status: UpdateStatus): void;
+  dismissUpdate(version: string): void;
+  checkForUpdates(): Promise<void>;
+  downloadUpdate(): Promise<void>;
+  installUpdate(): Promise<void>;
+}
+
+export type AppState = WorkspaceSlice &
+  SessionsSlice &
+  EnvironmentSlice &
+  PreferencesSlice &
+  SurfacesSlice &
+  UpdateSlice;

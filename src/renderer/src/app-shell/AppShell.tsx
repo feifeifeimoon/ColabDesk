@@ -12,6 +12,7 @@ import {
   PanelRightIcon,
   PlusIcon,
   RestoreIcon,
+  SyncIcon,
   TerminalIcon,
 } from "../components/ui/icons";
 import { closeWindow, minimizeWindow, onWindowMaximized, toggleMaximizeWindow } from "../lib/api";
@@ -274,6 +275,14 @@ export function StatusBar() {
   const tabs = useAppStore((state) => state.tabs);
   const sessions = useAppStore((state) => state.sessions);
   const connections = useAppStore((state) => state.connections);
+  // Primitives, not the status object — a download reports progress many times
+  // a second, and this bar sits at the root of the tree.
+  const updateState = useAppStore((state) => state.update.state);
+  const updateVersion = useAppStore((state) =>
+    state.update.state === "available" || state.update.state === "downloaded" ? state.update.version : null,
+  );
+  const openSettings = useAppStore((state) => state.openSettings);
+  const updateReady = updateState === "available" || updateState === "downloaded";
 
   const [popoverOpen, setPopoverOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -440,6 +449,23 @@ export function StatusBar() {
       </div>
 
       <div className="statusbar__spacer" />
+
+      {updateReady && (
+        <button
+          type="button"
+          className="statusbar__item statusbar__item--action"
+          data-testid="statusbar-update"
+          title={
+            updateState === "downloaded"
+              ? t("statusbar.updateReadyTitle", "{{version}} 已下载，重启后生效", { version: updateVersion })
+              : t("statusbar.updateAvailableTitle", "有新版本 {{version}}", { version: updateVersion })
+          }
+          onClick={() => openSettings("about")}
+        >
+          <SyncIcon size={13} />
+          <span>{updateState === "downloaded" ? t("statusbar.updateReady", "重启以更新") : updateVersion}</span>
+        </button>
+      )}
 
       <div
         className="statusbar__group"

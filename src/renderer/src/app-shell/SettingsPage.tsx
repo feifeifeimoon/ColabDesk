@@ -24,11 +24,13 @@ import {
   ChipIcon,
   ContrastIcon,
   PlugIcon,
+  SyncIcon,
   TerminalIcon,
 } from "../components/ui/icons";
 import { Callout } from "../components/ui/Notice";
 import { RawOutput } from "../components/ui/RawOutput";
 import { LoginPanel } from "../features/login/LoginPanel";
+import { UpdatePanel } from "../features/updates/UpdatePanel";
 import { UsageTrendPanel } from "../features/usage/UsageTrendPanel";
 import { TerminalSettings } from "./TerminalSettings";
 import { UI_LANGUAGE_CHOICES } from "../i18n/supported-languages";
@@ -36,9 +38,9 @@ import { messageOf, sshRemove, sshSetup } from "../lib/api";
 import { formatExpiry } from "../lib/format";
 import type { ThemePreference } from "../lib/theme";
 import { useAppStore } from "../store";
+import type { SectionId } from "../store/types";
 
-/** Font sizes the terminal accepts; the choice survives restarts. */
-export type SectionId = "account" | "usage" | "appearance" | "terminal" | "runtime" | "external";
+export type { SectionId } from "../store/types";
 
 interface Section {
   id: SectionId;
@@ -119,12 +121,31 @@ const GROUPS_DEF: { id: string; titleKey: string; defaultTitle: string; sections
       },
     ],
   },
+  {
+    id: "app",
+    titleKey: "settings.groupApp",
+    defaultTitle: "应用",
+    sections: [
+      {
+        id: "about",
+        titleKey: "settings.sectionAboutTitle",
+        defaultTitle: "关于",
+        descKey: "settings.sectionAboutDesc",
+        defaultDesc: "这一份应用自身的版本，以及它是怎么更新的。",
+        icon: SyncIcon,
+      },
+    ],
+  },
 ];
 
-export function SettingsPage({ initialSection = "account" }: { initialSection?: SectionId }) {
+export function SettingsPage() {
   const { t } = useTranslation();
   const open = useAppStore((state) => state.settingsOpen);
   const closeSettings = useAppStore((state) => state.closeSettings);
+  // Which section shows is state, not a local detail: the status bar deep-links
+  // into "about" when there is an update waiting.
+  const sectionId = useAppStore((state) => state.settingsSection);
+  const setSectionId = useAppStore((state) => state.setSettingsSection);
   const env = useAppStore((state) => state.env);
   const usage = useAppStore((state) => state.usage);
   const activeSession = useAppStore((state) => state.selectedSession);
@@ -136,7 +157,6 @@ export function SettingsPage({ initialSection = "account" }: { initialSection?: 
   const setPanelWidth = useAppStore((state) => state.setPanelWidth);
   const refreshEnvironment = useAppStore((state) => state.refreshEnvironment);
 
-  const [sectionId, setSectionId] = useState<SectionId>(initialSection);
   const [setup, setSetup] = useState<SshSetup | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -350,7 +370,6 @@ export function SettingsPage({ initialSection = "account" }: { initialSection?: 
   function runtimeBody() {
     return (
       <Panel>
-        <PanelRow label={t("settings.runtimeAppVersion", "应用版本")} value={env?.app_version || "—"} />
         <PanelRow
           label={t("settings.runtimeCliCmd", "colab 命令")}
           description={t("settings.runtimeCliCmdDesc", "本地调用的 Colab CLI 路径。")}
@@ -437,8 +456,24 @@ export function SettingsPage({ initialSection = "account" }: { initialSection?: 
     );
   }
 
+  function aboutBody() {
+    return (
+      <div className="settings__block">
+        <Panel>
+          <PanelRow
+            label={t("settings.runtimeAppVersion", "应用版本")}
+            value={env?.app_version || "—"}
+          />
+        </Panel>
+        <UpdatePanel />
+      </div>
+    );
+  }
+
   function body() {
     switch (section.id) {
+      case "about":
+        return aboutBody();
       case "usage":
         return <UsageTrendPanel />;
       case "appearance":

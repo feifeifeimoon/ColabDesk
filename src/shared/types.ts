@@ -155,3 +155,44 @@ export interface AuthDoneEvent {
   code: number | null;
   output: string;
 }
+
+/**
+ * Why an update attempt failed, as a category the renderer can put into words.
+ * It lives here rather than beside the classifier because the contract is the
+ * lowest layer — `main/` may import from `shared/`, never the other way round.
+ */
+export type UpdateFailureReason = "network" | "missing-release" | "unavailable" | "unknown";
+
+/**
+ * What the updater is doing, as one discriminant rather than a set of booleans
+ * that can contradict each other. The main process owns every transition and
+ * pushes the whole value; the renderer never infers a state from partial
+ * signals.
+ */
+export type UpdateStatus =
+  /**
+   * This build cannot update itself — a development checkout, or macOS before
+   * signing exists. Distinct from `idle` on purpose: a panel that treated it as
+   * "nothing to report yet" would offer a check button that does nothing.
+   */
+  | { state: "unavailable" }
+  | { state: "idle" }
+  | { state: "checking"; userInitiated: boolean }
+  | { state: "available"; version: string }
+  | { state: "not-available"; userInitiated: boolean }
+  | { state: "downloading"; version: string; percent: number }
+  | { state: "downloaded"; version: string }
+  /**
+   * Failures cross the boundary as a category plus the raw text, never as
+   * finished prose: the main process has no interface language, and
+   * electron-updater's own strings are transport-level noise. `version` is the
+   * one this failed on, if any — without it a failed download could not offer
+   * a retry and the user would wait a day for the next scheduled check.
+   */
+  | {
+      state: "error";
+      reason: UpdateFailureReason;
+      detail: string;
+      userInitiated: boolean;
+      version: string | null;
+    };

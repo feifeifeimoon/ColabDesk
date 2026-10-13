@@ -12,11 +12,14 @@ import type { AppState, SurfacesSlice } from "../types";
 
 export const createSurfacesSlice: StateCreator<AppState, [], [], SurfacesSlice> = (set, get) => ({
   settingsOpen: false,
+  settingsSection: "account",
   newSessionOpen: false,
 
-  openSettings: () => set({ settingsOpen: true }),
+  openSettings: (section) =>
+    set(section ? { settingsOpen: true, settingsSection: section } : { settingsOpen: true }),
   closeSettings: () => set({ settingsOpen: false }),
   toggleSettings: () => set({ settingsOpen: !get().settingsOpen }),
+  setSettingsSection: (section) => set({ settingsSection: section }),
 
   openNewSession: () => set({ newSessionOpen: true, settingsOpen: false }),
   closeNewSession: () => set({ newSessionOpen: false }),
