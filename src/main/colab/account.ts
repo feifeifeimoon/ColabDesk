@@ -21,7 +21,7 @@ import { e2eMockEnabled } from "../e2e/mode";
 import { parseEligibility } from "./accelerator-eligibility";
 import { backendGetJson } from "./backend";
 import { retryTransientRead } from "./network-retry";
-import { accessToken, authState } from "./sessions";
+import { ensureAccessToken, authState } from "./sessions";
 
 const TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo";
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -80,7 +80,7 @@ export async function fetchAccountInfo(): Promise<AccountInfo | null> {
     return authState().token_file_exists ? { email: "e2e@example.com", subject: "e2e-subject-1" } : null;
   }
 
-  const token = accessToken();
+  const token = await ensureAccessToken();
   if (!token) return null;
 
   let body: unknown;

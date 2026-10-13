@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   cancelLogin,
+  logout,
   messageOf,
   onAuthDone,
   onAuthUrl,
@@ -20,9 +21,11 @@ import { RawOutput } from "../../components/ui/RawOutput";
  */
 export function LoginPanel({
   onFinished,
+  authenticated = false,
 }: {
   /** Reloads environment status; resolves to the fresh authenticated flag. */
   onFinished: () => Promise<boolean>;
+  authenticated?: boolean;
 }) {
   const { t } = useTranslation();
   const [url, setUrl] = useState<string | null>(null);
@@ -91,12 +94,35 @@ export function LoginPanel({
     setMessage(t("login.cancelled", "已取消登录。"));
   }
 
+  async function handleLogout() {
+    setError(null);
+    try {
+      await logout();
+      await onFinished();
+      setMessage(t("login.signedOut", "已退出登录，凭证已清除。"));
+      setOutput("");
+    } catch (cause) {
+      setError(messageOf(cause));
+    }
+  }
+
   return (
     <div className="login">
       {!running ? (
-        <Button variant="primary" onClick={begin}>
-          {t("login.signInGoogle", "授权登录 Google 账号")}
-        </Button>
+        authenticated ? (
+          <div className="row" style={{ gap: "var(--space-2)" }}>
+            <Button variant="primary" onClick={begin}>
+              {t("login.switchAccount", "切换账号 / 重新授权")}
+            </Button>
+            <Button variant="outline" onClick={handleLogout}>
+              {t("login.signOut", "退出登录")}
+            </Button>
+          </div>
+        ) : (
+          <Button variant="primary" onClick={begin}>
+            {t("login.signInGoogle", "授权登录 Google 账号")}
+          </Button>
+        )
       ) : (
         <Button variant="outline" onClick={cancel}>
           {t("login.cancelLogin", "取消登录")}

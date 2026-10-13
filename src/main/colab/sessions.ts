@@ -11,9 +11,10 @@
  * anything the renderer receives.
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { e2eMockEnabled } from "../e2e/mode";
 import type { Session } from "@shared/types";
 
 /** The raw on-disk entry, including the credential. Main process only. */
@@ -31,6 +32,58 @@ export function sessionsFile(): string {
 
 export function tokenFile(): string {
   return join(configDir(), "token.json");
+}
+
+export function tokenBackupFile(): string {
+  return join(configDir(), "token.json.bak");
+}
+
+export function clearToken(): boolean {
+  const path = tokenFile();
+  if (existsSync(path)) {
+    try {
+      unlinkSync(path);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+export function backupToken(): boolean {
+  const src = tokenFile();
+  if (!existsSync(src)) return false;
+  try {
+    writeFileSync(tokenBackupFile(), readFileSync(src));
+    unlinkSync(src);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function restoreTokenBackup(): boolean {
+  const bak = tokenBackupFile();
+  if (!existsSync(bak)) return false;
+  try {
+    writeFileSync(tokenFile(), readFileSync(bak));
+    unlinkSync(bak);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function removeTokenBackup(): void {
+  const bak = tokenBackupFile();
+  if (existsSync(bak)) {
+    try {
+      unlinkSync(bak);
+    } catch {
+      // ignore
+    }
+  }
 }
 
 function normalize(name: string, raw: Record<string, unknown>): RawSession {
@@ -151,4 +204,73 @@ export function accessToken(): string | null {
   } catch {
     return null;
   }
+}
+
+const GOOGLE_TOKEN_URI = "https://oauth2.googleapis.com/token";
+const DEFAULT_CLIENT_ID = "764086051850-6qr4p6gpi6hn506pt8ejuq83di341hur.apps.googleusercontent.com";
+const DEFAULT_CLIENT_SECRET = "d-FL95Q19q7MQmFpd7hHD0Ty";
+
+/**
+ * Actively refreshes an expired access token using the stored refresh_token,
+ * writing the refreshed credentials back to `token.json`.
+ */
+export async function refreshAccessToken(): Promise<string | null> {
+  if (e2eMockEnabled()) return "e2e-access-token";
+
+  const path = tokenFile();
+  if (!existsSync(path)) return null;
+
+  try {
+    const raw = readFileSync(path, "utf8");
+    const creds = JSON.parse(raw) as Record<string, unknown>;
+    const refreshToken = creds.refresh_token;
+    if (typeof refreshToken !== "string" || !refreshToken) return null;
+
+    const clientId = typeof creds.client_id === "string" && creds.client_id ? creds.client_id : DEFAULT_CLIENT_ID;
+    const clientSecret =
+      typeof creds.client_secret === "string" && creds.client_secret ? creds.client_secret : DEFAULT_CLIENT_SECRET;
+    const tokenUri = typeof creds.token_uri === "string" && creds.token_uri ? creds.token_uri : GOOGLE_TOKEN_URI;
+
+    const body = new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    });
+
+    const response = await fetch(tokenUri, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+      signal: AbortSignal.timeout(15_000),
+    });
+
+    if (!response.ok) return null;
+    const data = (await response.json()) as { access_token?: string; expires_in?: number };
+    if (typeof data.access_token !== "string" || !data.access_token) return null;
+
+    creds.token = data.access_token;
+    const expiresInSec = typeof data.expires_in === "number" ? data.expires_in : 3600;
+    creds.expiry = new Date(Date.now() + expiresInSec * 1000).toISOString();
+
+    writeFileSync(path, JSON.stringify(creds, null, 2), "utf8");
+    return data.access_token;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Returns a valid access token. If the current token is missing or expired,
+ * but a refresh token is present, refreshes and returns the new token.
+ */
+export async function ensureAccessToken(): Promise<string | null> {
+  const current = accessToken();
+  if (current) return current;
+
+  const auth = authState();
+  if (auth.token_file_exists && auth.has_refresh_token) {
+    return refreshAccessToken();
+  }
+  return null;
 }

@@ -162,6 +162,9 @@
   },
   "login": {
     "signInGoogle": "授权登录 Google 账号",
+    "switchAccount": "切换账号 / 重新授权",
+    "signOut": "退出登录",
+    "signedOut": "已退出登录，凭证已清除。",
     "cancelLogin": "取消登录",
     "requestingUrl": "正在向 Google 申请授权链接…",
     "urlOpened": "授权页面已在浏览器打开。登录后把 Google 显示的授权码粘贴到下方。",

@@ -7,6 +7,7 @@ import { resetAccountCache } from "../../colab/account";
 import { LoginFlow } from "../../colab/login";
 import { openExternalTerminal } from "../../colab/service";
 import { resolveCli } from "../../colab/cli";
+import { clearToken } from "../../colab/sessions";
 import type { IpcContext } from "../register";
 
 export interface LoginHandle {
@@ -55,6 +56,13 @@ export function registerColabHandlers({ service, usageHistory, bundledDir }: Ipc
   });
   ipcMain.handle(IPC.submitLoginCode, (_event, code: string) => loginFlow?.submit(code));
   ipcMain.handle(IPC.cancelLogin, () => loginFlow?.cancel());
+  ipcMain.handle(IPC.logout, () => {
+    loginFlow?.cancel();
+    loginFlow = null;
+    clearToken();
+    resetAccountCache();
+    broadcast(EVENTS.authDone, { code: 0, output: "已退出登录。" });
+  });
 
   ipcMain.handle(IPC.sshSetup, (_event, name: string) => service.sshSetup(name));
   ipcMain.handle(IPC.sshRemove, (_event, name: string) => service.sshRemove(name));

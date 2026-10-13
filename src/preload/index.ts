@@ -28,6 +28,7 @@ const api: ColabDeskApi = {
   startLogin: () => invoke(IPC.startLogin),
   submitLoginCode: (code) => invoke(IPC.submitLoginCode, code),
   cancelLogin: () => invoke(IPC.cancelLogin),
+  logout: () => invoke(IPC.logout),
   onAuthUrl: (listener) => subscribe(EVENTS.authUrl, listener),
   onAuthDone: (listener) => subscribe(EVENTS.authDone, listener),
 

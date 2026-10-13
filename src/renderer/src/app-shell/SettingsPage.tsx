@@ -272,7 +272,7 @@ export function SettingsPage({ initialSection = "account" }: { initialSection?: 
               <span className="metric__label">{t("settings.metricActiveRuntimes", "活跃运行时")}</span>
             </div>
           </div>
-          <LoginPanel onFinished={refreshEnvironment} />
+          <LoginPanel onFinished={refreshEnvironment} authenticated={env?.authenticated ?? false} />
           <RawOutput text={usage?.raw ?? ""} label={t("settings.rawUsageLabel", "colab usage 原始输出")} />
         </Card>
         {/* Which Google account, and what Colab allows it — answered by the API

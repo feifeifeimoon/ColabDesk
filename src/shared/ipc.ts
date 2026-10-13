@@ -13,6 +13,7 @@ export const IPC = {
   startLogin: "auth:start",
   submitLoginCode: "auth:submit",
   cancelLogin: "auth:cancel",
+  logout: "auth:logout",
   sshSetup: "ssh:setup",
   sshRemove: "ssh:remove",
   sshOpenTerminal: "ssh:openTerminal",

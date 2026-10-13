@@ -68,6 +68,7 @@ export interface ColabDeskApi {
   startLogin(): Promise<void>;
   submitLoginCode(code: string): Promise<void>;
   cancelLogin(): Promise<void>;
+  logout(): Promise<void>;
   onAuthUrl(listener: (payload: AuthUrlEvent) => void): () => void;
   onAuthDone(listener: (payload: AuthDoneEvent) => void): () => void;
 

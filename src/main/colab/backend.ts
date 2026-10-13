@@ -12,7 +12,7 @@
  * by design rather than by remembering.
  */
 
-import { accessToken } from "./sessions";
+import { ensureAccessToken } from "./sessions";
 import { retryTransientRead } from "./network-retry";
 
 const COLAB_DOMAIN = "https://colab.research.google.com";
@@ -40,7 +40,7 @@ export function stripXssiPrefix(text: string): string {
  * added here rather than left to each caller to remember.
  */
 export async function backendGetJson(path: string, timeoutMs = REQUEST_TIMEOUT_MS): Promise<unknown> {
-  const token = accessToken();
+  const token = await ensureAccessToken();
   if (!token) throw new Error("token.json 里没有可用的访问令牌。");
 
   const url = new URL(path, COLAB_DOMAIN);

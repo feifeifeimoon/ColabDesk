@@ -24,6 +24,7 @@ export const syncSessions = () => bridge().syncSessions();
 export const startLogin = () => bridge().startLogin();
 export const submitLoginCode = (code: string) => bridge().submitLoginCode(code);
 export const cancelLogin = () => bridge().cancelLogin();
+export const logout = () => bridge().logout();
 export const onAuthUrl = (listener: Parameters<ColabDeskApi["onAuthUrl"]>[0]) => bridge().onAuthUrl(listener);
 export const onAuthDone = (listener: Parameters<ColabDeskApi["onAuthDone"]>[0]) => bridge().onAuthDone(listener);
 

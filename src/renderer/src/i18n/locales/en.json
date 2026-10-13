@@ -162,6 +162,9 @@
   },
   "login": {
     "signInGoogle": "Sign in with Google Account",
+    "switchAccount": "Switch account / Re-authorize",
+    "signOut": "Sign out",
+    "signedOut": "Signed out. Credentials removed.",
     "cancelLogin": "Cancel Login",
     "requestingUrl": "Requesting authorization URL from Google…",
     "urlOpened": "Authorization page opened in browser. Sign in and paste the code from Google below.",
