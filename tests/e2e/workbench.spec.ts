@@ -14,6 +14,18 @@ function dragRegion(page: Page, selector: string): Promise<string> {
     .evaluate((element) => getComputedStyle(element).getPropertyValue("-webkit-app-region").trim());
 }
 
+/**
+ * A settings row, found by its label. The label gets its own element because
+ * matching the whole row on text breaks as soon as one row's description
+ * repeats a word from another row's label — which is exactly what happened when
+ * the accelerator copy became "当前账号有权限申请的硬件加速规格。".
+ */
+function settingsRow(page: Page, label: string) {
+  return page.locator(".panel-row", {
+    has: page.locator(".panel-row__title", { hasText: label }),
+  });
+}
+
 test("没有会话时，工作台已给出全部机器状态", async ({ page }) => {
   await expect(page.locator('[data-testid="session-row"]')).toHaveCount(2);
 
@@ -206,10 +218,10 @@ test("设置页面导航栏宽度与会话栏一致，支持拖拽拉伸且双�
 test("设置页显示账号与可用加速器，不可用的加速器被划掉", async ({ page }) => {
   await page.locator('[data-testid="open-settings"]').click();
 
-  const account = page.locator(".panel-row", { hasText: "当前账号" });
+  const account = settingsRow(page, "当前账号");
   await expect(account).toContainText("e2e@example.com");
 
-  const accelerators = page.locator(".panel-row", { hasText: "可用加速器" });
+  const accelerators = settingsRow(page, "可用加速器");
   await expect(accelerators).toContainText("A100");
   await expect(accelerators.locator(".badge--off")).toHaveText("H100");
   await expect(accelerators.locator(".badge", { hasText: "T4" })).not.toHaveClass(/badge--off/);

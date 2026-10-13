@@ -350,6 +350,7 @@ export function SettingsPage({ initialSection = "account" }: { initialSection?: 
   function runtimeBody() {
     return (
       <Panel>
+        <PanelRow label={t("settings.runtimeAppVersion", "应用版本")} value={env?.app_version || "—"} />
         <PanelRow
           label={t("settings.runtimeCliCmd", "colab 命令")}
           description={t("settings.runtimeCliCmdDesc", "本地调用的 Colab CLI 路径。")}

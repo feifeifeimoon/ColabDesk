@@ -8,7 +8,7 @@
 
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import type { CommandReport, EnvStatus, Session, SshSetup, UsageReport } from "@shared/types";
+import type { ColabEnvironment, CommandReport, EnvStatus, Session, SshSetup, UsageReport } from "@shared/types";
 import { accountStatus } from "./account";
 import { fetchAssignments, type Assignment } from "./assignments";
 import { combined, needsLogin, parseUsage, parseVersion, readManifestVersion, resolveCli, runCli, type ResolvedCli } from "./cli";
@@ -103,7 +103,7 @@ export class Service {
     return report;
   }
 
-  async envStatus(): Promise<EnvStatus> {
+  async envStatus(): Promise<ColabEnvironment> {
     // Asked every refresh: whoever is signed in right now is the answer, and a
     // re-login with a different account has to replace it rather than blend in.
     const account_ = await accountStatus().catch(() => ({ account: null, eligibility: null }));
