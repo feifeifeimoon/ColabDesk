@@ -14,6 +14,7 @@ import type {
   SshSetup,
   SshState,
   TransferProgress,
+  UpdateStatus,
   UsageReport,
   UsageTrend,
 } from "./types";
@@ -115,4 +116,16 @@ export interface ColabDeskApi {
   toggleMaximizeWindow(): Promise<void>;
   closeWindow(): Promise<void>;
   onWindowMaximized(listener: (maximized: boolean) => void): () => void;
+
+  /**
+   * The updater's current state. Read once on mount — a panel that only listened
+   * would sit blank until the next transition, and the next one may be a day off.
+   */
+  updateStatus(): Promise<UpdateStatus>;
+  /** A check the user asked for, which is what makes a failure worth reporting. */
+  checkForUpdates(): Promise<void>;
+  downloadUpdate(): Promise<void>;
+  /** Restarts into the downloaded build. Does not resolve on success. */
+  installUpdate(): Promise<void>;
+  onUpdateStatus(listener: (status: UpdateStatus) => void): () => void;
 }

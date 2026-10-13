@@ -32,6 +32,10 @@ export const IPC = {
   windowMinimize: "window:minimize",
   windowToggleMaximize: "window:toggleMaximize",
   windowClose: "window:close",
+  updateStatus: "update:status",
+  updateCheck: "update:check",
+  updateDownload: "update:download",
+  updateInstall: "update:install",
 } as const;
 
 export const EVENTS = {
@@ -42,4 +46,5 @@ export const EVENTS = {
   sshStatus: "ssh:status",
   transferProgress: "transfer:progress",
   windowMaximized: "window:maximized",
+  updateStatus: "update:status-changed",
 } as const;

@@ -155,3 +155,24 @@ export interface AuthDoneEvent {
   code: number | null;
   output: string;
 }
+
+/**
+ * What the updater is doing, as one discriminant rather than a set of booleans
+ * that can contradict each other. The main process owns every transition and
+ * pushes the whole value; the renderer never infers a state from partial
+ * signals.
+ */
+export type UpdateStatus =
+  | { state: "idle" }
+  | { state: "checking"; userInitiated: boolean }
+  /** `releaseUrl` is absent when the release's page could not be resolved. */
+  | { state: "available"; version: string; releaseUrl: string | null }
+  | { state: "not-available"; userInitiated: boolean }
+  | { state: "downloading"; version: string; percent: number }
+  | { state: "downloaded"; version: string }
+  /**
+   * `message` is shown as-is, so it has to read as a sentence. `version` is the
+   * one this failed on, if any — without it a failed download could not offer a
+   * retry, and the user would wait a day for the next scheduled check.
+   */
+  | { state: "error"; message: string; userInitiated: boolean; version: string | null };

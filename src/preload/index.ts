@@ -66,6 +66,12 @@ const api: ColabDeskApi = {
   toggleMaximizeWindow: () => invoke(IPC.windowToggleMaximize),
   closeWindow: () => invoke(IPC.windowClose),
   onWindowMaximized: (listener) => subscribe(EVENTS.windowMaximized, listener),
+
+  updateStatus: () => invoke(IPC.updateStatus),
+  checkForUpdates: () => invoke(IPC.updateCheck),
+  downloadUpdate: () => invoke(IPC.updateDownload),
+  installUpdate: () => invoke(IPC.updateInstall),
+  onUpdateStatus: (listener) => subscribe(EVENTS.updateStatus, listener),
 };
 
 contextBridge.exposeInMainWorld("colabdesk", api);
