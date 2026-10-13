@@ -14,7 +14,14 @@ export default defineConfig({
   test: {
     // `.tsx` too: a component rendered with `renderToStaticMarkup` needs no DOM,
     // so the design rules that live in markup are testable right here.
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    include: [
+      "src/**/*.test.ts",
+      "src/**/*.test.tsx",
+      // Build tooling keeps its tests as plain ESM next to the tool, because
+      // these files run under bare `node` and must not need a TS build step.
+      "config/**/*.test.mjs",
+      "tools/**/*.test.mjs",
+    ],
     environment: "node",
     // One stylesheet is also a data file: the terminal's palettes are asserted
     // against the CSS itself, which needs it processed rather than stubbed out.
