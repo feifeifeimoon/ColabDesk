@@ -16,6 +16,9 @@ screenshots/
 # 品牌资产：故意不入库——文件仍在本地 brand/（logo 真源、变体与过程档案），只是先不进 git
 brand/
 
+# 设计稿与实施计划：brainstorming / writing-plans 的产物，留在本机配合对话用，不进仓库
+docs/superpowers/
+
 # Python 字节码
 __pycache__/
 
