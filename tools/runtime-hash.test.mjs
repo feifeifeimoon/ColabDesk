@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -74,4 +74,22 @@ describe("hashRuntimeDir", () => {
   it("throws when the directory does not exist", async () => {
     await expect(hashRuntimeDir(join(root, "nope"))).rejects.toThrow();
   });
+
+  if (process.platform !== "win32") {
+    it("hashes relative symlinks stably by link target", async () => {
+      tree(root, { "python/bin/python3.12": "executable" });
+      symlinkSync("python3.12", join(root, "python", "bin", "python3"));
+      const first = await hashRuntimeDir(root);
+
+      const other = scratchDir();
+      tree(other, { "python/bin/python3.12": "executable" });
+      symlinkSync("python3.12", join(other, "python", "bin", "python3"));
+      expect(await hashRuntimeDir(other)).toBe(first);
+
+      const different = scratchDir();
+      tree(different, { "python/bin/python3.12": "executable", "python/bin/other": "other" });
+      symlinkSync("other", join(different, "python", "bin", "python3"));
+      expect(await hashRuntimeDir(different)).not.toBe(first);
+    });
+  }
 });

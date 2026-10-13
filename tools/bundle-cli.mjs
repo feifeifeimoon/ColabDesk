@@ -13,16 +13,21 @@
 
 import { execSync, spawnSync } from "node:child_process";
 import {
-  cpSync,
+  chmodSync,
+  copyFileSync,
   existsSync,
   mkdirSync,
   readdirSync,
   readFileSync,
+  readlinkSync,
   rmSync,
+  statSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { hashRuntimeDir } from "./runtime-hash.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -123,6 +128,87 @@ function prunePython(dest) {
   }
 }
 
+/**
+ * Recursively copies a directory tree while preserving relative symlinks.
+ *
+ * Node's built-in `fs.cpSync` resolves relative symlinks against the source
+ * directory and recreates them with absolute paths pointing to the source
+ * machine (e.g. `/Users/runner/work/...`). This breaks any symlink in packaged
+ * bundles when installed on another machine.
+ */
+export function copyPythonDistribution(srcDir, destDir) {
+  mkdirSync(destDir, { recursive: true });
+  for (const entry of readdirSync(srcDir, { withFileTypes: true })) {
+    const srcPath = join(srcDir, entry.name);
+    const destPath = join(destDir, entry.name);
+
+    if (entry.isSymbolicLink()) {
+      const target = readlinkSync(srcPath);
+      if (isAbsolute(target)) {
+        if (target.startsWith(srcDir)) {
+          const relTarget = relative(dirname(srcPath), target);
+          try {
+            symlinkSync(relTarget, destPath);
+          } catch {
+            const real = resolve(dirname(srcPath), target);
+            copyFileSync(real, destPath);
+            chmodSync(destPath, statSync(real).mode);
+          }
+        } else {
+          const real = resolve(dirname(srcPath), target);
+          const st = statSync(real);
+          if (st.isDirectory()) {
+            copyPythonDistribution(real, destPath);
+          } else {
+            copyFileSync(real, destPath);
+            chmodSync(destPath, st.mode);
+          }
+        }
+      } else {
+        try {
+          symlinkSync(target, destPath);
+        } catch {
+          const real = resolve(dirname(srcPath), target);
+          const st = statSync(real);
+          if (st.isDirectory()) {
+            copyPythonDistribution(real, destPath);
+          } else {
+            copyFileSync(real, destPath);
+            chmodSync(destPath, st.mode);
+          }
+        }
+      }
+    } else if (entry.isDirectory()) {
+      copyPythonDistribution(srcPath, destPath);
+    } else {
+      copyFileSync(srcPath, destPath);
+      const st = statSync(srcPath);
+      chmodSync(destPath, st.mode);
+    }
+  }
+}
+
+/**
+ * Asserts that no symlinks in the bundled runtime are absolute or broken.
+ */
+export function verifyBundleSymlinks(dir) {
+  if (!existsSync(dir)) return;
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isSymbolicLink()) {
+      const target = readlinkSync(full);
+      if (isAbsolute(target)) {
+        throw new Error(`Absolute symlink detected in bundled runtime: ${full} -> ${target}`);
+      }
+      if (!existsSync(full)) {
+        throw new Error(`Broken symlink detected in bundled runtime: ${full} -> ${target}`);
+      }
+    } else if (entry.isDirectory()) {
+      verifyBundleSymlinks(full);
+    }
+  }
+}
+
 /** Remove compiled bytecode, which carries build-machine paths into the package. */
 function stripBytecode(dir) {
   let removed = 0;
@@ -206,9 +292,10 @@ async function bundle() {
   if (existsSync(PYTHON_DEST)) {
     rmSync(PYTHON_DEST, { recursive: true, force: true });
   }
-  cpSync(pythonSource, PYTHON_DEST, { recursive: true, dereference: true });
+  copyPythonDistribution(pythonSource, PYTHON_DEST);
   prunePython(PYTHON_DEST);
   stripBytecode(PYTHON_DEST);
+  verifyBundleSymlinks(PYTHON_DEST);
 
   const pythonBin = join(PYTHON_DEST, pythonExeName);
   if (!existsSync(pythonBin)) {
@@ -226,6 +313,8 @@ async function bundle() {
   const installArgs = [
     "pip",
     "install",
+    "--python",
+    pythonBin,
     "--target",
     SITE_DEST,
     "--link-mode",
@@ -263,6 +352,8 @@ async function bundle() {
   }
   log(`Bundled CLI verified successfully: version ${CLI_VERSION}`);
 
+  verifyBundleSymlinks(TARGET_DIR);
+
   // 4. Write manifest.json
   // No timestamp: it changed on every build, which alone was enough to give two
   // builds of the same tag different bytes. The hash covers both runtime trees
@@ -280,7 +371,10 @@ async function bundle() {
   log("CLI bundling complete!");
 }
 
-bundle().catch((err) => {
-  error(err.message);
-  process.exit(1);
-});
+const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMain) {
+  bundle().catch((err) => {
+    error(err.message);
+    process.exit(1);
+  });
+}
