@@ -184,7 +184,7 @@ describe("publishing", () => {
     updater.start();
     backend.emit({ type: "checking" });
     backend.emit({ type: "available", version: "0.3.0" });
-    expect(published.at(-1)).toEqual({ state: "available", version: "0.3.0", releaseUrl: null });
+    expect(published.at(-1)).toEqual({ state: "available", version: "0.3.0" });
   });
 
 });
@@ -236,6 +236,61 @@ describe("installing", () => {
     clock.advance(500);
     await flush();
     expect(backend.calls.filter((call) => call === "install")).toHaveLength(1);
+  });
+});
+
+describe("a build that has already been downloaded", () => {
+  function downloaded() {
+    const built = build();
+    built.updater.start();
+    built.backend.emit({ type: "available", version: "0.3.0" });
+    built.backend.emit({ type: "downloaded", version: "0.3.0" });
+    return built;
+  }
+
+  it("is not checked over, which would turn it back into something to download", () => {
+    const { updater, backend, clock } = downloaded();
+    const before = backend.calls.length;
+    clock.advance(CHECK_INTERVAL_MS * 2);
+    expect(backend.calls.length).toBe(before);
+    expect(updater.status()).toEqual({ state: "downloaded", version: "0.3.0" });
+  });
+
+  it("still ignores an explicit check, because the answer cannot improve on it", () => {
+    const { updater, backend } = downloaded();
+    updater.check(true);
+    expect(backend.calls).toEqual(["check"]);
+    expect(updater.status()).toEqual({ state: "downloaded", version: "0.3.0" });
+  });
+});
+
+describe("a download that has already started", () => {
+  it("cannot be started twice by a double click", () => {
+    // Until the first progress event the status still reads `available`, so a
+    // guard written against the status would let the second click through.
+    const { updater, backend } = build();
+    updater.start();
+    backend.emit({ type: "available", version: "0.3.0" });
+    updater.download();
+    updater.download();
+    expect(backend.calls.filter((call) => call === "download")).toHaveLength(1);
+  });
+});
+
+describe("progress that has not moved", () => {
+  it("is not pushed to the renderer again", () => {
+    const { updater, backend, published } = build();
+    updater.start();
+    backend.emit({ type: "available", version: "0.3.0" });
+    backend.emit({ type: "progress", percent: 40 });
+    const afterFirst = published.length;
+    // A fast download reports many times per percent; each report that does not
+    // move the number is a store write the renderer does not need.
+    backend.emit({ type: "progress", percent: 40.1 });
+    backend.emit({ type: "progress", percent: 40.4 });
+    expect(published.length).toBe(afterFirst);
+    backend.emit({ type: "progress", percent: 41 });
+    expect(published.length).toBe(afterFirst + 1);
   });
 });
 

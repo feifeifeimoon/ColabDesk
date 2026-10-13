@@ -11,9 +11,9 @@
 
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { UpdateStatus } from "@shared/types";
-import "../i18n/i18n";
+import { i18n } from "../i18n/i18n";
 
 const store = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
 
@@ -90,7 +90,7 @@ describe("the about section", () => {
   });
 
   it("names the version when one is available, and offers to download it", () => {
-    store.current = baseState({ state: "available", version: "0.4.0", releaseUrl: null });
+    store.current = baseState({ state: "available", version: "0.4.0" });
     const rendered = text(render("about"));
     expect(rendered).toContain("0.4.0");
     expect(render("about")).toContain('data-testid="update-download"');
@@ -152,5 +152,20 @@ describe("the about section", () => {
       version: null,
     });
     expect(render("about")).not.toContain('data-testid="update-retry"');
+  });
+});
+
+describe("in English", () => {
+  afterEach(async () => {
+    await i18n.changeLanguage("zh");
+  });
+
+  it("writes the about section in English, not in the code's own fallbacks", async () => {
+    // Every string in this panel is passed with a Chinese default, so a key
+    // missing from en.json degrades to Chinese silently. This is the check that
+    // notices — the parity test only compares the two catalogues to each other.
+    await i18n.changeLanguage("en");
+    const rendered = text(render("about"));
+    expect(rendered).not.toMatch(/[一-鿿]/);
   });
 });

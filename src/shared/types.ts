@@ -178,8 +178,7 @@ export type UpdateStatus =
   | { state: "unavailable" }
   | { state: "idle" }
   | { state: "checking"; userInitiated: boolean }
-  /** `releaseUrl` is absent when the release's page could not be resolved. */
-  | { state: "available"; version: string; releaseUrl: string | null }
+  | { state: "available"; version: string }
   | { state: "not-available"; userInitiated: boolean }
   | { state: "downloading"; version: string; percent: number }
   | { state: "downloaded"; version: string }

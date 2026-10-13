@@ -28,7 +28,7 @@ export interface UpdateMachine {
   apply(event: UpdateEvent): UpdateStatus;
 }
 
-export function createUpdateMachine(releaseUrl: string | null = null): UpdateMachine {
+export function createUpdateMachine(): UpdateMachine {
   let status: UpdateStatus = { state: "idle" };
   /**
    * The version `update-available` named. `download-progress` and a failed
@@ -63,7 +63,7 @@ export function createUpdateMachine(releaseUrl: string | null = null): UpdateMac
 
         case "available":
           known = event.version;
-          status = { state: "available", version: event.version, releaseUrl };
+          status = { state: "available", version: event.version };
           break;
 
         case "not-available":
@@ -79,6 +79,10 @@ export function createUpdateMachine(releaseUrl: string | null = null): UpdateMac
           if (known === null) break;
           const raw = Number.isFinite(event.percent) ? event.percent : 0;
           const percent = Math.min(100, Math.max(0, Math.round(raw)));
+          // A fast download reports many times per percent. Returning the same
+          // object for an unchanged one is what lets the caller skip the
+          // broadcast — see the reference check in `updater.ts`.
+          if (status.state === "downloading" && status.percent === percent) break;
           status = { state: "downloading", version: known, percent };
           break;
         }

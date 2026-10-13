@@ -51,19 +51,19 @@ describe("the update prompt", () => {
   });
 
   it("names the version and offers to download it", () => {
-    store.current = state({ state: "available", version: "0.4.0", releaseUrl: null });
+    store.current = state({ state: "available", version: "0.4.0" });
     const html = render();
     expect(text(html)).toContain("0.4.0");
     expect(html).toContain('data-testid="update-banner-download"');
   });
 
   it("does not come back for a build that was waved away", () => {
-    store.current = state({ state: "available", version: "0.4.0", releaseUrl: null }, "0.4.0");
+    store.current = state({ state: "available", version: "0.4.0" }, "0.4.0");
     expect(render()).toBe("");
   });
 
   it("comes back for the next build after one was waved away", () => {
-    store.current = state({ state: "available", version: "0.5.0", releaseUrl: null }, "0.4.0");
+    store.current = state({ state: "available", version: "0.5.0" }, "0.4.0");
     expect(text(render())).toContain("0.5.0");
   });
 

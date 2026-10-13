@@ -18,8 +18,7 @@ describe("the update state machine", () => {
     expect(machine.apply({ type: "available", version: "0.3.0" })).toEqual({
       state: "available",
       version: "0.3.0",
-      releaseUrl: null,
-    });
+          });
   });
 
   it("remembers the version across a download that only reports percent", () => {

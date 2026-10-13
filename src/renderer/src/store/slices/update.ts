@@ -18,9 +18,13 @@ export const createUpdateSlice: StateCreator<AppState, [], [], UpdateSlice> = (s
 
   setUpdateStatus(status) {
     // A new version replaces whatever was waved away: dismissing one build
-    // should not hide the next.
+    // should not hide the next. The version has to be a real one — `error`
+    // carries the version it failed on, which is `null` for a check that never
+    // got that far, and treating that as "a different version" would quietly
+    // un-dismiss the build the user just waved away.
     const dismissed = get().dismissedVersion;
-    if (dismissed !== null && "version" in status && status.version !== dismissed) {
+    const named = "version" in status ? status.version : null;
+    if (dismissed !== null && named !== null && named !== dismissed) {
       set({ dismissedVersion: null });
     }
     set({ update: status });

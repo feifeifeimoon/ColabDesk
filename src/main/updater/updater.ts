@@ -58,15 +58,30 @@ export function createUpdater(options: UpdaterOptions): Updater {
    */
   let downloading = false;
   let installing = false;
+  /** Last value handed to the renderer, so unchanged ones are not re-sent. */
+  let published: UpdateStatus | null = null;
 
   function publish(): UpdateStatus {
     const status = machine.status();
-    options.publish(status);
+    // A download reports progress on every chunk; without this the renderer
+    // gets a fresh object — and a store write — for percentages that did not
+    // move. Reference equality is the test because the machine returns the
+    // status it already had when nothing changed.
+    if (status !== published) {
+      published = status;
+      options.publish(status);
+    }
     return status;
   }
 
-  function schedule(delayMs: number): void {
+  /** Stops the schedule for good — nothing left to wait for. */
+  function cancelSchedule(): void {
     cancelScheduled?.();
+    cancelScheduled = null;
+  }
+
+  function schedule(delayMs: number): void {
+    cancelSchedule();
     cancelScheduled = after(delayMs, () => {
       cancelScheduled = null;
       if (stopped) return;
@@ -76,6 +91,10 @@ export function createUpdater(options: UpdaterOptions): Updater {
 
   function check(userInitiated: boolean): void {
     if (stopped || checking || downloading || installing) return;
+    // A downloaded build is waiting on a restart. Checking again would replace
+    // that with "available" — and the user, who already waited for the download
+    // once, would be asked to do it again.
+    if (machine.status().state === "downloaded") return;
     checking = true;
     // Recorded here rather than waiting for the backend's own "checking" event:
     // that event can be a round trip away, and the answer has to say whether
@@ -86,7 +105,10 @@ export function createUpdater(options: UpdaterOptions): Updater {
   }
 
   function download(): void {
-    if (stopped) return;
+    // `downloading` rather than the status: until the first progress event
+    // arrives the status still reads `available`, so two quick clicks would
+    // otherwise start the same download twice.
+    if (stopped || downloading || installing) return;
     const status = machine.status();
     // Retrying after a failure is allowed only when we still know which
     // version it was — otherwise there is nothing to ask for.
@@ -102,17 +124,17 @@ export function createUpdater(options: UpdaterOptions): Updater {
     if (stopped || installing) return;
     if (machine.status().state !== "downloaded") return;
     installing = true;
-    cancelScheduled?.();
-    cancelScheduled = null;
+    cancelSchedule();
     // Deferred so the renderer gets a chance to flush before the process goes
     // away: this runs on the same tick the click arrived on.
     after(QUIT_AND_INSTALL_DELAY_MS, () => {
+      // Armed before the cleanup, not after it. A handoff that hangs inside
+      // `beforeInstall` never reaches a `.finally`, so a watchdog attached
+      // there would be the one thing that fails to run exactly when it is
+      // needed. A clean handoff kills this process long before it fires.
+      after(INSTALL_EXIT_WATCHDOG_MS, () => options.forceExit?.());
       void Promise.resolve(options.beforeInstall?.()).finally(() => {
         options.backend.install();
-        // A clean handoff kills this process. Reaching past this point means it
-        // did not, and a wedged teardown would leave the user on a splash with
-        // no app behind it, so the watchdog is the floor rather than a nicety.
-        after(INSTALL_EXIT_WATCHDOG_MS, () => options.forceExit?.());
       });
     });
   }
@@ -125,16 +147,28 @@ export function createUpdater(options: UpdaterOptions): Updater {
       started = true;
       unsubscribe = options.backend.subscribe((event) => {
         const next = machine.apply(event);
-        options.publish(next);
+        if (next !== published) {
+          published = next;
+          options.publish(next);
+        }
 
         if (event.type === "checking" || event.type === "progress") return;
+
+        if (event.type === "downloaded") {
+          // Nothing left to check for: the build is on disk and the only
+          // remaining step is a restart.
+          downloading = false;
+          cancelSchedule();
+          failures = 0;
+          if (checking) checking = false;
+          return;
+        }
 
         if (event.type === "error") {
           failures += 1;
           downloading = false;
         } else {
           failures = 0;
-          if (event.type === "downloaded") downloading = false;
         }
 
         // An answer has arrived, so the next check can be scheduled from here
@@ -149,8 +183,7 @@ export function createUpdater(options: UpdaterOptions): Updater {
 
     stop() {
       stopped = true;
-      cancelScheduled?.();
-      cancelScheduled = null;
+      cancelSchedule();
       unsubscribe?.();
       unsubscribe = null;
     },
