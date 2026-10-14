@@ -7,8 +7,15 @@
   "rules": {
     "no-empty-pattern": ["error", { "allowObjectPatternsAsParameters": true }],
     "react/refs": "off",
-    "react/set-state-in-effect": "off"
+    "react/set-state-in-effect": "off",
+    "react/button-has-type": "error"
   },
+  "overrides": [
+    {
+      "files": ["src/renderer/src/components/ui/Button.tsx"],
+      "rules": { "react/button-has-type": "off" }
+    }
+  ],
   "ignorePatterns": [
     "**/node_modules",
     "**/out",

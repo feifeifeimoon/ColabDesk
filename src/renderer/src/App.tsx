@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { StatusBar, TopBar } from "./app-shell/AppShell";
 import { Banners } from "./app-shell/Banners";
 import { SettingsPage } from "./app-shell/SettingsPage";
+import { Toasts } from "./app-shell/Toasts";
 import { useAppShortcuts } from "./app-shell/shortcuts";
 import { Sidebar } from "./app-shell/Sidebar";
 import { NewSessionDialog } from "./features/sessions/NewSessionDialog";
@@ -43,6 +44,7 @@ export default function App() {
 
       <StatusBar />
       <NewSessionDialog />
+      <Toasts />
     </div>
   );
 }

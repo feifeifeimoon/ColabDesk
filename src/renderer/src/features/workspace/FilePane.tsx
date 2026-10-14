@@ -283,14 +283,14 @@ export function FilePane({
       )}
 
       <div className="breadcrumb">
-        <button className="crumb" onClick={() => navigate("/")}>
+        <button type="button" className="crumb" onClick={() => navigate("/")}>
           /
         </button>
         {segments.map((segment, index) => {
           const target = `/${segments.slice(0, index + 1).join("/")}`;
           return (
             <span key={target}>
-              <button className="crumb" onClick={() => navigate(target)}>
+              <button type="button" className="crumb" onClick={() => navigate(target)}>
                 {segment}
               </button>
               {index < segments.length - 1 ? <span className="crumb-sep">/</span> : null}
@@ -298,7 +298,7 @@ export function FilePane({
           );
         })}
         {path !== "/" && (
-          <button className="crumb up" onClick={() => navigate(parentPath(path))}>
+          <button type="button" className="crumb up" onClick={() => navigate(parentPath(path))}>
             {t("files.parentDir", "返回上级")}
           </button>
         )}
@@ -312,6 +312,7 @@ export function FilePane({
         {entries.map((entry) => (
           <li key={entry.name} className="file-row">
             <button
+              type="button"
               className="file-name"
               onClick={() => (entry.type === "dir" ? navigate(joinPath(path, entry.name)) : void download(entry))}
               title={entry.type === "dir" ? t("files.openDir", "进入目录") : t("files.downloadFile", "下载到本地")}

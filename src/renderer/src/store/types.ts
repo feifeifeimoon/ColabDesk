@@ -13,10 +13,20 @@ import type { PanelSide } from "../lib/panel-width";
 import type { Theme, ThemePreference } from "../lib/theme";
 import type { TerminalAppearance } from "../lib/terminal-appearance";
 
-/** A transient result of a row action, shown under the title bar. */
-export interface Notice {
+/** A message about what just happened, in one sentence, gone by itself. */
+export interface Toast {
+  /** One per message, which is what lets the same sentence replace its own. */
+  id: number;
   tone: "info" | "warn" | "danger";
   text: string;
+}
+
+export interface ToastsSlice {
+  /** Newest last, and never more than a corner's worth of them. */
+  toasts: Toast[];
+  /** Says something now. Repeating the same sentence restarts it, not stacks it. */
+  notify(toast: { tone: Toast["tone"]; text: string }): void;
+  dismissToast(id: number): void;
 }
 
 /** One shell on a session's connection. A session can have several. */
@@ -78,7 +88,6 @@ export interface SessionsSlice {
   untrackedError: string | null;
   /** `${session}:${action}` while a row action is in flight. */
   busyAction: string | null;
-  notice: Notice | null;
 
   loadSessions(): Promise<void>;
   loadUntracked(): Promise<void>;
@@ -87,7 +96,6 @@ export interface SessionsSlice {
   runSessionAction(name: string, action: SessionAction): Promise<void>;
   /** After a create: refresh, then open whatever the CLI produced. */
   sessionCreated(name: string | null): Promise<void>;
-  setNotice(notice: Notice | null): void;
 }
 
 export interface EnvironmentSlice {
@@ -172,4 +180,5 @@ export type AppState = WorkspaceSlice &
   EnvironmentSlice &
   PreferencesSlice &
   SurfacesSlice &
+  ToastsSlice &
   UpdateSlice;

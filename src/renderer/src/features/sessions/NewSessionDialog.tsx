@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AcceleratorEligibility, CommandReport } from "@shared/types";
 import { Button } from "../../components/ui/Button";
+import { CopyButton } from "../../components/ui/CopyButton";
 import { Checkbox, Field, Input, Select } from "../../components/ui/Field";
 import { Callout } from "../../components/ui/Notice";
-import { RawOutput } from "../../components/ui/RawOutput";
 import { createSession, messageOf } from "../../lib/api";
-import { failureHint, failureLabel } from "../../lib/failure";
+import { failureHint, failureLabel, failureReason } from "../../lib/failure";
 import { useAppStore } from "../../store";
 import { Dialog } from "../../app-shell/AppShell";
 
@@ -176,12 +176,24 @@ function NewSessionForm() {
         )}
         {report && !report.error && !report.timed_out && !report.ok && (
           <Callout tone="danger">
-            {failureLabel(report.code)}
-            {failureHint(report.output) ?? t("sessions.detailsInOutput", "详情见下方输出。")}
+            <span className="row" style={{ justifyContent: "space-between", gap: "var(--space-2)" }}>
+              <span>
+                {failureLabel(report.code)}
+                {failureHint(report.output) ?? failureReason(report.output)}
+              </span>
+              {/* The evidence travels to wherever the user is already talking about
+                  it; the log is for whoever reads it afterwards. */}
+              {report.output.trim() ? (
+                <CopyButton
+                  text={report.output.trim()}
+                  label={t("sessions.copyDetails", "复制详情")}
+                  copiedLabel={t("sessions.copiedDetails", "已复制")}
+                />
+              ) : null}
+            </span>
           </Callout>
         )}
         {report?.ok && <Callout>{t("sessions.runtimeReadyCallout", "运行时已就绪，正在打开终端。")}</Callout>}
-        <RawOutput text={report?.output ?? ""} />
       </form>
     </Dialog>
   );

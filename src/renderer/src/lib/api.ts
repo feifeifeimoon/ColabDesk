@@ -73,6 +73,9 @@ export const installUpdate = () => bridge().installUpdate();
 export const onUpdateStatus = (listener: Parameters<ColabDeskApi["onUpdateStatus"]>[0]) =>
   bridge().onUpdateStatus(listener);
 
+export const logPath = () => bridge().logPath();
+export const revealLog = () => bridge().revealLog();
+
 /**
  * Error from an `invoke` rejection arrives as a plain string or an Error, and
  * Electron wraps the message with IPC plumbing (`Error invoking remote method

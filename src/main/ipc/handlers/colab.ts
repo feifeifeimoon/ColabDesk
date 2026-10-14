@@ -15,7 +15,7 @@ export interface LoginHandle {
   cancel(): void;
 }
 
-export function registerColabHandlers({ service, usageHistory, bundledDir }: IpcContext): LoginHandle {
+export function registerColabHandlers({ service, usageHistory, bundledDir, log }: IpcContext): LoginHandle {
   let loginFlow: LoginFlow | null = null;
 
   // `app.getVersion()` is an Electron concern, so it is merged in here rather
@@ -48,16 +48,20 @@ export function registerColabHandlers({ service, usageHistory, bundledDir }: Ipc
     const cli = resolveCli(bundledDir);
     if (!cli) throw new Error("未找到 colab 命令，无法登录。");
     loginFlow?.cancel();
-    loginFlow = new LoginFlow(cli, {
-      onUrl: (url) => broadcast(EVENTS.authUrl, { url }),
-      onDone: (code, output) => {
-        loginFlow = null;
-        // The flow may have signed in as somebody else; nothing cached about the
-        // previous account is allowed to survive that.
-        resetAccountCache();
-        broadcast(EVENTS.authDone, { code, output });
+    loginFlow = new LoginFlow(
+      cli,
+      {
+        onUrl: (url) => broadcast(EVENTS.authUrl, { url }),
+        onDone: (code) => {
+          loginFlow = null;
+          // The flow may have signed in as somebody else; nothing cached about the
+          // previous account is allowed to survive that.
+          resetAccountCache();
+          broadcast(EVENTS.authDone, { code });
+        },
       },
-    });
+      log,
+    );
     loginFlow.start();
   });
   ipcMain.handle(IPC.submitLoginCode, (_event, code: string) => loginFlow?.submit(code));
@@ -67,7 +71,7 @@ export function registerColabHandlers({ service, usageHistory, bundledDir }: Ipc
     loginFlow = null;
     clearToken();
     resetAccountCache();
-    broadcast(EVENTS.authDone, { code: 0, output: "已退出登录。" });
+    broadcast(EVENTS.authDone, { code: 0 });
   });
 
   ipcMain.handle(IPC.sshSetup, (_event, name: string) => service.sshSetup(name));

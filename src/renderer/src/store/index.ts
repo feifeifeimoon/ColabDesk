@@ -15,6 +15,7 @@ import { createEnvironmentSlice } from "./slices/environment";
 import { createPreferencesSlice } from "./slices/preferences";
 import { createSessionsSlice } from "./slices/sessions";
 import { createSurfacesSlice } from "./slices/surfaces";
+import { createToastsSlice } from "./slices/toasts";
 import { createUpdateSlice } from "./slices/update";
 import { createWorkspaceSlice } from "./slices/workspace";
 import type { AppState } from "./types";
@@ -28,6 +29,7 @@ export const useAppStore = create<AppState>()((...args) => ({
   ...createEnvironmentSlice(...args),
   ...createPreferencesSlice(...args),
   ...createSurfacesSlice(...args),
+  ...createToastsSlice(...args),
   ...createUpdateSlice(...args),
 }));
 
@@ -62,4 +64,4 @@ export function startAppEvents(): () => void {
   };
 }
 
-export type { AppState, Notice, SessionAction } from "./types";
+export type { AppState, SessionAction, Toast } from "./types";

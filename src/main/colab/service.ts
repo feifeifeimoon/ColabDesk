@@ -1,14 +1,15 @@
 /**
  * The command surface: a thin, inspectable wrapper over the `colab` CLI.
  *
- * Ported from the Tauri build's Rust command layer. Every parsed answer travels
- * with the CLI's raw output so a format change shows up as a visible fallback
- * rather than a silent wrong number.
+ * Ported from the Tauri build's Rust command layer. Every invocation goes to the
+ * log with its raw output (`run`), so a format change can be read back rather
+ * than guessed at from a wrong number.
  */
 
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import type { ColabEnvironment, CommandReport, EnvStatus, Session, SshSetup, UsageReport } from "@shared/types";
+import type { LogSink } from "../log-file";
 import { accountStatus } from "./account";
 import { fetchAssignments, type Assignment } from "./assignments";
 import { combined, needsLogin, parseUsage, parseVersion, readManifestVersion, resolveCli, runCli, type ResolvedCli } from "./cli";
@@ -55,7 +56,10 @@ function untrackedSession(assignment: Assignment): Session {
 }
 
 export class Service {
-  constructor(private readonly bundledDir?: string) {}
+  constructor(
+    private readonly bundledDir?: string,
+    private readonly log?: LogSink,
+  ) {}
 
   private cli(): ResolvedCli {
     const cli = resolveCli(this.bundledDir);
@@ -78,8 +82,14 @@ export class Service {
 
   async run(args: string[], timeoutMs: number): Promise<CommandReport> {
     const cli = this.cli();
+    const started = Date.now();
     const output = await runCli(cli, args, { timeoutMs });
     const text = combined(output);
+    const outcome = output.timedOut ? `超时（${timeoutMs}ms）` : `exit ${output.code}`;
+    // Every invocation, not only the failures: the questions a log has to answer
+    // are "what did the app do" and "what came back", and the second one is only
+    // worth reading next to the first.
+    this.log?.write("cli", `colab ${args.join(" ")} → ${outcome} · ${Date.now() - started}ms\n${text}`.trimEnd());
     return {
       ok: !output.timedOut && output.code === 0,
       code: output.code,
@@ -106,7 +116,7 @@ export class Service {
   async envStatus(): Promise<ColabEnvironment> {
     // Asked every refresh: whoever is signed in right now is the answer, and a
     // re-login with a different account has to replace it rather than blend in.
-    const account_ = await accountStatus().catch(() => ({ account: null, eligibility: null }));
+    const account_ = await accountStatus(this.log).catch(() => ({ account: null, eligibility: null }));
 
     const cli = resolveCli(this.bundledDir);
     let cliVersion: string | null = null;
@@ -161,7 +171,7 @@ export class Service {
    * an empty session list.
    */
   async listUntracked(): Promise<{ sessions: Session[]; error: string | null }> {
-    const assignments = await fetchAssignments();
+    const assignments = await fetchAssignments(this.log);
     if (!assignments) {
       return {
         sessions: [],
@@ -184,7 +194,6 @@ export class Service {
         ok: report.ok,
         needs_login: needsLogin(report.output),
         usage: parseUsage(report.output),
-        raw: report.output,
         error: report.error,
         attempts: report.attempts,
       };
@@ -193,7 +202,6 @@ export class Service {
         ok: false,
         needs_login: false,
         usage: { balance: null, rate: null, assignments: null },
-        raw: "",
         error: (error as Error).message,
         attempts: 1,
       };

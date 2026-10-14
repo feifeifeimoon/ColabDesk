@@ -20,7 +20,6 @@ export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> 
   untrackedSessions: [],
   untrackedError: null,
   busyAction: null,
-  notice: null,
 
   loadSessions: async () => {
     try {
@@ -86,7 +85,10 @@ export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> 
     }
     if (action === "copy-ssh") {
       await api.writeClipboard(`ssh colabdesk-${name}`);
-      set({ notice: { tone: "info", text: translate("sessions.copiedSsh", `已复制：ssh colabdesk-${name}`, { command: `ssh colabdesk-${name}` }) } });
+      get().notify({
+        tone: "info",
+        text: translate("sessions.copiedSsh", `已复制：ssh colabdesk-${name}`, { command: `ssh colabdesk-${name}` }),
+      });
       return;
     }
     // Outside a window there is nobody to ask, so the answer is no.
@@ -94,45 +96,41 @@ export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> 
       return;
     }
 
-    set({ busyAction: `${name}:${action}`, notice: null });
+    set({ busyAction: `${name}:${action}` });
     try {
       if (action === "stop") {
         const report = await api.stopSession(name);
-        if (report.error) set({ notice: { tone: "danger", text: report.error } });
-        else if (report.timed_out) set({ notice: { tone: "warn", text: translate("sessions.stopTimeout", "停止命令超时，请稍后同步查看。") } });
-        else if (!report.ok) {
-          set({
-            notice: { tone: "danger", text: `${failureLabel(report.code)}${failureHint(report.output) ?? ""}` },
-          });
-        } else {
-          set({ notice: { tone: "info", text: translate("sessions.stoppedSuccess", `会话「${name}」已停止。`, { name }) } });
+        if (report.error) get().notify({ tone: "danger", text: report.error });
+        else if (report.timed_out)
+          get().notify({ tone: "warn", text: translate("sessions.stopTimeout", "停止命令超时，请稍后同步查看。") });
+        else if (!report.ok)
+          get().notify({ tone: "danger", text: `${failureLabel(report.code)}${failureHint(report.output) ?? ""}` });
+        else {
+          get().notify({ tone: "info", text: translate("sessions.stoppedSuccess", `会话「${name}」已停止。`, { name }) });
           get().closeSessionTabs(name);
         }
         await Promise.all([loadRail(get), get().refreshEnvironment()]);
       } else if (action === "restart-kernel") {
         const report = await api.restartKernel(name);
-        if (report.error) set({ notice: { tone: "danger", text: report.error } });
-        else if (report.timed_out) set({ notice: { tone: "warn", text: translate("sessions.restartTimeout", "重启命令超时，请稍后重试。") } });
-        else if (!report.ok) {
-          set({
-            notice: { tone: "danger", text: `${failureLabel(report.code)}${failureHint(report.output) ?? ""}` },
-          });
-        } else set({ notice: { tone: "info", text: translate("sessions.restartedSuccess", `已重启「${name}」的内核。`, { name }) } });
+        if (report.error) get().notify({ tone: "danger", text: report.error });
+        else if (report.timed_out)
+          get().notify({ tone: "warn", text: translate("sessions.restartTimeout", "重启命令超时，请稍后重试。") });
+        else if (!report.ok)
+          get().notify({ tone: "danger", text: `${failureLabel(report.code)}${failureHint(report.output) ?? ""}` });
+        else get().notify({ tone: "info", text: translate("sessions.restartedSuccess", `已重启「${name}」的内核。`, { name }) });
       } else if (action === "ssh-config") {
         const setup = await api.sshSetup(name);
-        set({
-          notice: {
-            tone: "info",
-            text: translate("sessions.sshConfigWritten", `已写入 ${setup.config_path}：别名 ${setup.alias}（${setup.ssh_command}）`, {
-              path: setup.config_path,
-              alias: setup.alias,
-              command: setup.ssh_command,
-            }),
-          },
+        get().notify({
+          tone: "info",
+          text: translate("sessions.sshConfigWritten", `已写入 ${setup.config_path}：别名 ${setup.alias}（${setup.ssh_command}）`, {
+            path: setup.config_path,
+            alias: setup.alias,
+            command: setup.ssh_command,
+          }),
         });
       }
     } catch (cause) {
-      set({ notice: { tone: "danger", text: api.messageOf(cause) } });
+      get().notify({ tone: "danger", text: api.messageOf(cause) });
     } finally {
       set({ busyAction: null });
     }
@@ -151,5 +149,4 @@ export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> 
     if (created) get().openSession(created.name);
   },
 
-  setNotice: (notice) => set({ notice }),
 });

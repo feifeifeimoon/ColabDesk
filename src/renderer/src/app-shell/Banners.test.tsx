@@ -26,8 +26,6 @@ const noop = () => {};
 function state(update: UpdateStatus, dismissedVersion: string | null = null) {
   return {
     error: null,
-    notice: null,
-    setNotice: noop,
     update,
     dismissedVersion,
     downloadUpdate: noop,
