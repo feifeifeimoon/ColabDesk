@@ -1,0 +1,14 @@
+# Every text file is LF, in the index and in the working tree. Windows checkouts
+# default to CRLF (the runner's core.autocrlf), and a shebang plus CRLF makes
+# vite's SSR transform emit a literal `#!` mid-module: tools/bundle-cli.test.mjs
+# died at load with a SyntaxError and contributed no tests at all.
+#
+# Repo-wide rather than per-file: every text file here is already stored as LF,
+# so this normalizes nothing, and the next script that gets a test inherits the
+# rule instead of rediscovering it.
+* text=auto eol=lf
+
+# Icons are the only binaries: keep them out of normalization and out of text diffs.
+*.png binary
+*.ico binary
+*.icns binary

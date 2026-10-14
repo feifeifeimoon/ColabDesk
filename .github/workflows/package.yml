@@ -4,16 +4,20 @@ name: package
 # release time — and it has been: the POSIX Python root path and the two
 # workflow fixes behind v0.2.0 all surfaced there, in a build nobody could
 # re-run without burning another tag. This runs the same packaging on every
-# push to main and publishes nothing, so a tag is the first time a build is
-# *published*, not the first time it is *built*.
+# push to main and on every pull request, and publishes nothing, so a tag is
+# the first time a build is *published*, not the first time it is *built*.
 #
-# It is not on pull requests on purpose: the cost is a 190MB runtime download
-# plus Electron's toolchains, and a merge to main is soon enough to hear about
-# it. The platform-independent checks live in ci.yml and do gate PRs.
+# Pull requests included on purpose: the runtime is assembled per platform, so
+# the macOS half of it — the half no contributor here can build, and the one
+# `ci.yml` cannot reach because it runs no bundler — had nowhere to fail before
+# a merge. The price is a 190MB runtime download plus Electron's toolchains per
+# run, and runner minutes are free for a public repository; what it buys is a
+# broken bundle found on the PR instead of on main.
 
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:

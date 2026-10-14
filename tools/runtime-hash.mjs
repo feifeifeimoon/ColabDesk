@@ -9,7 +9,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { readdir, readFile, stat } from "node:fs/promises";
+import { lstat, readdir, readFile, readlink, stat } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 
 const IGNORED_DIRECTORIES = new Set(["__pycache__"]);
@@ -21,12 +21,10 @@ async function collect(dir, root, into) {
     if (entry.isDirectory()) {
       if (IGNORED_DIRECTORIES.has(entry.name)) continue;
       await collect(full, root, into);
-    } else if (entry.isFile()) {
+    } else if (entry.isFile() || entry.isSymbolicLink()) {
       if (entry.name.endsWith(".pyc")) continue;
       into.push(relative(root, full).split(sep).join("/"));
     }
-    // Symlinks are followed by the bundler's copy, so a link here is not a file
-    // this hash needs to describe.
   }
 }
 
@@ -42,7 +40,13 @@ export async function hashRuntimeDir(dir) {
   for (const path of paths) {
     digest.update(path);
     digest.update("\0");
-    digest.update(await readFile(join(dir, path)));
+    const full = join(dir, path);
+    const st = await lstat(full);
+    if (st.isSymbolicLink()) {
+      digest.update(await readlink(full));
+    } else {
+      digest.update(await readFile(full));
+    }
     digest.update("\0");
   }
   return digest.digest("hex");
