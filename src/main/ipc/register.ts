@@ -6,6 +6,7 @@ import type { Service } from "../colab/service";
 import type { UsageHistory } from "../colab/usage-history";
 import type { SshManager } from "../ssh/manager";
 import { registerColabHandlers, type LoginHandle } from "./handlers/colab";
+import { registerClipboardHandlers } from "./handlers/clipboard";
 import { registerFileHandlers } from "./handlers/files";
 import { registerTerminalHandlers } from "./handlers/terminal";
 import { registerWindowHandlers } from "./handlers/window";
@@ -22,6 +23,7 @@ export function registerIpc(context: IpcContext): LoginHandle {
   registerTerminalHandlers(context);
   registerFileHandlers(context);
   registerWindowHandlers(context);
+  registerClipboardHandlers();
 
   context.ssh.on("data", (channelId: number, session: string, chunk: Buffer) => {
     broadcast(EVENTS.sshData, { channelId, session, data: chunk.toString("base64") });

@@ -36,6 +36,8 @@ export const IPC = {
   updateCheck: "update:check",
   updateDownload: "update:download",
   updateInstall: "update:install",
+  clipboardRead: "clipboard:read",
+  clipboardWrite: "clipboard:write",
 } as const;
 
 export const EVENTS = {

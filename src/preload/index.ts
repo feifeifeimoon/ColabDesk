@@ -1,6 +1,6 @@
 /** The typed surface the renderer sees; everything else stays in main. */
 
-import { clipboard, contextBridge, ipcRenderer, webUtils } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 import { EVENTS, IPC } from "@shared/ipc";
 import type { ColabDeskApi, SessionList } from "@shared/api";
 
@@ -56,11 +56,9 @@ const api: ColabDeskApi = {
 
   pathForFile: (file) => webUtils.getPathForFile(file),
 
-  readClipboard: () => Promise.resolve(clipboard.readText()),
-  writeClipboard: (text) => {
-    clipboard.writeText(text);
-    return Promise.resolve();
-  },
+  // Through the main process: the clipboard module is not one a preload gets.
+  readClipboard: () => invoke(IPC.clipboardRead),
+  writeClipboard: (text) => invoke(IPC.clipboardWrite, text),
 
   minimizeWindow: () => invoke(IPC.windowMinimize),
   toggleMaximizeWindow: () => invoke(IPC.windowToggleMaximize),
