@@ -267,6 +267,8 @@ export class ColabSshConnection extends EventEmitter {
       this.emit("exit", id);
     });
 
+    // The only writer of this line: a pane that sends its own lands a second
+    // copy in the scrollback and in the shell's history.
     const initial = options.initialCommand ?? `cd /content 2>/dev/null\n`;
     channel.write(initial);
     return id;

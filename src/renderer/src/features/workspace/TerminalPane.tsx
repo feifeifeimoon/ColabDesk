@@ -275,8 +275,6 @@ export function TerminalPane({
         for (const chunk of unclaimed.current.get(handle.channelId) ?? []) terminal.write(chunk);
         unclaimed.current.clear();
         unclaimedBytes.current = 0;
-        // Land where the runtime keeps its files, like the CLI's own ssh mode.
-        void writeTerminal(handle.channelId, "cd /content 2>/dev/null\n");
       })
       .catch((cause) => {
         if (disposed) return;

@@ -23,6 +23,11 @@ function shellTab(page: Page, ordinal: number) {
   return page.getByRole("tab", { name: `终端 ${ordinal}` });
 }
 
+/** How often `needle` appears in what the visible terminal shows. */
+async function occurrences(page: Page, needle: string): Promise<number> {
+  return (await terminalText(page)).split(needle).length - 1;
+}
+
 test("打开会话就连上运行时，按键走到远端再回来", async ({ page }) => {
   await openSession(page, "e2e-alpha");
 
@@ -44,6 +49,29 @@ test("打开会话就连上运行时，按键走到远端再回来", async ({ pa
   await page.keyboard.type("uname");
   await page.keyboard.press("Enter");
   await expect(terminalRows(page)).toContainText("GNU/Linux");
+});
+
+/**
+ * The startup line belongs to whoever opens the shell: the main process writes
+ * it in `openShell`, before the renderer even hears about the channel. The pane
+ * used to send the same `cd /content` again once its open round trip resolved,
+ * so every fresh shell ran it twice — two lines in the scrollback, two entries
+ * in the history, two prompts.
+ *
+ * The probe is what makes the count deterministic: by the time `pwd`'s answer
+ * is on screen, an earlier duplicate must have been echoed too.
+ */
+test("新终端的初始 cd 只下发一次", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+
+  await waitForPrompts(page, 2);
+  await focusTerminal(page);
+  await page.keyboard.type("pwd");
+  await page.keyboard.press("Enter");
+  await waitForPrompts(page, 3);
+
+  // 一次是远端的回显；两次就是又发了一遍。
+  expect(await occurrences(page, "cd /content 2>/dev/null")).toBe(1);
 });
 
 test("每个会话连自己的运行时，标签条只显示选中会话的终端", async ({ page }) => {
@@ -74,8 +102,6 @@ test("每个会话连自己的运行时，标签条只显示选中会话的终�
  */
 test("切换会话不重建终端，那个 shell 还活着", async ({ page }) => {
   const dataPrompt = "root@e2e-runtime:/content/data# ";
-  const occurrences = async (needle: string): Promise<number> =>
-    (await terminalText(page)).split(needle).length - 1;
 
   await openSession(page, "e2e-alpha");
   await expect(terminalRows(page)).toContainText("shell #1");
@@ -85,7 +111,7 @@ test("切换会话不重建终端，那个 shell 还活着", async ({ page }) =>
   await focusTerminal(page);
   await page.keyboard.type("cd /content/data");
   await page.keyboard.press("Enter");
-  await expect.poll(() => occurrences(dataPrompt)).toBeGreaterThanOrEqual(1);
+  await expect.poll(() => occurrences(page, dataPrompt)).toBeGreaterThanOrEqual(1);
 
   await openSession(page, "e2e-beta");
   await expect(terminalRows(page)).toContainText("shell #2");
@@ -94,7 +120,7 @@ test("切换会话不重建终端，那个 shell 还活着", async ({ page }) =>
 
   // Same pane (buffer intact, still shell #1) …
   await expect(terminalRows(page)).toContainText("shell #1");
-  await expect.poll(() => occurrences(dataPrompt)).toBeGreaterThanOrEqual(1);
+  await expect.poll(() => occurrences(page, dataPrompt)).toBeGreaterThanOrEqual(1);
   // … and both sessions' shells are mounted, not just the one on screen.
   await expect(page.locator(".terminal-host")).toHaveCount(2);
 
@@ -102,7 +128,7 @@ test("切换会话不重建终端，那个 shell 还活着", async ({ page }) =>
   await focusTerminal(page);
   await page.keyboard.type("pwd");
   await page.keyboard.press("Enter");
-  await expect.poll(() => occurrences(dataPrompt)).toBeGreaterThanOrEqual(2);
+  await expect.poll(() => occurrences(page, dataPrompt)).toBeGreaterThanOrEqual(2);
 });
 
 test("同一个会话可以开多个终端，各自独立不串台", async ({ page }) => {
