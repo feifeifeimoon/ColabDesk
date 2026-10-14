@@ -89,13 +89,22 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
   await capture(page, "03-session-menu");
   await page.keyboard.press("Escape");
 
+  // The dialog is the one surface whose exit is a bare icon, so it is the shot
+  // that answers whether an × with no word beside it still reads as "close".
+  await page.locator('[aria-label="新建会话"]').click();
+  const dialog = page.getByRole("dialog", { name: "新建会话" });
+  await expect(dialog).toBeVisible();
+  await page.waitForTimeout(400);
+  await capture(page, "04-new-session");
+  await dialog.getByRole("button", { name: "关闭" }).click();
+
   await page.locator('[data-testid="open-settings"]').click();
   for (const theme of ["as-is", "other"] as const) {
     if (theme === "other") await toggleTheme(page);
     for (const section of SECTIONS) {
       await page.locator(".settings__nav-item").filter({ hasText: section }).click();
       await page.waitForTimeout(500);
-      await capture(page, `04-settings-${section}`);
+      await capture(page, `06-settings-${section}`);
     }
   }
 });

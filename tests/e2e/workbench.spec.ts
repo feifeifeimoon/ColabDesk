@@ -276,6 +276,26 @@ test("新建会话：填进去的东西不会被自己擦掉", async ({ page }) 
   await expect(failure).toContainText("命令执行失败");
 });
 
+// 右上角是一个 ×，不是一行"关闭"文字：字形给不出这个名字，所以文案挂在 aria-label 上，
+// 按钮里就只剩一个 svg。
+test("新建会话右上角是一个有名字的 ×，点它会关掉对话框", async ({ page }) => {
+  await page.locator('[aria-label="新建会话"]').click();
+  const dialog = page.getByRole("dialog", { name: "新建会话" });
+  await expect(dialog).toBeVisible();
+
+  const close = dialog.getByRole("button", { name: "关闭" });
+  expect(await close.textContent()).toBe("");
+  await expect(close.locator("svg")).toHaveCount(1);
+
+  // 图标按钮最容易出的事故是缩到点不着；低于 28px 高的可点区域在设计系统里算缺陷。
+  const box = await close.boundingBox();
+  expect(box!.width).toBeGreaterThanOrEqual(28);
+  expect(box!.height).toBeGreaterThanOrEqual(28);
+
+  await close.click();
+  await expect(dialog).toHaveCount(0);
+});
+
 test("同步会话按钮触发刷新遮罩并防重复点击，完成后遮罩消失", async ({ page }) => {
   const syncBtn = page.locator('[data-testid="sync-sessions"]');
   await expect(syncBtn).toBeVisible();

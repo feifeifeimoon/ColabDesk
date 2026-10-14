@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "../components/ui/Button";
+import { Button, IconButton } from "../components/ui/Button";
 import {
   ActivityIcon,
   CloseIcon,
@@ -510,9 +510,9 @@ export function Dialog({
       <div className="dialog" role="dialog" aria-modal="true" aria-label={String(title)}>
         <header className="dialog__head">
           <h2 className="dialog__title">{title}</h2>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            {t("dialog.close", "关闭")}
-          </Button>
+          <IconButton label={t("dialog.close", "关闭")} variant="ghost" size="sm" onClick={onClose}>
+            <CloseIcon />
+          </IconButton>
         </header>
         <div className="dialog__body">{children}</div>
         {footer ? <footer className="dialog__head">{footer}</footer> : null}
