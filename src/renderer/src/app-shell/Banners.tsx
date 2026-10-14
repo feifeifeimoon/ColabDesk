@@ -1,11 +1,10 @@
 /**
  * What the app is telling you, under the title bar: a failure from the
- * environment, the result of the row action you just ran, or a build waiting to
- * be installed. All are dismissable and none is a page.
+ * environment, or a build waiting to be installed.
  *
- * The update prompt lives here rather than in a card of its own: this slot is
- * already the app's one place to speak up, so the notice inherits the same
- * width, tone, actions and dismissal rules as everything else that speaks here.
+ * Both stay put until they are answered, which is what makes them banners
+ * rather than toasts (`Toasts.tsx`): an update to install and an environment
+ * that cannot be read are states to act on, not results to notice.
  */
 
 import { useTranslation } from "react-i18next";
@@ -16,8 +15,6 @@ import { useAppStore } from "../store";
 export function Banners() {
   const { t } = useTranslation();
   const error = useAppStore((state) => state.error);
-  const notice = useAppStore((state) => state.notice);
-  const setNotice = useAppStore((state) => state.setNotice);
 
   // Primitives only: a download reports progress many times a second, and this
   // component sits near the root of the tree.
@@ -34,7 +31,7 @@ export function Banners() {
   const offered = updateState === "available" && updateVersion !== null && updateVersion !== dismissedVersion;
   const ready = updateState === "downloaded";
 
-  if (!error && !notice && !offered && !ready) return null;
+  if (!error && !offered && !ready) return null;
 
   return (
     <>
@@ -42,18 +39,6 @@ export function Banners() {
         <p className="error banner" style={{ margin: "var(--space-2) var(--space-3) 0" }}>
           {error}
         </p>
-      )}
-      {notice && (
-        <div style={{ margin: "var(--space-2) var(--space-3) 0" }}>
-          <Callout tone={notice.tone}>
-            <span className="row" style={{ justifyContent: "space-between" }}>
-              <span>{notice.text}</span>
-              <button type="button" className="btn btn--ghost btn--sm" onClick={() => setNotice(null)}>
-                {t("banners.dismiss", "知道了")}
-              </button>
-            </span>
-          </Callout>
-        </div>
       )}
       {(offered || ready) && (
         <div style={{ margin: "var(--space-2) var(--space-3) 0" }} data-testid="update-banner">

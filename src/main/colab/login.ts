@@ -10,12 +10,14 @@
 
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createInterface } from "node:readline";
+import type { LogSink } from "../log-file";
 import type { ResolvedCli } from "./cli";
 import { backupToken, removeTokenBackup, restoreTokenBackup } from "./sessions";
 
 export interface LoginEvents {
   onUrl(url: string): void;
-  onDone(code: number | null, output: string): void;
+  /** The exit code, and nothing else: the output went to the log as it arrived. */
+  onDone(code: number | null): void;
 }
 
 const LOGIN_TIMEOUT_MS = 300_000;
@@ -35,6 +37,7 @@ export class LoginFlow {
   constructor(
     private readonly cli: ResolvedCli,
     private readonly events: LoginEvents,
+    private readonly log?: LogSink,
     private readonly timeoutMs: number = LOGIN_TIMEOUT_MS,
   ) {}
 
@@ -45,6 +48,7 @@ export class LoginFlow {
   start(): void {
     this.cancel();
     this.output = [];
+    this.log?.write("login", `登录开始：${this.cli.label} usage（触发 OAuth 授权）`);
 
     // If an existing token file exists, back it up so `colab usage` is forced to
     // initiate a fresh OAuth handshake instead of silently returning usage.
@@ -65,7 +69,12 @@ export class LoginFlow {
     const collect = (line: string): void => {
       this.output.push(line.trimEnd());
       const url = extractUrl(line);
-      if (url) this.events.onUrl(url);
+      if (url) {
+        // The writer strips the code and the state out of it; the host and the
+        // parameters that identify the request are what make this line useful.
+        this.log?.write("login", `授权链接：${url}`);
+        this.events.onUrl(url);
+      }
     };
 
     createInterface({ input: child.stderr }).on("line", collect);
@@ -73,6 +82,7 @@ export class LoginFlow {
 
     child.on("error", (error) => {
       this.output.push(`启动登录进程失败: ${error.message}`);
+      this.log?.write("login", `启动登录进程失败：${error.message}`);
     });
     child.on("close", (code) => {
       if (this.timer) {
@@ -86,7 +96,8 @@ export class LoginFlow {
         // Failed or aborted: restore previous session so user is not stuck logged out
         restoreTokenBackup();
       }
-      this.events.onDone(code, this.output.join("\n"));
+      this.log?.write("login", `登录结束：exit ${code ?? "(无退出码)"}\n${this.output.join("\n")}`);
+      this.events.onDone(code);
     });
   }
 
@@ -94,6 +105,8 @@ export class LoginFlow {
     const clean = code.trim().replace(/[\r\n]+/g, "");
     if (!clean) throw new Error("授权码为空。");
     if (!this.child?.stdin.writable) throw new Error("登录流程未在运行。");
+    // The length, never the code: it is a credential until the CLI exchanges it.
+    this.log?.write("login", `已提交授权码（${clean.length} 字符）`);
     this.child.stdin.write(`${clean}\n`);
   }
 
@@ -103,6 +116,7 @@ export class LoginFlow {
       this.timer = null;
     }
     if (this.child) {
+      this.log?.write("login", "登录取消（用户操作或超时）");
       this.child.kill();
       this.child = null;
       if (this.backedUp) {

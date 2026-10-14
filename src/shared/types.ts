@@ -85,7 +85,6 @@ export interface UsageReport {
   ok: boolean;
   needs_login: boolean;
   usage: Usage;
-  raw: string;
   error: string | null;
   attempts: number;
 }
@@ -152,8 +151,8 @@ export interface AuthUrlEvent {
 }
 
 export interface AuthDoneEvent {
+  /** The login process's exit code. What it printed is in the log. */
   code: number | null;
-  output: string;
 }
 
 /**

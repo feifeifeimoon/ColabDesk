@@ -17,7 +17,7 @@ import type { Page } from "@playwright/test";
 import { expect, openSession, reloadWorkbench, test } from "./app-launch";
 
 const directory = join(process.cwd(), "screenshots");
-const SECTIONS = ["账号与额度", "用量趋势", "外观", "终端", "运行环境", "外部工具"];
+const SECTIONS = ["账号与额度", "用量趋势", "外观", "终端", "运行环境", "外部工具", "关于"];
 
 /** Named by the theme actually on screen, never by what the harness meant. */
 async function capture(page: Page, name: string): Promise<void> {
@@ -89,6 +89,16 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
   await capture(page, "03-session-menu");
   await page.keyboard.press("Escape");
 
+  // The result of that menu's least destructive item: a message in the corner
+  // that leaves on its own. Nothing else on screen changes, which is the point
+  // of it — the workbench underneath is a live terminal.
+  await page.locator(".session-row .menu__trigger").first().click();
+  await page.getByRole("menuitem", { name: "复制 ssh 命令" }).click();
+  await expect(page.locator(".toasts .toast")).toContainText("已复制");
+  await page.waitForTimeout(400);
+  await capture(page, "03-toast");
+  await page.locator('[data-testid="toast-dismiss"]').click();
+
   // The dialog is the one surface whose exit is a bare icon, so it is the shot
   // that answers whether an × with no word beside it still reads as "close".
   await page.locator('[aria-label="新建会话"]').click();
@@ -96,6 +106,16 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
   await expect(dialog).toBeVisible();
   await page.waitForTimeout(400);
   await capture(page, "04-new-session");
+
+  // The failure state: the app has to say what went wrong in the window, not in
+  // a file — the reason is the CLI's own last line, and 「复制详情」 hands the
+  // whole output over. The name is one that already exists, so it fails.
+  await dialog.getByLabel("会话名称").fill("e2e-alpha");
+  await dialog.getByRole("button", { name: "创建" }).click();
+  await expect(dialog.locator(".callout--danger")).toContainText("命令执行失败");
+  await page.waitForTimeout(400);
+  await capture(page, "04-new-session-failed");
+
   await dialog.getByRole("button", { name: "关闭" }).click();
 
   await page.locator('[data-testid="open-settings"]').click();

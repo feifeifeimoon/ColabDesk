@@ -14,6 +14,7 @@
  * here and a row from disk stay the same kind of thing downstream.
  */
 
+import { errorMessage, type LogSink } from "../log-file";
 import { e2eMockEnabled } from "../e2e/mode";
 import { mockAssignments } from "../e2e/cli-stub";
 import { backendGetJson } from "./backend";
@@ -79,7 +80,7 @@ export function parseAssignments(body: unknown): Assignment[] | null {
  * be had — no token, no network, or a body that is not this response. The
  * caller shows what it has instead of guessing.
  */
-export async function fetchAssignments(): Promise<Assignment[] | null> {
+export async function fetchAssignments(log?: LogSink): Promise<Assignment[] | null> {
   // The container has no backend to reach; the answer below is the shape the
   // real one returns, so the same parser and the same failure paths run.
   if (e2eMockEnabled()) {
@@ -88,7 +89,10 @@ export async function fetchAssignments(): Promise<Assignment[] | null> {
 
   try {
     return parseAssignments(await backendGetJson(ASSIGNMENTS_PATH));
-  } catch {
+  } catch (cause) {
+    // The caller already tells the user the list could not be read; the log is
+    // where the reason — expired token, no route, a body we cannot parse — goes.
+    log?.write("api", `服务器会话列表读取失败：${errorMessage(cause)}`);
     return null;
   }
 }

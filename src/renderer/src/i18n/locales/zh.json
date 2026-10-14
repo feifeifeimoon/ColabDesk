@@ -78,6 +78,9 @@
     "settings": "设置",
     "settingsTitle": "设置（Ctrl+,）"
   },
+  "toasts": {
+    "dismiss": "关闭提示"
+  },
   "banners": {
     "dismiss": "知道了",
     "updateOffered": "有新版本 {{version}}。",
@@ -157,7 +160,8 @@
     "creatingButton": "正在申请运行时…",
     "cancelButton": "取消",
     "timeoutCallout": "创建请求超时，后台可能仍在初始化，请稍后刷新列表查看结果。",
-    "detailsInOutput": "详情见下方输出。",
+    "copyDetails": "复制详情",
+    "copiedDetails": "已复制",
     "runtimeReadyCallout": "运行时已就绪，正在打开终端。",
     "copiedSsh": "已复制：{{command}}",
     "stopConfirm": "停止会话「{{name}}」？未保存的运行时数据会丢失。",
@@ -183,8 +187,7 @@
     "openInBrowser": "在浏览器打开",
     "copyLink": "复制链接",
     "codePlaceholder": "粘贴 Google 显示的授权码",
-    "submitCode": "提交",
-    "rawOutputLabel": "登录过程输出"
+    "submitCode": "提交"
   },
   "usage": {
     "trendTitle": "用量趋势",
@@ -238,7 +241,6 @@
     "accountAccelerators": "可用加速器",
     "accountAcceleratorsDesc": "当前账号有权限申请的硬件加速规格。",
     "accountAcceleratorUnavailable": "当前账号不可用",
-    "rawUsageLabel": "colab usage 原始输出",
     "disclaimer": "ColabDesk 是第三方开源客户端，与 Google 无官方关联。所有网络通信与身份凭据均由官方 Colab CLI 处理。",
     "appearanceLanguageLabel": "界面语言",
     "appearanceLanguageDesc": "界面显示的语言，支持跟随系统、中文与英文。",
@@ -326,7 +328,10 @@
     "runtimeAppVersion": "应用版本",
     "groupApp": "应用",
     "sectionAboutTitle": "关于",
-    "sectionAboutDesc": "这一份应用自身的版本，以及它是怎么更新的。",
+    "sectionAboutDesc": "这一份应用自身的版本、它是怎么更新的，以及出问题时要去哪找日志。",
+    "logLabel": "运行日志",
+    "logDescription": "应用做了什么、命令行回了什么，都记在这一个文件里。反馈问题时附上它，比描述现象有用。",
+    "logReveal": "打开日志",
     "updateLabel": "自动更新",
     "updateDesc": "后台每天检查一次；下载和重启都由你决定。",
     "updateUnavailable": "当前平台暂不支持自动更新，请到发布页面手动下载。",
@@ -349,7 +354,8 @@
   },
   "failure": {
     "networkInterrupted": "网络请求被中断：与 colab.research.google.com 的 TLS 连接被重置。偶发时重试即可；若持续失败，请检查代理/VPN 是否正常路由 Google 域名。",
-    "traceback": "colab 命令抛出异常，完整堆栈见下方输出。",
+    "traceback": "colab 命令抛出了异常。可以重试；反复出现时用「复制详情」交给维护者。",
+    "acceleratorRefused": "这个账号当前拿不到所选加速器，换一个再试。",
     "failed": "命令执行失败。",
     "failedWithCode": "命令执行失败（退出码 {{code}}）。"
   },

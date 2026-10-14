@@ -36,6 +36,8 @@ export const IPC = {
   updateCheck: "update:check",
   updateDownload: "update:download",
   updateInstall: "update:install",
+  logPath: "log:path",
+  logReveal: "log:reveal",
   clipboardRead: "clipboard:read",
   clipboardWrite: "clipboard:write",
 } as const;

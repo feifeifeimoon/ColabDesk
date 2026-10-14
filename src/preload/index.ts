@@ -70,6 +70,9 @@ const api: ColabDeskApi = {
   downloadUpdate: () => invoke(IPC.updateDownload),
   installUpdate: () => invoke(IPC.updateInstall),
   onUpdateStatus: (listener) => subscribe(EVENTS.updateStatus, listener),
+
+  logPath: () => invoke(IPC.logPath),
+  revealLog: () => invoke(IPC.logReveal),
 };
 
 contextBridge.exposeInMainWorld("colabdesk", api);

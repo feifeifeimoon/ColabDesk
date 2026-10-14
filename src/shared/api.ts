@@ -128,4 +128,12 @@ export interface ColabDeskApi {
   /** Restarts into the downloaded build. Does not resolve on success. */
   installUpdate(): Promise<void>;
   onUpdateStatus(listener: (status: UpdateStatus) => void): () => void;
+
+  /**
+   * Where the app's log is. One file with everything the app did — the answer to
+   * "what happened here" that does not depend on the user describing it.
+   */
+  logPath(): Promise<string>;
+  /** Shows the log in the OS file manager, creating it first if need be. */
+  revealLog(): Promise<void>;
 }

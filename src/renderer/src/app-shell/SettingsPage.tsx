@@ -16,6 +16,7 @@ import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Card, Panel, PanelRow } from "../components/ui/Card";
 import { PanelDivider } from "../components/ui/PanelDivider";
+import { RawOutput } from "../components/ui/RawOutput";
 import { PANEL_WIDTH } from "../lib/panel-width";
 import {
   AccountIcon,
@@ -28,8 +29,8 @@ import {
   TerminalIcon,
 } from "../components/ui/icons";
 import { Callout } from "../components/ui/Notice";
-import { RawOutput } from "../components/ui/RawOutput";
 import { LoginPanel } from "../features/login/LoginPanel";
+import { LogPanel } from "../features/logs/LogPanel";
 import { UpdatePanel } from "../features/updates/UpdatePanel";
 import { UsageTrendPanel } from "../features/usage/UsageTrendPanel";
 import { TerminalSettings } from "./TerminalSettings";
@@ -293,7 +294,6 @@ export function SettingsPage() {
             </div>
           </div>
           <LoginPanel onFinished={refreshEnvironment} authenticated={env?.authenticated ?? false} />
-          <RawOutput text={usage?.raw ?? ""} label={t("settings.rawUsageLabel", "colab usage 原始输出")} />
         </Card>
         {/* Which Google account, and what Colab allows it — answered by the API
             rather than by the CLI, which knows the email but never prints it
@@ -465,6 +465,7 @@ export function SettingsPage() {
             value={env?.app_version || "—"}
           />
         </Panel>
+        <LogPanel />
         <UpdatePanel />
       </div>
     );

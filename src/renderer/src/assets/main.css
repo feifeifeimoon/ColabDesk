@@ -981,6 +981,49 @@ kbd {
   font-size: var(--text-micro);
 }
 
+/* ---- the message corner: what just happened, over whatever is on screen ---- */
+
+.toasts {
+  position: fixed;
+  right: var(--space-3);
+  /* Clear of the status bar, which is 26px of machine state and speaks quietly. */
+  bottom: calc(26px + var(--space-3));
+  /* Over the workbench, the settings layer (12) and the dialog (20): a result
+     belongs on top of the thing that produced it. Under the status bar's own
+     popover (50), which the pointer is already inside when it is open. */
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(400px, calc(100vw - var(--space-6)));
+  /* The column is as tall as its messages; the space around them is not a lid. */
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-4);
+  animation: toast-rise 120ms ease-out;
+}
+
+@keyframes toast-rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}
+
 /* ---- bottom status bar: machine state, always visible ---- */
 
 .statusbar {
@@ -1725,6 +1768,12 @@ textarea.input {
   text-align: right;
   flex-shrink: 0;
   max-width: 46%;
+  /* A value can be a path, and a path can be longer than its share of the row:
+     clip it rather than let it run over the actions beside it. Right-aligned, so
+     what stays visible is the end — the file name, not the drive letter. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .panel-row--stacked {

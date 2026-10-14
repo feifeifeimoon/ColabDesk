@@ -12,7 +12,6 @@ import {
 } from "../../lib/api";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Field";
-import { RawOutput } from "../../components/ui/RawOutput";
 
 /**
  * Drives the CLI's copy-paste OAuth flow for the user: the authorization URL
@@ -32,7 +31,6 @@ export function LoginPanel({
   const [code, setCode] = useState("");
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [output, setOutput] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,11 +40,10 @@ export function LoginPanel({
       setMessage(t("login.urlOpened", "浏览器已打开授权页面，完成登录后请将授权码粘贴至下方。"));
       openExternal(payload.url);
     });
-    const unsubscribeDone = onAuthDone((payload) => {
+    const unsubscribeDone = onAuthDone(() => {
       setRunning(false);
       setUrl(null);
       setCode("");
-      setOutput(payload.output);
       void onFinished().then((authenticated) => {
         setMessage(
           authenticated
@@ -65,7 +62,6 @@ export function LoginPanel({
     setRunning(true);
     setError(null);
     setMessage(t("login.requestingUrl", "正在向 Google 申请授权链接…"));
-    setOutput("");
     try {
       await startLogin();
     } catch (cause) {
@@ -100,7 +96,6 @@ export function LoginPanel({
       await logout();
       await onFinished();
       setMessage(t("login.signedOut", "已退出登录，凭证已清除。"));
-      setOutput("");
     } catch (cause) {
       setError(messageOf(cause));
     }
@@ -166,8 +161,6 @@ export function LoginPanel({
           </Button>
         </form>
       )}
-
-      <RawOutput text={output} label={t("login.rawOutputLabel", "登录过程输出")} />
     </div>
   );
 }

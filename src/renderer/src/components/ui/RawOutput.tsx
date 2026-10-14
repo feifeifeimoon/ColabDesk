@@ -21,7 +21,7 @@ export function RawOutput({
 
   return (
     <div className="raw">
-      <button className="raw-toggle" onClick={() => setOpen(!open)}>
+      <button type="button" className="raw-toggle" onClick={() => setOpen(!open)}>
         {open ? "▾" : "▸"} {displayLabel}
       </button>
       {open && <pre className="raw-body">{text}</pre>}

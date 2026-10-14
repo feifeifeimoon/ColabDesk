@@ -78,6 +78,9 @@
     "settings": "Settings",
     "settingsTitle": "Settings (Ctrl+,)"
   },
+  "toasts": {
+    "dismiss": "Dismiss"
+  },
   "banners": {
     "dismiss": "Dismiss",
     "updateOffered": "Version {{version}} is available.",
@@ -157,7 +160,8 @@
     "creatingButton": "Requesting runtime…",
     "cancelButton": "Cancel",
     "timeoutCallout": "Request timed out while initializing. Please sync sessions later.",
-    "detailsInOutput": "See output below for details.",
+    "copyDetails": "Copy details",
+    "copiedDetails": "Copied",
     "runtimeReadyCallout": "Runtime is ready. Opening terminal…",
     "copiedSsh": "Copied: {{command}}",
     "stopConfirm": "Stop session \"{{name}}\"? Unsaved runtime data will be lost.",
@@ -183,8 +187,7 @@
     "openInBrowser": "Open in Browser",
     "copyLink": "Copy Link",
     "codePlaceholder": "Paste authorization code from Google",
-    "submitCode": "Submit",
-    "rawOutputLabel": "Login process output"
+    "submitCode": "Submit"
   },
   "usage": {
     "trendTitle": "Usage Trend",
@@ -238,7 +241,6 @@
     "accountAccelerators": "Available accelerators",
     "accountAcceleratorsDesc": "Available and restricted hardware accelerators for this account.",
     "accountAcceleratorUnavailable": "Unavailable to this account",
-    "rawUsageLabel": "colab usage raw output",
     "disclaimer": "ColabDesk is a third-party open-source client and is not affiliated with Google. All network operations and credentials are handled by the official Colab CLI.",
     "appearanceLanguageLabel": "Language",
     "appearanceLanguageDesc": "Interface language; supports system default, Chinese, and English.",
@@ -326,7 +328,10 @@
     "runtimeAppVersion": "App version",
     "groupApp": "App",
     "sectionAboutTitle": "About",
-    "sectionAboutDesc": "Which build this is, and how it updates itself.",
+    "sectionAboutDesc": "Which build this is, how it updates itself, and where to find the log when something breaks.",
+    "logLabel": "Run log",
+    "logDescription": "What the app did and what the command line answered, in one file. Attaching it beats describing the symptom.",
+    "logReveal": "Open log",
     "updateLabel": "Automatic updates",
     "updateDesc": "Checked once a day in the background. Downloading and restarting are yours to decide.",
     "updateUnavailable": "This build cannot update itself. Download it from the releases page instead.",
@@ -349,7 +354,8 @@
   },
   "failure": {
     "networkInterrupted": "Network request interrupted: TLS connection to colab.research.google.com was reset. Retry if sporadic; check proxy/VPN if persistent.",
-    "traceback": "The colab command raised an exception. See output below for full stack trace.",
+    "traceback": "The colab command raised an exception. Retry; if it keeps happening, hand the details over with the button beside this.",
+    "acceleratorRefused": "This account cannot use the selected accelerator right now — pick another.",
     "failed": "Command failed.",
     "failedWithCode": "Command failed (exit code {{code}})."
   },

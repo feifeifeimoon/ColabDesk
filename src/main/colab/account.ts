@@ -18,6 +18,7 @@
 
 import type { AcceleratorEligibility, AccountInfo } from "@shared/types";
 import { e2eMockEnabled } from "../e2e/mode";
+import { errorMessage, type LogSink } from "../log-file";
 import { parseEligibility } from "./accelerator-eligibility";
 import { backendGetJson } from "./backend";
 import { retryTransientRead } from "./network-retry";
@@ -73,7 +74,7 @@ async function readTokenInfo(url: string, timeoutMs: number): Promise<unknown> {
  * Returns null when the token is missing, stale, or unrecognised — the caller
  * treats that as "not shown" rather than as a failure to report.
  */
-export async function fetchAccountInfo(): Promise<AccountInfo | null> {
+export async function fetchAccountInfo(log?: LogSink): Promise<AccountInfo | null> {
   // A container has no Google account to introspect. The answer below is the
   // shape tokeninfo returns, so the same parsing and the same failure paths run.
   if (e2eMockEnabled()) {
@@ -89,7 +90,8 @@ export async function fetchAccountInfo(): Promise<AccountInfo | null> {
       () => readTokenInfo(`${TOKENINFO_URL}?access_token=${encodeURIComponent(token)}`, REQUEST_TIMEOUT_MS),
       READ_ATTEMPTS,
     );
-  } catch {
+  } catch (cause) {
+    log?.write("api", `账户信息读取失败（tokeninfo）：${errorMessage(cause)}`);
     return null;
   }
 
@@ -109,7 +111,7 @@ export async function fetchAccountInfo(): Promise<AccountInfo | null> {
 /**
  * Which accelerators this account may allocate, from the session backend.
  */
-export async function fetchAcceleratorEligibility(): Promise<AcceleratorEligibility | null> {
+export async function fetchAcceleratorEligibility(log?: LogSink): Promise<AcceleratorEligibility | null> {
   // Same idea as `fetchAccountInfo`: the shape of a live answer, parsed by the
   // same rules. `ineligibleTpus` is left out on purpose — the backend omits it,
   // and that omission is the thing most likely to break the parser.
@@ -123,7 +125,10 @@ export async function fetchAcceleratorEligibility(): Promise<AcceleratorEligibil
 
   try {
     return parseEligibility(await backendGetJson("/tun/m/ccu-info"));
-  } catch {
+  } catch (cause) {
+    // Fail-soft by design: the picker then offers everything the backend never
+    // ruled out. Why it came back empty is what the log is for.
+    log?.write("api", `加速器资格读取失败（ccu-info）：${errorMessage(cause)}`);
     return null;
   }
 }
@@ -140,7 +145,7 @@ export interface AccountStatus {
  * is what tells us *which* account this is; eligibility is reused for a while,
  * but only for the same account — a different `sub` invalidates it on its own.
  */
-export async function accountStatus(): Promise<AccountStatus> {
+export async function accountStatus(log?: LogSink): Promise<AccountStatus> {
   if (!authState().token_file_exists) {
     resetAccountCache();
     return { account: null, eligibility: null };
@@ -148,7 +153,7 @@ export async function accountStatus(): Promise<AccountStatus> {
 
   // Identity is asked every time: it is the fact that says *which* account this
   // is, so it is the one thing a cache must not be allowed to pin down.
-  const account = (await fetchAccountInfo()) ?? cache.identity?.value ?? null;
+  const account = (await fetchAccountInfo(log)) ?? cache.identity?.value ?? null;
   const owner = account ? account.subject ?? account.email : null;
   if (account && owner) cache.identity = { value: account, subject: owner, at: Date.now() };
 
@@ -160,7 +165,7 @@ export async function accountStatus(): Promise<AccountStatus> {
     return { account, eligibility: reusable.value };
   }
 
-  const eligibility = await fetchAcceleratorEligibility();
+  const eligibility = await fetchAcceleratorEligibility(log);
   if (eligibility) {
     cache.eligibility = { value: eligibility, subject: owner, at: Date.now() };
     return { account, eligibility };
