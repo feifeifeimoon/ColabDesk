@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AcceleratorEligibility, CommandReport } from "@shared/types";
 import { Button } from "../../components/ui/Button";
@@ -45,36 +45,49 @@ function isUnavailable(unavailable: Set<string>, optionId: string): boolean {
   return unavailable.has(optionId.toUpperCase());
 }
 
+/**
+ * What the picker starts on: the first option this account can actually get.
+ * T4 is only the fallback when the backend has not told us anything.
+ */
+export function defaultAccelerator(unavailable: Set<string>): string {
+  return ACCELERATORS.find((option) => option.id !== "cpu" && !isUnavailable(unavailable, option.id))?.id ?? "T4";
+}
+
+/**
+ * The create-session dialog, mounted only while it is open. A blank slate per
+ * opening is what the mount buys — a name typed at a cancelled attempt must not
+ * still be sitting there, waiting to be created by accident — and unlike a
+ * reset effect it cannot run at any other time.
+ */
 export function NewSessionDialog() {
-  const { t } = useTranslation();
   const open = useAppStore((state) => state.newSessionOpen);
+  return open ? <NewSessionForm /> : null;
+}
+
+function NewSessionForm() {
+  const { t } = useTranslation();
   const closeNewSession = useAppStore((state) => state.closeNewSession);
   const sessionCreated = useAppStore((state) => state.sessionCreated);
   const eligibility = useAppStore((state) => state.env?.accelerator_eligibility ?? null);
 
+  // Memoised: a Set built during render is a new reference every time, and the
+  // correction below is keyed on it.
+  const unavailable = useMemo(() => unavailableAccelerators(eligibility), [eligibility]);
+
   const [name, setName] = useState("");
-  const [accelerator, setAccelerator] = useState("T4");
+  const [accelerator, setAccelerator] = useState(() => defaultAccelerator(unavailable));
   const [highMem, setHighMem] = useState(false);
   const [pending, setPending] = useState(false);
   const [report, setReport] = useState<CommandReport | null>(null);
 
-  const unavailable = unavailableAccelerators(eligibility);
-
-  // A dialog opens blank: a name typed at a cancelled attempt would otherwise
-  // still be sitting there, waiting to be created by accident.
+  // An entitlement that lands after the dialog opened can leave the pick
+  // unallocatable, so the picker follows it — and only the picker. The name
+  // being typed is not this effect's business.
   useEffect(() => {
-    if (!open) return;
-    setName("");
-    // The default has to be one this account can actually get; T4 is only the
-    // fallback when the backend has not told us anything.
-    setAccelerator(
-      ACCELERATORS.find((option) => option.id !== "cpu" && !isUnavailable(unavailable, option.id))?.id ?? "T4",
+    setAccelerator((current) =>
+      isUnavailable(unavailable, current) ? defaultAccelerator(unavailable) : current,
     );
-    setHighMem(false);
-    setReport(null);
-  }, [open, unavailable]);
-
-  if (!open) return null;
+  }, [unavailable]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();

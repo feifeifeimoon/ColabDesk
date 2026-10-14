@@ -244,6 +244,58 @@ test("新建会话不提供本账号拿不到的加速器", async ({ page }) => 
   await expect(t4).not.toContainText("不可用");
 });
 
+// 对话框只该在打开那一刻重置自己：名字打进去要留下、选好的加速器不弹回默认、勾上的高内存
+// 不自己弹开、创建失败的红字不闪一帧就没。四个症状同一个不变量，所以钉在同一个用例里；而
+// 它只能钉在这里——渲染断言（renderToStaticMarkup）不跑 effect 与提交，看不见这一层。
+test("新建会话：填进去的东西不会被自己擦掉", async ({ page }) => {
+  await page.locator('[aria-label="新建会话"]').click();
+  const dialog = page.getByRole("dialog", { name: "新建会话" });
+  await expect(dialog).toBeVisible();
+
+  // 名字：打进去就留在框里。
+  const name = dialog.getByLabel("会话名称");
+  await name.fill("e2e-alpha");
+  await expect(name).toHaveValue("e2e-alpha");
+
+  // 加速器：本账号的默认是 T4，选了 A100 之后不该弹回去。
+  const accelerator = dialog.locator("select");
+  await accelerator.selectOption("A100");
+  await expect(accelerator).toHaveValue("A100");
+
+  // 高内存：勾上就保持勾着。
+  const highMem = dialog.getByRole("checkbox");
+  await highMem.check();
+  await expect(highMem).toBeChecked();
+
+  // 创建失败的红字要留在界面上。名字用已存在的那个，桩据此回「已存在」。
+  await dialog.getByRole("button", { name: "创建" }).click();
+  const failure = dialog.locator(".callout--danger");
+  await expect(failure).toContainText("命令执行失败");
+  // 只闪一帧的话，上面那次断言会在那一帧上通过；隔一会儿再看一次才是这条的要点。
+  await page.waitForTimeout(300);
+  await expect(failure).toContainText("命令执行失败");
+});
+
+// 右上角是一个 ×，不是一行"关闭"文字：字形给不出这个名字，所以文案挂在 aria-label 上，
+// 按钮里就只剩一个 svg。
+test("新建会话右上角是一个有名字的 ×，点它会关掉对话框", async ({ page }) => {
+  await page.locator('[aria-label="新建会话"]').click();
+  const dialog = page.getByRole("dialog", { name: "新建会话" });
+  await expect(dialog).toBeVisible();
+
+  const close = dialog.getByRole("button", { name: "关闭" });
+  expect(await close.textContent()).toBe("");
+  await expect(close.locator("svg")).toHaveCount(1);
+
+  // 图标按钮最容易出的事故是缩到点不着；低于 28px 高的可点区域在设计系统里算缺陷。
+  const box = await close.boundingBox();
+  expect(box!.width).toBeGreaterThanOrEqual(28);
+  expect(box!.height).toBeGreaterThanOrEqual(28);
+
+  await close.click();
+  await expect(dialog).toHaveCount(0);
+});
+
 test("同步会话按钮触发刷新遮罩并防重复点击，完成后遮罩消失", async ({ page }) => {
   const syncBtn = page.locator('[data-testid="sync-sessions"]');
   await expect(syncBtn).toBeVisible();
