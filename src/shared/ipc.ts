@@ -16,8 +16,6 @@ export const IPC = {
   logout: "auth:logout",
   sshSetup: "ssh:setup",
   sshRemove: "ssh:remove",
-  sshOpenTerminal: "ssh:openTerminal",
-  sshConnect: "ssh:connect",
   sshDisconnect: "ssh:disconnect",
   termOpen: "term:open",
   termWrite: "term:write",

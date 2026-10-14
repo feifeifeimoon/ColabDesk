@@ -16,6 +16,7 @@ import {
   TerminalIcon,
 } from "../components/ui/icons";
 import { closeWindow, minimizeWindow, onWindowMaximized, toggleMaximizeWindow } from "../lib/api";
+import { translate } from "../i18n/i18n";
 import { useAppStore } from "../store";
 import { useHasWorkSurface } from "../store/selectors";
 import { BrandMark } from "./BrandMark";
@@ -262,12 +263,13 @@ export function formatSessionExpiry(iso: string | null | undefined): string | nu
   const target = new Date(iso).getTime();
   if (Number.isNaN(target)) return null;
   const diffMs = target - Date.now();
-  if (diffMs <= 0) return "已过期";
+  if (diffMs <= 0) return translate("statusbar.expired", "已过期");
   const totalMinutes = Math.floor(diffMs / 60000);
   const hours = Math.floor(totalMinutes / 60);
   const mins = totalMinutes % 60;
-  if (hours > 0) return `剩余 ~${hours}h${mins > 0 ? ` ${mins}m` : ""}`;
-  return `剩余 ~${mins}m`;
+  // The units read the same in both languages; only the sentence around them does not.
+  const time = hours > 0 ? `${hours}h${mins > 0 ? ` ${mins}m` : ""}` : `${mins}m`;
+  return translate("statusbar.remainingTime", `剩余 ~${time}`, { time });
 }
 
 /**

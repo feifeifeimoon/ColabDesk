@@ -30,8 +30,6 @@ export const onAuthDone = (listener: Parameters<ColabDeskApi["onAuthDone"]>[0]) 
 
 export const sshSetup = (name: string) => bridge().sshSetup(name);
 export const sshRemove = (name: string) => bridge().sshRemove(name);
-export const sshOpenTerminal = (name: string) => bridge().sshOpenTerminal(name);
-export const sshConnect = (name: string) => bridge().sshConnect(name);
 export const sshDisconnect = (name: string) => bridge().sshDisconnect(name);
 export const onSshStatus = (listener: Parameters<ColabDeskApi["onSshStatus"]>[0]) => bridge().onSshStatus(listener);
 
@@ -49,11 +47,10 @@ export const onTerminalClosed = (listener: Parameters<ColabDeskApi["onTerminalCl
 export const listDirectory = (session: string, path: string) => bridge().listDirectory(session, path);
 export const makeDirectory = (session: string, path: string) => bridge().makeDirectory(session, path);
 export const deletePath = (session: string, path: string) => bridge().deletePath(session, path);
-export const download = (session: string, remote: string, name: string) =>
-  bridge().download(session, remote, name);
+export const download = (session: string, remote: string, name: string, title: string) =>
+  bridge().download(session, remote, name, title);
 export const upload = (targets: TransferTargets) => bridge().upload(targets);
-export const pickUploadTargets = (session: string, remoteDir: string) =>
-  bridge().pickUploadTargets(session, remoteDir);
+export const pickUploadTargets = (title: string) => bridge().pickUploadTargets(title);
 export const onTransferProgress = (listener: Parameters<ColabDeskApi["onTransferProgress"]>[0]) =>
   bridge().onTransferProgress(listener);
 export const pathForFile = (file: File) => bridge().pathForFile(file);

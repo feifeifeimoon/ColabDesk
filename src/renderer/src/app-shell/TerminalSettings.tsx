@@ -132,7 +132,7 @@ export function TerminalSettings() {
   const terminalKeys: [string, string][] = [
     ["Ctrl+Shift+C / Cmd+C", t("settings.shortcutCopy", "复制选中内容")],
     ["Ctrl+Shift+V / Cmd+V", t("settings.shortcutPaste", "粘贴")],
-    ["右键", t("settings.shortcutRightClick", "有选中就复制，否则粘贴")],
+    [t("settings.shortcutRightClickKey", "右键"), t("settings.shortcutRightClick", "有选中就复制，否则粘贴")],
     ["Ctrl+Shift+= / -", t("settings.shortcutFontSize", "终端字号增大 / 减小")],
     ["Ctrl+Shift+T", t("settings.shortcutNewTerminal", "新建终端")],
     ["Ctrl+Shift+N", t("settings.shortcutNewSession", "新建会话")],

@@ -57,7 +57,6 @@ export interface ColabEnvironment {
   accelerator_eligibility: AcceleratorEligibility | null;
   token_expiry: string | null;
   has_refresh_token: boolean;
-  hint: string | null;
 }
 
 /** The environment as the renderer sees it, plus what only Electron knows. */

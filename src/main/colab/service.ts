@@ -6,7 +6,6 @@
  * than guessed at from a wrong number.
  */
 
-import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import type { ColabEnvironment, CommandReport, EnvStatus, Session, SshSetup, UsageReport } from "@shared/types";
 import type { LogSink } from "../log-file";
@@ -15,7 +14,7 @@ import { fetchAssignments, type Assignment } from "./assignments";
 import { combined, needsLogin, parseUsage, parseVersion, readManifestVersion, resolveCli, runCli, type ResolvedCli } from "./cli";
 import { isTransientNetworkFailure } from "./network-retry";
 import { authState, configDir, findRawSession, loadRawSessions, loadSessions, sessionsFile } from "./sessions";
-import { alias, removeEntry, writeEntry } from "./ssh-config";
+import { removeEntry, writeEntry } from "./ssh-config";
 import type { SshTarget } from "../ssh/connection";
 
 /** Allocating a runtime can legitimately take minutes on a busy accelerator. */
@@ -133,13 +132,6 @@ export class Service {
     const auth = authState();
     const dir = configDir();
 
-    let hint: string | null = null;
-    if (!cli) {
-      hint = "未找到 colab 命令，应用内的大部分功能不可用。";
-    } else if (!auth.token_file_exists) {
-      hint = "尚未授权。点击「授权登录」完成 Google 账号登录。";
-    }
-
     return {
       cli_path: cli?.label ?? null,
       cli_source: cli?.source ?? null,
@@ -151,7 +143,6 @@ export class Service {
       accelerator_eligibility: account_.eligibility,
       token_expiry: auth.expiry,
       has_refresh_token: auth.has_refresh_token,
-      hint,
     };
   }
 
@@ -265,47 +256,4 @@ export class Service {
   sshRemove(name: string): SshSetup {
     return removeEntry(name);
   }
-}
-
-/**
- * Opens a real terminal window already connected to the runtime, outside the
- * app — for people who want tmux/vim in their own terminal emulator.
- */
-export function openExternalTerminal(name: string): Promise<string> {
-  const host = alias(name);
-  const command = `ssh ${host}`;
-
-  return new Promise((resolve, reject) => {
-    const fail = (message: string): void => reject(new Error(message));
-
-    if (process.platform === "win32") {
-      const child = spawn("cmd", ["/c", "start", "ColabDesk SSH", "ssh", host], { windowsHide: true });
-      child.on("error", (error) => fail(`打开终端失败: ${error.message}`));
-      child.on("close", () => resolve(command));
-      return;
-    }
-
-    if (process.platform === "darwin") {
-      const script = `tell application "Terminal" to do script "${command}"`;
-      const child = spawn("osascript", ["-e", script]);
-      child.on("error", (error) => fail(`打开终端失败: ${error.message}`));
-      child.on("close", (code) =>
-        code === 0 ? resolve(command) : fail(`打开 Terminal 失败（osascript 退出码 ${code}）。`),
-      );
-      return;
-    }
-
-    for (const [exe, args] of [
-      ["x-terminal-emulator", ["-e", "ssh", host]],
-      ["gnome-terminal", ["--", "ssh", host]],
-      ["xterm", ["-e", "ssh", host]],
-    ] as const) {
-      const child = spawn(exe, [...args], { detached: true, stdio: "ignore" });
-      child.on("error", () => {});
-      child.unref();
-      resolve(command);
-      return;
-    }
-    fail(`未找到可用的终端程序，请手动运行：${command}`);
-  });
 }

@@ -11,8 +11,8 @@
 
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import "../i18n/i18n";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { setRendererUiLanguage } from "../i18n/i18n";
 import { DEFAULT_TERMINAL_APPEARANCE, TERMINAL_FONTS, TERMINAL_THEME_IDS } from "../lib/terminal-appearance";
 
 const store = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
@@ -97,5 +97,22 @@ describe("the terminal section", () => {
     for (const heading of ["配色", "排版", "光标与视口", "键盘与鼠标"]) {
       expect(markup, heading).toContain(heading);
     }
+  });
+});
+
+describe("in English", () => {
+  afterEach(async () => {
+    await setRendererUiLanguage("zh");
+  });
+
+  /**
+   * The label tables hold `[key, Chinese fallback]` pairs and the shortcut table
+   * has a first column that is a word ("右键") rather than a key combo — neither
+   * sits inside a `t()` call in the source, so only the rendered markup can say
+   * whether they came out translated.
+   */
+  it("终端设置不出现中文", async () => {
+    await setRendererUiLanguage("en");
+    expect(text(render())).not.toMatch(/[一-鿿]/);
   });
 });

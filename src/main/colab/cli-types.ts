@@ -6,7 +6,3 @@ export interface CliOutput {
   stderr: string;
   timedOut: boolean;
 }
-
-export function outputOk(output: CliOutput): boolean {
-  return !output.timedOut && output.code === 0;
-}

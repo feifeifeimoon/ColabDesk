@@ -139,6 +139,14 @@ const GROUPS_DEF: { id: string; titleKey: string; defaultTitle: string; sections
   },
 ];
 
+/**
+ * Every section, in nav order, derived from the same table the page renders —
+ * so the guard that renders each one in English cannot fall behind the page.
+ */
+export const SECTION_IDS: readonly SectionId[] = GROUPS_DEF.flatMap((group) =>
+  group.sections.map((section) => section.id),
+);
+
 export function SettingsPage() {
   const { t } = useTranslation();
   const open = useAppStore((state) => state.settingsOpen);

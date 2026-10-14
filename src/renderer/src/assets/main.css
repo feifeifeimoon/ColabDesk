@@ -1783,31 +1783,12 @@ textarea.input {
 
 /* ---------- table ---------- */
 
-.table-container {
-  overflow: hidden;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-2);
-  background: var(--canvas);
-}
+/* One user: the shortcut reference in settings → terminal. It is not the
+   session list — that is `.session-row`, and it has been for a while. */
 
 .table {
   width: 100%;
   border-collapse: collapse;
-}
-
-.table th {
-  background: var(--canvas-soft);
-  color: var(--mute);
-  font-family: var(--font-mono);
-  font-size: var(--text-caption);
-  font-weight: 400;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  text-align: left;
-  padding: var(--space-2) var(--space-4);
-  border-bottom: 1px solid var(--hairline);
-  white-space: nowrap;
 }
 
 .table td {
@@ -1815,6 +1796,7 @@ textarea.input {
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--hairline);
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .table tbody tr:last-child td {
@@ -1823,31 +1805,6 @@ textarea.input {
 
 .table tbody tr:hover {
   background: var(--canvas-soft);
-}
-
-.table .cell-actions {
-  display: flex;
-  gap: var(--space-1);
-  justify-content: flex-end;
-  flex-wrap: nowrap;
-}
-
-.table th,
-.table td {
-  white-space: nowrap;
-}
-
-.table .cell-mono {
-  font-family: var(--font-mono);
-  font-size: var(--text-caption);
-  color: var(--body);
-}
-
-.table .cell-endpoint {
-  max-width: 260px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: block;
 }
 
 /* ---------- badge & status ---------- */
@@ -2145,8 +2102,7 @@ textarea.input {
 .metric,
 .pane,
 .card,
-.panel,
-.table-container {
+.panel {
   box-shadow: var(--shadow-2);
 }
 

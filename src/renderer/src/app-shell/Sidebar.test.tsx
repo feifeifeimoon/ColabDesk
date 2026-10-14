@@ -5,8 +5,8 @@
 
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import "../i18n/i18n";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { setRendererUiLanguage } from "../i18n/i18n";
 import { Sidebar } from "./Sidebar";
 
 const store = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
@@ -111,19 +111,38 @@ describe("Sidebar", () => {
       ...baseStore,
       sessions: [],
       untrackedSessions: [],
-      untrackedError: "读不到服务器上的运行时列表（令牌过期或网络不通）。点上面的同步重试。",
+      // The reason is main-process text; only *that* it failed reaches the DOM.
+      untrackedError: "assignments request failed",
     };
     const html = renderToStaticMarkup(createElement(Sidebar));
-    expect(html).toContain("读不到服务器上的运行时列表");
+    expect(html).toContain("读不到云端运行时列表");
     expect(html).toContain("点上面的同步重试");
   });
 
   it("本地有会话时不报服务器那一半的失败——列表本身是诚实的", () => {
     store.current = {
       ...baseStore,
-      untrackedError: "读不到服务器上的运行时列表（令牌过期或网络不通）。点上面的同步重试。",
+      untrackedError: "assignments request failed",
     };
     const html = renderToStaticMarkup(createElement(Sidebar));
-    expect(html).not.toContain("读不到服务器上的运行时列表");
+    expect(html).not.toContain("读不到云端运行时列表");
+  });
+});
+
+describe("in English", () => {
+  afterEach(async () => {
+    await setRendererUiLanguage("zh");
+  });
+
+  /** Every state at once: local rows, an untracked row, and the sentence the
+      rail writes when the server's half of the list could not be read. */
+  it("会话栏不出现中文——含未追踪行与那句读不到列表的话", async () => {
+    store.current = {
+      ...baseStore,
+      untrackedSessions: [UNTRACKED],
+      untrackedError: "assignments request failed",
+    };
+    await setRendererUiLanguage("en");
+    expect(renderToStaticMarkup(createElement(Sidebar))).not.toMatch(/[一-鿿]/);
   });
 });

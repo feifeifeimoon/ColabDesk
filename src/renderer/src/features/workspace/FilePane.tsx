@@ -148,7 +148,7 @@ export function FilePane({
 
   async function pickAndUpload() {
     try {
-      await uploadPaths(await api.pickUploadTargets(session, path));
+      await uploadPaths(await api.pickUploadTargets(t("files.uploadDialogTitle", "选择要上传的文件")));
     } catch (cause) {
       setError(messageOf(cause));
     }
@@ -157,7 +157,12 @@ export function FilePane({
   async function download(entry: RemoteEntry) {
     setBusy(`download:${entry.name}`);
     try {
-      await api.download(session, joinPath(path, entry.name), entry.name);
+      await api.download(
+        session,
+        joinPath(path, entry.name),
+        entry.name,
+        t("files.saveDialogTitle", "保存到本地"),
+      );
       setError(null);
     } catch (cause) {
       setError(messageOf(cause));

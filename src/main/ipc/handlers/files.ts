@@ -31,8 +31,8 @@ export function registerFileHandlers({ ssh }: IpcContext): void {
 
   ipcMain.handle(
     IPC.sftpDownload,
-    async (_event, payload: { session: string; remote: string; name: string }) => {
-      const result = await dialog.showSaveDialog({ title: "保存到本地", defaultPath: payload.name });
+    async (_event, payload: { session: string; remote: string; name: string; title: string }) => {
+      const result = await dialog.showSaveDialog({ title: payload.title, defaultPath: payload.name });
       if (result.canceled || !result.filePath) return { canceled: true as const };
 
       const id = `t${counter++}`;
@@ -77,9 +77,9 @@ export function registerFileHandlers({ ssh }: IpcContext): void {
     },
   );
 
-  ipcMain.handle(IPC.pickUploadTargets, async () => {
+  ipcMain.handle(IPC.pickUploadTargets, async (_event, payload: { title: string }) => {
     const result = await dialog.showOpenDialog({
-      title: "选择要上传的文件",
+      title: payload.title,
       properties: ["openFile", "multiSelections"],
     });
     return result.canceled ? [] : result.filePaths;

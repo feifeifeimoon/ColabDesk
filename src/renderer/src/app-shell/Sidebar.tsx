@@ -141,10 +141,14 @@ export function Sidebar() {
           Only while the rail would otherwise read as empty, which is the one
           case where it would be claiming to be complete: with local rows on
           screen the list is honest, and this read loses to every network blip.
+
+          The sentence is ours — the main process only reports *that* the read
+          failed and what it said, because that text is a diagnostic, not a
+          piece of UI copy.
         */}
         {untrackedError && sessions.length === 0 && (
-          <p className="hint" style={{ padding: "var(--space-2)" }}>
-            {untrackedError}
+          <p className="hint" style={{ padding: "var(--space-2)" }} title={untrackedError}>
+            {t("sidebar.untrackedUnavailable", "读不到云端运行时列表（令牌过期或网络不通），点上面的同步重试。")}
           </p>
         )}
 

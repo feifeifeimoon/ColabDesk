@@ -9,8 +9,8 @@
 
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import "../../i18n/i18n";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { setRendererUiLanguage } from "../../i18n/i18n";
 
 const store = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
 
@@ -79,5 +79,28 @@ describe("a session that has no shell yet", () => {
     expect(markup).toContain("新建终端");
     expect(markup, "中途停顿的人是来要终端的，不是来听品牌的").not.toContain('aria-label="ColabDesk"');
     expect(markup, "已经进来的人不该再被要一次 star").not.toContain("star-on-github");
+  });
+});
+
+describe("in English", () => {
+  afterEach(async () => {
+    await setRendererUiLanguage("zh");
+  });
+
+  /** Every string here is passed with a Chinese default: a key missing from
+      en.json degrades to Chinese silently, and this is what notices. */
+  const noChinese = (markup: string): void => {
+    expect(text(markup)).not.toMatch(/[一-鿿]/);
+  };
+
+  it("正门不出现中文", async () => {
+    await setRendererUiLanguage("en");
+    noChinese(render());
+  });
+
+  it("中途停顿的那一屏也不出现中文", async () => {
+    store.current = { ...base, selectedSession: "alpha", sessions: [{}] };
+    await setRendererUiLanguage("en");
+    noChinese(render());
   });
 });
