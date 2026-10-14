@@ -19,7 +19,7 @@ vi.mock("../../store", () => ({
   useAppStore: (select: (state: unknown) => unknown) => select(store.current),
 }));
 
-import { NewSessionDialog, unavailableAccelerators } from "./NewSessionDialog";
+import { NewSessionDialog, defaultAccelerator, unavailableAccelerators } from "./NewSessionDialog";
 
 const ELIGIBILITY: AcceleratorEligibility = {
   gpus: ["G4", "A100", "L4", "T4"],
@@ -56,6 +56,14 @@ describe("accelerator availability", () => {
   it("folds the API's upper-case TPU names onto the picker's lower-case ids", () => {
     const tpuOnly = { ...ELIGIBILITY, ineligible_gpus: [], ineligible_tpus: ["V6E1"] };
     expect(unavailableAccelerators(tpuOnly)).toEqual(new Set(["TPU:V6E1"]));
+  });
+
+  // The picker has to open on something the account can get: a refused
+  // accelerator as the pre-selected default would fail at submit, silently.
+  it("opens on the first accelerator the account can actually get", () => {
+    expect(defaultAccelerator(unavailableAccelerators(ELIGIBILITY))).toBe("T4");
+    expect(defaultAccelerator(unavailableAccelerators(null))).toBe("T4");
+    expect(defaultAccelerator(new Set(["T4", "L4"]))).toBe("G4");
   });
 
   it("marks unavailable options in the picker and leaves the rest alone", () => {
