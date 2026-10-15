@@ -9,9 +9,9 @@
 
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { UpdateStatus } from "@shared/types";
-import "../i18n/i18n";
+import { setRendererUiLanguage } from "../i18n/i18n";
 
 const store = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
 
@@ -47,7 +47,6 @@ describe("the update prompt", () => {
     store.current = state({ state: "not-available", userInitiated: false });
     expect(render()).toBe("");
   });
-
   it("names the version and offers to download it", () => {
     store.current = state({ state: "available", version: "0.4.0" });
     const html = render();
@@ -87,5 +86,23 @@ describe("the update prompt", () => {
       version: null,
     });
     expect(render()).toBe("");
+  });
+});
+
+describe("in English", () => {
+  afterEach(async () => {
+    await setRendererUiLanguage("zh");
+  });
+
+  /**
+   * The updater's own sentence is copy, so it follows the reader. The failure
+   * banner is not covered here: what it shows is the main process's own text
+   * (a diagnostic), and on this side of the IPC boundary there is no catalog
+   * for it.
+   */
+  it("更新提示不出现中文——漏 key 或漏 t() 都会在这儿红", async () => {
+    store.current = state({ state: "available", version: "0.4.0" });
+    await setRendererUiLanguage("en");
+    expect(text(render())).not.toMatch(/[一-鿿]/);
   });
 });

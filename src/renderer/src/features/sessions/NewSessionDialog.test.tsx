@@ -9,8 +9,8 @@
 
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import "../../i18n/i18n";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { setRendererUiLanguage } from "../../i18n/i18n";
 import type { AcceleratorEligibility } from "@shared/types";
 
 const store = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
@@ -87,5 +87,18 @@ describe("accelerator availability", () => {
 
     expect(option(markup, "H100")).not.toContain("disabled");
     expect(markup).not.toContain("当前账号可用");
+  });
+});
+
+describe("in English", () => {
+  afterEach(async () => {
+    await setRendererUiLanguage("zh");
+  });
+
+  /** The CPU row's label is a `[key, fallback]` pair in a data table, and the
+      entitlement note is appended to it — both live outside a `t()` call. */
+  it("新建会话对话框不出现中文", async () => {
+    await setRendererUiLanguage("en");
+    expect(renderToStaticMarkup(createElement(NewSessionDialog))).not.toMatch(/[一-鿿]/);
   });
 });

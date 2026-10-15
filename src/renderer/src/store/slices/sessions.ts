@@ -54,7 +54,7 @@ export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> 
     set({ sessionsSyncing: true });
     try {
       const report = await api.syncSessions();
-      if (!report.ok && !report.error) set({ error: report.output.trim() || "同步失败。" });
+      if (!report.ok && !report.error) set({ error: report.output.trim() || translate("sessions.syncFailed", "同步失败。") });
       else set({ error: report.error });
       // Both reads wait for that call — it is what prunes the store and mints a
       // fresh token — but they do not wait for each other.

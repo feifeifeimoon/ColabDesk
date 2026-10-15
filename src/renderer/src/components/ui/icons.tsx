@@ -72,25 +72,6 @@ export function SettingsIcon({ size }: IconProps) {
   );
 }
 
-/* ---- theme: what the top bar's toggle switches to ---- */
-
-export function SunIcon({ size }: IconProps) {
-  return (
-    <Svg size={size}>
-      <circle cx="8" cy="8" r="3" />
-      <path d="M8 1.4v1.5M8 13.1v1.5M1.4 8h1.5M13.1 8h1.5M3.35 3.35l1.05 1.05M11.6 11.6l1.05 1.05M12.65 3.35l-1.05 1.05M4.4 11.6L3.35 12.65" />
-    </Svg>
-  );
-}
-
-export function MoonIcon({ size }: IconProps) {
-  return (
-    <Svg size={size}>
-      <path d="M13.3 9.5A5.6 5.6 0 0 1 6.5 2.7a5.6 5.6 0 1 0 6.8 6.8Z" />
-    </Svg>
-  );
-}
-
 /** Appearance: a half-filled disc. The section is not the toggle, so it does
     not borrow the toggle's sun. */
 export function ContrastIcon({ size }: IconProps) {
@@ -204,16 +185,6 @@ export function CloseIcon({ size = 12 }: IconProps) {
   return (
     <Svg size={size}>
       <path d="M4 4l8 8M12 4l-8 8" />
-    </Svg>
-  );
-}
-
-export function MoreIcon({ size }: IconProps) {
-  return (
-    <Svg size={size}>
-      <circle cx="3.5" cy="8" r="0.9" fill="currentColor" stroke="none" />
-      <circle cx="8" cy="8" r="0.9" fill="currentColor" stroke="none" />
-      <circle cx="12.5" cy="8" r="0.9" fill="currentColor" stroke="none" />
     </Svg>
   );
 }

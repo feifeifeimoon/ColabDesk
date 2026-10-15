@@ -20,8 +20,6 @@ export function e2eMockEnabled(): boolean {
   return process.env.COLABDESK_E2E_MOCK === "1";
 }
 
-let sandbox: string | null = null;
-
 /**
  * Confines this run to `COLABDESK_E2E_HOME`. Must run before the composition
  * root reads `app.getPath("userData")` or anything calls `homedir()`, because
@@ -40,7 +38,6 @@ export function prepareE2EHost(): void {
   }
 
   mkdirSync(home, { recursive: true });
-  sandbox = home;
 
   // Node's `homedir()` reads these; Electron's `app.getPath` does not. Setting
   // both keeps `~/.ssh`, the CLI's config dir and userData in one sandbox.
@@ -53,11 +50,6 @@ export function prepareE2EHost(): void {
   app.setPath("userData", userData);
 
   writeIdentity(home);
-}
-
-export function e2eSandbox(): string {
-  if (!sandbox) throw new Error("E2E 沙箱尚未建立。");
-  return sandbox;
 }
 
 /**

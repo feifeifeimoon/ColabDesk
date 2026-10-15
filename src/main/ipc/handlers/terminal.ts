@@ -5,10 +5,6 @@ import { IPC } from "@shared/ipc";
 import type { IpcContext } from "../register";
 
 export function registerTerminalHandlers({ ssh }: IpcContext): void {
-  ipcMain.handle(IPC.sshConnect, async (_event, name: string) => {
-    await ssh.acquire(name);
-    return { session: name, status: "ready" as const };
-  });
   ipcMain.handle(IPC.sshDisconnect, (_event, name: string) => {
     ssh.drop(name);
   });

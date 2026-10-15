@@ -6,7 +6,6 @@ import type { EnvStatus } from "@shared/types";
 import { broadcast } from "../../broadcast";
 import { resetAccountCache } from "../../colab/account";
 import { LoginFlow } from "../../colab/login";
-import { openExternalTerminal } from "../../colab/service";
 import { resolveCli } from "../../colab/cli";
 import { clearToken } from "../../colab/sessions";
 import type { IpcContext } from "../register";
@@ -76,7 +75,6 @@ export function registerColabHandlers({ service, usageHistory, bundledDir, log }
 
   ipcMain.handle(IPC.sshSetup, (_event, name: string) => service.sshSetup(name));
   ipcMain.handle(IPC.sshRemove, (_event, name: string) => service.sshRemove(name));
-  ipcMain.handle(IPC.sshOpenTerminal, (_event, name: string) => openExternalTerminal(name));
 
   return {
     cancel() {

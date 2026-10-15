@@ -86,8 +86,6 @@ components:
   card: { backgroundColor: "{colors.canvas}", rounded: "{rounded.lg}", shadow: "Level 2", padding: "{spacing.5}" }
   panel: { note: "一节一张卡；行与行之间用 hairline 分隔（不是一行一张卡）" }
   panel-row: { padding: "{spacing.3} {spacing.5}", structure: "左：标签+说明；右：mono 值或动作" }
-  table-container: { rounded: "{rounded.lg}", shadow: "Level 2" }
-  table-header: { backgroundColor: "{colors.canvas-soft}", typography: "caption + mono + uppercase", textColor: "{colors.mute}" }
   badge: { shape: "pill", backgroundColor: "{colors.canvas-soft}", typography: "caption + mono" }
   badge-off: { note: "这个账号拿不到的东西（无权申请的加速器）：{colors.mute} + 删除线。删除线承担语义，颜色只是附和——和 status 同一条规矩" }
   status: { structure: "6px 圆点 + 文字标签", rule: "状态不得仅用颜色表达" }
@@ -101,7 +99,6 @@ components:
   chart: { plot: "{colors.canvas-soft} 井", bar: "{colors.ink}", unmeasured: "基线虚线 {colors.hairline-strong}", scale: "{typography.caption} + {colors.mute}", note: "柱状，只表达量" }
   segmented: { note: "小集合互斥选择：一排 Button，激活项 primary、其余 outline；超时时长的字号与趋势粒度都用它" }
   settings-page: { nav: "260px 分节栏（与左栏同宽同色）+ 一次一节地显示正文", entry: "左栏底部一行", exit: "分节栏首行 + Esc", note: "是图层不是对话框：底下的终端保持挂载" }
-  theme-toggle: { location: "顶栏右端，文件面板开关之后", icon: "当前主题的反面：亮着显示月亮、暗着显示太阳", preference: "system | light | dark（localStorage），默认 system" }
 ---
 
 ## Overview
@@ -123,7 +120,7 @@ ColabDesk 是一个**把远程 GPU 运行时当本地机器用的桌面控制台
 | 设计令牌（颜色、字体、间距、圆角、阴影） | `src/renderer/src/assets/tokens.css` |
 | 终端调色板（七套 × 21 个通道） | `src/renderer/src/assets/terminal-themes.css`；契约与钳制在 `lib/terminal-appearance.ts`，读取在 `lib/terminal-theme.ts` |
 | 基础样式与组件类 | `src/renderer/src/assets/main.css` |
-| UI 原语 | `src/renderer/src/components/ui/`（`Button` / `Card`·`Panel`·`PanelRow` / `Table` / `Badge`·`Status` / `Field` / `Callout`·`EmptyState` / `Pane` / `ProgressBar` / `RawOutput`） |
+| UI 原语 | `src/renderer/src/components/ui/`（`Button` / `Card`·`Panel`·`PanelRow` / `Badge`·`Status` / `Field` / `Callout`·`EmptyState` / `Menu` / `PanelDivider` / `ProgressBar` / `RawOutput` / `icons`） |
 | 应用外壳 | `src/renderer/src/app-shell/AppShell.tsx` |
 | 起始页与品牌锁版 | `src/renderer/src/features/workspace/StartPage.tsx`、`src/renderer/src/app-shell/BrandLockup.tsx` |
 | 设置页 | `src/renderer/src/app-shell/SettingsPage.tsx` |
@@ -171,8 +168,8 @@ ColabDesk 是一个**把远程 GPU 运行时当本地机器用的桌面控制台
 
 ### 主题偏好
 
-- **三态**：`system`（默认，跟系统）/ `light` / `dark`，存在 localStorage（`lib/theme.ts`）。选了具体一项之后**它压过系统**；顶栏右上角的按钮就是在做这个选择。
-- **切换按钮在顶栏右端**（文件面板开关之后、窗口控制之前），画的是**当前主题的反面**：亮着显示月亮（切到深色），暗着显示太阳（切到浅色）。它是整窗的事，因此在设置页打开时**仍然在场**——而设置页的「外观」一节提供同一件事的三态版本（跟随系统 / 浅色 / 深色），用 `segmented`。
+- **三态**：`system`（默认，跟系统）/ `light` / `dark`，存在 localStorage（`lib/theme.ts`）。选了具体一项之后**它压过系统**。
+- **唯一的入口是设置 → 外观**（跟随系统 / 浅色 / 深色，用 `segmented`）。顶栏右端不再有那个"当前主题的反面"图标按钮——上一版在这里放过它，一个整窗的偏好在工作台里放了一个副本，设置页打开时两个入口还说同一件事。
 - **落地方式**：`data-theme` 写到 `<html>` 上，`tokens.css` 里浅色一套、深色一套；`color-scheme` 跟着一起写，免得滚动条与原生控件在深色下还是亮的。
 
 ### 终端配色
@@ -357,11 +354,9 @@ ColabDesk 是一个**把远程 GPU 运行时当本地机器用的桌面控制台
 - **`Card`**：页面内容容器（新建会话、会话列表、额度）。头部是"标题 + 说明 + 动作"三件套，说明永远是一句话、最多 62ch。
 - **`Panel` + `PanelRow`**：**一节一张卡，行与行用 hairline 分隔**——这是事实与设置的形态。左列是"这是什么"（标签 + 可选说明），右列是"怎么读 / 怎么改"（mono 值或动作）。环境页整页就是这个形态；一行一卡会把一页四件事变成四屏。
 
-### Table
+### 快捷键对照表
 
-`TableContainer` = 圆角 12px + Level 2 阴影的容器，内部是**无边框表格**：表头用 `{colors.canvas-soft}` 底 + mono 大写 `{colors.mute}`，行之间 hairline，悬停整行 `{colors.canvas-soft}`。会话列表用它——这是控制台的主列表语言。
-
-规则：**单元格不折行**（`white-space: nowrap`），需要截断的长值（端点）用省略号 + `title` 完整值；时间戳一律转成本地时间短格式（`16:39（今天）`），原始 ISO 放在 tooltip 里。
+设置 → 终端 里那张表是一张 `.table`：**无边框**，`td` 之间 hairline、末行不画线，单元格不折行。左列是键位，键帽用 `.kbd`（mono + `{colors.muted}` 底 + `{rounded.xs}`）；右列说这一步在做什么。它**不是通用的列表形态**——没有表头、没有动作、不可点，会话列表是 `.session-row`（见「功能组件」）。
 
 ### Callout / EmptyState / Metric / ProgressBar / RawOutput
 
@@ -396,12 +391,12 @@ ColabDesk 是一个**把远程 GPU 运行时当本地机器用的桌面控制台
 
 - 用 `{colors.primary}`（ink）承担每一个肯定动作；深色下它自动翻转。
 - 用 `{colors.page}` → `{colors.canvas}` → `{colors.canvas-soft}` 的阶梯表达层次，卡片配 Level 2 阴影。
-- 机器汇报的每个值都用 mono：路径、时间、字节、百分比、退出码、表头。
+- 机器汇报的每个值都用 mono：路径、时间、字节、百分比、退出码。
 - 每个状态都是"点 + 文字"；每个可能为空的列表都有 `EmptyState`。
-- 事实与设置用 `Panel` + `PanelRow`；列表用 `Table`；解释用 `Callout`；量的对比用柱状图（`.trend__*`）。
+- 事实与设置用 `Panel` + `PanelRow`；列表用 `.session-row`（左栏）；解释用 `Callout`；量的对比用柱状图（`.trend__*`）。
 - 时间戳转成本地时间短格式，原始值放 tooltip。
 - 新令牌先落地 `tokens.css`（浅色 + 深色），再在组件里用。
-- 设置改成一整片界面（页面、图层），用**分节栏 + 一次一节**；主题这类整窗的事放在顶栏。
+- 设置改成一整片界面（页面、图层），用**分节栏 + 一次一节**；主题这类整窗的偏好也住在设置里（「外观」），不另设顶栏按钮。
 
 ### Don't
 

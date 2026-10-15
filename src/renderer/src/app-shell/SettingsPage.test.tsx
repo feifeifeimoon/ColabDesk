@@ -14,6 +14,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { UpdateStatus } from "@shared/types";
 import { i18n } from "../i18n/i18n";
+import { DEFAULT_TERMINAL_APPEARANCE } from "../lib/terminal-appearance";
 
 const store = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
 
@@ -21,7 +22,7 @@ vi.mock("../store", () => ({
   useAppStore: (select: (state: unknown) => unknown) => select(store.current),
 }));
 
-import { SettingsPage, type SectionId } from "./SettingsPage";
+import { SettingsPage, SECTION_IDS, type SectionId } from "./SettingsPage";
 
 const noop = () => {};
 
@@ -49,6 +50,8 @@ function baseState(update: UpdateStatus) {
     selectedSession: null,
     theme: "system",
     language: "zh",
+    terminal: DEFAULT_TERMINAL_APPEARANCE,
+    setTerminalAppearance: noop,
     panelWidths: { sidebar: 260, files: 320 },
     setTheme: noop,
     setLanguage: noop,
@@ -160,12 +163,29 @@ describe("in English", () => {
     await i18n.changeLanguage("zh");
   });
 
-  it("writes the about section in English, not in the code's own fallbacks", async () => {
+  /**
+   * A language name is written in its own script in both catalogs — an English
+   * reader looking for Chinese has to recognize 「中文（简体）」, and the picker
+   * would be useless if it said "Chinese (Simplified)" in the one place they
+   * would go looking. Everything else in this panel is copy and follows the
+   * reader.
+   */
+  const LANGUAGE_NAMES = ["中文（简体）"];
+
+  it("每个分节都不出现中文——漏 key 会拿到中文兜底，漏 t() 会漏出源码里的中文", async () => {
     // Every string in this panel is passed with a Chinese default, so a key
     // missing from en.json degrades to Chinese silently. This is the check that
     // notices — the parity test only compares the two catalogues to each other.
+    // It renders *every* section, not just the one whose copy happened to be
+    // under review: the language picker shipped "跟随系统" to English readers
+    // while this assertion was looking at "about".
     await i18n.changeLanguage("en");
-    const rendered = text(render("about"));
-    expect(rendered).not.toMatch(/[一-鿿]/);
+    for (const section of SECTION_IDS) {
+      const rendered = LANGUAGE_NAMES.reduce(
+        (remaining, name) => remaining.split(name).join(""),
+        text(render(section)),
+      );
+      expect(rendered, `section: ${section}`).not.toMatch(/[一-鿿]/);
+    }
   });
 });

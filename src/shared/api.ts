@@ -36,11 +36,6 @@ export interface CreateSessionOptions {
   highMem: boolean;
 }
 
-export interface DirectoryRef {
-  session: string;
-  path: string;
-}
-
 export interface TransferTargets {
   session: string;
   localPaths: string[];
@@ -75,8 +70,6 @@ export interface ColabDeskApi {
 
   sshSetup(name: string): Promise<SshSetup>;
   sshRemove(name: string): Promise<SshSetup>;
-  sshOpenTerminal(name: string): Promise<string>;
-  sshConnect(name: string): Promise<{ session: string; status: string }>;
   sshDisconnect(name: string): Promise<void>;
   onSshStatus(listener: (payload: SshState) => void): () => void;
 
@@ -95,9 +88,18 @@ export interface ColabDeskApi {
   listDirectory(session: string, path: string): Promise<RemoteEntry[]>;
   makeDirectory(session: string, path: string): Promise<void>;
   deletePath(session: string, path: string): Promise<void>;
-  download(session: string, remote: string, name: string): Promise<{ canceled: boolean; path?: string }>;
+  /**
+   * Transfers. `title` is the native dialog's own caption, written by the
+   * renderer: it is UI copy, and the main process has no catalog.
+   */
+  download(
+    session: string,
+    remote: string,
+    name: string,
+    title: string,
+  ): Promise<{ canceled: boolean; path?: string }>;
   upload(targets: TransferTargets): Promise<void>;
-  pickUploadTargets(session: string, remoteDir: string): Promise<string[]>;
+  pickUploadTargets(title: string): Promise<string[]>;
   onTransferProgress(listener: (payload: TransferProgress) => void): () => void;
 
   /** Drag-and-drop paths: modern Electron no longer exposes `File.path`. */
