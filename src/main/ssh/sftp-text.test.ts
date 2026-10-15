@@ -1,10 +1,15 @@
 import { Readable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import type { SFTPWrapper } from "ssh2";
-import { PREVIEW_CHUNK, readTextFile, TEXT_EDIT_MAX } from "./sftp-text";
+import { PREVIEW_CHUNK, readTextFile, TEXT_EDIT_MAX, writeTextFile } from "./sftp-text";
 
 const S_IFREG = 0o100000;
 const S_IFIFO = 0o010000;
+const S_IFLNK = 0o120000;
+
+/** The mtime the fake reports, in seconds — `nodeAt` scales it to milliseconds. */
+const MTIME_SECONDS = 1_700_000_000;
+const BASELINE_MTIME = MTIME_SECONDS * 1000;
 
 interface FakeFile {
   mode: number;
@@ -12,18 +17,29 @@ interface FakeFile {
 }
 
 /**
- * The smallest SFTP the reader uses: `lstat` answers types and sizes, and
- * `createReadStream` hands back the requested byte range of an in-memory
- * buffer while remembering what ranges were asked for — the "no second open
- * for the probe" claim is only testable if the reads are countable.
+ * The smallest SFTP the reader and the writer use: `lstat` answers types and
+ * sizes, `createReadStream` hands back a byte range of an in-memory buffer, and
+ * the open/write/close triple edits one, remembering every call — "the mode is
+ * restored before the rename" and "the probe opens nothing extra" are only
+ * testable if the calls are countable and ordered.
  */
-function fakeSftp(files: Map<string, FakeFile>) {
+function fakeSftp(
+  files: Map<string, FakeFile>,
+  options: { chmodFails?: boolean; failSecondWrite?: boolean } = {},
+) {
   const reads: { start: number; end: number }[] = [];
+  const calls: string[] = [];
+  const handles = new Map<string, string>();
+  let opens = 0;
+  let writes = 0;
+
+  const name = (path: string) => path.slice(path.lastIndexOf("/") + 1);
+
   const sftp = {
     lstat(path: string, cb: (error: Error | undefined, attrs: unknown) => void) {
       const file = files.get(path);
       if (!file) return cb(new Error("no such file"), undefined);
-      cb(undefined, { mode: file.mode, size: file.content.length, mtime: 1_700_000_000 });
+      cb(undefined, { mode: file.mode, size: file.content.length, mtime: MTIME_SECONDS });
     },
     createReadStream(path: string, options?: { start?: number; end?: number }) {
       const content = files.get(path)?.content ?? Buffer.alloc(0);
@@ -32,16 +48,84 @@ function fakeSftp(files: Map<string, FakeFile>) {
       reads.push({ start, end });
       return Readable.from([content.subarray(start, end + 1)]);
     },
+    open(path: string, flags: string, cb: (error: Error | undefined, handle?: Buffer) => void) {
+      calls.push(`open ${name(path)} ${flags}`);
+      files.set(path, { mode: S_IFREG | 0o644, content: Buffer.alloc(0) });
+      opens += 1;
+      const handle = Buffer.from(`handle-${opens}`);
+      handles.set(handle.toString("utf8"), path);
+      cb(undefined, handle);
+    },
+    write(
+      handle: Buffer,
+      data: Buffer,
+      _offset: number,
+      length: number,
+      position: number,
+      cb: (error?: Error) => void,
+    ) {
+      writes += 1;
+      if (options.failSecondWrite && writes === 2) return cb(new Error("channel closed"));
+      const path = handles.get(handle.toString("utf8"));
+      const file = path ? files.get(path) : undefined;
+      if (!path || !file) return cb(new Error("invalid handle"));
+      const chunk = Buffer.from(data.subarray(0, length));
+      if (position + chunk.length > file.content.length) {
+        const grown = Buffer.alloc(position + chunk.length);
+        file.content.copy(grown);
+        file.content = grown;
+      }
+      chunk.copy(file.content, position);
+      calls.push(`write ${name(path)}@${position}:${chunk.length}b`);
+      cb();
+    },
+    close(handle: Buffer, cb: (error?: Error) => void) {
+      handles.delete(handle.toString("utf8"));
+      cb();
+    },
+    chmod(path: string, mode: number, cb: (error?: Error) => void) {
+      calls.push(`chmod ${name(path)} ${mode.toString(8)}`);
+      if (options.chmodFails) return cb(new Error("SETSTAT not supported"));
+      const file = files.get(path);
+      if (file) file.mode = (file.mode & 0o170000) | mode;
+      cb();
+    },
+    ext_openssh_rename() {
+      // What ssh2 does when the server never advertised the extension.
+      throw new Error("unsupported");
+    },
+    rename(from: string, to: string, cb: (error?: Error) => void) {
+      calls.push(`rename ${name(from)} -> ${name(to)}`);
+      if (files.has(to)) return cb(new Error("failure"));
+      const file = files.get(from);
+      files.delete(from);
+      if (file) files.set(to, file);
+      cb();
+    },
+    unlink(path: string, cb: (error?: Error) => void) {
+      calls.push(`unlink ${name(path)}`);
+      files.delete(path);
+      cb();
+    },
   };
-  return { sftp: sftp as unknown as SFTPWrapper, reads };
+  return { sftp: sftp as unknown as SFTPWrapper, reads, calls, files };
 }
 
-const file = (content: Buffer | string, mode = S_IFREG): FakeFile => ({
+const file = (content: Buffer | string, mode = S_IFREG | 0o644): FakeFile => ({
   mode,
   content: typeof content === "string" ? Buffer.from(content, "utf8") : content,
 });
 
 const one = (path: string, entry: FakeFile) => new Map([[path, entry]]);
+
+const write = (path: string, text: string, over: Partial<Parameters<typeof writeTextFile>[1]> = {}) => ({
+  session: "alpha",
+  path,
+  text,
+  eol: "lf" as const,
+  expected: { mtime: BASELINE_MTIME, size: Buffer.byteLength(text) },
+  ...over,
+});
 
 describe("readTextFile", () => {
   it("reads a small file whole and reports its line endings", async () => {
@@ -174,5 +258,106 @@ describe("readTextFile", () => {
     await readTextFile(sftp, "/content/notes.md");
 
     expect(reads).toEqual([{ start: 0, end: 5 }]);
+  });
+});
+
+describe("writeTextFile", () => {
+  it("lands the text through a staged file, restores the mode, then renames", async () => {
+    const files = one("/content/notes.md", file("old\n", S_IFREG | 0o755));
+    const { sftp, calls } = fakeSftp(files);
+    const result = await writeTextFile(sftp, write("/content/notes.md", "new\n"));
+
+    expect(result).toEqual({ ok: true, size: 4, mtime: BASELINE_MTIME });
+    expect(files.get("/content/notes.md")?.content.toString("utf8")).toBe("new\n");
+    // The mode came back with the file: a script would otherwise lose its +x.
+    expect((files.get("/content/notes.md")?.mode ?? 0) & 0o777).toBe(0o755);
+
+    const chmodAt = calls.findIndex((call) => call.startsWith("chmod"));
+    const renameAt = calls.findIndex((call) => call.startsWith("rename"));
+    expect(chmodAt).toBeGreaterThan(-1);
+    expect(renameAt).toBeGreaterThan(chmodAt);
+    // Staged beside the target, not next to the root.
+    expect(calls.some((call) => call.includes("notes.md.part-"))).toBe(true);
+  });
+
+  it("writes a CRLF file back as CRLF", async () => {
+    const files = one("/content/crlf.txt", file("a\nb\n"));
+    const { sftp } = fakeSftp(files);
+    const result = await writeTextFile(sftp, write("/content/crlf.txt", "a\nb\n", { eol: "crlf" }));
+
+    expect(result.ok).toBe(true);
+    expect(files.get("/content/crlf.txt")?.content.toString("utf8")).toBe("a\r\nb\r\n");
+  });
+
+  it("long text goes out in SFTP-sized chunks", async () => {
+    const text = `${"x".repeat(70 * 1024)}\n`;
+    const files = one("/content/big.txt", file(text));
+    const { sftp, calls } = fakeSftp(files);
+
+    expect((await writeTextFile(sftp, write("/content/big.txt", text))).ok).toBe(true);
+    expect(calls.filter((call) => call.startsWith("write "))).toHaveLength(3);
+  });
+
+  it("says the file moved on instead of writing over it", async () => {
+    const { sftp, calls } = fakeSftp(one("/content/notes.md", file("old\n")));
+    const result = await writeTextFile(
+      sftp,
+      write("/content/notes.md", "new\n", { expected: { mtime: BASELINE_MTIME - 1000, size: 4 } }),
+    );
+
+    expect(result).toEqual({ ok: false, reason: "changed" });
+    expect(calls).toEqual([]);
+  });
+
+  it("says the file is gone instead of recreating it", async () => {
+    const { sftp, calls } = fakeSftp(new Map());
+    const result = await writeTextFile(sftp, write("/content/notes.md", "new\n"));
+
+    expect(result).toEqual({ ok: false, reason: "missing" });
+    expect(calls).toEqual([]);
+  });
+
+  it("writes anyway when the user answered to, and creates what is gone", async () => {
+    const { sftp } = fakeSftp(one("/content/notes.md", file("old\n")));
+    const forced = await writeTextFile(
+      sftp,
+      write("/content/notes.md", "new\n", { expected: { mtime: BASELINE_MTIME - 1000, size: 4 }, force: true }),
+    );
+    expect(forced.ok).toBe(true);
+
+    const files = new Map<string, FakeFile>();
+    const recreated = fakeSftp(files);
+    const made = await writeTextFile(recreated.sftp, write("/content/notes.md", "new\n", { force: true }));
+    expect(made.ok).toBe(true);
+    expect(files.get("/content/notes.md")?.content.toString("utf8")).toBe("new\n");
+    // Nothing to restore: there was no mode.
+    expect(recreated.calls.some((call) => call.startsWith("chmod"))).toBe(false);
+  });
+
+  it("refuses to write through a symbolic link", async () => {
+    const { sftp, calls } = fakeSftp(one("/content/mirror.txt", file("x", S_IFLNK | 0o777)));
+    await expect(writeTextFile(sftp, write("/content/mirror.txt", "new\n", { expected: null }))).rejects.toThrow(
+      "不是常规文件",
+    );
+    expect(calls).toEqual([]);
+  });
+
+  it("a server that cannot restore the mode still gets the save", async () => {
+    const files = one("/content/notes.md", file("old\n", S_IFREG | 0o755));
+    const { sftp, calls } = fakeSftp(files, { chmodFails: true });
+    const result = await writeTextFile(sftp, write("/content/notes.md", "new\n"));
+
+    expect(result.ok).toBe(true);
+    expect(files.get("/content/notes.md")?.content.toString("utf8")).toBe("new\n");
+    expect(calls.some((call) => call.startsWith("rename"))).toBe(true);
+  });
+
+  it("a write that dies halfway leaves no staging file behind", async () => {
+    const text = `${"x".repeat(70 * 1024)}\n`;
+    const files = one("/content/big.txt", file(text));
+    const { sftp } = fakeSftp(files, { failSecondWrite: true });
+
+    await expect(writeTextFile(sftp, write("/content/big.txt", text))).rejects.toThrow("写入 /content/big.txt 失败");
+    expect([...files.keys()].filter((path) => path.includes(".part-"))).toEqual([]);
   });
 });

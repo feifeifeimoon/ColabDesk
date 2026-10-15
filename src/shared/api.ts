@@ -12,6 +12,7 @@ import type {
   RemoteEntry,
   RemotePathState,
   RemoteTextRead,
+  RemoteTextWrite,
   Session,
   SshSetup,
   SshState,
@@ -20,6 +21,7 @@ import type {
   UploadRequest,
   UsageReport,
   UsageTrend,
+  WriteTextRequest,
 } from "./types";
 
 export interface SessionList {
@@ -99,6 +101,13 @@ export interface ColabDeskApi {
    * (`binary` / `invalidUtf8`) when it is not text at all.
    */
   readTextFile(session: string, path: string): Promise<RemoteTextRead>;
+  /**
+   * Writes a file's text back through a staging file beside it.
+   *
+   * Resolves with `{ ok: false }` when the file changed underneath: that is a
+   * completed request carrying a question, not a failure.
+   */
+  writeTextFile(request: WriteTextRequest): Promise<RemoteTextWrite>;
   makeDirectory(session: string, path: string): Promise<void>;
   deletePath(session: string, path: string): Promise<void>;
   /**

@@ -71,7 +71,7 @@ function segmentsOf(path: string): string[] {
 }
 
 /** A staging name in the destination's own directory, so promoting is a rename. */
-function stagedName(base: string): string {
+export function stagedName(base: string): string {
   return `.${base}.part-${randomBytes(4).toString("hex")}`;
 }
 

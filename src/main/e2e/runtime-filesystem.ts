@@ -14,6 +14,11 @@ interface RuntimeFile {
   /** The file's size. `content.length` is capacity, which an upload doubles. */
   length: number;
   mtime: number;
+  /**
+   * Raw POSIX mode when the seed cares (a read-only fixture, a save restoring
+   * what it found); `FILE_MODE` stands in otherwise.
+   */
+  mode?: number;
 }
 
 interface RuntimeDirectory {
@@ -108,6 +113,17 @@ export class RuntimeFilesystem {
       content: legacy,
       length: legacy.length,
       mtime: now,
+    });
+
+    // Not writable by its mode: the preview has to say so rather than offer a
+    // save the server would refuse.
+    const locked = "seed=1\n";
+    content.entries.set("locked.cfg", {
+      kind: "file",
+      content: Buffer.from(locked),
+      length: Buffer.byteLength(locked),
+      mtime: now,
+      mode: 0o100444,
     });
 
     const data: RuntimeDirectory = { kind: "dir", entries: new Map(), mtime: now };

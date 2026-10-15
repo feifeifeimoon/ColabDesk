@@ -7,7 +7,7 @@
  */
 
 import type { ColabDeskApi, CreateSessionOptions } from "@shared/api";
-import type { UploadRequest } from "@shared/types";
+import type { UploadRequest, WriteTextRequest } from "@shared/types";
 
 const bridge = (): ColabDeskApi => window.colabdesk;
 
@@ -49,6 +49,7 @@ export const onTerminalClosed = (listener: Parameters<ColabDeskApi["onTerminalCl
 export const listDirectory = (session: string, path: string) => bridge().listDirectory(session, path);
 export const statPaths = (session: string, paths: string[]) => bridge().statPaths(session, paths);
 export const readTextFile = (session: string, path: string) => bridge().readTextFile(session, path);
+export const writeTextFile = (request: WriteTextRequest) => bridge().writeTextFile(request);
 export const makeDirectory = (session: string, path: string) => bridge().makeDirectory(session, path);
 export const deletePath = (session: string, path: string) => bridge().deletePath(session, path);
 export const download = (session: string, remote: string, name: string, title: string) =>

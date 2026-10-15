@@ -25,6 +25,7 @@ export const IPC = {
   sftpList: "sftp:list",
   sftpStat: "sftp:stat",
   sftpReadText: "sftp:readText",
+  sftpWriteText: "sftp:writeText",
   sftpMkdir: "sftp:mkdir",
   sftpDelete: "sftp:delete",
   sftpDownload: "sftp:download",

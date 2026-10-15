@@ -4,14 +4,14 @@ import { lstat } from "node:fs/promises";
 import { ipcMain, dialog } from "electron";
 import type { SFTPWrapper } from "ssh2";
 import { EVENTS, IPC } from "@shared/ipc";
-import type { TransferProgress, UploadRequest } from "@shared/types";
+import type { TransferProgress, UploadRequest, WriteTextRequest } from "@shared/types";
 import { broadcast } from "../../broadcast";
 import { retryTransientRead } from "../../colab/network-retry";
 import { mockDialogAnswer, type MockDialogKind } from "../../e2e/dialog-stub";
 import { e2eMockEnabled } from "../../e2e/mode";
 import { sanitizeLocalName } from "../../local-file-name";
 import type { IpcContext } from "../register";
-import { readTextFile } from "../../ssh/sftp-text";
+import { readTextFile, writeTextFile } from "../../ssh/sftp-text";
 import {
   joinRemotePath,
   listDirectory,
@@ -225,6 +225,12 @@ export function registerFileHandlers({ ssh }: IpcContext): void {
     // `acquire`, which is what makes it a rescue for a dropped connection
     // rather than a second look at the same dead channel.
     retryTransientRead(() => withSftp(payload.session, (sftp) => readTextFile(sftp, payload.path)), 2),
+  );
+
+  ipcMain.handle(IPC.sftpWriteText, (_event, payload: WriteTextRequest) =>
+    // A write, so no retry: a save that timed out may have landed, and doing it
+    // twice is not the same as doing it once.
+    withSftp(payload.session, (sftp) => writeTextFile(sftp, payload)),
   );
 
   ipcMain.handle(IPC.sftpDownload, async (_event, payload: {

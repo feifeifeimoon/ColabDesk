@@ -410,7 +410,12 @@ function attachSftp(sftp: SFTPWrapper, filesystem: RuntimeFilesystem): void {
   let nextHandle = 1;
 
   const attrsFor = (node: RuntimeNode): Attributes => ({
-    mode: node.kind === "dir" ? DIRECTORY_MODE : node.kind === "link" ? LINK_MODE : FILE_MODE,
+    mode:
+      node.kind === "dir"
+        ? DIRECTORY_MODE
+        : node.kind === "link"
+          ? LINK_MODE
+          : (node.mode ?? FILE_MODE),
     uid: 0,
     gid: 0,
     size: node.kind === "file" ? node.length : node.kind === "link" ? node.target.length : 0,
@@ -418,11 +423,19 @@ function attachSftp(sftp: SFTPWrapper, filesystem: RuntimeFilesystem): void {
     mtime: node.mtime,
   });
 
+  /** The `ls -l` column, so a listing and the attrs never disagree. */
+  const PERMISSION_CHARS = ["---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"];
+  const permissionsOf = (mode: number): string => {
+    const bits = (shift: number) => PERMISSION_CHARS[(mode >> shift) & 0o7];
+    return `${bits(6)}${bits(3)}${bits(0)}`;
+  };
+
   const longNameFor = (name: string, node: RuntimeNode): string => {
     if (node.kind === "link") {
       return `lrwxrwxrwx 1 root root ${node.target.length} ${name} -> ${node.target}`;
     }
-    const permissions = node.kind === "dir" ? "drwxr-xr-x" : "-rw-r--r--";
+    const mode = node.kind === "dir" ? DIRECTORY_MODE : (node.mode ?? FILE_MODE);
+    const permissions = `${node.kind === "dir" ? "d" : "-"}${permissionsOf(mode)}`;
     const size = node.kind === "file" ? node.length : 4096;
     return `${permissions} 1 root root ${size} ${name}`;
   };
@@ -569,6 +582,16 @@ function attachSftp(sftp: SFTPWrapper, filesystem: RuntimeFilesystem): void {
   });
 
   sftp.on("EXTENDED", (reqid: number) => sftp.status(reqid, STATUS_CODE.OP_UNSUPPORTED));
+  // What a save uses to put a staged file's mode back. Only the permissions
+  // travel, so the kind bits are kept from what the node already had.
+  sftp.on("SETSTAT", (reqid: number, path: string, attrs: Attributes) => {
+    const node = filesystem.lstat(path, RUNTIME_HOME);
+    if (!node || node.kind !== "file") return failed(reqid);
+    if (attrs.mode !== undefined) {
+      node.mode = ((node.mode ?? FILE_MODE) & 0o170000) | (attrs.mode & 0o7777);
+    }
+    sftp.status(reqid, STATUS_CODE.OK);
+  });
   sftp.on("error", () => {});
 }
 

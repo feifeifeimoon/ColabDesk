@@ -184,6 +184,33 @@ export type RemoteTextRead =
     }
   | { kind: "binary"; size: number };
 
+/**
+ * One write of a file's text, and the baseline it was read at.
+ *
+ * `expected` is what the read returned. A save that finds different numbers on
+ * the far side has a decision to make, and `force` is how the user's answer
+ * travels — resolution belongs to the person, not to the app.
+ */
+export interface WriteTextRequest {
+  session: string;
+  path: string;
+  text: string;
+  /** How the file ended its lines when it was read; the buffer is LF. */
+  eol: EolStyle;
+  /** mtime (milliseconds) and size (bytes) as read; null when there was no file. */
+  expected: { mtime: number; size: number } | null;
+  /** Writes even when `expected` no longer matches — the user chose to. */
+  force?: boolean;
+}
+
+/**
+ * How a write ended. `ok: false` is a completed request carrying a question —
+ * the file moved on (or disappeared) — not a failure.
+ */
+export type RemoteTextWrite =
+  | { ok: true; size: number; mtime: number }
+  | { ok: false; reason: "changed" | "missing" };
+
 export interface TransferProgress {
   id: string;
   session: string;

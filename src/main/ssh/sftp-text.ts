@@ -19,8 +19,17 @@
  */
 
 import type { SFTPWrapper } from "ssh2";
-import type { EolStyle, RemoteTextRead } from "@shared/types";
-import { isRegularFile, nodeAt } from "./sftp-ops";
+import type { EolStyle, RemoteTextRead, RemoteTextWrite, WriteTextRequest } from "@shared/types";
+import {
+  baseNameOf,
+  dirNameOf,
+  isRegularFile,
+  joinRemotePath,
+  nodeAt,
+  promoteStaged,
+  removeQuietly,
+  stagedName,
+} from "./sftp-ops";
 
 /** Above this, the file is shown as its two ends instead of read whole. */
 export const TEXT_EDIT_MAX = 2 * 1024 * 1024;
@@ -30,6 +39,8 @@ export const PREVIEW_CHUNK = 256 * 1024;
 export const BINARY_PROBE = 8 * 1024;
 /** Below this, aligning to a line break would cost more than it reads. */
 const MIN_ALIGNED = PREVIEW_CHUNK / 2;
+/** SFTP's own packet size, so the far side never reassembles what it could read. */
+const WRITE_CHUNK = 32 * 1024;
 
 function readRange(sftp: SFTPWrapper, path: string, start: number, end: number): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -126,4 +137,79 @@ export async function readTextFile(sftp: SFTPWrapper, path: string): Promise<Rem
     mtime,
     mode,
   };
+}
+
+/** Writes the buffer through a handle in SFTP-sized chunks. */
+function writeThrough(sftp: SFTPWrapper, target: string, display: string, body: Buffer): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const fail = (error: Error): void => reject(new Error(`写入 ${display} 失败：${error.message}`));
+    sftp.open(target, "w", (openError, handle) => {
+      if (openError) return fail(openError);
+      const writeChunk = (offset: number): void => {
+        if (offset >= body.length) {
+          sftp.close(handle, (closeError) => (closeError ? fail(closeError) : resolve()));
+          return;
+        }
+        const chunk = body.subarray(offset, Math.min(offset + WRITE_CHUNK, body.length));
+        sftp.write(handle, chunk, 0, chunk.length, offset, (writeError) => {
+          if (writeError) {
+            sftp.close(handle, () => fail(writeError));
+            return;
+          }
+          writeChunk(offset + chunk.length);
+        });
+      };
+      writeChunk(0);
+    });
+  });
+}
+
+/**
+ * Writes text to a remote file the way an upload lands: staged beside the
+ * target, its mode restored, then renamed on top — a save that dies halfway
+ * leaves the file that was there, never half of the new one.
+ *
+ * The comparison before writing is the whole of the conflict story: the
+ * protocol reports mtime in seconds, so a rewrite inside the same second is
+ * caught by size and by nothing else, and a rewrite of exactly the same length
+ * inside that second is not caught at all. Living with that is cheaper than a
+ * file watcher, and the person at the keyboard is the one who decides anyway.
+ */
+export async function writeTextFile(
+  sftp: SFTPWrapper,
+  request: WriteTextRequest,
+): Promise<RemoteTextWrite> {
+  const { path, text, eol, expected, force = false } = request;
+
+  const entry = await nodeAt(sftp, path);
+  if (entry && !isRegularFile(entry.mode)) throw new Error(`写入 ${path} 失败：不是常规文件。`);
+  if (!entry && !force && expected !== null) return { ok: false, reason: "missing" };
+  if (entry && !force) {
+    // `RemoteEntry.mtime` is already milliseconds (sftp-ops scales it); the
+    // protocol's own seconds never reach this comparison.
+    const moved = expected === null || entry.mtime !== expected.mtime || entry.size !== expected.size;
+    if (moved) return { ok: false, reason: "changed" };
+  }
+
+  const body = Buffer.from(eol === "crlf" ? text.replace(/\r?\n/g, "\r\n") : text, "utf8");
+  const staged = joinRemotePath(dirNameOf(path), stagedName(baseNameOf(path)));
+  try {
+    await writeThrough(sftp, staged, path, body);
+    if (entry) {
+      // Best-effort, and deliberate: SETSTAT is not on every server, and a save
+      // that cannot restore the mode is still a save. Without it, a saved
+      // script would come back without its +x.
+      await new Promise<void>((resolve) => {
+        sftp.chmod(staged, entry.mode & 0o7777, () => resolve());
+      });
+    }
+    await promoteStaged(sftp, staged, path);
+  } catch (error) {
+    await removeQuietly(sftp, staged);
+    throw error;
+  }
+
+  const after = await nodeAt(sftp, path);
+  if (!after) throw new Error(`写入 ${path} 失败：写完后文件不在。`);
+  return { ok: true, size: after.size, mtime: after.mtime };
 }
