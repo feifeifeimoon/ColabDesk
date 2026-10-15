@@ -813,6 +813,11 @@ kbd {
   flex-shrink: 1;
   position: relative;
   border-left: 1px solid var(--hairline);
+  /* Collapsing hides the panel; `display` beats the `hidden` attribute, so the
+     parked state needs saying out loud, as it does for a terminal pane. */
+  &[hidden] {
+    display: none;
+  }
   background: var(--canvas);
   display: flex;
   flex-direction: column;
@@ -2306,7 +2311,45 @@ textarea.input {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
+  /* The row's own left padding is the tree's indent, written per row. */
+  padding: var(--space-2) var(--space-4) var(--space-2) 0;
+}
+
+/* The row itself is one button — the whole line is the target, as in any file
+   manager — and it carries the tree's keyboard focus. */
+.file-row__row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: none;
+  border: none;
+  padding: var(--space-1) 0;
+  text-align: left;
+  font: inherit;
+  font-size: var(--text-copy);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* The twisty keeps its column whether or not it draws: names line up across
+   folders and files, which is the point of the indent. */
+.file-row__twisty {
+  width: 12px;
+  flex-shrink: 0;
+  color: var(--mute);
+  font-size: var(--text-micro);
+  line-height: 1;
+}
+
+.file-row__icon {
+  flex-shrink: 0;
+}
+
+.file-row--focused {
+  background: var(--canvas-soft);
+  box-shadow: inset 2px 0 0 var(--ink);
 }
 
 .file-row + .file-row {

@@ -20,7 +20,6 @@ export function Workbench() {
   const selectedSession = useAppStore((state) => state.selectedSession);
   const activeTabId = useAppStore((state) => state.activeTabId);
   const filesOpen = useAppStore((state) => state.filesOpen);
-  const setRemotePath = useAppStore((state) => state.setRemotePath);
   const setTransferCount = useAppStore((state) => state.setTransferCount);
 
   // Grouped here rather than in a selector: a selector that built this would
@@ -51,14 +50,14 @@ export function Workbench() {
               ))}
             </div>
             {/* One browser per session: a runtime has one filesystem, and its
-                shells look at the same one. */}
-            {filesOpen && (
-              <FilePane
-                session={session}
-                onPathChange={(path) => setRemotePath(session, path)}
-                onTransferCount={(active) => setTransferCount(session, active)}
-              />
-            )}
+                shells look at the same one. It parks with the panel instead of
+                unmounting — folding the tree away costs the shape it was left
+                in, and reopening a folder should not be a round trip. */}
+            <FilePane
+              session={session}
+              visible={filesOpen && shown}
+              onTransferCount={(active) => setTransferCount(session, active)}
+            />
           </div>
         );
       })}

@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../lib/api";
 import { messageOf } from "../../lib/api";
-import { formatPercent, formatSize, joinPath, localName, parentPath } from "../../lib/format";
+import { formatPercent, formatSize, localName, parentPath } from "../../lib/format";
 import type { ConflictPolicy, RemoteEntry, TransferProgress } from "@shared/types";
 import { Button } from "../../components/ui/Button";
 import { Callout } from "../../components/ui/Notice";
@@ -10,17 +10,36 @@ import { Dialog } from "../../app-shell/AppShell";
 import { PanelDivider } from "../../components/ui/PanelDivider";
 import { ProgressBar } from "../../components/ui/ProgressBar";
 import { PANEL_WIDTH } from "../../lib/panel-width";
+import { childPath, isDirectoryRow, projectRows, type Listing } from "./file-tree";
 import { useAppStore } from "../../store";
 
 /**
- * The runtime's filesystem over SFTP, on the same SSH connection the terminal
- * uses (a runtime only accepts one). Uploads and downloads report progress as
- * events from the main process, each on its own row.
+ * The runtime's filesystem over SFTP, as a tree.
+ *
+ * A tree rather than a list behind a breadcrumb, because the question this panel
+ * answers is "where is that file in relation to this one" — and a listing that
+ * replaces itself throws that away on every step. Folders open in place, their
+ * siblings stay on screen, and one runtime's whole /content can be seen at once.
+ *
+ * What is open lives in the store (per session) so hiding the panel does not
+ * fold the tree; what a directory contains lives here, loaded the first time it
+ * is opened and kept when it closes — reopening a folder should not cost a round
+ * trip for a listing nobody changed.
  *
  * An upload that would replace a file already on the runtime asks first: the
  * question is the only thing standing between a re-upload and a silently
  * destroyed copy, and it is asked once for the whole batch rather than per file.
  */
+
+/** Where the tree starts. The shell lands here too (`cd /content`). */
+const TREE_ROOT = "/content";
+
+/** How deep a row indents, and how far that goes before it stops growing. */
+const INDENT_PX = 14;
+const INDENT_DEPTH_CAP = 6;
+
+/** Opens a folder after the pointer rests on it, the way a file manager does. */
+const HOVER_EXPAND_MS = 600;
 
 /** An upload waiting on the answer to "these names are taken". */
 interface ConflictAsk {
@@ -31,32 +50,35 @@ interface ConflictAsk {
 
 export function FilePane({
   session,
-  onPathChange,
+  visible,
   onTransferCount,
 }: {
   session: string;
-  /** Reported up so the status bar can show where the browser is. */
-  onPathChange?: (path: string) => void;
+  /** The session the user is looking at; a parked pane keeps its tree parked. */
+  visible: boolean;
   onTransferCount?: (active: number) => void;
 }) {
   const { t } = useTranslation();
-  const [path, setPath] = useState("/content");
-  const [entries, setEntries] = useState<RemoteEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [listings, setListings] = useState<Record<string, Listing>>({});
   const [transfers, setTransfers] = useState<TransferProgress[]>([]);
   const [dragOver, setDragOver] = useState(false);
   /** The directory row the pointer is over, which is where a drop would land. */
   const [dropDir, setDropDir] = useState<string | null>(null);
   const [conflict, setConflict] = useState<ConflictAsk | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [focused, setFocused] = useState<string | null>(null);
+  const [creatingIn, setCreatingIn] = useState<string | null>(null);
   const [folderName, setFolderName] = useState("");
+  const expanded = useAppStore((state) => state.expandedDirs[session]);
+  const toggleDirectory = useAppStore((state) => state.toggleDirectory);
+  const forgetDirectory = useAppStore((state) => state.forgetDirectory);
   const width = useAppStore((state) => state.panelWidths.files);
   const setPanelWidth = useAppStore((state) => state.setPanelWidth);
   const panelRef = useRef<HTMLElement | null>(null);
-  const pathRef = useRef(path);
-  pathRef.current = path;
+  const treeRef = useRef<HTMLUListElement | null>(null);
+  const hoverTimer = useRef<number | null>(null);
+
+  const open = useMemo(() => new Set(expanded ?? []), [expanded]);
 
   /**
    * Publishes this panel's rendered width for the seam the top bar draws above
@@ -84,19 +106,11 @@ export function FilePane({
     };
   }, []);
 
-  /**
-   * Read at call time rather than captured. The parent rebuilds these closures
-   * as the map over open tabs re-renders, and an effect depending on one would
-   * report, update the parent, and run again.
-   */
-  const latest = useRef({ onPathChange, onTransferCount });
+  /** Read at call time rather than captured; the parent rebuilds these closures. */
+  const latest = useRef({ onTransferCount });
   useEffect(() => {
-    latest.current = { onPathChange, onTransferCount };
+    latest.current = { onTransferCount };
   });
-
-  useEffect(() => {
-    latest.current.onPathChange?.(path);
-  }, [path]);
 
   const pending = transfers.filter((transfer) => !transfer.done).length;
   useEffect(() => {
@@ -112,31 +126,37 @@ export function FilePane({
     [],
   );
 
-  const refresh = useCallback(
-    async (target: string) => {
-      setLoading(true);
+  /** Reads one directory, keeping whatever was there until the answer lands. */
+  const load = useCallback(
+    async (path: string): Promise<void> => {
+      setListings((current) => ({
+        ...current,
+        [path]: { entries: current[path]?.entries ?? [], loading: true, error: null },
+      }));
       try {
-        setEntries(await api.listDirectory(session, target));
-        setError(null);
+        const entries = await api.listDirectory(session, path);
+        setListings((current) => ({ ...current, [path]: { entries, loading: false, error: null } }));
       } catch (cause) {
-        setError(messageOf(cause));
-        setEntries([]);
-      } finally {
-        setLoading(false);
+        setListings((current) => ({
+          ...current,
+          [path]: { entries: current[path]?.entries ?? [], loading: false, error: messageOf(cause) },
+        }));
       }
     },
     [session],
   );
 
+  // The root, and any directory the store says is open but has no listing yet —
+  // including after a hiding-and-showing, which is why this is not in `toggle`.
   useEffect(() => {
-    setPath("/content");
-    void refresh("/content");
-  }, [refresh]);
+    if (!visible) return;
+    const wanted = [TREE_ROOT, ...open];
+    const missing = wanted.filter((path) => listings[path] === undefined);
+    if (missing.length === 0) return;
+    for (const path of missing) void load(path);
+  }, [visible, open, listings, load]);
 
   useEffect(() => {
-    // The list is refreshed by whoever asked for the transfer, once the whole
-    // batch is over: a folder upload would otherwise re-read the directory (and
-    // re-render the rows) once per file.
     return api.onTransferProgress((progress) => {
       setTransfers((current) => {
         const next = current.filter((item) => item.id !== progress.id);
@@ -146,15 +166,80 @@ export function FilePane({
     });
   }, []);
 
-  function navigate(target: string) {
-    setPath(target);
-    void refresh(target);
+  /** The rows to draw: the projection of the open directories, in order. */
+  const rows = useMemo(() => projectRows(listings, open, TREE_ROOT), [listings, open]);
+
+  /** The rows a click or an arrow key may land on, in the order they are drawn. */
+  const focusable = rows;
+
+  /**
+   * Opens what is closed and refreshes what is open — the root and every open
+   * directory. Deeper folders are left alone: an unchanged subtree showing a
+   * file the shell just wrote is worth a round trip, a tree nobody touched is
+   * not.
+   */
+  async function refresh(): Promise<void> {
+    if (listings[TREE_ROOT]?.loading) return;
+    for (const path of [TREE_ROOT, ...open]) {
+      if (listings[path] === undefined) continue;
+      void load(path);
+    }
+  }
+
+  function toggle(path: string): void {
+    toggleDirectory(session, path);
+    if (!open.has(path) && listings[path] === undefined) void load(path);
+  }
+
+  function focusRow(path: string): void {
+    setFocused(path);
+    const element = treeRef.current?.querySelector<HTMLElement>(`[data-path="${CSS.escape(path)}"]`);
+    element?.focus();
+  }
+
+  /** Arrow keys over the drawn rows, which is the whole of the tree's keyboard. */
+  function onKeyDown(event: React.KeyboardEvent<HTMLUListElement>): void {
+    const current = rows.findIndex((row) => row.path === focused);
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      const next = focusable[Math.min(Math.max(current + step, 0), focusable.length - 1)];
+      if (next) focusRow(next.path);
+      return;
+    }
+    if (current < 0) return;
+    const row = rows[current]!;
+    if (event.key === "ArrowRight" && row.entry?.type !== "file") {
+      event.preventDefault();
+      if (open.has(row.path) || row.path === TREE_ROOT) {
+        const child = rows[current + 1];
+        if (child) focusRow(child.path);
+      } else {
+        toggle(row.path);
+      }
+      return;
+    }
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      if (open.has(row.path) && row.path !== TREE_ROOT) {
+        toggle(row.path);
+        return;
+      }
+      const up = parentPath(row.path);
+      if (up !== row.path) focusRow(up === "" ? TREE_ROOT : up);
+      return;
+    }
+    if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      const first = focusable[event.key === "Home" ? 0 : focusable.length - 1];
+      if (first) focusRow(first.path);
+    }
   }
 
   /**
    * Asks whether any of these would replace something, and uploads straight away
    * when none would. Only the names, not the whole paths, are shown: the
-   * directory is the one on screen.
+   * directory is the row the drop landed on.
    */
   async function beginUpload(localPaths: string[], remoteDir: string): Promise<void> {
     if (localPaths.length === 0) return;
@@ -162,7 +247,7 @@ export function FilePane({
     try {
       const taken = await api.statPaths(
         session,
-        localPaths.map((local) => joinPath(remoteDir, localName(local))),
+        localPaths.map((local) => childPath(remoteDir, localName(local))),
       );
       if (taken.length > 0) {
         setConflict({ localPaths, remoteDir, names: taken.map((entry) => localName(entry.path)) });
@@ -175,6 +260,8 @@ export function FilePane({
       setBusy(null);
     }
   }
+
+  const [error, setError] = useState<string | null>(null);
 
   async function runUpload(
     localPaths: string[],
@@ -192,7 +279,7 @@ export function FilePane({
       setError(messageOf(cause));
     } finally {
       setBusy(null);
-      await refresh(pathRef.current);
+      await refresh();
     }
   }
 
@@ -200,7 +287,7 @@ export function FilePane({
     try {
       await beginUpload(
         await api.pickUploadTargets(t("files.uploadDialogTitle", "选择要上传的文件")),
-        path,
+        TREE_ROOT,
       );
     } catch (cause) {
       setError(messageOf(cause));
@@ -211,22 +298,17 @@ export function FilePane({
     try {
       await beginUpload(
         await api.pickUploadFolder(t("files.uploadFolderTitle", "选择要上传的文件夹")),
-        path,
+        TREE_ROOT,
       );
     } catch (cause) {
       setError(messageOf(cause));
     }
   }
 
-  async function download(entry: RemoteEntry) {
-    setBusy(`download:${entry.name}`);
+  async function download(entry: RemoteEntry, path: string) {
+    setBusy(`download:${path}`);
     try {
-      await api.download(
-        session,
-        joinPath(path, entry.name),
-        entry.name,
-        t("files.saveDialogTitle", "保存到本地"),
-      );
+      await api.download(session, path, entry.name, t("files.saveDialogTitle", "保存到本地"));
       setError(null);
     } catch (cause) {
       setError(messageOf(cause));
@@ -235,15 +317,10 @@ export function FilePane({
     }
   }
 
-  async function downloadDirectory(entry: RemoteEntry) {
-    setBusy(`download:${entry.name}`);
+  async function downloadDirectory(entry: RemoteEntry, path: string) {
+    setBusy(`download:${path}`);
     try {
-      await api.downloadFolder(
-        session,
-        joinPath(path, entry.name),
-        entry.name,
-        t("files.folderDialogTitle", "选择保存位置"),
-      );
+      await api.downloadFolder(session, path, entry.name, t("files.folderDialogTitle", "选择保存位置"));
       setError(null);
     } catch (cause) {
       setError(messageOf(cause));
@@ -252,15 +329,26 @@ export function FilePane({
     }
   }
 
-  async function remove(entry: RemoteEntry) {
+  async function remove(entry: RemoteEntry, path: string) {
     const extra = entry.type === "dir" ? t("files.deleteConfirmDir", "（整个目录）") : "";
     if (!window.confirm(t("files.deleteConfirm", "删除 {{name}}{{extra}}？此操作不可撤销。", { name: entry.name, extra }))) {
       return;
     }
-    setBusy(`delete:${entry.name}`);
+    setBusy(`delete:${path}`);
     try {
-      await api.deletePath(session, joinPath(path, entry.name));
-      await refresh(path);
+      await api.deletePath(session, path);
+      // A folder that is gone cannot be open: its subtree would be a row of
+      // nothing, and reopening it would show a listing that does not exist.
+      forgetDirectory(session, path);
+      setListings((current) => {
+        const next = { ...current };
+        delete next[path];
+        for (const key of Object.keys(next)) {
+          if (key.startsWith(`${path}/`)) delete next[key];
+        }
+        return next;
+      });
+      await load(parentPath(path) || TREE_ROOT);
       setError(null);
     } catch (cause) {
       setError(messageOf(cause));
@@ -269,15 +357,15 @@ export function FilePane({
     }
   }
 
-  async function createFolder() {
+  async function createFolder(parent: string) {
     const name = folderName.trim();
     if (!name) return;
     setBusy("mkdir");
     try {
-      await api.makeDirectory(session, joinPath(path, name));
+      await api.makeDirectory(session, childPath(parent, name));
       setFolderName("");
-      setCreatingFolder(false);
-      await refresh(path);
+      setCreatingIn(null);
+      await load(parent);
       setError(null);
     } catch (cause) {
       setError(messageOf(cause));
@@ -286,31 +374,59 @@ export function FilePane({
     }
   }
 
-  /** Dropped files land in the row under the pointer, or in the open directory. */
+  /** Dropped files land in the row under the pointer, or at the root. */
   async function onDropInto(event: React.DragEvent, remoteDir: string): Promise<void> {
     event.preventDefault();
     event.stopPropagation();
     setDragOver(false);
     setDropDir(null);
+    if (hoverTimer.current !== null) window.clearTimeout(hoverTimer.current);
     const paths = Array.from(event.dataTransfer.files)
       .map((file) => api.pathForFile(file))
       .filter(Boolean);
     await beginUpload(paths, remoteDir);
   }
 
-  const segments = path.split("/").filter(Boolean);
+  /**
+   * Over a closed folder: open it after a moment, so a drag can land inside
+   * without a detour. Over an open one, nothing to do.
+   */
+  function armHoverExpand(path: string): void {
+    if (open.has(path) || hoverTimer.current !== null) return;
+    hoverTimer.current = window.setTimeout(() => {
+      hoverTimer.current = null;
+      if (!open.has(path)) void loadThenOpen(path);
+    }, HOVER_EXPAND_MS);
+  }
+
+  function loadThenOpen(path: string): void {
+    toggleDirectory(session, path);
+    if (listings[path] === undefined) void load(path);
+  }
+
+  function cancelHoverExpand(): void {
+    if (hoverTimer.current !== null) {
+      window.clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+  }
 
   return (
     <aside
       className={`files-panel ${dragOver && dropDir === null ? "drag-over" : ""}`}
       ref={panelRef}
       style={{ width, minWidth: PANEL_WIDTH.files.min }}
+      hidden={!visible}
+      inert={!visible}
       onDragOver={(event) => {
         event.preventDefault();
         setDragOver(true);
       }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={(event) => void onDropInto(event, path)}
+      onDragLeave={() => {
+        setDragOver(false);
+        cancelHoverExpand();
+      }}
+      onDrop={(event) => void onDropInto(event, TREE_ROOT)}
     >
       <PanelDivider
         side="files"
@@ -322,7 +438,12 @@ export function FilePane({
       <div className="pane__head">
         <span className="pane__title">{t("files.title", "文件")}</span>
         <span className="pane__actions">
-          <Button variant="ghost" size="sm" onClick={() => void refresh(path)} disabled={loading}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void refresh()}
+            disabled={listings[TREE_ROOT]?.loading ?? false}
+          >
             {t("files.refresh", "刷新")}
           </Button>
           <Button
@@ -330,7 +451,7 @@ export function FilePane({
             size="sm"
             data-testid="new-folder"
             onClick={() => {
-              setCreatingFolder(!creatingFolder);
+              setCreatingIn(creatingIn === TREE_ROOT ? null : TREE_ROOT);
               setFolderName("");
             }}
             disabled={busy !== null}
@@ -342,120 +463,164 @@ export function FilePane({
           </Button>
         </span>
       </div>
-      {creatingFolder && (
-        <form
-          className="folder-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void createFolder();
-          }}
-        >
-          <input
-            className="input"
-            data-testid="folder-name"
-            value={folderName}
-            onChange={(event) => setFolderName(event.target.value)}
-            placeholder={t("files.folderNamePlaceholder", "新文件夹名称")}
-            autoFocus
-          />
-          <Button
-            variant="primary"
-            size="sm"
-            type="submit"
-            data-testid="folder-create"
-            disabled={!folderName.trim() || busy !== null}
-          >
-            {t("files.create", "创建")}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setCreatingFolder(false)}>
-            {t("files.cancel", "取消")}
-          </Button>
-        </form>
-      )}
-
-      <div className="breadcrumb">
-        <button type="button" className="crumb" onClick={() => navigate("/")}>
-          /
-        </button>
-        {segments.map((segment, index) => {
-          const target = `/${segments.slice(0, index + 1).join("/")}`;
-          return (
-            <span key={target}>
-              <button type="button" className="crumb" onClick={() => navigate(target)}>
-                {segment}
-              </button>
-              {index < segments.length - 1 ? <span className="crumb-sep">/</span> : null}
-            </span>
-          );
-        })}
-        {path !== "/" && (
-          <button type="button" className="crumb up" onClick={() => navigate(parentPath(path))}>
-            {t("files.parentDir", "返回上级")}
-          </button>
-        )}
-      </div>
 
       {error && <p className="error pane-error">{error}</p>}
-      {loading && <p className="hint pane-error">{t("files.loading", "读取中…")}</p>}
-      {!loading && !error && entries.length === 0 && <p className="hint pane-error">{t("files.empty", "当前目录为空")}</p>}
 
-      <ul className="file-list">
-        {entries.map((entry) => (
-          <li
-            key={entry.name}
-            className={`file-row ${dropDir === entry.name ? "file-row--drop" : ""}`}
-            {...(entry.type === "dir"
-              ? {
-                  onDragOver: (event: React.DragEvent) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    setDropDir(entry.name);
-                  },
-                  onDragLeave: () => setDropDir(null),
-                  onDrop: (event: React.DragEvent) =>
-                    void onDropInto(event, joinPath(path, entry.name)),
-                }
-              : {})}
-          >
-            <button
-              type="button"
-              className="file-name"
-              onClick={() =>
-                entry.type === "dir" ? navigate(joinPath(path, entry.name)) : void download(entry)
-              }
-              title={entry.type === "dir" ? t("files.openDir", "进入目录") : t("files.downloadFile", "下载到本地")}
-            >
-              <span>{entry.type === "dir" ? "📁" : entry.type === "link" ? "🔗" : "📄"}</span>
-              <span className="truncate">{entry.name}</span>
-            </button>
-            <span className="file-size">{entry.type === "file" ? formatSize(entry.size) : ""}</span>
-            <span className="file-actions">
-              {entry.type !== "link" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  title={
-                    entry.type === "dir"
-                      ? t("files.downloadFolderHint", "下载整个文件夹")
-                      : t("files.downloadFile", "下载到本地")
-                  }
-                  onClick={() => (entry.type === "dir" ? void downloadDirectory(entry) : void download(entry))}
-                  disabled={busy === `download:${entry.name}`}
-                >
-                  {busy === `download:${entry.name}` ? "…" : t("files.download", "下载")}
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => void remove(entry)}
-                disabled={busy === `delete:${entry.name}`}
+      {/*
+        One list, with depth on the row rather than nesting in the DOM: the tree
+        is a projection, so a row's place in it is a number.
+      */}
+      <ul
+        className="file-list"
+        role="tree"
+        aria-label={t("files.treeLabel", "运行时文件")}
+        ref={treeRef}
+        onKeyDown={onKeyDown}
+      >
+        {rows.map((row) => {
+          const listing = listings[row.path];
+          const isRoot = row.path === TREE_ROOT;
+          const isDir = isDirectoryRow(row);
+          return (
+            <li key={row.path}>
+              <div
+                className={`file-row ${dropDir === row.path ? "file-row--drop" : ""} ${
+                  focused === row.path ? "file-row--focused" : ""
+                }`}
+                style={{ paddingLeft: `calc(var(--space-3) + ${Math.min(row.depth, INDENT_DEPTH_CAP) * INDENT_PX}px)` }}
+                onDragOver={(event) => {
+                  if (!isDir) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setDropDir(row.path);
+                  armHoverExpand(row.path);
+                }}
+                onDragLeave={() => {
+                  setDropDir(null);
+                  cancelHoverExpand();
+                }}
+                onDrop={isDir ? (event) => void onDropInto(event, row.path) : undefined}
               >
-                {busy === `delete:${entry.name}` ? "…" : t("files.delete", "删除")}
-              </Button>
-            </span>
-          </li>
-        ))}
+                <button
+                  type="button"
+                  className="file-row__row"
+                  role="treeitem"
+                  aria-level={row.depth + 1}
+                  aria-expanded={isDir && !isRoot ? row.open : undefined}
+                  aria-selected={focused === row.path}
+                  data-path={row.path}
+                  tabIndex={focused === row.path || (focused === null && isRoot) ? 0 : -1}
+                  title={isDir ? t("files.openDir", "进入目录") : t("files.downloadFile", "下载到本地")}
+                  onFocus={() => setFocused(row.path)}
+                  onClick={() =>
+                    isDir
+                      ? row.open && !isRoot
+                        ? toggle(row.path)
+                        : loadThenOpen(row.path)
+                      : void download(row.entry!, row.path)
+                  }
+                >
+                  <span className="file-row__twisty" aria-hidden="true">
+                    {isDir && !isRoot ? (row.open ? "▾" : "▸") : ""}
+                  </span>
+                  <span className="file-row__icon">{isDir ? "📁" : row.entry?.type === "link" ? "🔗" : "📄"}</span>
+                  {/* The root shows its own path: with no breadcrumb above it,
+                      this row is how the tree says what it is rooted at. */}
+                  <span className="truncate">{isRoot ? TREE_ROOT : row.name}</span>
+                </button>
+
+                <span className="file-size">
+                  {row.entry?.type === "file" ? formatSize(row.entry.size) : ""}
+                </span>
+
+                <span className="file-actions">
+                  {listing?.loading && <span className="hint">{t("files.loading", "读取中…")}</span>}
+                  {isDir && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title={t("files.newFolderHere", "在此新建")}
+                      data-testid={`new-folder-${row.name}`}
+                      onClick={() => {
+                        setCreatingIn(creatingIn === row.path ? null : row.path);
+                        setFolderName("");
+                        loadThenOpen(row.path);
+                      }}
+                      disabled={busy !== null}
+                    >
+                      {t("files.newFolder", "新建")}
+                    </Button>
+                  )}
+                  {!isRoot && row.entry?.type !== "link" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      title={
+                        isDir
+                          ? t("files.downloadFolderHint", "下载整个文件夹")
+                          : t("files.downloadFile", "下载到本地")
+                      }
+                      onClick={() =>
+                        isDir ? void downloadDirectory(row.entry!, row.path) : void download(row.entry!, row.path)
+                      }
+                      disabled={busy === `download:${row.path}`}
+                    >
+                      {busy === `download:${row.path}` ? "…" : t("files.download", "下载")}
+                    </Button>
+                  )}
+                  {!isRoot && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void remove(row.entry!, row.path)}
+                      disabled={busy === `delete:${row.path}`}
+                    >
+                      {busy === `delete:${row.path}` ? "…" : t("files.delete", "删除")}
+                    </Button>
+                  )}
+                </span>
+              </div>
+
+              {creatingIn === row.path && (
+                <form
+                  className="folder-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void createFolder(row.path);
+                  }}
+                >
+                  <input
+                    className="input"
+                    data-testid="folder-name"
+                    value={folderName}
+                    onChange={(event) => setFolderName(event.target.value)}
+                    placeholder={t("files.folderNamePlaceholder", "新文件夹名称")}
+                    autoFocus
+                  />
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    type="submit"
+                    data-testid="folder-create"
+                    disabled={!folderName.trim() || busy !== null}
+                  >
+                    {t("files.create", "创建")}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setCreatingIn(null)}>
+                    {t("files.cancel", "取消")}
+                  </Button>
+                </form>
+              )}
+
+              {row.open && listing && !listing.loading && listing.error && (
+                <p className="error pane-error">{listing.error}</p>
+              )}
+              {row.open && listing && !listing.loading && !listing.error && listing.entries.length === 0 && !isRoot && (
+                <p className="hint pane-error">{t("files.empty", "空目录")}</p>
+              )}
+            </li>
+          );
+        })}
       </ul>
 
       {transfers.length > 0 && (
@@ -465,9 +630,7 @@ export function FilePane({
               <div className="transfer__line">
                 <span className="truncate">
                   {transfer.direction === "upload" ? "↑" : "↓"} {transfer.name}
-                  {transfer.files
-                    ? ` (${transfer.files.done}/${transfer.files.total})`
-                    : ""}
+                  {transfer.files ? ` (${transfer.files.done}/${transfer.files.total})` : ""}
                 </span>
                 <span className="row" style={{ gap: "var(--space-2)", flexShrink: 0 }}>
                   <span
@@ -518,7 +681,10 @@ export function FilePane({
           onClose={() => setConflict(null)}
           footer={
             <div className="row">
-              <Button variant="primary" onClick={() => void runUpload(conflict.localPaths, conflict.remoteDir, "replace")}>
+              <Button
+                variant="primary"
+                onClick={() => void runUpload(conflict.localPaths, conflict.remoteDir, "replace")}
+              >
                 {t("files.conflictReplace", "替换")}
               </Button>
               <Button
@@ -527,7 +693,10 @@ export function FilePane({
               >
                 {t("files.conflictKeepBoth", "两个都留")}
               </Button>
-              <Button variant="ghost" onClick={() => void runUpload(conflict.localPaths, conflict.remoteDir, "skip")}>
+              <Button
+                variant="ghost"
+                onClick={() => void runUpload(conflict.localPaths, conflict.remoteDir, "skip")}
+              >
                 {t("files.conflictSkip", "跳过")}
               </Button>
             </div>

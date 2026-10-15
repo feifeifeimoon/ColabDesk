@@ -208,6 +208,21 @@ function attachShell(
         write(entries ? `${[...entries.keys()].sort().join("  ")}\r\n` : `ls: ${args[0]}: no such file\r\n`);
         return;
       }
+      /**
+       * Writes into the filesystem the file pane reads, so a test can tell a
+       * refreshed tree from a stale one: this is the shell and the SFTP browser
+       * looking at the same runtime, which is the thing being asserted.
+       */
+      case "mkdir": {
+        const result = filesystem.mkdir(args[0] ?? "", cwd);
+        if (result === "exists") write(`mkdir: cannot create directory '${args[0]}': File exists\r\n`);
+        else if (result === "missing-parent") write(`mkdir: cannot create directory '${args[0]}': No such file or directory\r\n`);
+        return;
+      }
+      case "touch": {
+        if (!filesystem.create(args[0] ?? "", cwd)) write(`touch: cannot touch '${args[0]}'\r\n`);
+        return;
+      }
       case "whoami":
         write("root\r\n");
         return;

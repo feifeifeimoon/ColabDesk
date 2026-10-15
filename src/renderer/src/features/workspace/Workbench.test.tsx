@@ -36,8 +36,14 @@ vi.mock("./TerminalPane", async () => {
 vi.mock("./FilePane", async () => {
   const { createElement: h } = await import("react");
   return {
-    FilePane: ({ session }: { session: string }) =>
-      h("div", { className: "files-panel", "data-session": session }),
+    FilePane: ({ session, visible }: { session: string; visible: boolean }) =>
+      h("div", {
+        className: "files-panel",
+        "data-session": session,
+        // The pane is parked when hidden, so which of the two it is has to be
+        // visible to the test that says so.
+        hidden: !visible,
+      }),
   };
 });
 
@@ -127,7 +133,7 @@ describe("open shells", () => {
     expect(panes[1]).toContain('data-active="true"');
   });
 
-  it("mounts one file browser per session, and none when the panel is collapsed", () => {
+  it("keeps one file browser per session, parked rather than unmounted when hidden", () => {
     const tabs = [shell("alpha", 1), shell("beta", 1)];
     store.current = { ...base, tabs, selectedSession: "alpha", filesOpen: true };
     const withPanel = render();
@@ -136,7 +142,12 @@ describe("open shells", () => {
     expect(withPanel).toContain('data-session="alpha"');
     expect(withPanel).toContain('data-session="beta"');
 
+    // Collapsing the panel hides the tree instead of folding it: the shape it
+    // was left in, and the listings behind it, have to survive — so the pane is
+    // still in the document, hidden and inert rather than gone.
     store.current = { ...base, tabs, selectedSession: "alpha", filesOpen: false };
-    expect(render()).not.toContain("files-panel");
+    const hidden = render();
+    expect(hidden.match(/class="files-panel"/g)).toHaveLength(2);
+    expect(hidden.match(/<div class="files-panel"[^>]*>/g)?.[0]).toContain("hidden");
   });
 });

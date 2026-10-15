@@ -43,8 +43,13 @@ export interface WorkspaceSlice {
   selectedSession: string | null;
   activeTabId: string | null;
   connections: Record<string, SshState>;
-  /** Per session, because one runtime has one filesystem and one file browser. */
-  remotePaths: Record<string, string>;
+  /**
+   * The file tree's shape, per session: which directories are open. It lives
+   * here rather than in the pane because a pane that is only hidden has to come
+   * back the way it was left, and it is dropped with the connection — the
+   * listings it describes go with it.
+   */
+  expandedDirs: Record<string, string[]>;
   transferCounts: Record<string, number>;
 
   /** Goes to a session, opening its first shell if it has none, and focuses it. */
@@ -59,7 +64,10 @@ export interface WorkspaceSlice {
   /** Focuses the nth shell of the selected session, for the number keys. */
   focusTabAt(index: number): void;
   setConnection(state: SshState): void;
-  setRemotePath(session: string, path: string): void;
+  /** Opens a directory that was closed, closes one that was open. */
+  toggleDirectory(session: string, path: string): void;
+  /** Drops a directory and everything under it, for a folder that is gone. */
+  forgetDirectory(session: string, path: string): void;
   setTransferCount(session: string, active: number): void;
   /** Drops tabs whose session no longer exists server-side. */
   pruneTabs(): void;
