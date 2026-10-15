@@ -158,6 +158,32 @@ export interface RemotePathState {
   type: RemoteEntry["type"];
 }
 
+/** How a text file ends its lines, as a fact about the file — not a preference. */
+export type EolStyle = "lf" | "crlf" | "mixed";
+
+/**
+ * A remote file read as text, in the shapes the preview can act on.
+ *
+ * `size` is bytes and `mtime` is milliseconds — the unit `RemoteEntry` already
+ * uses. The SFTP protocol itself reports seconds, so anything that compares a
+ * protocol mtime against one of these has to multiply first.
+ */
+export type RemoteTextRead =
+  | { kind: "text"; text: string; eol: EolStyle; size: number; mtime: number; mode: number }
+  | { kind: "invalidUtf8"; text: string; size: number; mtime: number; mode: number }
+  /** Too large to send whole: the two ends, cut at line boundaries. */
+  | {
+      kind: "truncated";
+      head: string;
+      tail: string;
+      /** Bytes between the two ends — what the preview is not showing. */
+      omitted: number;
+      size: number;
+      mtime: number;
+      mode: number;
+    }
+  | { kind: "binary"; size: number };
+
 export interface TransferProgress {
   id: string;
   session: string;

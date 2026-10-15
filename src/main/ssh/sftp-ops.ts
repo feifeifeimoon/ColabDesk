@@ -22,6 +22,7 @@ import type { RemoteEntry } from "@shared/types";
 const S_IFMT = 0o170000;
 const S_IFDIR = 0o040000;
 const S_IFLNK = 0o120000;
+const S_IFREG = 0o100000;
 
 export type RemoteNodeType = RemoteEntry["type"];
 
@@ -30,6 +31,15 @@ function typeOf(mode: number): RemoteNodeType {
   if (kind === S_IFDIR) return "dir";
   if (kind === S_IFLNK) return "link";
   return "file";
+}
+
+/**
+ * Whether the mode describes an ordinary file. `typeOf` answers a coarser
+ * question — for the tree, a FIFO or a device is something you can download —
+ * but reading one to edit is a different claim, and `S_IFREG` is what it needs.
+ */
+export function isRegularFile(mode: number): boolean {
+  return (mode & S_IFMT) === S_IFREG;
 }
 
 /** Remote paths are always forward-slashed, whatever this machine is. */

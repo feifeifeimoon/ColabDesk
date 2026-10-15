@@ -48,6 +48,7 @@ export const onTerminalClosed = (listener: Parameters<ColabDeskApi["onTerminalCl
 
 export const listDirectory = (session: string, path: string) => bridge().listDirectory(session, path);
 export const statPaths = (session: string, paths: string[]) => bridge().statPaths(session, paths);
+export const readTextFile = (session: string, path: string) => bridge().readTextFile(session, path);
 export const makeDirectory = (session: string, path: string) => bridge().makeDirectory(session, path);
 export const deletePath = (session: string, path: string) => bridge().deletePath(session, path);
 export const download = (session: string, remote: string, name: string, title: string) =>

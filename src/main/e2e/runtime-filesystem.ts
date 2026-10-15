@@ -88,6 +88,28 @@ export class RuntimeFilesystem {
     });
     content.entries.set("model.pt", { kind: "file", content: Buffer.alloc(2048, 7), length: 2048, mtime: now });
 
+    // The three verdicts the text preview can reach beyond plain text: a file
+    // too large to send whole, one that is not text at all, and one that is
+    // text in some other encoding.
+    const logLine = "2026-01-01 12:00:00 [INFO] step 0000 loss=0.1234\n";
+    const log = Buffer.from(
+      `2026-01-01 00:00:00 [INFO] training begins\n${logLine.repeat(60_000)}2026-01-01 23:59:59 [INFO] training done\n`,
+    );
+    content.entries.set("train.log", { kind: "file", content: log, length: log.length, mtime: now });
+    content.entries.set("blob.bin", {
+      kind: "file",
+      content: Buffer.alloc(4096, 0),
+      length: 4096,
+      mtime: now,
+    });
+    const legacy = Buffer.from([0xc3, 0x28, 0x0a, 0xc3, 0x28]);
+    content.entries.set("legacy.txt", {
+      kind: "file",
+      content: legacy,
+      length: legacy.length,
+      mtime: now,
+    });
+
     const data: RuntimeDirectory = { kind: "dir", entries: new Map(), mtime: now };
     const csv = "x,y\n1,2\n";
     data.entries.set("sample.csv", {

@@ -6,10 +6,12 @@ import type { SFTPWrapper } from "ssh2";
 import { EVENTS, IPC } from "@shared/ipc";
 import type { TransferProgress, UploadRequest } from "@shared/types";
 import { broadcast } from "../../broadcast";
+import { retryTransientRead } from "../../colab/network-retry";
 import { mockDialogAnswer, type MockDialogKind } from "../../e2e/dialog-stub";
 import { e2eMockEnabled } from "../../e2e/mode";
 import { sanitizeLocalName } from "../../local-file-name";
 import type { IpcContext } from "../register";
+import { readTextFile } from "../../ssh/sftp-text";
 import {
   joinRemotePath,
   listDirectory,
@@ -216,6 +218,13 @@ export function registerFileHandlers({ ssh }: IpcContext): void {
       }
       return taken;
     }),
+  );
+
+  ipcMain.handle(IPC.sftpReadText, (_event, payload: { session: string; path: string }) =>
+    // A read, so the one-retry rule applies — and the retry goes through
+    // `acquire`, which is what makes it a rescue for a dropped connection
+    // rather than a second look at the same dead channel.
+    retryTransientRead(() => withSftp(payload.session, (sftp) => readTextFile(sftp, payload.path)), 2),
   );
 
   ipcMain.handle(IPC.sftpDownload, async (_event, payload: {
