@@ -11,6 +11,7 @@ import { PanelDivider } from "../../components/ui/PanelDivider";
 import { ProgressBar } from "../../components/ui/ProgressBar";
 import { PANEL_WIDTH } from "../../lib/panel-width";
 import { childPath, isDirectoryRow, projectRows, type Listing } from "./file-tree";
+import { makeRequestTokens } from "./request-tokens";
 import { useAppStore } from "../../store";
 
 /**
@@ -127,19 +128,26 @@ export function FilePane({
   );
 
   /** Reads one directory, keeping whatever was there until the answer lands. */
+  const tokens = useRef(makeRequestTokens());
   const load = useCallback(
     async (path: string): Promise<void> => {
-      setListings((current) => ({
-        ...current,
-        [path]: { entries: current[path]?.entries ?? [], loading: true, error: null },
+      const current = tokens.current.begin(path);
+      setListings((previous) => ({
+        ...previous,
+        [path]: { entries: previous[path]?.entries ?? [], loading: true, error: null },
       }));
       try {
         const entries = await api.listDirectory(session, path);
-        setListings((current) => ({ ...current, [path]: { entries, loading: false, error: null } }));
+        // Two reads of one folder can be in flight at once — each opens its own
+        // channel — and the slower one is not necessarily the older one. See
+        // `request-tokens`: a superseded answer must not land.
+        if (!current()) return;
+        setListings((previous) => ({ ...previous, [path]: { entries, loading: false, error: null } }));
       } catch (cause) {
-        setListings((current) => ({
-          ...current,
-          [path]: { entries: current[path]?.entries ?? [], loading: false, error: messageOf(cause) },
+        if (!current()) return;
+        setListings((previous) => ({
+          ...previous,
+          [path]: { entries: previous[path]?.entries ?? [], loading: false, error: messageOf(cause) },
         }));
       }
     },
@@ -179,7 +187,6 @@ export function FilePane({
    * not.
    */
   async function refresh(): Promise<void> {
-    if (listings[TREE_ROOT]?.loading) return;
     for (const path of [TREE_ROOT, ...open]) {
       if (listings[path] === undefined) continue;
       void load(path);
