@@ -215,4 +215,32 @@ describe("pruneTabs", () => {
 
     expect(listener).not.toHaveBeenCalled();
   });
+
+  it("drops the selection when the session that vanished is the selected one", () => {
+    const store = workspaceStore();
+    store.getState().openTab("alpha");
+    store.getState().openTab("beta");
+    store.getState().openSession("alpha");
+    store.setState({ sessions: [named("beta")] });
+
+    store.getState().pruneTabs();
+
+    // beta still has a shell, but the rail does not jump to it: a session that
+    // is gone leaves the workbench at the front door.
+    expect(store.getState().selectedSession).toBeNull();
+    expect(store.getState().tabs.map((tab) => tab.session)).toEqual(["beta"]);
+  });
+
+  it("hangs up for a retired session, once for all of its shells", () => {
+    const store = workspaceStore();
+    store.getState().openTab("alpha");
+    store.getState().openTab("alpha");
+    store.getState().openTab("beta");
+    store.setState({ sessions: [named("beta")] });
+
+    store.getState().pruneTabs();
+
+    expect(sshDisconnect).toHaveBeenCalledTimes(1);
+    expect(sshDisconnect).toHaveBeenCalledWith("alpha");
+  });
 });

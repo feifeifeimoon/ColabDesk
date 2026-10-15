@@ -5,7 +5,7 @@
  */
 
 import type { Page } from "@playwright/test";
-import { expect, reloadWorkbench, test } from "./app-launch";
+import { expect, openSession, reloadWorkbench, test } from "./app-launch";
 
 /** The drag region Chromium resolved for an element. */
 function dragRegion(page: Page, selector: string): Promise<string> {
@@ -309,5 +309,24 @@ test("同步会话按钮触发刷新遮罩并防重复点击，完成后遮罩�
   await expect(syncBtn).toBeEnabled();
   await expect(syncBtn).toHaveAttribute("aria-label", "同步");
   await expect(page.locator('[data-testid="sidebar-overlay"]')).toHaveCount(0);
+});
+
+// 关掉最后一个终端之后停在「这个会话还没有终端」是对的（会话还在，下一步就是再开一个），
+// 但如果会话本身没了还停在这一页，说的就是一个不存在的会话：名字已经不在会话栏里，
+// 那句「新建终端」点下去只会去连一个连不上的运行时。
+test("会话没了之后，工作台回到前门，不会停在「还没有终端」", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await expect(page.locator(".terminal-host")).toHaveCount(1);
+  await page.getByLabel("关闭终端 1").click();
+  await expect(page.locator(".startpage")).toContainText("「e2e-alpha」还没有终端。");
+
+  // 停止会话：桩把它从 sessions.json 里删掉，和真机上「删除运行时后同步」是同一条路。
+  page.on("dialog", (dialog) => void dialog.accept());
+  await page.locator(".session-row", { hasText: "e2e-alpha" }).locator(".menu__trigger").click();
+  await page.getByRole("menuitem", { name: "停止会话" }).click();
+
+  await expect(page.locator('[data-testid="session-row"]')).toHaveCount(1);
+  await expect(page.locator(".startpage")).toContainText("选一个会话，或新建一个运行时。");
+  await expect(page.locator(".startpage")).not.toContainText("还没有终端");
 });
 
