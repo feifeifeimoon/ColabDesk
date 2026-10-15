@@ -1,11 +1,11 @@
 /**
- * The workbench: one slot per session, one pane per shell, one browser per
+ * The workbench: one slot per session, one pane per tab, one browser per
  * session — and two levels of parking.
  *
  * Both levels are load-bearing. A session that is not selected leaves the
- * layout but keeps its shells; inside the selected session, the shell that is
- * not the shown tab does the same. Neither is visible to an end-to-end run,
- * which can only see that the shells answered.
+ * layout but keeps its tabs; inside the selected session, the tab that is not
+ * the shown one does the same. Neither is visible to an end-to-end run, which
+ * can only see that the shells answered.
  */
 
 import { createElement } from "react";
@@ -33,6 +33,18 @@ vi.mock("./TerminalPane", async () => {
       }),
   };
 });
+vi.mock("./FileView", async () => {
+  const { createElement: h } = await import("react");
+  return {
+    FileView: ({ session, name, active }: { session: string; name: string; active: boolean }) =>
+      h("div", {
+        className: "file-area",
+        "data-session": session,
+        "data-name": name,
+        "data-active": String(active),
+      }),
+  };
+});
 vi.mock("./FilePane", async () => {
   const { createElement: h } = await import("react");
   return {
@@ -53,9 +65,19 @@ const noop = () => {};
 
 /** A shell as the store stores it. */
 const shell = (session: string, ordinal: number): TerminalTab => ({
+  kind: "shell",
   id: `${session}:${ordinal}`,
   session,
   ordinal,
+});
+
+/** A file tab: the same strip, the other kind. */
+const file = (session: string, path: string) => ({
+  kind: "file" as const,
+  id: `${session}:file:${path}`,
+  session,
+  path,
+  name: path.slice(path.lastIndexOf("/") + 1),
 });
 
 const base = {
@@ -131,6 +153,27 @@ describe("open shells", () => {
     expect(panes).toHaveLength(2);
     expect(panes[0]).toContain('data-active="false"');
     expect(panes[1]).toContain('data-active="true"');
+  });
+
+  it("a file is a tab like a shell is: its own pane, parked when another is shown", () => {
+    const trainLog = file("alpha", "/content/train.log");
+    store.current = {
+      ...base,
+      tabs: [shell("alpha", 1), trainLog],
+      selectedSession: "alpha",
+      activeTabId: trainLog.id,
+    };
+
+    const markup = render();
+    const terminals = markup.match(/<div class="terminal-area"[^>]*>/g) ?? [];
+    const files = markup.match(/<div class="file-area"[^>]*>/g) ?? [];
+
+    // The shell stands down rather than unmounting; the file is what is shown.
+    expect(terminals).toHaveLength(1);
+    expect(terminals[0]).toContain('data-active="false"');
+    expect(files).toHaveLength(1);
+    expect(files[0]).toContain('data-active="true"');
+    expect(files[0]).toContain('data-name="train.log"');
   });
 
   it("keeps one file browser per session, parked rather than unmounted when hidden", () => {

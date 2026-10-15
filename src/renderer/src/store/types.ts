@@ -31,14 +31,35 @@ export interface ToastsSlice {
 
 /** One shell on a session's connection. A session can have several. */
 export interface TerminalTab {
+  kind: "shell";
   id: string;
   session: string;
   /** Its number among the session's shells: "终端 1", "终端 2", … */
   ordinal: number;
 }
 
+/**
+ * A file, open in the middle column beside the shells.
+ *
+ * It is a tab and not a dialog because it is read *against* the terminal: a
+ * training log gets opened while a shell is running, and a modal would stand
+ * between the two. Like a shell it needs the session's connection — it is SFTP
+ * over that same session — so a file tab holds the connection open the way a
+ * shell does.
+ */
+export interface FileTab {
+  kind: "file";
+  /** One tab per file: opening the same one again focuses it, never duplicates it. */
+  id: string;
+  session: string;
+  path: string;
+  name: string;
+}
+
+export type WorkspaceTab = TerminalTab | FileTab;
+
 export interface WorkspaceSlice {
-  tabs: TerminalTab[];
+  tabs: WorkspaceTab[];
   /** The rail's selection: whose shells the tab strip shows. */
   selectedSession: string | null;
   activeTabId: string | null;
@@ -56,12 +77,14 @@ export interface WorkspaceSlice {
   openSession(session: string): void;
   /** One more shell on the same connection — the reason tabs exist. */
   openTab(session: string): void;
+  /** Opens a file beside the shells; one that is already open is focused. */
+  openFileTab(session: string, path: string, name: string): void;
   closeTab(tabId: string): void;
-  /** Brings one shell of the selected session to the front. */
+  /** Brings one tab of the selected session to the front. */
   focusTab(tabId: string): void;
-  /** Closes every shell of a session, which is what releases its connection. */
+  /** Closes every tab of a session, which is what releases its connection. */
   closeSessionTabs(session: string): void;
-  /** Focuses the nth shell of the selected session, for the number keys. */
+  /** Focuses the nth tab of the selected session, for the number keys. */
   focusTabAt(index: number): void;
   setConnection(state: SshState): void;
   /** Opens a directory that was closed, closes one that was open. */

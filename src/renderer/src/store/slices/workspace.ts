@@ -11,9 +11,11 @@ function dropKey<T>(record: Record<string, T>, key: string): Record<string, T> {
 export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice> = (set, get) => {
   /** One more shell for a session, numbered after the highest it has. */
   function addTab(session: string): TerminalTab {
-    const existing = get().tabs.filter((tab) => tab.session === session);
+    const existing = get().tabs.filter(
+      (tab): tab is TerminalTab => tab.session === session && tab.kind === "shell",
+    );
     const ordinal = existing.reduce((highest, tab) => Math.max(highest, tab.ordinal), 0) + 1;
-    const tab: TerminalTab = { id: `${session}:${ordinal}`, session, ordinal };
+    const tab: TerminalTab = { kind: "shell", id: `${session}:${ordinal}`, session, ordinal };
     set({ tabs: [...get().tabs, tab], selectedSession: session, activeTabId: tab.id });
     return tab;
   }
@@ -36,7 +38,8 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
     set({ activeTabId: active });
   }
 
-  /** Lets go of a connection: the session's last shell closed. */
+  /** Lets go of a connection: the session's last tab closed. A file tab needs
+      the connection too, so it counts. */
   function release(session: string): void {
     set((current) => ({
       // The tree goes with the connection: an expanded set describes listings
@@ -67,6 +70,25 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
 
     openTab: (session) => {
       addTab(session);
+      set({ settingsOpen: false });
+    },
+
+    openFileTab: (session, path, name) => {
+      const id = `${session}:file:${path}`;
+      const existing = get().tabs.some((tab) => tab.id === id);
+      if (existing) {
+        set({ selectedSession: session, activeTabId: id });
+      } else {
+        set({
+          tabs: [
+            ...get().tabs,
+            { kind: "file", id, session, path, name },
+          ],
+          selectedSession: session,
+          activeTabId: id,
+        });
+      }
+      // Asking for a file is asking for the workbench, wherever you asked from.
       set({ settingsOpen: false });
     },
 

@@ -35,6 +35,10 @@ function workspaceStore() {
 /** Only the name matters to the tab bookkeeping. */
 const named = (name: string) => ({ name }) as TestState["sessions"][number];
 
+/** Just the shells, so a test about numbering reads like one. */
+const shells = (store: { getState: () => TestState }) =>
+  store.getState().tabs.flatMap((tab) => (tab.kind === "shell" ? [tab] : []));
+
 beforeEach(() => vi.mocked(sshDisconnect).mockClear());
 
 describe("opening shells", () => {
@@ -43,7 +47,7 @@ describe("opening shells", () => {
 
     store.getState().openTab("alpha");
     store.getState().openTab("alpha");
-    const [first, second] = store.getState().tabs;
+    const [first, second] = shells(store);
 
     expect(store.getState().tabs).toHaveLength(2);
     expect(new Set([first!.id, second!.id]).size).toBe(2);
@@ -54,7 +58,7 @@ describe("opening shells", () => {
     // session can never share a name.
     store.getState().closeTab(first!.id);
     store.getState().openTab("alpha");
-    const ordinals = store.getState().tabs.map((tab) => tab.ordinal);
+    const ordinals = shells(store).map((tab) => tab.ordinal);
     expect(new Set(ordinals).size).toBe(ordinals.length);
     expect(ordinals).toContain(second!.ordinal);
   });
@@ -82,6 +86,36 @@ describe("opening shells", () => {
     expect(store.getState().activeTabId).toBe(
       store.getState().tabs.find((tab) => tab.session === "beta")!.id,
     );
+  });
+});
+
+describe("opening files", () => {
+  it("opens each file once: asking again focuses the tab it already has", () => {
+    const store = workspaceStore();
+    store.getState().openFileTab("alpha", "/content/train.log", "train.log");
+    store.getState().openTab("alpha");
+
+    store.getState().openFileTab("alpha", "/content/train.log", "train.log");
+
+    const files = store.getState().tabs.filter((tab) => tab.kind === "file");
+    expect(files).toHaveLength(1);
+    expect(store.getState().activeTabId).toBe(files[0]!.id);
+    expect(store.getState().selectedSession).toBe("alpha");
+  });
+
+  it("a file tab is a reason to stay connected, the same as a shell is", () => {
+    const store = workspaceStore();
+    store.getState().openTab("alpha");
+    store.getState().openFileTab("alpha", "/content/train.log", "train.log");
+    const [shell] = shells(store);
+
+    store.getState().closeTab(shell!.id);
+    // The file is still being read; hanging up would take it with the session.
+    expect(sshDisconnect).not.toHaveBeenCalled();
+
+    const [file] = store.getState().tabs;
+    store.getState().closeTab(file!.id);
+    expect(sshDisconnect).toHaveBeenCalledWith("alpha");
   });
 });
 

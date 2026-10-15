@@ -16,7 +16,7 @@ export function acceleratorLabel(session: Session): string {
   return session.accelerator === "NONE" || !session.accelerator ? "CPU" : session.accelerator;
 }
 
-/** Whether the panel toggles have a layout to act on: a selected session with a shell. */
+/** Whether the panel toggles have a layout to act on: a selected session with a tab. */
 export function useHasWorkSurface(): boolean {
   return useAppStore((state) =>
     state.tabs.some((tab) => tab.session === state.selectedSession),

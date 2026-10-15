@@ -1,17 +1,22 @@
 /**
- * The middle column: one slot per session that has shells, and the start page
+ * The middle column: one slot per session that has tabs, and the start page
  * while none of them is on screen.
  *
  * The two levels of parking are both load-bearing. A slot that is not the
- * selected session leaves the layout but keeps its shells: switching sessions
- * must not hang up on the runtime you were working on. Inside a slot, the
- * shells that are not the shown tab park the same way — a terminal is a live
- * SSH session, so the tab you are not looking at is still running.
+ * selected session leaves the layout but keeps its tabs: switching sessions
+ * must not hang up on the runtime you were working on. Inside a slot, the tabs
+ * that are not the shown one park the same way — a terminal is a live SSH
+ * session, and a file holds a read of its own, so neither is a thing to throw
+ * away because something else came to the front.
+ *
+ * A tab is a shell or a file, and that is why a file is not a dialog: a log is
+ * read *against* the terminal that is producing it.
  */
 
 import { useMemo } from "react";
 import { useAppStore } from "../../store";
 import { FilePane } from "./FilePane";
+import { FileView } from "./FileView";
 import { StartPage } from "./StartPage";
 import { TerminalPane } from "./TerminalPane";
 
@@ -24,30 +29,37 @@ export function Workbench() {
 
   // Grouped here rather than in a selector: a selector that built this would
   // hand back a new reference on every store write.
-  const shellsBySession = useMemo(() => {
+  const tabsBySession = useMemo(() => {
     const groups = new Map<string, typeof tabs>();
     for (const tab of tabs) groups.set(tab.session, [...(groups.get(tab.session) ?? []), tab]);
     return groups;
   }, [tabs]);
 
-  const onScreen = selectedSession !== null && shellsBySession.has(selectedSession);
+  const onScreen = selectedSession !== null && tabsBySession.has(selectedSession);
 
   return (
     <>
       {!onScreen && <StartPage />}
 
-      {[...shellsBySession].map(([session, shells]) => {
+      {[...tabsBySession].map(([session, sessionTabs]) => {
         const shown = session === selectedSession;
         return (
           <div key={session} className="work-slot" hidden={!shown} inert={!shown}>
             <div className="terminal-stack">
-              {shells.map((tab) => (
-                <TerminalPane
-                  key={tab.id}
-                  session={tab.session}
-                  active={shown && tab.id === activeTabId}
-                />
-              ))}
+              {sessionTabs.map((tab) => {
+                const active = shown && tab.id === activeTabId;
+                return tab.kind === "shell" ? (
+                  <TerminalPane key={tab.id} session={tab.session} active={active} />
+                ) : (
+                  <FileView
+                    key={tab.id}
+                    session={tab.session}
+                    path={tab.path}
+                    name={tab.name}
+                    active={active}
+                  />
+                );
+              })}
             </div>
             {/* One browser per session: a runtime has one filesystem, and its
                 shells look at the same one. It parks with the panel instead of

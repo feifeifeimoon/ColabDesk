@@ -159,7 +159,10 @@ export function Sidebar() {
           // is written out (a dot alone never carries the state).
           const stateLabel = state === "closed" ? null : (connectionLabels[state] ?? state);
           const busy = busyAction?.startsWith(`${session.name}:`) ?? false;
-          const shells = tabs.filter((tab) => tab.session === session.name).length;
+          const sessionTabs = tabs.filter((tab) => tab.session === session.name);
+          // The tooltip counts shells, which is what it says; the menu below is
+          // about the session's workbench, which is every tab it has.
+          const shells = sessionTabs.filter((tab) => tab.kind === "shell").length;
           // The shell count goes in the tooltip rather than a second badge: the
           // tab strip is the authoritative "how many shells" display, and the
           // badge squeezed the session name down to an ellipsis.
@@ -201,7 +204,7 @@ export function Sidebar() {
               <Menu
                 label={t("sidebar.menuActionLabel", "{{name}} 的操作", { name: session.name })}
                 items={[
-                  shells > 0
+                  sessionTabs.length > 0
                     ? { label: t("sidebar.menuFocusTerminal", "聚焦终端"), onSelect: () => void runSessionAction(session.name, "open") }
                     : { label: t("sidebar.menuOpenTerminal", "打开终端"), onSelect: () => void runSessionAction(session.name, "open") },
                   { label: t("sidebar.menuNewTerminal", "新建终端"), onSelect: () => void runSessionAction(session.name, "new-terminal") },
@@ -216,12 +219,13 @@ export function Sidebar() {
                     onSelect: () => void runSessionAction(session.name, "ssh-config"),
                   },
                   { label: t("sidebar.menuCopySsh", "复制 ssh 命令"), onSelect: () => void runSessionAction(session.name, "copy-ssh") },
-                  // Closing every shell is what hangs up: one tab on its own
-                  // leaves the connection up for the others.
-                  ...(shells > 0
+                  // Closing every tab is what hangs up — a file tab holds the
+                  // connection too — and one tab on its own leaves it up for the
+                  // others.
+                  ...(sessionTabs.length > 0
                     ? [
                         {
-                          label: t("sidebar.menuCloseAllTerminals", "关闭全部终端"),
+                          label: t("sidebar.menuCloseAllTerminals", "关闭全部标签"),
                           onSelect: () => void runSessionAction(session.name, "close-all"),
                         },
                       ]

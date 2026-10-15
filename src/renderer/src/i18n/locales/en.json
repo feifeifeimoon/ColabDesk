@@ -9,6 +9,8 @@
     "terminalTab": "Terminal {{index}}",
     "terminalClose": "Close terminal {{index}}",
     "terminalCloseTitle": "Close terminal",
+    "fileTabClose": "Close {{name}}",
+    "fileTabCloseTitle": "Close file",
     "newTerminal": "New terminal",
     "newTerminalTitle": "New terminal (Ctrl+Shift+T)",
     "filesCollapse": "Collapse files panel",
@@ -60,7 +62,7 @@
     "menuRestartingKernel": "Restarting…",
     "menuSshConfig": "Configure SSH",
     "menuCopySsh": "Copy ssh command",
-    "menuCloseAllTerminals": "Close all terminals",
+    "menuCloseAllTerminals": "Close all tabs",
     "menuStopSession": "Stop session",
     "menuStoppingSession": "Stopping…",
     "menuActionLabel": "Actions for {{name}}",
@@ -125,7 +127,6 @@
     "cancel": "Cancel",
     "empty": "Empty directory",
     "openDir": "Open directory",
-    "downloadFile": "Download to local",
     "download": "Download",
     "saveDialogTitle": "Save to this computer",
     "uploadDialogTitle": "Choose files to upload",
@@ -149,7 +150,26 @@
     "treeLabel": "Runtime files",
     "newFolderHere": "New folder in here",
     "menuLabel": "Actions for {{name}}",
-    "downloadFolder": "Download folder"
+    "downloadFolder": "Download folder",
+    "open": "Open",
+    "openFile": "Double-click to open"
+  },
+  "editor": {
+    "reading": "Reading…",
+    "readFailed": "Could not read this file",
+    "retry": "Retry",
+    "reload": "Reload",
+    "download": "Download",
+    "readOnly": "Read-only",
+    "truncated": "This file is large ({{size}}); only the beginning and the end are shown.",
+    "omitted": "⋯⋯ {{size}} omitted ⋯⋯",
+    "invalidUtf8": "Not valid UTF-8 text — viewing only.",
+    "binary": "Binary files cannot be previewed here. Download it and open it in its own program.",
+    "eolLf": "LF endings",
+    "eolCrlf": "CRLF endings",
+    "eolMixed": "Mixed endings",
+    "copyPath": "Copy path",
+    "copied": "Copied"
   },
   "dialog": {
     "close": "Close"
