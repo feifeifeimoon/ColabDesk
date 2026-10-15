@@ -127,11 +127,27 @@ export function FileView({
   const writable = read?.kind === "text" && (read.mode & 0o222) !== 0;
 
   /** Tells the strip — and the store — that the buffer is back in step. */
-  function markClean(): void {
-    savedDoc.current = viewRef.current?.state.doc ?? savedDoc.current;
+  function forceClean(): void {
     dirtyRef.current = false;
     setDirty(false);
     setTabDirty(tabId, false);
+  }
+
+  /**
+   * The document as the runtime now has it, which is what "clean" compares
+   * against — and only that document: typing while a save is in flight is
+   * ordinary, and the keystrokes after the snapshot are still unsaved.
+   */
+  function markInStep(doc: EditorText): void {
+    savedDoc.current = doc;
+    const live = viewRef.current;
+    if (live !== null && !live.state.doc.eq(doc)) {
+      dirtyRef.current = true;
+      setDirty(true);
+      setTabDirty(tabId, true);
+      return;
+    }
+    forceClean();
   }
 
   function noteEdit(view: EditorView): void {
@@ -147,13 +163,16 @@ export function FileView({
   async function save(force: boolean): Promise<boolean> {
     const view = viewRef.current;
     if (!view || read?.kind !== "text" || !writable || saving) return false;
+    // The snapshot the write carries, and the one "clean" will be measured
+    // against when the answer comes back.
+    const doc = view.state.doc;
     setSaving(true);
     setSaveError(null);
     try {
       const result = await api.writeTextFile({
         session,
         path,
-        text: view.state.doc.toString(),
+        text: doc.toString(),
         eol: read.eol,
         expected: baseline,
         ...(force ? { force: true } : {}),
@@ -165,7 +184,7 @@ export function FileView({
       setPending(null);
       setBaseline({ mtime: result.mtime, size: result.size });
       setSavedAt(Date.now());
-      markClean();
+      markInStep(doc);
       // The tree shows a size, and the size just changed.
       noteFileWrite(session, parentPath(path) || "/");
       return true;
@@ -178,13 +197,28 @@ export function FileView({
     }
   }
 
+  /** The close that follows a save: only a landed write closes the tab. */
+  async function saveThenClose(force: boolean): Promise<void> {
+    // A save already in flight: the question stays up until its answer lands,
+    // rather than being dismissed by a second click that cannot act yet.
+    if (saving) return;
+    if (!(await save(force))) {
+      // Whatever stopped the save (a conflict, a failed write) is the thing to
+      // show; the close question would sit on top of it. The buffer stays.
+      cancelPendingClose();
+      return;
+    }
+    cancelPendingClose();
+    closeTab(tabId);
+  }
+
   function reload(): void {
     setPending(null);
     setAttempt((count) => count + 1);
   }
 
   function discardAndReload(): void {
-    markClean();
+    forceClean();
     reload();
   }
 
@@ -214,18 +248,8 @@ export function FileView({
       }}
       onDiscardAndReload={discardAndReload}
       onKeepEditing={() => setPending(null)}
-      onSaveAndClose={() => {
-        void save(false).then((saved) => {
-          if (!saved) {
-            // Whatever stopped the save (a conflict, a failed write) is the
-            // thing to show; the close question would sit on top of it.
-            cancelPendingClose();
-            return;
-          }
-          cancelPendingClose();
-          closeTab(tabId);
-        });
-      }}
+      onSaveAndClose={() => void saveThenClose(false)}
+      onOverwriteAndClose={() => void saveThenClose(true)}
       onDiscardAndClose={() => {
         cancelPendingClose();
         closeTab(tabId);
@@ -315,6 +339,7 @@ export function FileViewPanel({
   onDiscardAndReload,
   onKeepEditing,
   onSaveAndClose,
+  onOverwriteAndClose,
   onDiscardAndClose,
   onCancelClose,
   onDownload,
@@ -340,6 +365,7 @@ export function FileViewPanel({
   onDiscardAndReload: () => void;
   onKeepEditing: () => void;
   onSaveAndClose: () => void;
+  onOverwriteAndClose: () => void;
   onDiscardAndClose: () => void;
   onCancelClose: () => void;
   onDownload: () => void;
@@ -382,10 +408,23 @@ export function FileViewPanel({
       </Button>
     );
   } else if (closing) {
+    // The focus goes to the answer that finishes the job (this question is
+    // raised from the strip or a shortcut, never from inside the pane), and
+    // while the far side has moved on, the one that finishes it is the
+    // overwrite — or the discard. A plain save would conflict again and the
+    // pair of questions would trade places forever.
     actions = (
       <>
-        <Button variant="primary" size="sm" onClick={onSaveAndClose}>
-          {t("editor.saveAndClose", "保存并关闭")}
+        <Button
+          variant="primary"
+          size="sm"
+          disabled={saving}
+          autoFocus
+          onClick={conflict ? onOverwriteAndClose : onSaveAndClose}
+        >
+          {conflict
+            ? t("editor.overwriteAndClose", "覆盖并关闭")
+            : t("editor.saveAndClose", "保存并关闭")}
         </Button>
         <Button variant="outline" size="sm" onClick={onDiscardAndClose}>
           {t("editor.dontSave", "不保存")}
@@ -452,10 +491,12 @@ export function FileViewPanel({
       aria-label={name}
       onKeyDown={(event) => {
         // The pane's own save key, scoped to the pane: a global one would take
-        // Ctrl+S away from the terminal, where it is XOFF.
+        // Ctrl+S away from the terminal, where it is XOFF. Nothing to save
+        // means nothing happens — a write of unchanged text only moves the
+        // mtime.
         if (!(event.ctrlKey || event.metaKey) || event.key !== "s") return;
         event.preventDefault();
-        if (writable && !saving && pending === null && !closing) onSave();
+        if (writable && dirty && !saving && pending === null && !closing) onSave();
       }}
     >
       <div className="pane__head">
@@ -483,21 +524,29 @@ export function FileViewPanel({
         {read?.kind === "text" && !writable && (
           <Callout tone="warn">{t("editor.notWritable", "这个文件不可写，只能查看。")}</Callout>
         )}
-        {closing && <Callout tone="warn">{t("editor.closeAsk", "有未保存的修改。")}</Callout>}
-        {conflict && (
-          <Callout tone="danger">
-            {conflict.reason === "missing"
-              ? t("editor.conflictMissing", "文件在服务器上已不存在，保存会重新创建它。")
-              : t("editor.conflictBody", "文件在服务器上已改变，保存会覆盖那边的版本。")}
-          </Callout>
-        )}
-        {pending?.kind === "confirmReload" && (
-          <Callout tone="warn">{t("editor.reloadAsk", "有未保存的修改，重新加载会丢弃它们。")}</Callout>
-        )}
-        {saveError !== null && (
-          <Callout tone="danger">
-            {t("editor.saveFailed", "保存失败")}：<span className="mono">{saveError}</span>
-          </Callout>
+        {/* The questions and the failure that follows a save attempt are one
+            live region: they appear from an action taken elsewhere (the strip,
+            a shortcut, a write that came back wrong), so they have to say so
+            to anything that cannot see them appear. */}
+        {(closing || conflict || pending?.kind === "confirmReload" || saveError !== null) && (
+          <div className="file-area__status" role="status" aria-live="polite">
+            {closing && <Callout tone="warn">{t("editor.closeAsk", "有未保存的修改。")}</Callout>}
+            {conflict && (
+              <Callout tone="danger">
+                {conflict.reason === "missing"
+                  ? t("editor.conflictMissing", "文件在服务器上已不存在，保存会重新创建它。")
+                  : t("editor.conflictBody", "文件在服务器上已改变，保存会覆盖那边的版本。")}
+              </Callout>
+            )}
+            {pending?.kind === "confirmReload" && (
+              <Callout tone="warn">{t("editor.reloadAsk", "有未保存的修改，重新加载会丢弃它们。")}</Callout>
+            )}
+            {saveError !== null && (
+              <Callout tone="danger">
+                {t("editor.saveFailed", "保存失败")}：<span className="mono">{saveError}</span>
+              </Callout>
+            )}
+          </div>
         )}
         {read && (
           <PreviewBody

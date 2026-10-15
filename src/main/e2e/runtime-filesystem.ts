@@ -115,6 +115,18 @@ export class RuntimeFilesystem {
       mtime: now,
     });
 
+    // Big enough that a save takes long enough for a keystroke to land inside
+    // it — the e2e link is throttled to 8 MB/s — and small enough to stay
+    // editable (the preview cap is 2 MiB).
+    const big = "the quick brown fox jumps over the lazy dog\n".repeat(40_000);
+    const bigBuffer = Buffer.from(big);
+    content.entries.set("big.txt", {
+      kind: "file",
+      content: bigBuffer,
+      length: bigBuffer.length,
+      mtime: now,
+    });
+
     // Not writable by its mode: the preview has to say so rather than offer a
     // save the server would refuse.
     const locked = "seed=1\n";

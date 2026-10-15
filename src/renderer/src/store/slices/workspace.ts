@@ -57,6 +57,9 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       // that no longer exist, and reopening them would show a wrong tree.
       expandedDirs: dropKey(current.expandedDirs, session),
       transferCounts: dropKey(current.transferCounts, session),
+      // So does the record of where a save landed: a leftover would make the
+      // next mount re-read a directory nobody opened.
+      fileWrites: dropKey(current.fileWrites, session),
     }));
     // A runtime accepts one SSH connection, so holding it is what having a
     // shell means. The status stream reports the closure itself.
@@ -159,8 +162,14 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       }
       // The question belongs to the pane that owns the buffer, so bring that
       // pane to the front first — a parked tab would be asked nothing anybody
-      // could see.
-      set({ selectedSession: target.session, activeTabId: tabId, pendingCloseTabId: tabId });
+      // could see. Leaving settings is part of the same move: the question is
+      // raised in the workbench, and the workbench is what has to be on screen.
+      set({
+        selectedSession: target.session,
+        activeTabId: tabId,
+        pendingCloseTabId: tabId,
+        settingsOpen: false,
+      });
     },
 
     cancelPendingClose: () => set({ pendingCloseTabId: null }),

@@ -202,8 +202,10 @@ test("改了就存：未保存的标记、Ctrl+S 写回，重开是远端的新�
 
   await page.keyboard.press("Control+s");
 
-  await expect(filePane.locator('[data-testid="save-file"]')).toBeDisabled();
+  // Wait for the write to land (the button is disabled while it is in flight
+  // too), then read the state it left behind.
   await expect(filePane).not.toContainText("未保存");
+  await expect(filePane.locator('[data-testid="save-file"]')).toBeDisabled();
   await expect(fileTab(page, "README.txt").locator(".session-tab__dot")).toHaveCount(0);
   // The tree shows what the runtime has now: six more bytes than the fixture.
   await expect(row(page, "README.txt")).toContainText("51 B");
@@ -237,8 +239,8 @@ test("远端先变了：保存不静默覆盖，问到答案才写", async ({ pa
   await expect(filePane).toContainText("未保存");
   await filePane.getByRole("button", { name: "覆盖" }).click();
 
-  await expect(filePane.locator('[data-testid="save-file"]')).toBeDisabled();
   await expect(filePane).not.toContainText("文件在服务器上已改变");
+  await expect(filePane.locator('[data-testid="save-file"]')).toBeDisabled();
   // The copy that won is the one the person chose.
   await page.getByRole("button", { name: "关闭 README.txt" }).click();
   await rowButton(page, "README.txt").dblclick();
@@ -269,6 +271,32 @@ test("有未保存的修改时，关标签先问一句；不保存就真的没�
   await rowButton(page, "README.txt").dblclick();
   await expect(surface(page, "README.txt")).toContainText("ColabDesk E2E runtime.");
   await expect(surface(page, "README.txt")).not.toContainText("XX");
+});
+
+test("保存还在路上时继续输入：那些字仍然是未保存的", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await rowButton(page, "big.txt").dblclick();
+  const filePane = pane(page, "big.txt");
+  await expect(surface(page, "big.txt")).toContainText("the quick brown fox");
+
+  await filePane.locator(".cm-content").click();
+  await page.keyboard.type("ONE");
+  await page.keyboard.press("Control+s");
+  // Typed into the window the write is open for (the mock link is throttled to
+  // 8 MB/s, so a 1.7 MB save holds it open for a moment). Whatever the
+  // scheduling, the pane must not call this saved: the snapshot it wrote is not
+  // what the buffer holds.
+  await page.keyboard.type("TWO");
+
+  // The button comes back when the write has landed *and* there is still
+  // something to save — a pane that called the second edit saved would leave it
+  // disabled for good.
+  await expect(filePane.locator('[data-testid="save-file"]')).toBeEnabled();
+  await expect(filePane).toContainText("未保存");
+
+  // The second save carries both edits.
+  await page.keyboard.press("Control+s");
+  await expect(filePane).not.toContainText("未保存");
 });
 
 test("不可写的文件：说明白，也不给保存", async ({ page }) => {

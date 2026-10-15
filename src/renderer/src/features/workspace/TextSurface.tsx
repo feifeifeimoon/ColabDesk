@@ -4,8 +4,9 @@
  * The view lives outside React on purpose: the document is the editor's, and
  * keystrokes never travel back through component state — what React owns is
  * which text is on screen, and whether it can be typed into. The surface is
- * built once per `text` rather than reconciled, because so far every change of
- * text has meant a different file.
+ * built once per `text`: a reload (the same file with different text) replaces
+ * it, and with it the undo history, which is the right price for showing what
+ * the runtime actually has.
  *
  * Colours arrive as the design system's own variables; a component here that
  * wrote a hex value would be the one place light and dark drift apart.

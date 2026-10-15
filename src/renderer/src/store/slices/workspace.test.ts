@@ -127,14 +127,17 @@ describe("unsaved edits", () => {
     const file = store.getState().tabs[1]!;
     store.getState().focusTab(store.getState().tabs[0]!.id);
     store.getState().setTabDirty(file.id, true);
+    store.setState({ settingsOpen: true });
 
     store.getState().requestCloseTab(file.id);
 
     expect(store.getState().tabs).toHaveLength(2);
     expect(store.getState().pendingCloseTabId).toBe(file.id);
     // The pane that owns the buffer has to be the one on screen, or the
-    // question would be asked of nobody.
+    // question would be asked of nobody — and the workbench, not the settings
+    // page, is where the pane lives.
     expect(store.getState().activeTabId).toBe(file.id);
+    expect(store.getState().settingsOpen).toBe(false);
   });
 
   it("a clean tab closes without a question, and cancelling drops one", () => {
@@ -230,7 +233,11 @@ describe("closing shells", () => {
   it("releases the connection with the last shell, and drops what was reported", () => {
     const store = workspaceStore();
     store.getState().openTab("alpha");
-    store.setState({ expandedDirs: { alpha: ["/content/data"] }, transferCounts: { alpha: 2 } });
+    store.setState({
+      expandedDirs: { alpha: ["/content/data"] },
+      transferCounts: { alpha: 2 },
+      fileWrites: { alpha: { dir: "/content", revision: 1 } },
+    });
     const [only] = store.getState().tabs;
 
     store.getState().closeTab(only!.id);
@@ -239,6 +246,8 @@ describe("closing shells", () => {
     expect(store.getState().activeTabId).toBeNull();
     expect(store.getState().expandedDirs.alpha).toBeUndefined();
     expect(store.getState().transferCounts.alpha).toBeUndefined();
+    // A leftover would make the next mount re-read a directory nobody opened.
+    expect(store.getState().fileWrites.alpha).toBeUndefined();
     expect(sshDisconnect).toHaveBeenCalledWith("alpha");
   });
 

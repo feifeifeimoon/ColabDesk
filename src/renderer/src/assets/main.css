@@ -1357,6 +1357,14 @@ kbd {
   white-space: nowrap;
 }
 
+/* The live region that holds the questions and a failed save. A flex column so
+   it keeps the body's own rhythm when two of them are up at once. */
+.file-area__status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
 .file-area .text-surface {
   flex: 1;
   min-height: 0;

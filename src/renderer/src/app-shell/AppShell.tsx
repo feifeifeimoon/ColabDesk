@@ -47,7 +47,9 @@ export function TopBar() {
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
   const toggleFiles = useAppStore((state) => state.toggleFiles);
   const openTab = useAppStore((state) => state.openTab);
-  const closeTab = useAppStore((state) => state.requestCloseTab);
+  // Closing a tab is a request, not an action: a file tab with unsaved edits
+  // gets asked about first (see the workspace slice).
+  const requestCloseTab = useAppStore((state) => state.requestCloseTab);
   const focusTab = useAppStore((state) => state.focusTab);
   const dirtyTabs = useAppStore((state) => state.dirtyTabs);
 
@@ -110,10 +112,11 @@ export function TopBar() {
               aria-selected={onScreen}
               className={`session-tab ${onScreen ? "session-tab--active" : ""}`}
               onMouseDown={(event) => {
-                // Middle click closes, like every terminal emulator.
+                // Middle click closes, like every terminal emulator does — and
+                // like the × does: a file tab with unsaved edits is a question.
                 if (event.button === 1) {
                   event.preventDefault();
-                  closeTab(tab.id);
+                  requestCloseTab(tab.id);
                 } else if (event.button === 0) {
                   focusTab(tab.id);
                 }
@@ -137,7 +140,7 @@ export function TopBar() {
                 title={tab.kind === "file" ? t("topbar.fileTabCloseTitle", "关闭文件") : t("topbar.terminalCloseTitle", "关闭终端")}
                 onClick={(event) => {
                   event.stopPropagation();
-                  closeTab(tab.id);
+                  requestCloseTab(tab.id);
                 }}
               >
                 <CloseIcon />

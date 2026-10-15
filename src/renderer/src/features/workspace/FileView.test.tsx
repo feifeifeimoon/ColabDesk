@@ -55,6 +55,7 @@ function render(
       onDiscardAndReload: () => {},
       onKeepEditing: () => {},
       onSaveAndClose: () => {},
+      onOverwriteAndClose: () => {},
       onDiscardAndClose: () => {},
       onCancelClose: () => {},
       onDownload: () => {},
@@ -144,6 +145,23 @@ describe("file tab", () => {
     expect(markup).toContain("不保存");
     expect(markup).toContain("取消");
     expect(saveButton(markup)).toBe("");
+    // Raised from the strip or a shortcut: it has to say so to a screen reader,
+    // and put the keyboard on the answer that finishes the job.
+    expect(markup).toContain('role="status"');
+    expect(markup).toMatch(/<button[^>]*autofocus[^>]*>[^<]*保存并关闭/);
+  });
+
+  it("closing while the far side has moved on offers the one answer that ends it", () => {
+    const markup = render(TEXT, {
+      dirty: true,
+      closing: true,
+      pending: { kind: "conflict", reason: "changed" },
+    });
+    // A plain save would conflict again and the two questions would trade
+    // places; the way out is to overwrite and close, or not to save at all.
+    expect(markup).toContain("文件在服务器上已改变");
+    expect(markup).toContain("覆盖并关闭");
+    expect(markup).not.toContain("保存并关闭");
   });
 
   it("asks before reloading over unsaved edits", () => {
@@ -159,6 +177,9 @@ describe("file tab", () => {
     expect(changed).toContain("覆盖");
     expect(changed).toContain("放弃我的修改并重新加载");
     expect(changed).toContain("未保存");
+    // The buffer is what the question is about; losing sight of it is how the
+    // three answers stop making sense.
+    expect(changed).toContain('class="text-surface"');
     expect(saveButton(changed)).toBe("");
 
     const gone = render(TEXT, { dirty: true, pending: { kind: "conflict", reason: "missing" } });
