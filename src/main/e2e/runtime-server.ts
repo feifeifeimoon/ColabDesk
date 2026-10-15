@@ -31,6 +31,7 @@ const { OPEN_MODE, STATUS_CODE } = utils.sftp;
 
 const DIRECTORY_MODE = 0o040755;
 const FILE_MODE = 0o100644;
+const LINK_MODE = 0o120777;
 const HOSTNAME = "e2e-runtime";
 const SSH_PATH = "/colab/ssh";
 
@@ -169,13 +170,18 @@ function attachShell(
 ): void {
   let cwd = RUNTIME_HOME;
   let line = "";
-  let escape = false;
+  /** `esc` sees the ESC itself, `csi` the parameters up to the final byte. */
+  let escape: "none" | "esc" | "csi" = "none";
+  let sequence = "";
   let carriageReturn = false;
 
   const write = (text: string): void => {
     stream.write(text);
   };
   const prompt = (): void => write(`\r\nroot@${HOSTNAME}:${cwd}# `);
+
+  /** Set when the shell has been asked to end, so nothing prompts afterwards. */
+  let ended = false;
 
   const run = (input: string): void => {
     const [command, ...rest] = input.trim().split(/\s+/);
@@ -210,25 +216,74 @@ function attachShell(
         return;
       case "stty":
         return;
+      /**
+       * More output than any window holds, so a test can watch the app hold the
+       * shell back instead of buffering a screenful of megabytes. The pump waits
+       * on the channel's own buffer, which is the far end of the same
+       * backpressure the app applies.
+       */
+      case "flood": {
+        const total = Number(args[0] ?? 2_000_000);
+        let sent = 0;
+        const pump = (): void => {
+          let wrote = 0;
+          while (sent < total && (stream.writableLength ?? 0) < 512 * 1024 && wrote < 64) {
+            const size = Math.min(64 * 1024, total - sent);
+            write(`${"x".repeat(size - 1)}\n`);
+            sent += size;
+            wrote += 1;
+          }
+          if (sent < total) {
+            setImmediate(pump);
+            return;
+          }
+          write("flood done\r\n");
+          prompt();
+        };
+        pump();
+        return;
+      }
+      /** Ends the shell the way `exit` does, for a reconnect test. */
+      case "exit":
+        ended = true;
+        write("logout\r\n");
+        stream.exit(0);
+        stream.end();
+        return;
       default:
         write(`bash: ${command}: command not found\r\n`);
     }
   };
 
-  // The ordinal and the window size are the two facts a spec needs to tell a
-  // surviving shell from a reconnected one.
-  write(`ColabDesk E2E runtime · shell #${ordinal} · ${window.cols}x${window.rows}\r\n`);
+  // Asks for bracketed paste, like any readline would: a client that wraps what
+  // it pastes is then visible in the transcript below.
+  write(`\x1b[?2004hColabDesk E2E runtime · shell #${ordinal} · ${window.cols}x${window.rows}\r\n`);
   prompt();
 
   stream.on("data", (chunk: Buffer) => {
     for (const character of chunk.toString("utf8")) {
-      // Arrow keys and friends arrive as ESC [ X; nothing here reacts to them.
-      if (escape) {
-        if (character !== "[") escape = false;
+      if (escape === "esc") {
+        if (character === "[") {
+          escape = "csi";
+          sequence = "";
+          continue;
+        }
+        escape = "none";
+        continue;
+      }
+      if (escape === "csi") {
+        // The final byte of a control sequence is the first one in @–~.
+        if (character >= "@" && character <= "~") {
+          escape = "none";
+          if (sequence === "200") write("\r\n[paste-start]\r\n");
+          else if (sequence === "201") write("[paste-end]\r\n");
+          continue;
+        }
+        sequence += character;
         continue;
       }
       if (character === "\x1b") {
-        escape = true;
+        escape = "esc";
         continue;
       }
       if (character === "\r" || character === "\n") {
@@ -241,7 +296,7 @@ function attachShell(
         write("\r\n");
         run(line);
         line = "";
-        prompt();
+        if (!ended) prompt();
         continue;
       }
       if (character === "\x7f") {
@@ -274,7 +329,59 @@ interface DirectoryHandle {
 
 interface FileHandle {
   kind: "file";
-  node: Exclude<RuntimeNode, { kind: "dir" }>;
+  /** `OPEN` only ever hands back a regular file; a link is written through. */
+  node: Extract<RuntimeNode, { kind: "file" }>;
+}
+
+/**
+ * The fake runtime's bandwidth.
+ *
+ * A transfer that finishes inside one frame cannot be watched: a spec can never
+ * click cancel while it is in flight, and the progress row is gone before it can
+ * be read. Serving bytes at a rate instead of at memory speed is what makes one
+ * observable. 8 MB/s is slow enough to click into and fast enough that no spec
+ * waits on it.
+ *
+ * One timer for the whole queue, not one per request: hundreds of pending
+ * timers starve the very process that hosts this fake (the app's main process),
+ * and a starved main process cannot answer the cancel the test is trying to
+ * click — measured, not feared.
+ */
+const BYTES_PER_SECOND = 8 * 1024 * 1024;
+
+function makeBandwidth() {
+  let freeAt = 0;
+  let timer: NodeJS.Timeout | null = null;
+  const queue: { at: number; release: () => void }[] = [];
+
+  const pump = (): void => {
+    timer = null;
+    const now = Date.now();
+    while (queue.length > 0 && queue[0].at <= now) queue.shift()?.release();
+    if (queue.length > 0) timer = setTimeout(pump, Math.max(1, queue[0].at - Date.now()));
+  };
+
+  return (bytes: number): Promise<void> => {
+    const now = Date.now();
+    const at = Math.max(now, freeAt);
+    freeAt = at + (bytes / BYTES_PER_SECOND) * 1000;
+    return new Promise((resolve) => {
+      queue.push({ at, release: resolve });
+      if (timer === null) timer = setTimeout(pump, Math.max(1, at - now));
+    });
+  };
+}
+
+/**
+ * Answers a rate-limited request, unless the channel went away while it waited —
+ * which is exactly what cancelling a transfer does, and not an error here.
+ */
+function respond(reply: () => void): void {
+  try {
+    reply();
+  } catch {
+    // The client closed the channel under the in-flight request.
+  }
 }
 
 /**
@@ -284,19 +391,26 @@ interface FileHandle {
  */
 function attachSftp(sftp: SFTPWrapper, filesystem: RuntimeFilesystem): void {
   const handles = new Map<string, DirectoryHandle | FileHandle>();
+  const bandwidth = makeBandwidth();
   let nextHandle = 1;
 
   const attrsFor = (node: RuntimeNode): Attributes => ({
-    mode: node.kind === "dir" ? DIRECTORY_MODE : FILE_MODE,
+    mode: node.kind === "dir" ? DIRECTORY_MODE : node.kind === "link" ? LINK_MODE : FILE_MODE,
     uid: 0,
     gid: 0,
-    size: node.kind === "file" ? node.content.length : 0,
+    size: node.kind === "file" ? node.length : node.kind === "link" ? node.target.length : 0,
     atime: node.mtime,
     mtime: node.mtime,
   });
 
-  const longNameFor = (name: string, node: RuntimeNode): string =>
-    `${node.kind === "dir" ? "drwxr-xr-x" : "-rw-r--r--"} 1 root root ${node.kind === "file" ? node.content.length : 4096} ${name}`;
+  const longNameFor = (name: string, node: RuntimeNode): string => {
+    if (node.kind === "link") {
+      return `lrwxrwxrwx 1 root root ${node.target.length} ${name} -> ${node.target}`;
+    }
+    const permissions = node.kind === "dir" ? "drwxr-xr-x" : "-rw-r--r--";
+    const size = node.kind === "file" ? node.length : 4096;
+    return `${permissions} 1 root root ${size} ${name}`;
+  };
 
   /** A directory entry as SFTP wants it; a path that does not exist still has a name. */
   const entryFor = (name: string, node: RuntimeNode | null) => ({
@@ -319,14 +433,15 @@ function attachSftp(sftp: SFTPWrapper, filesystem: RuntimeFilesystem): void {
     sftp.name(reqid, [entryFor(real, filesystem.node(real))]);
   });
 
+  // STAT follows a link and LSTAT does not — the distinction the app's delete
+  // path depends on, so the fake has to keep it.
   sftp.on("STAT", (reqid: number, path: string) => {
     const node = filesystem.node(path, RUNTIME_HOME);
     if (node) sftp.attrs(reqid, attrsFor(node));
     else missing(reqid);
   });
   sftp.on("LSTAT", (reqid: number, path: string) => {
-    // Nothing here is a symlink, so LSTAT is STAT.
-    const node = filesystem.node(path, RUNTIME_HOME);
+    const node = filesystem.lstat(path, RUNTIME_HOME);
     if (node) sftp.attrs(reqid, attrsFor(node));
     else missing(reqid);
   });
@@ -360,33 +475,43 @@ function attachSftp(sftp: SFTPWrapper, filesystem: RuntimeFilesystem): void {
     if (flags & OPEN_MODE.WRITE || flags & OPEN_MODE.APPEND) {
       const node = existing ?? filesystem.create(filename, RUNTIME_HOME);
       if (!node || node.kind !== "file") return failed(reqid);
-      if (flags & OPEN_MODE.TRUNC) node.content = Buffer.alloc(0);
+      if (flags & OPEN_MODE.TRUNC) {
+        node.content = Buffer.alloc(0);
+        node.length = 0;
+      }
       return sftp.handle(reqid, keep({ kind: "file", node }));
     }
 
     if (existing?.kind !== "file") return missing(reqid);
     sftp.handle(reqid, keep({ kind: "file", node: existing }));
   });
-
-  sftp.on("READ", (reqid: number, handle: Buffer, offset: number, length: number) => {
-    const entry = held(handle);
-    if (entry?.kind !== "file") return failed(reqid);
-    const { content } = entry.node;
-    if (offset >= content.length) return sftp.status(reqid, STATUS_CODE.EOF);
-    sftp.data(reqid, content.subarray(offset, Math.min(offset + length, content.length)));
-  });
-
-  sftp.on("WRITE", (reqid: number, handle: Buffer, offset: number, data: Buffer) => {
+  sftp.on("READ", async (reqid: number, handle: Buffer, offset: number, length: number) => {
     const entry = held(handle);
     if (entry?.kind !== "file") return failed(reqid);
     const { node } = entry;
-    // `fastPut` writes chunks at arbitrary offsets, so the file grows to fit.
+    if (offset >= node.length) return sftp.status(reqid, STATUS_CODE.EOF);
+    const slice = node.content.subarray(offset, Math.min(offset + length, node.length));
+    await bandwidth(slice.length);
+    respond(() => sftp.data(reqid, slice));
+  });
+
+  sftp.on("WRITE", async (reqid: number, handle: Buffer, offset: number, data: Buffer) => {
+    const entry = held(handle);
+    if (entry?.kind !== "file") return failed(reqid);
+    await bandwidth(data.length);
+    const { node } = entry;
+    // `fastPut` writes chunks at arbitrary offsets, so the file grows to fit —
+    // doubling the allocation, because growing it exactly would turn an 8 MB
+    // upload into a gigabyte of copying through the app's own main process.
     if (offset + data.length > node.content.length) {
-      node.content = Buffer.concat([node.content, Buffer.alloc(offset + data.length - node.content.length)]);
+      const grown = Buffer.alloc(Math.max(offset + data.length, Math.max(node.content.length * 2, 64 * 1024)));
+      node.content.copy(grown);
+      node.content = grown;
     }
     data.copy(node.content, offset);
+    node.length = Math.max(node.length, offset + data.length);
     node.mtime = Math.floor(Date.now() / 1000);
-    sftp.status(reqid, STATUS_CODE.OK);
+    respond(() => sftp.status(reqid, STATUS_CODE.OK));
   });
 
   sftp.on("CLOSE", (reqid: number, handle: Buffer) => {
@@ -401,6 +526,10 @@ function attachSftp(sftp: SFTPWrapper, filesystem: RuntimeFilesystem): void {
     else missing(reqid);
   });
   sftp.on("RMDIR", (reqid: number, path: string) => {
+    // A link is not a directory, and the target is not this path's to remove:
+    // the fake refuses both, so a client that walks into a link fails here
+    // rather than quietly emptying the directory behind it.
+    if (filesystem.lstat(path, RUNTIME_HOME)?.kind !== "dir") return missing(reqid);
     const entries = filesystem.list(path, RUNTIME_HOME);
     // A non-empty directory is refused, so the app's own recursion is what the
     // tests exercise when deleting a folder.
@@ -409,10 +538,19 @@ function attachSftp(sftp: SFTPWrapper, filesystem: RuntimeFilesystem): void {
     else missing(reqid);
   });
   sftp.on("REMOVE", (reqid: number, path: string) => {
-    const node = filesystem.node(path, RUNTIME_HOME);
-    if (!node || node.kind !== "file") return missing(reqid);
+    // `unlink` takes files and links but never a directory, as on the far side.
+    const node = filesystem.lstat(path, RUNTIME_HOME);
+    if (!node || node.kind === "dir") return missing(reqid);
     if (filesystem.remove(path, RUNTIME_HOME)) sftp.status(reqid, STATUS_CODE.OK);
     else failed(reqid);
+  });
+  sftp.on("RENAME", (reqid: number, oldPath: string, newPath: string) => {
+    // Plain SFTP rename refuses an existing destination, which is what makes the
+    // app's two-step promotion observable here.
+    const result = filesystem.rename(oldPath, newPath, RUNTIME_HOME);
+    if (result === "ok") sftp.status(reqid, STATUS_CODE.OK);
+    else if (result === "exists") failed(reqid);
+    else missing(reqid);
   });
 
   sftp.on("EXTENDED", (reqid: number) => sftp.status(reqid, STATUS_CODE.OP_UNSUPPORTED));

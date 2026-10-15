@@ -10,7 +10,7 @@
  */
 
 import { _electron as electron, expect, test as base, type ElectronApplication, type Locator, type Page } from "@playwright/test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -126,4 +126,22 @@ export async function reloadWorkbench(app: ElectronApplication, page: Page): Pro
   });
   await page.waitForLoadState("domcontentloaded");
   await waitForWorkbench(page);
+}
+
+/**
+ * Stages the next native picker's answer.
+ *
+ * Playwright cannot drive an OS file dialog, so the mock reads the answer from
+ * the sandbox instead (see `src/main/e2e/dialog-stub.ts`). The spec still clicks
+ * the app's own button and the app still runs its own transfer; only the choice
+ * of path is staged. An empty list stages a cancelled dialog.
+ */
+export function plantDialogAnswer(
+  sandbox: string,
+  kind: "open" | "openDirectory" | "save",
+  paths: string[],
+): void {
+  const directory = join(sandbox, "dialogs");
+  mkdirSync(directory, { recursive: true });
+  writeFileSync(join(directory, kind), paths.length > 0 ? `${paths.join("\n")}\n` : "");
 }

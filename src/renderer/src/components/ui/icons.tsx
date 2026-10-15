@@ -93,6 +93,23 @@ export function ChevronLeftIcon({ size }: IconProps) {
   );
 }
 
+/** Search: the two directions a match can be in. */
+export function ChevronUpIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M3.5 10 8 5.5l4.5 4.5" />
+    </Svg>
+  );
+}
+
+export function ChevronDownIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M3.5 6 8 10.5 12.5 6" />
+    </Svg>
+  );
+}
+
 /** Account and quota. */
 export function AccountIcon({ size }: IconProps) {
   return (

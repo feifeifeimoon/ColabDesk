@@ -38,6 +38,19 @@ const CONNECT_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 1_200;
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * How much output may be on its way to the renderer before the shell is asked
+ * to wait.
+ *
+ * A backlog is the normal state of a terminal running something chatty, so the
+ * high mark is generous: past it the shell is paused, and it is resumed once the
+ * renderer has parsed enough of what it was given. ssh2 adjusts the SSH window
+ * only as the channel is read (2 MB), so pausing here does stop the far side
+ * rather than merely buffering it locally.
+ */
+const FLOW_HIGH_WATER = 1024 * 1024;
+const FLOW_LOW_WATER = 256 * 1024;
+
 /** A failure worth retrying: the request never reached Colab intact. */
 class TransientConnectError extends Error {}
 
@@ -91,9 +104,9 @@ export class ColabSshConnection extends EventEmitter {
   private ws: WebSocket | null = null;
   private sock: Duplex | null = null;
   private client: Client | null = null;
-  private sftpWrapper: SFTPWrapper | null = null;
-  private sftpPending: Promise<SFTPWrapper> | null = null;
   private shells = new Map<number, ClientChannel>();
+  /** Output sent to the renderer and not yet acknowledged, per shell. */
+  private unacked = new Map<number, number>();
   private nextShellId = 1;
   private identity: Identity | null = null;
 
@@ -260,10 +273,17 @@ export class ColabSshConnection extends EventEmitter {
     const id = this.nextShellId++;
     this.shells.set(id, channel);
 
-    channel.on("data", (chunk: Buffer) => this.emit("data", id, chunk));
-    channel.stderr.on("data", (chunk: Buffer) => this.emit("data", id, chunk));
+    const forward = (chunk: Buffer): void => {
+      const outstanding = (this.unacked.get(id) ?? 0) + chunk.length;
+      this.unacked.set(id, outstanding);
+      if (outstanding > FLOW_HIGH_WATER && !channel.isPaused()) channel.pause();
+      this.emit("data", id, chunk);
+    };
+    channel.on("data", forward);
+    channel.stderr.on("data", forward);
     channel.on("close", () => {
       this.shells.delete(id);
+      this.unacked.delete(id);
       this.emit("exit", id);
     });
 
@@ -282,6 +302,20 @@ export class ColabSshConnection extends EventEmitter {
     this.shells.get(id)?.setWindow(rows, cols, 0, 0);
   }
 
+  /**
+   * The renderer has parsed this much of the shell's output.
+   *
+   * Its acknowledgement is what allows the next batch through: without it a
+   * command that prints faster than the screen repaints would pile up in the
+   * IPC queue and in xterm's own write buffer, with the far side none the wiser.
+   */
+  ackShell(id: number, bytes: number): void {
+    const outstanding = Math.max(0, (this.unacked.get(id) ?? 0) - bytes);
+    this.unacked.set(id, outstanding);
+    const channel = this.shells.get(id);
+    if (channel?.isPaused() && outstanding <= FLOW_LOW_WATER) channel.resume();
+  }
+
   closeShell(id: number): void {
     const channel = this.shells.get(id);
     if (channel) {
@@ -290,28 +324,18 @@ export class ColabSshConnection extends EventEmitter {
     }
   }
 
-  /** One SFTP subsystem per connection, created on first use. */
-  async sftp(): Promise<SFTPWrapper> {
-    if (this.sftpWrapper) return this.sftpWrapper;
-    if (this.sftpPending) return this.sftpPending;
-
+  /**
+   * A fresh SFTP subsystem, one per operation.
+   *
+   * Sharing a single channel would be cheaper, but cancelling a transfer means
+   * closing its channel — and a shared one would take every other listing and
+   * transfer down with it. Callers close what they opened.
+   */
+  openSftp(): Promise<SFTPWrapper> {
     const client = this.requireClient();
-    this.sftpPending = new Promise<SFTPWrapper>((resolve, reject) => {
-      client.sftp((error, wrapper) => {
-        if (error) {
-          this.sftpPending = null;
-          reject(error);
-          return;
-        }
-        this.sftpWrapper = wrapper;
-        wrapper.on("close", () => {
-          this.sftpWrapper = null;
-          this.sftpPending = null;
-        });
-        resolve(wrapper);
-      });
+    return new Promise<SFTPWrapper>((resolve, reject) => {
+      client.sftp((error, wrapper) => (error ? reject(error) : resolve(wrapper)));
     });
-    return this.sftpPending;
   }
 
   get identityPath(): string | null {
@@ -323,6 +347,7 @@ export class ColabSshConnection extends EventEmitter {
       channel.end();
       this.shells.delete(id);
     }
+    this.unacked.clear();
     this.client?.end();
     this.sock?.destroy();
     this.sock = null;
@@ -344,8 +369,7 @@ export class ColabSshConnection extends EventEmitter {
       this.shells.delete(id);
       this.emit("exit", id);
     }
-    this.sftpWrapper = null;
-    this.sftpPending = null;
+    this.unacked.clear();
     this.sock?.destroy();
     this.sock = null;
     this.setStatus(hadError ? "error" : "closed", hadError ? this.error : reason);

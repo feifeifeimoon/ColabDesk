@@ -2,9 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { SearchAddon } from "@xterm/addon-search";
+import { Unicode11Addon } from "@xterm/addon-unicode11";
+import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
 import type { ConnectionState } from "@shared/types";
 import {
+  ackTerminal,
   closeTerminal,
   messageOf,
   onTerminalClosed,
@@ -19,19 +23,26 @@ import { applyTerminalAppearance, changesGrid, fontStackFor } from "../../lib/te
 import { readTerminalPalette } from "../../lib/terminal-theme";
 import { useAppStore } from "../../store";
 import { Button } from "../../components/ui/Button";
-
-function decodeBase64(data: string): Uint8Array {
-  const binary = atob(data);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-}
+import { TerminalSearchBar } from "./TerminalSearchBar";
 
 /**
  * How much output an unclaimed pane will hold on to. The window it defends is a
  * round trip wide, so anything near this is a bug rather than a burst.
  */
 const UNCLAIMED_LIMIT = 256 * 1024;
+
+/**
+ * How much parsed output is acknowledged in one message, and how long the last
+ * bit of a burst may wait before it is acknowledged on its own. Both exist so
+ * the main process learns that the backlog cleared without a message per write.
+ */
+const ACK_BATCH_BYTES = 64 * 1024;
+const ACK_TAIL_MS = 150;
+
+/** Pasted text is not allowed to carry the sequence that ends a bracketed paste. */
+function withoutEscapes(text: string): string {
+  return text.includes("\u001b") ? text.replaceAll("\u001b", "\u241b") : text;
+}
 
 /**
  * One shell on a session's connection, filling part of the middle column.
@@ -47,6 +58,10 @@ const UNCLAIMED_LIMIT = 256 * 1024;
  * open round trip finishes — and the shell's first bytes can beat that. So
  * anything arriving before the claim is filed by channel and only the claimed
  * one is flushed: the first prompt is kept, and a sibling tab's banner is not.
+ *
+ * The terminal and the shell it is connected to have separate lifetimes on
+ * purpose: reconnecting opens a new shell in the same terminal, so the retry
+ * button costs the connection and not the scrollback.
  *
  * The keys follow terminal convention rather than app convention: copy and
  * paste need a modifier (plain Ctrl+C must stay SIGINT), a right click copies
@@ -70,6 +85,7 @@ export function TerminalPane({
   const hostRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
+  const searchRef = useRef<SearchAddon | null>(null);
   const channelRef = useRef<number | null>(null);
   const unclaimed = useRef(new Map<number, Uint8Array[]>());
   const unclaimedBytes = useRef(0);
@@ -78,6 +94,8 @@ export function TerminalPane({
   const applied = useRef<typeof appearance | null>(null);
   const [state, setState] = useState<ConnectionState>("connecting");
   const [error, setError] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
   /** Bumped by the retry button; re-runs the connect effect. */
   const [attempt, setAttempt] = useState(0);
 
@@ -102,13 +120,11 @@ export function TerminalPane({
 
     const offData = onTerminalData(({ channelId, session: from, data }) => {
       if (from !== session) return;
-      const bytes = decodeBase64(data);
-
       if (channelRef.current === null) {
         const pending = buffers.get(channelId) ?? [];
-        pending.push(bytes);
+        pending.push(data);
         buffers.set(channelId, pending);
-        unclaimedBytes.current += bytes.length;
+        unclaimedBytes.current += data.length;
         if (unclaimedBytes.current > UNCLAIMED_LIMIT) {
           buffers.clear();
           unclaimedBytes.current = 0;
@@ -116,7 +132,7 @@ export function TerminalPane({
         return;
       }
       if (channelId !== channelRef.current) return;
-      terminalRef.current?.write(bytes);
+      write(data);
     });
 
     const offClosed = onTerminalClosed(({ channelId, session: from }) => {
@@ -138,11 +154,47 @@ export function TerminalPane({
     };
   }, [markClosed, session]);
 
+  /**
+   * Output, and the acknowledgement that lets more of it through.
+   *
+   * The renderer is the side that knows how far behind it is, so it is the side
+   * that reports: xterm calls back when the parser has consumed a write, and the
+   * count goes to the main process in batches. Without it a command that prints
+   * faster than the screen repaints would queue without limit on both sides.
+   */
+  const written = useRef(0);
+  const ackTimer = useRef<number | null>(null);
+  function write(data: Uint8Array): void {
+    const terminal = terminalRef.current;
+    if (!terminal) return;
+    terminal.write(data, () => {
+      const channelId = channelRef.current;
+      if (channelId === null) return;
+      written.current += data.length;
+      if (written.current >= ACK_BATCH_BYTES) {
+        flushAck();
+        return;
+      }
+      if (ackTimer.current === null) ackTimer.current = window.setTimeout(flushAck, ACK_TAIL_MS);
+    });
+  }
+
+  function flushAck(): void {
+    if (ackTimer.current !== null) {
+      window.clearTimeout(ackTimer.current);
+      ackTimer.current = null;
+    }
+    const channelId = channelRef.current;
+    if (channelId === null || written.current === 0) return;
+    ackTerminal(channelId, written.current);
+    written.current = 0;
+  }
+
+  // The terminal itself: built once per session, and kept across reconnects.
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
 
-    let disposed = false;
     const opening = latest.current.appearance;
     const terminal = new Terminal({
       theme: readTerminalPalette(),
@@ -152,12 +204,27 @@ export function TerminalPane({
       cursorStyle: opening.cursorStyle,
       cursorBlink: opening.cursorBlink,
       scrollback: opening.scrollback,
+      // The width table the unicode11 addon installs is behind xterm's proposed
+      // API. Wide characters are not optional in a terminal that shows Chinese
+      // and emoji, so the flag is the price.
+      allowProposedApi: true,
     });
     const fit = new FitAddon();
+    const search = new SearchAddon();
     terminal.loadAddon(fit);
+    terminal.loadAddon(search);
+    // Unicode 11 rather than the table xterm ships: emoji and the newer wide
+    // characters take two cells, and a training log full of them otherwise
+    // drifts a column per line.
+    terminal.loadAddon(new Unicode11Addon());
+    terminal.unicode.activeVersion = "11";
+    // Links open in the system browser — the window's own handler decides that,
+    // so nothing here reimplements it.
+    terminal.loadAddon(new WebLinksAddon());
     terminal.open(host);
     terminalRef.current = terminal;
     fitRef.current = fit;
+    searchRef.current = search;
     applied.current = opening;
     if (latest.current.active) {
       try {
@@ -179,9 +246,16 @@ export function TerminalPane({
       return selection.length > 0;
     };
 
+    /**
+     * Through xterm's own paste, not straight into the shell: it normalizes the
+     * line endings and, when the program asked for bracketed paste, wraps the
+     * text so that the program can tell a paste from typing. Escape sequences
+     * are shown rather than sent — a clipboard is not allowed to smuggle the
+     * sequence that ends the paste.
+     */
     const paste = async () => {
       const text = await readClipboard();
-      if (text) send(text);
+      if (text) terminal.paste(withoutEscapes(text));
     };
 
     /** One write path for the font size; the record's limits do the clamping. */
@@ -201,6 +275,10 @@ export function TerminalPane({
       }
       if (withShift && event.code === "KeyV") {
         void paste();
+        return false;
+      }
+      if (withShift && event.code === "KeyF") {
+        setSearchOpen(true);
         return false;
       }
       if (withShift && (event.code === "Equal" || event.code === "NumpadAdd")) {
@@ -254,6 +332,29 @@ export function TerminalPane({
     });
     observer.observe(host);
 
+    return () => {
+      observer.disconnect();
+      host.removeEventListener("contextmenu", onContextMenu);
+      window.removeEventListener("keydown", onMacCopy);
+      if (ackTimer.current !== null) window.clearTimeout(ackTimer.current);
+      terminal.dispose();
+      terminalRef.current = null;
+      fitRef.current = null;
+      searchRef.current = null;
+      applied.current = null;
+    };
+    // Appearance and visibility are applied by the effects below: neither may
+    // restart the shell.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
+
+  // The shell: opened on mount, and reopened by the retry button into the same
+  // terminal — a reconnect should not cost the scrollback of what already ran.
+  useEffect(() => {
+    const terminal = terminalRef.current;
+    if (!terminal || !hostRef.current) return;
+
+    let disposed = false;
     setState("connecting");
     setError(null);
     terminal.writeln(`\x1b[90m${t("terminal.connecting", "正在连接 {{session}} …", { session })}\x1b[0m`);
@@ -272,7 +373,7 @@ export function TerminalPane({
         setState("ready");
         // Whatever this shell said before we knew its channel is ours; a
         // sibling tab's is not, and stays behind.
-        for (const chunk of unclaimed.current.get(handle.channelId) ?? []) terminal.write(chunk);
+        for (const chunk of unclaimed.current.get(handle.channelId) ?? []) write(chunk);
         unclaimed.current.clear();
         unclaimedBytes.current = 0;
       })
@@ -286,21 +387,12 @@ export function TerminalPane({
 
     return () => {
       disposed = true;
-      observer.disconnect();
-      host.removeEventListener("contextmenu", onContextMenu);
-      window.removeEventListener("keydown", onMacCopy);
       const channelId = channelRef.current;
       channelRef.current = null;
+      written.current = 0;
       if (channelId !== null) void closeTerminal(channelId);
-      terminal.dispose();
-      terminalRef.current = null;
-      fitRef.current = null;
-      applied.current = null;
     };
-    // fontSize and visibility are applied by the effects below: neither may
-    // restart the shell.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, attempt]);
+  }, [session, attempt, t, markClosed]);
 
   // Appearance is injected into the live terminal rather than applied by
   // rebuilding it: the shell, its scrollback and whatever it is running all stay
@@ -345,6 +437,19 @@ export function TerminalPane({
     terminal.focus();
   }, [active]);
 
+  /**
+   * Search walks the buffer and selects what it finds. No decorations: the
+   * addon's own highlight is the terminal's selection colour, which every one of
+   * the seven palettes already defines — a second set of invented colours would
+   * be one more thing to keep legible on all of them.
+   */
+  function find(direction: "next" | "previous"): void {
+    const search = searchRef.current;
+    if (!search || !query) return;
+    if (direction === "next") search.findNext(query);
+    else search.findPrevious(query);
+  }
+
   return (
     <div
       className="terminal-area"
@@ -352,6 +457,20 @@ export function TerminalPane({
       hidden={!active}
       inert={!active}
     >
+      {searchOpen && (
+        <TerminalSearchBar
+          value={query}
+          onChange={setQuery}
+          onSubmit={() => find("next")}
+          onNext={() => find("next")}
+          onPrevious={() => find("previous")}
+          onClose={() => {
+            setSearchOpen(false);
+            searchRef.current?.clearDecorations();
+            terminalRef.current?.focus();
+          }}
+        />
+      )}
       <div className="terminal-host" ref={hostRef} />
       {(state === "error" || state === "closed") && (
         <div className="terminal-notice">

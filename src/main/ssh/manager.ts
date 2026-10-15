@@ -123,6 +123,12 @@ export class SshManager extends EventEmitter {
     if (record) record.connection.resizeShell(record.shellId, cols, rows);
   }
 
+  /** The renderer has parsed this much of that terminal's output. */
+  ack(channelId: number, bytes: number): void {
+    const record = this.terminals.get(channelId);
+    if (record) record.connection.ackShell(record.shellId, bytes);
+  }
+
   closeTerminal(channelId: number): void {
     const record = this.terminals.get(channelId);
     if (!record) return;

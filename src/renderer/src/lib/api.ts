@@ -6,7 +6,8 @@
  * `window.colabdesk` directly.
  */
 
-import type { ColabDeskApi, CreateSessionOptions, TransferTargets } from "@shared/api";
+import type { ColabDeskApi, CreateSessionOptions } from "@shared/api";
+import type { UploadRequest } from "@shared/types";
 
 const bridge = (): ColabDeskApi => window.colabdesk;
 
@@ -38,6 +39,7 @@ export const openTerminal = (session: string, cols: number, rows: number) =>
 export const writeTerminal = (channelId: number, data: string) => bridge().writeTerminal(channelId, data);
 export const resizeTerminal = (channelId: number, cols: number, rows: number) =>
   bridge().resizeTerminal(channelId, cols, rows);
+export const ackTerminal = (channelId: number, bytes: number) => bridge().ackTerminal(channelId, bytes);
 export const closeTerminal = (channelId: number) => bridge().closeTerminal(channelId);
 export const onTerminalData = (listener: Parameters<ColabDeskApi["onTerminalData"]>[0]) =>
   bridge().onTerminalData(listener);
@@ -45,12 +47,17 @@ export const onTerminalClosed = (listener: Parameters<ColabDeskApi["onTerminalCl
   bridge().onTerminalClosed(listener);
 
 export const listDirectory = (session: string, path: string) => bridge().listDirectory(session, path);
+export const statPaths = (session: string, paths: string[]) => bridge().statPaths(session, paths);
 export const makeDirectory = (session: string, path: string) => bridge().makeDirectory(session, path);
 export const deletePath = (session: string, path: string) => bridge().deletePath(session, path);
 export const download = (session: string, remote: string, name: string, title: string) =>
   bridge().download(session, remote, name, title);
-export const upload = (targets: TransferTargets) => bridge().upload(targets);
+export const downloadFolder = (session: string, remote: string, name: string, title: string) =>
+  bridge().downloadFolder(session, remote, name, title);
+export const upload = (targets: UploadRequest) => bridge().upload(targets);
+export const cancelTransfer = (id: string) => bridge().cancelTransfer(id);
 export const pickUploadTargets = (title: string) => bridge().pickUploadTargets(title);
+export const pickUploadFolder = (title: string) => bridge().pickUploadFolder(title);
 export const onTransferProgress = (listener: Parameters<ColabDeskApi["onTransferProgress"]>[0]) =>
   bridge().onTransferProgress(listener);
 export const pathForFile = (file: File) => bridge().pathForFile(file);

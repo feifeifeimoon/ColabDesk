@@ -10,11 +10,13 @@ import type {
   CommandReport,
   EnvStatus,
   RemoteEntry,
+  RemotePathState,
   Session,
   SshSetup,
   SshState,
   TransferProgress,
   UpdateStatus,
+  UploadRequest,
   UsageReport,
   UsageTrend,
 } from "./types";
@@ -34,12 +36,6 @@ export interface CreateSessionOptions {
   tpu: string | null;
   name: string | null;
   highMem: boolean;
-}
-
-export interface TransferTargets {
-  session: string;
-  localPaths: string[];
-  remoteDir: string;
 }
 
 /** Every method is an `ipcRenderer.invoke`; every `on*` returns an unsubscribe. */
@@ -78,19 +74,32 @@ export interface ColabDeskApi {
   resizeTerminal(channelId: number, cols: number, rows: number): Promise<void>;
   closeTerminal(channelId: number): Promise<void>;
   /**
-   * Terminal output arrives base64-encoded (IPC is string-oriented), tagged
-   * with its session: a pane subscribes before it knows its channel id, and the
-   * shell's first bytes can arrive in that window.
+   * Terminal output arrives as bytes, tagged with its session: a pane subscribes
+   * before it knows its channel id, and the shell's first bytes can arrive in
+   * that window. Bytes rather than base64 because this is the hot path.
    */
-  onTerminalData(listener: (payload: { channelId: number; session: string; data: string }) => void): () => void;
+  onTerminalData(
+    listener: (payload: { channelId: number; session: string; data: Uint8Array }) => void,
+  ): () => void;
   onTerminalClosed(listener: (payload: { channelId: number; session: string }) => void): () => void;
+  /**
+   * Tells the main process how much of a terminal's output has been parsed, so
+   * it can let the shell send more. Fire-and-forget on purpose: it travels with
+   * every screenful.
+   */
+  ackTerminal(channelId: number, bytes: number): void;
 
   listDirectory(session: string, path: string): Promise<RemoteEntry[]>;
+  /** Which of these remote paths already exist, so a conflict can be asked about. */
+  statPaths(session: string, paths: string[]): Promise<RemotePathState[]>;
   makeDirectory(session: string, path: string): Promise<void>;
   deletePath(session: string, path: string): Promise<void>;
   /**
    * Transfers. `title` is the native dialog's own caption, written by the
    * renderer: it is UI copy, and the main process has no catalog.
+   *
+   * A transfer that starts and then fails reports itself on its own row rather
+   * than by rejecting; a rejection here means it never got that far.
    */
   download(
     session: string,
@@ -98,8 +107,17 @@ export interface ColabDeskApi {
     name: string,
     title: string,
   ): Promise<{ canceled: boolean; path?: string }>;
-  upload(targets: TransferTargets): Promise<void>;
+  downloadFolder(
+    session: string,
+    remote: string,
+    name: string,
+    title: string,
+  ): Promise<{ canceled: boolean; path?: string }>;
+  upload(targets: UploadRequest): Promise<void>;
+  /** Stops a transfer by row id; its row reports the cancellation. */
+  cancelTransfer(id: string): Promise<void>;
   pickUploadTargets(title: string): Promise<string[]>;
+  pickUploadFolder(title: string): Promise<string[]>;
   onTransferProgress(listener: (payload: TransferProgress) => void): () => void;
 
   /** Drag-and-drop paths: modern Electron no longer exposes `File.path`. */

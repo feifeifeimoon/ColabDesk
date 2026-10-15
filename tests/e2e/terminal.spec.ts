@@ -178,3 +178,88 @@ test("关掉一个终端，会话的连接留着；关掉最后一个才断开",
   await expect(page.locator('[data-testid="terminal-count"]')).toHaveText("0");
   await expect(page.locator(".startpage")).toContainText("还没有终端");
 });
+
+test("粘贴走括号粘贴，多行文本的换行不会丢", async ({ app, page }) => {
+  await openSession(page, "e2e-alpha");
+  await waitForPrompts(page, 1);
+
+  // 剪贴板只有主进程有；写进去的是用户复制的那份文本。
+  await app.evaluate(({ clipboard }) => clipboard.writeText("echo FIRST-LINE\n echo SECOND-LINE"));
+  await focusTerminal(page);
+  await page.keyboard.press("Control+Shift+V");
+
+  // 一次粘贴被包在一对标记里，说明远端能分清"粘贴"和"逐字输入"。
+  await expect(terminalRows(page)).toContainText("[paste-start]");
+  await expect(terminalRows(page)).toContainText("[paste-end]");
+  // 换行被归一成回车：两行都真的跑起来了，而不是粘成一行。
+  await expect(terminalRows(page)).toContainText("FIRST-LINE");
+  await expect(terminalRows(page)).toContainText("SECOND-LINE");
+});
+
+test("粘贴里的转义字符显示成符号，不会当作控制码送出去", async ({ app, page }) => {
+  await openSession(page, "e2e-alpha");
+  await waitForPrompts(page, 1);
+
+  await app.evaluate(({ clipboard }) => clipboard.writeText("echo \u001bDANGER"));
+  await focusTerminal(page);
+  await page.keyboard.press("Control+Shift+V");
+
+  // U+241B 是 ESC 的可见替身：它被当作普通字符打进命令行，而不是被解释。
+  await expect(terminalRows(page)).toContainText("␛DANGER");
+});
+
+test("Ctrl+Shift+F 打开查找，Esc 关上并把键盘还给终端", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await waitForPrompts(page, 1);
+  await focusTerminal(page);
+
+  await page.keyboard.press("Control+Shift+F");
+  const field = page.locator('[data-testid="terminal-search"]');
+  await expect(field).toBeFocused();
+
+  await field.fill("shell");
+  await page.keyboard.press("Enter");
+  // 命中被终端自己的选中色标出来，因此可以直接复制。
+  await expect
+    .poll(() => page.locator(".terminal-host:visible .xterm-selection").count())
+    .toBeGreaterThan(0);
+
+  await page.keyboard.press("Escape");
+  await expect(field).toHaveCount(0);
+});
+
+test("shell 退出后重连，之前的输出还在", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await waitForPrompts(page, 1);
+  await focusTerminal(page);
+  await page.keyboard.type("echo KEEPME");
+  await page.keyboard.press("Enter");
+  await expect(terminalRows(page)).toContainText("KEEPME");
+
+  await page.keyboard.type("exit");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".terminal-notice")).toContainText("连接已断开");
+
+  await page.getByRole("button", { name: "重试连接" }).click();
+
+  // 新 shell 起来了，而重连没有清屏：上一轮跑过的东西仍然在。
+  await expect(terminalRows(page)).toContainText("shell #2");
+  await expect(terminalRows(page)).toContainText("KEEPME");
+});
+
+test("一次刷掉几兆输出，提示符还会回来", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await waitForPrompts(page, 1);
+  await focusTerminal(page);
+
+  // 远超窗口能装下的量：主进程按高水位让 shell 停过，也必须在渲染层追平后
+  // 放开它，否则提示符永远不会回来。
+  await page.keyboard.type("flood 2000000");
+  await page.keyboard.press("Enter");
+  await expect(terminalRows(page)).toContainText("flood done", { timeout: 40_000 });
+
+  await focusTerminal(page);
+  await page.keyboard.type("echo STILL-ALIVE");
+  await page.keyboard.press("Enter");
+  await expect(terminalRows(page)).toContainText("STILL-ALIVE");
+});

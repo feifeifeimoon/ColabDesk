@@ -107,7 +107,11 @@
     "connectionClosedBanner": "[连接已断开]",
     "connectionClosedNotice": "连接已断开。",
     "connectionFailed": "连接失败：{{message}}",
-    "retryConnection": "重试连接"
+    "retryConnection": "重试连接",
+    "searchPlaceholder": "在终端里查找",
+    "searchNext": "下一个",
+    "searchPrevious": "上一个",
+    "searchClose": "关闭查找"
   },
   "files": {
     "widthLabel": "文件面板宽度",
@@ -131,7 +135,20 @@
     "deleteConfirm": "删除 {{name}}{{extra}}？此操作不可撤销。",
     "deleteConfirmDir": "（整个目录）",
     "transferDone": "完成",
-    "dropHint": "拖拽文件至此处上传"
+    "transferCanceled": "已取消",
+    "transferCancel": "取消",
+    "transferSkipped": "已跳过 {{count}} 项",
+    "downloadFolderHint": "下载整个文件夹",
+    "folderDialogTitle": "选择保存位置",
+    "uploadFolderTitle": "选择要上传的文件夹",
+    "chooseFolder": "选择文件夹",
+    "conflictTitle": "同名文件已存在",
+    "conflictBody": "{{list}} 已经在这个目录里。",
+    "conflictHint": "所选做法对本次全部文件生效。",
+    "conflictReplace": "替换",
+    "conflictKeepBoth": "两个都留",
+    "conflictSkip": "跳过",
+    "dropHint": "拖拽文件或文件夹至此处上传"
   },
   "dialog": {
     "close": "关闭"

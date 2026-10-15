@@ -2,9 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import * as api from "../../lib/api";
 import { messageOf } from "../../lib/api";
-import { formatPercent, formatSize, joinPath, parentPath } from "../../lib/format";
-import type { RemoteEntry, TransferProgress } from "@shared/types";
+import { formatPercent, formatSize, joinPath, localName, parentPath } from "../../lib/format";
+import type { ConflictPolicy, RemoteEntry, TransferProgress } from "@shared/types";
 import { Button } from "../../components/ui/Button";
+import { Callout } from "../../components/ui/Notice";
+import { Dialog } from "../../app-shell/AppShell";
 import { PanelDivider } from "../../components/ui/PanelDivider";
 import { ProgressBar } from "../../components/ui/ProgressBar";
 import { PANEL_WIDTH } from "../../lib/panel-width";
@@ -13,8 +15,20 @@ import { useAppStore } from "../../store";
 /**
  * The runtime's filesystem over SFTP, on the same SSH connection the terminal
  * uses (a runtime only accepts one). Uploads and downloads report progress as
- * events from the main process.
+ * events from the main process, each on its own row.
+ *
+ * An upload that would replace a file already on the runtime asks first: the
+ * question is the only thing standing between a re-upload and a silently
+ * destroyed copy, and it is asked once for the whole batch rather than per file.
  */
+
+/** An upload waiting on the answer to "these names are taken". */
+interface ConflictAsk {
+  localPaths: string[];
+  remoteDir: string;
+  names: string[];
+}
+
 export function FilePane({
   session,
   onPathChange,
@@ -32,6 +46,9 @@ export function FilePane({
   const [error, setError] = useState<string | null>(null);
   const [transfers, setTransfers] = useState<TransferProgress[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  /** The directory row the pointer is over, which is where a drop would land. */
+  const [dropDir, setDropDir] = useState<string | null>(null);
+  const [conflict, setConflict] = useState<ConflictAsk | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [folderName, setFolderName] = useState("");
@@ -117,28 +134,41 @@ export function FilePane({
   }, [refresh]);
 
   useEffect(() => {
-    const off = api.onTransferProgress((progress) => {
+    // The list is refreshed by whoever asked for the transfer, once the whole
+    // batch is over: a folder upload would otherwise re-read the directory (and
+    // re-render the rows) once per file.
+    return api.onTransferProgress((progress) => {
       setTransfers((current) => {
         const next = current.filter((item) => item.id !== progress.id);
         next.push(progress);
         return next.slice(-6);
       });
-      if (progress.done && !progress.error) void refresh(pathRef.current);
     });
-    return off;
-  }, [refresh]);
+  }, []);
 
   function navigate(target: string) {
     setPath(target);
     void refresh(target);
   }
 
-  async function uploadPaths(localPaths: string[]) {
+  /**
+   * Asks whether any of these would replace something, and uploads straight away
+   * when none would. Only the names, not the whole paths, are shown: the
+   * directory is the one on screen.
+   */
+  async function beginUpload(localPaths: string[], remoteDir: string): Promise<void> {
     if (localPaths.length === 0) return;
     setBusy("upload");
     try {
-      await api.upload({ session, localPaths, remoteDir: path });
-      setError(null);
+      const taken = await api.statPaths(
+        session,
+        localPaths.map((local) => joinPath(remoteDir, localName(local))),
+      );
+      if (taken.length > 0) {
+        setConflict({ localPaths, remoteDir, names: taken.map((entry) => localName(entry.path)) });
+        return;
+      }
+      await runUpload(localPaths, remoteDir, "replace");
     } catch (cause) {
       setError(messageOf(cause));
     } finally {
@@ -146,9 +176,43 @@ export function FilePane({
     }
   }
 
+  async function runUpload(
+    localPaths: string[],
+    remoteDir: string,
+    policy: ConflictPolicy,
+  ): Promise<void> {
+    setBusy("upload");
+    setConflict(null);
+    try {
+      await api.upload({ session, localPaths, remoteDir, conflict: policy });
+      setError(null);
+    } catch (cause) {
+      // A transfer that started reports itself on its row; reaching here means
+      // the runtime never took the request at all.
+      setError(messageOf(cause));
+    } finally {
+      setBusy(null);
+      await refresh(pathRef.current);
+    }
+  }
+
   async function pickAndUpload() {
     try {
-      await uploadPaths(await api.pickUploadTargets(t("files.uploadDialogTitle", "选择要上传的文件")));
+      await beginUpload(
+        await api.pickUploadTargets(t("files.uploadDialogTitle", "选择要上传的文件")),
+        path,
+      );
+    } catch (cause) {
+      setError(messageOf(cause));
+    }
+  }
+
+  async function pickAndUploadFolder() {
+    try {
+      await beginUpload(
+        await api.pickUploadFolder(t("files.uploadFolderTitle", "选择要上传的文件夹")),
+        path,
+      );
     } catch (cause) {
       setError(messageOf(cause));
     }
@@ -162,6 +226,23 @@ export function FilePane({
         joinPath(path, entry.name),
         entry.name,
         t("files.saveDialogTitle", "保存到本地"),
+      );
+      setError(null);
+    } catch (cause) {
+      setError(messageOf(cause));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function downloadDirectory(entry: RemoteEntry) {
+    setBusy(`download:${entry.name}`);
+    try {
+      await api.downloadFolder(
+        session,
+        joinPath(path, entry.name),
+        entry.name,
+        t("files.folderDialogTitle", "选择保存位置"),
       );
       setError(null);
     } catch (cause) {
@@ -205,18 +286,23 @@ export function FilePane({
     }
   }
 
-  async function onDrop(event: React.DragEvent) {
+  /** Dropped files land in the row under the pointer, or in the open directory. */
+  async function onDropInto(event: React.DragEvent, remoteDir: string): Promise<void> {
     event.preventDefault();
+    event.stopPropagation();
     setDragOver(false);
-    const paths = Array.from(event.dataTransfer.files).map((file) => api.pathForFile(file));
-    await uploadPaths(paths.filter(Boolean));
+    setDropDir(null);
+    const paths = Array.from(event.dataTransfer.files)
+      .map((file) => api.pathForFile(file))
+      .filter(Boolean);
+    await beginUpload(paths, remoteDir);
   }
 
   const segments = path.split("/").filter(Boolean);
 
   return (
     <aside
-      className={`files-panel ${dragOver ? "drag-over" : ""}`}
+      className={`files-panel ${dragOver && dropDir === null ? "drag-over" : ""}`}
       ref={panelRef}
       style={{ width, minWidth: PANEL_WIDTH.files.min }}
       onDragOver={(event) => {
@@ -224,7 +310,7 @@ export function FilePane({
         setDragOver(true);
       }}
       onDragLeave={() => setDragOver(false)}
-      onDrop={onDrop}
+      onDrop={(event) => void onDropInto(event, path)}
     >
       <PanelDivider
         side="files"
@@ -315,11 +401,28 @@ export function FilePane({
 
       <ul className="file-list">
         {entries.map((entry) => (
-          <li key={entry.name} className="file-row">
+          <li
+            key={entry.name}
+            className={`file-row ${dropDir === entry.name ? "file-row--drop" : ""}`}
+            {...(entry.type === "dir"
+              ? {
+                  onDragOver: (event: React.DragEvent) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setDropDir(entry.name);
+                  },
+                  onDragLeave: () => setDropDir(null),
+                  onDrop: (event: React.DragEvent) =>
+                    void onDropInto(event, joinPath(path, entry.name)),
+                }
+              : {})}
+          >
             <button
               type="button"
               className="file-name"
-              onClick={() => (entry.type === "dir" ? navigate(joinPath(path, entry.name)) : void download(entry))}
+              onClick={() =>
+                entry.type === "dir" ? navigate(joinPath(path, entry.name)) : void download(entry)
+              }
               title={entry.type === "dir" ? t("files.openDir", "进入目录") : t("files.downloadFile", "下载到本地")}
             >
               <span>{entry.type === "dir" ? "📁" : entry.type === "link" ? "🔗" : "📄"}</span>
@@ -327,11 +430,16 @@ export function FilePane({
             </button>
             <span className="file-size">{entry.type === "file" ? formatSize(entry.size) : ""}</span>
             <span className="file-actions">
-              {entry.type === "file" && (
+              {entry.type !== "link" && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => void download(entry)}
+                  title={
+                    entry.type === "dir"
+                      ? t("files.downloadFolderHint", "下载整个文件夹")
+                      : t("files.downloadFile", "下载到本地")
+                  }
+                  onClick={() => (entry.type === "dir" ? void downloadDirectory(entry) : void download(entry))}
                   disabled={busy === `download:${entry.name}`}
                 >
                   {busy === `download:${entry.name}` ? "…" : t("files.download", "下载")}
@@ -357,20 +465,39 @@ export function FilePane({
               <div className="transfer__line">
                 <span className="truncate">
                   {transfer.direction === "upload" ? "↑" : "↓"} {transfer.name}
+                  {transfer.files
+                    ? ` (${transfer.files.done}/${transfer.files.total})`
+                    : ""}
                 </span>
-                <span
-                  className={`transfer__state ${
-                    transfer.error ? "transfer__state--error" : transfer.done ? "transfer__state--ok" : ""
-                  }`}
-                >
-                  {transfer.error
-                    ? transfer.error
-                    : transfer.done
-                      ? t("files.transferDone", "完成")
-                      : formatPercent(transfer.transferred, transfer.total)}
+                <span className="row" style={{ gap: "var(--space-2)", flexShrink: 0 }}>
+                  <span
+                    className={`transfer__state ${
+                      transfer.error ? "transfer__state--error" : transfer.done ? "transfer__state--ok" : ""
+                    }`}
+                  >
+                    {transfer.error
+                      ? transfer.error
+                      : transfer.canceled
+                        ? t("files.transferCanceled", "已取消")
+                        : transfer.done
+                          ? transfer.skipped
+                            ? t("files.transferSkipped", "已跳过 {{count}} 项", { count: transfer.skipped })
+                            : t("files.transferDone", "完成")
+                          : formatPercent(transfer.transferred, transfer.total)}
+                  </span>
+                  {!transfer.done && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void api.cancelTransfer(transfer.id)}
+                      data-testid={`cancel-${transfer.id}`}
+                    >
+                      {t("files.transferCancel", "取消")}
+                    </Button>
+                  )}
                 </span>
               </div>
-              {!transfer.done && !transfer.error && (
+              {!transfer.done && (
                 <ProgressBar ratio={transfer.total > 0 ? transfer.transferred / transfer.total : 0} />
               )}
             </div>
@@ -378,7 +505,40 @@ export function FilePane({
         </div>
       )}
 
-      <p className="hint drop-hint">{t("files.dropHint", "拖拽文件至此处上传")}</p>
+      <p className="hint drop-hint">
+        {t("files.dropHint", "拖拽文件或文件夹至此处上传")}
+        <Button variant="link" size="sm" onClick={pickAndUploadFolder} disabled={busy !== null}>
+          {t("files.chooseFolder", "选择文件夹")}
+        </Button>
+      </p>
+
+      {conflict && (
+        <Dialog
+          title={t("files.conflictTitle", "同名文件已存在")}
+          onClose={() => setConflict(null)}
+          footer={
+            <div className="row">
+              <Button variant="primary" onClick={() => void runUpload(conflict.localPaths, conflict.remoteDir, "replace")}>
+                {t("files.conflictReplace", "替换")}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => void runUpload(conflict.localPaths, conflict.remoteDir, "keepBoth")}
+              >
+                {t("files.conflictKeepBoth", "两个都留")}
+              </Button>
+              <Button variant="ghost" onClick={() => void runUpload(conflict.localPaths, conflict.remoteDir, "skip")}>
+                {t("files.conflictSkip", "跳过")}
+              </Button>
+            </div>
+          }
+        >
+          <Callout tone="warn">
+            {t("files.conflictBody", "{{list}} 已经在这个目录里。", { list: conflict.names.join("、") })}
+          </Callout>
+          <p className="hint">{t("files.conflictHint", "所选做法对本次全部文件生效。")}</p>
+        </Dialog>
+      )}
     </aside>
   );
 }

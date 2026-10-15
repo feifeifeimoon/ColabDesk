@@ -14,6 +14,7 @@
 import { useEffect, useRef } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { Unicode11Addon } from "@xterm/addon-unicode11";
 import "@xterm/xterm/css/xterm.css";
 import { applyTerminalAppearance, changesGrid, fontStackFor, type TerminalAppearance } from "../../lib/terminal-appearance";
 import { readTerminalPalette } from "../../lib/terminal-theme";
@@ -68,9 +69,14 @@ export function TerminalPreview() {
       cursorBlink: opening.cursorBlink,
       scrollback: 0,
       disableStdin: true,
+      // Kept in step with the panes: same options, same addons, so the sandbox
+      // cannot promise a width the terminal does not deliver.
+      allowProposedApi: true,
     });
     const fit = new FitAddon();
     terminal.loadAddon(fit);
+    terminal.loadAddon(new Unicode11Addon());
+    terminal.unicode.activeVersion = "11";
     terminal.open(host);
     terminalRef.current = terminal;
     fitRef.current = fit;

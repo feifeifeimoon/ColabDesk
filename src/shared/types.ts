@@ -134,14 +134,44 @@ export interface RemoteEntry {
   mode: number;
 }
 
+/**
+ * What to do about a destination name that is already taken.
+ *
+ * `replace` is the ordinary case — uploading the same file again means the copy
+ * on the runtime is stale — but it is never chosen for the user: the question is
+ * asked once per batch, and `skip` and `keepBoth` are the answers that do not
+ * destroy anything.
+ */
+export type ConflictPolicy = "replace" | "skip" | "keepBoth";
+
+/** One upload: this machine's paths landing in a runtime directory. */
+export interface UploadRequest {
+  session: string;
+  localPaths: string[];
+  remoteDir: string;
+  conflict: ConflictPolicy;
+}
+
+/** Which of these paths already exist, asked before an upload starts. */
+export interface RemotePathState {
+  path: string;
+  type: RemoteEntry["type"];
+}
+
 export interface TransferProgress {
   id: string;
   session: string;
   direction: "upload" | "download";
   name: string;
+  /** A folder transfer says how many of its files are accounted for. */
+  files?: { done: number; total: number };
   transferred: number;
   total: number;
   done: boolean;
+  /** Items left alone: files the conflict policy skipped, and symbolic links. */
+  skipped?: number;
+  /** Stopped by the user. Not a failure: nothing is wrong with the transfer. */
+  canceled?: boolean;
   error: string | null;
 }
 
