@@ -110,6 +110,56 @@ export function ChevronDownIcon({ size }: IconProps) {
   );
 }
 
+/** A tree row's twisty: a right chevron, rotated by the row when it is open. */
+export function ChevronRightIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M6 3.5 10.5 8 6 12.5" />
+    </Svg>
+  );
+}
+
+/* ---- the file tree ---- */
+
+/** A closed folder. */
+export function FolderClosedIcon({ size, className }: IconProps) {
+  return (
+    <Svg size={size} className={className}>
+      <path d="M1.9 12.3V4.6a1 1 0 0 1 1-1h2.6l1.3 1.5h6.3a1 1 0 0 1 1 1v6.2a1 1 0 0 1-1 1H2.9a1 1 0 0 1-1-1Z" />
+    </Svg>
+  );
+}
+
+/** The same folder, opened: the front leaf tilts away. */
+export function FolderOpenIcon({ size, className }: IconProps) {
+  return (
+    <Svg size={size} className={className}>
+      <path d="M1.9 12.3V4.6a1 1 0 0 1 1-1h2.6l1.3 1.5h4.6a1 1 0 0 1 1 1v1" />
+      <path d="M3.4 13.3h9.3a1 1 0 0 0 1-.8l.8-4a1 1 0 0 0-1-1.2H5.1a1 1 0 0 0-1 .8l-.8 4a1 1 0 0 0 1 1.2Z" />
+    </Svg>
+  );
+}
+
+/** A file: one page with a turned corner. */
+export function FileIcon({ size, className }: IconProps) {
+  return (
+    <Svg size={size} className={className}>
+      <path d="M9.2 1.9H4.4a1 1 0 0 0-1 1v10.2a1 1 0 0 0 1 1h7.2a1 1 0 0 0 1-1V5.3Z" />
+      <path d="M9.2 1.9v3.4h3.4" />
+    </Svg>
+  );
+}
+
+/** A symbolic link: two rings joined by a bar. */
+export function LinkIcon({ size, className }: IconProps) {
+  return (
+    <Svg size={size} className={className}>
+      <path d="M6.6 9.4a2.4 2.4 0 0 0 3.4 0l2-2a2.4 2.4 0 0 0-3.4-3.4l-.7.7" />
+      <path d="M9.4 6.6a2.4 2.4 0 0 0-3.4 0l-2 2a2.4 2.4 0 0 0 3.4 3.4l.7-.7" />
+    </Svg>
+  );
+}
+
 /** Account and quota. */
 export function AccountIcon({ size }: IconProps) {
   return (

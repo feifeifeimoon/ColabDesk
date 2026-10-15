@@ -2311,8 +2311,11 @@ textarea.input {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  /* Row height is the click target, and the floor the density rule sets: a
+     directory of forty files reads as a list, not as forty buttons. */
+  min-height: 28px;
   /* The row's own left padding is the tree's indent, written per row. */
-  padding: var(--space-2) var(--space-4) var(--space-2) 0;
+  padding: 0 var(--space-3) 0 0;
 }
 
 /* The row itself is one button — the whole line is the target, as in any file
@@ -2338,22 +2341,43 @@ textarea.input {
 .file-row__twisty {
   width: 12px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--mute);
-  font-size: var(--text-micro);
-  line-height: 1;
+  transition: transform 120ms ease;
 }
 
+/* An open folder's chevron points down, which is the whole twisty. */
+.file-row__chevron--open {
+  transform: rotate(90deg);
+}
+
+/* Icons are one quiet column: the name is what the eye should land on. */
 .file-row__icon {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  color: var(--mute);
 }
 
+.file-row:hover .file-row__icon,
+.file-row--focused .file-row__icon {
+  color: var(--ink);
+}
+
+/* The row the keyboard is on, marked the way the rail marks its selection:
+   one background, no second accent invented for the tree. */
 .file-row--focused {
-  background: var(--canvas-soft);
-  box-shadow: inset 2px 0 0 var(--ink);
+  background: var(--muted);
 }
 
-.file-row + .file-row {
-  border-top: 1px solid var(--hairline);
+/* No rule between rows: a directory of forty files drawn with forty hairlines
+   reads as a table, which is not the shape of a folder. Depth comes from the
+   indent and from where the previous row left off — the rail's rows are drawn
+   the same way. */
+.file-row:hover {
+  background: var(--canvas-soft);
 }
 
 .file-row:hover {
