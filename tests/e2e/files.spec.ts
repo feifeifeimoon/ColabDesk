@@ -15,6 +15,11 @@ function row(page: import("@playwright/test").Page, name: string) {
   return page.locator(".file-row").filter({ hasText: name });
 }
 
+/** A row's actions are behind its ⋯ trigger, the way a session row's are. */
+async function openRowMenu(page: import("@playwright/test").Page, name: string): Promise<void> {
+  await row(page, name).getByRole("button", { name: `${name} 的操作` }).click();
+}
+
 test("文件面板列出运行时目录，展开文件夹就地看到里面", async ({ page }) => {
   await openSession(page, "e2e-alpha");
 
@@ -50,7 +55,8 @@ test("删除文件夹要先确认，确认后从列表消失", async ({ page }) 
   await expect(row(page, "e2e-doomed")).toHaveCount(1);
 
   page.on("dialog", (dialog) => void dialog.accept());
-  await row(page, "e2e-doomed").getByRole("button", { name: "删除" }).click();
+  await openRowMenu(page, "e2e-doomed");
+  await page.getByRole("menuitem", { name: "删除" }).click();
 
   await expect(row(page, "e2e-doomed")).toHaveCount(0);
 });
@@ -75,7 +81,8 @@ test("删除符号链接只删链接，它指向的目录还在", async ({ page 
   await expect(row(page, "mirror")).toHaveCount(1);
 
   page.on("dialog", (dialog) => void dialog.accept());
-  await row(page, "mirror").getByRole("button", { name: "删除" }).click();
+  await openRowMenu(page, "mirror");
+  await page.getByRole("menuitem", { name: "删除" }).click();
   await expect(row(page, "mirror")).toHaveCount(0);
 
   // The link is gone and its target is untouched — the whole reason delete
@@ -163,7 +170,8 @@ test("下载文件夹落到选定目录，中间没有残留的分片", async ({
   plantDialogAnswer(sandbox, "openDirectory", [target]);
 
   await openSession(page, "e2e-alpha");
-  await row(page, "data").getByRole("button", { name: "下载" }).click();
+  await openRowMenu(page, "data");
+  await page.getByRole("menuitem", { name: "下载文件夹" }).click();
   await expect(page.locator(".transfer__state")).toHaveText("完成");
 
   // The point of the download: a complete file at the chosen place, and no

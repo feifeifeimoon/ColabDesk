@@ -118,6 +118,23 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
 
   await dialog.getByRole("button", { name: "关闭" }).click();
 
+  // The tree, with a folder open and a row's menu out: the row is the whole
+  // click target, its actions are one trigger, and the indent is what says
+  // where a file is. All three are judgments a picture answers and a test
+  // cannot.
+  const dataRow = page.locator(".file-row").filter({ hasText: "data" });
+  await dataRow.locator(".file-row__row").click();
+  await page.waitForTimeout(400);
+  await capture(page, "07-file-tree");
+  await page
+    .locator(".file-row")
+    .filter({ hasText: "model.pt" })
+    .getByRole("button", { name: "model.pt 的操作" })
+    .click();
+  await page.waitForTimeout(400);
+  await capture(page, "07-file-row-menu");
+  await page.keyboard.press("Escape");
+
   await page.locator('[data-testid="open-settings"]').click();
   for (const theme of ["as-is", "other"] as const) {
     if (theme === "other") await toggleTheme(page);

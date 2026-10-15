@@ -123,7 +123,6 @@
     "folderNamePlaceholder": "新文件夹名称",
     "create": "创建",
     "cancel": "取消",
-    "loading": "读取中…",
     "empty": "当前目录为空",
     "openDir": "进入目录",
     "downloadFile": "下载到本地",
@@ -137,7 +136,6 @@
     "transferCanceled": "已取消",
     "transferCancel": "取消",
     "transferSkipped": "已跳过 {{count}} 项",
-    "downloadFolderHint": "下载整个文件夹",
     "folderDialogTitle": "选择保存位置",
     "uploadFolderTitle": "选择要上传的文件夹",
     "chooseFolder": "选择文件夹",
@@ -149,7 +147,9 @@
     "conflictSkip": "跳过",
     "dropHint": "拖拽文件或文件夹至此处上传",
     "treeLabel": "运行时文件",
-    "newFolderHere": "在此新建"
+    "newFolderHere": "在此新建",
+    "menuLabel": "{{name}} 的操作",
+    "downloadFolder": "下载文件夹"
   },
   "dialog": {
     "close": "关闭"

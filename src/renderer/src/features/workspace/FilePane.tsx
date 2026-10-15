@@ -5,6 +5,15 @@ import { messageOf } from "../../lib/api";
 import { formatPercent, formatSize, localName, parentPath } from "../../lib/format";
 import type { ConflictPolicy, RemoteEntry, TransferProgress } from "@shared/types";
 import { Button } from "../../components/ui/Button";
+import { Menu } from "../../components/ui/Menu";
+import {
+  ChevronRightIcon,
+  FileIcon,
+  FolderClosedIcon,
+  FolderOpenIcon,
+  LinkIcon,
+  SyncIcon,
+} from "../../components/ui/icons";
 import { Callout } from "../../components/ui/Notice";
 import { Dialog } from "../../app-shell/AppShell";
 import { PanelDivider } from "../../components/ui/PanelDivider";
@@ -515,6 +524,9 @@ export function FilePane({
                   aria-level={row.depth + 1}
                   aria-expanded={isDir && !isRoot ? row.open : undefined}
                   aria-selected={focused === row.path}
+                  // The spinner in the icon column says "being read" to the eye;
+                  // this says it to everything else.
+                  aria-busy={listing?.loading ? true : undefined}
                   data-path={row.path}
                   tabIndex={focused === row.path || (focused === null && isRoot) ? 0 : -1}
                   title={isDir ? t("files.openDir", "进入目录") : t("files.downloadFile", "下载到本地")}
@@ -527,10 +539,25 @@ export function FilePane({
                       : void download(row.entry!, row.path)
                   }
                 >
-                  <span className="file-row__twisty" aria-hidden="true">
-                    {isDir && !isRoot ? (row.open ? "▾" : "▸") : ""}
+                  <span className={`file-row__twisty ${isDir && !isRoot ? "" : "file-row__twisty--empty"}`} aria-hidden="true">
+                    {isDir && !isRoot ? (
+                      <ChevronRightIcon size={12} className={row.open ? "file-row__chevron--open" : undefined} />
+                    ) : null}
                   </span>
-                  <span className="file-row__icon">{isDir ? "📁" : row.entry?.type === "link" ? "🔗" : "📄"}</span>
+                  <span className="file-row__icon" aria-hidden="true">
+                    {/* A folder being read says so in its own icon column: the
+                        row keeps its name and its place, and the state shows
+                        without pointing at it. */}
+                    {listing?.loading ? (
+                      <SyncIcon size={14} className="spin-sync" />
+                    ) : isDir ? (
+                      row.open ? <FolderOpenIcon size={14} /> : <FolderClosedIcon size={14} />
+                    ) : row.entry?.type === "link" ? (
+                      <LinkIcon size={14} />
+                    ) : (
+                      <FileIcon size={14} />
+                    )}
+                  </span>
                   {/* The root shows its own path: with no breadcrumb above it,
                       this row is how the tree says what it is rooted at. */}
                   <span className="truncate">{isRoot ? TREE_ROOT : row.name}</span>
@@ -540,51 +567,51 @@ export function FilePane({
                   {row.entry?.type === "file" ? formatSize(row.entry.size) : ""}
                 </span>
 
+                {/* One trigger, and only while the row is pointed at: a button on
+                    every row is what made a directory of files unreadable. */}
                 <span className="file-actions">
-                  {listing?.loading && <span className="hint">{t("files.loading", "读取中…")}</span>}
-                  {isDir && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      title={t("files.newFolderHere", "在此新建")}
-                      data-testid={`new-folder-${row.name}`}
-                      onClick={() => {
-                        setCreatingIn(creatingIn === row.path ? null : row.path);
-                        setFolderName("");
-                        loadThenOpen(row.path);
-                      }}
-                      disabled={busy !== null}
-                    >
-                      {t("files.newFolder", "新建")}
-                    </Button>
-                  )}
-                  {!isRoot && row.entry?.type !== "link" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      title={
-                        isDir
-                          ? t("files.downloadFolderHint", "下载整个文件夹")
-                          : t("files.downloadFile", "下载到本地")
-                      }
-                      onClick={() =>
-                        isDir ? void downloadDirectory(row.entry!, row.path) : void download(row.entry!, row.path)
-                      }
-                      disabled={busy === `download:${row.path}`}
-                    >
-                      {busy === `download:${row.path}` ? "…" : t("files.download", "下载")}
-                    </Button>
-                  )}
-                  {!isRoot && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => void remove(row.entry!, row.path)}
-                      disabled={busy === `delete:${row.path}`}
-                    >
-                      {busy === `delete:${row.path}` ? "…" : t("files.delete", "删除")}
-                    </Button>
-                  )}
+                  <Menu
+                    label={t("files.menuLabel", "{{name}} 的操作", { name: isRoot ? TREE_ROOT : row.name })}
+                    items={[
+                      ...(isDir
+                        ? [
+                            {
+                              label: t("files.newFolderHere", "在此新建"),
+                              disabled: busy !== null,
+                              onSelect: () => {
+                                setCreatingIn(creatingIn === row.path ? null : row.path);
+                                setFolderName("");
+                                loadThenOpen(row.path);
+                              },
+                            },
+                          ]
+                        : []),
+                      ...(row.entry?.type === "link" || isRoot
+                        ? []
+                        : [
+                            {
+                              label: isDir
+                                ? t("files.downloadFolder", "下载文件夹")
+                                : t("files.download", "下载"),
+                              disabled: busy === `download:${row.path}`,
+                              onSelect: () =>
+                                isDir
+                                  ? void downloadDirectory(row.entry!, row.path)
+                                  : void download(row.entry!, row.path),
+                            },
+                          ]),
+                      ...(isRoot
+                        ? []
+                        : [
+                            {
+                              label: t("files.delete", "删除"),
+                              danger: true,
+                              disabled: busy === `delete:${row.path}`,
+                              onSelect: () => void remove(row.entry!, row.path),
+                            },
+                          ]),
+                    ]}
+                  />
                 </span>
               </div>
 
