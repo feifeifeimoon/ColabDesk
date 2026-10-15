@@ -82,20 +82,31 @@ export function registerFileHandlers({ ssh }: IpcContext): void {
     broadcast(EVENTS.transferProgress, payload);
   };
 
-  /** Removes staging files that a cancelled upload left behind. */
+  /**
+   * Removes staging files that a cancelled upload left behind.
+   *
+   * Best-effort twice over: the row is already settled by the time this runs,
+   * and it is not allowed to run past its budget — a tidy-up that cannot finish
+   * must not hold the caller, or the list refresh behind it.
+   */
+  const SWEEP_BUDGET_MS = 5_000;
   const sweepStaged = async (session: string, paths: string[]): Promise<void> => {
     if (paths.length === 0) return;
-    try {
+    const work = (async () => {
       const sftp = await (await ssh.acquire(session)).openSftp();
       try {
         for (const path of paths) await removeQuietly(sftp, path);
       } finally {
         close(sftp);
       }
-    } catch {
+    })().catch(() => {
       // The connection may be gone as well; a staging file is not worth an
       // error on top of the cancellation the user already got.
-    }
+    });
+    const budget = new Promise<void>((resolve) => {
+      setTimeout(resolve, SWEEP_BUDGET_MS);
+    });
+    await Promise.race([work, budget]);
   };
 
   /**
@@ -155,7 +166,9 @@ export function registerFileHandlers({ ssh }: IpcContext): void {
       transfer.catch(() => {});
       active.delete(row.id);
       close(sftp);
-      if (canceled) await sweepStaged(session, staged);
+      // Settled before the cleanup, never after it: what the row says must not
+      // depend on a tidy-up finishing, and a cancelled transfer still has to
+      // report itself.
       emitRow(row, tally, {
         done: true,
         canceled,
@@ -163,6 +176,8 @@ export function registerFileHandlers({ ssh }: IpcContext): void {
         ...(outcome.skipped > 0 ? { skipped: outcome.skipped } : {}),
       });
     }
+
+    if (canceled) await sweepStaged(session, staged);
   };
 
   ipcMain.handle(IPC.sftpList, (_event, payload: { session: string; path: string }) =>
