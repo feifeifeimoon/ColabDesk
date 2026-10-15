@@ -170,13 +170,18 @@ function attachShell(
 ): void {
   let cwd = RUNTIME_HOME;
   let line = "";
-  let escape = false;
+  /** `esc` sees the ESC itself, `csi` the parameters up to the final byte. */
+  let escape: "none" | "esc" | "csi" = "none";
+  let sequence = "";
   let carriageReturn = false;
 
   const write = (text: string): void => {
     stream.write(text);
   };
   const prompt = (): void => write(`\r\nroot@${HOSTNAME}:${cwd}# `);
+
+  /** Set when the shell has been asked to end, so nothing prompts afterwards. */
+  let ended = false;
 
   const run = (input: string): void => {
     const [command, ...rest] = input.trim().split(/\s+/);
@@ -211,25 +216,74 @@ function attachShell(
         return;
       case "stty":
         return;
+      /**
+       * More output than any window holds, so a test can watch the app hold the
+       * shell back instead of buffering a screenful of megabytes. The pump waits
+       * on the channel's own buffer, which is the far end of the same
+       * backpressure the app applies.
+       */
+      case "flood": {
+        const total = Number(args[0] ?? 2_000_000);
+        let sent = 0;
+        const pump = (): void => {
+          let wrote = 0;
+          while (sent < total && (stream.writableLength ?? 0) < 512 * 1024 && wrote < 64) {
+            const size = Math.min(64 * 1024, total - sent);
+            write(`${"x".repeat(size - 1)}\n`);
+            sent += size;
+            wrote += 1;
+          }
+          if (sent < total) {
+            setImmediate(pump);
+            return;
+          }
+          write("flood done\r\n");
+          prompt();
+        };
+        pump();
+        return;
+      }
+      /** Ends the shell the way `exit` does, for a reconnect test. */
+      case "exit":
+        ended = true;
+        write("logout\r\n");
+        stream.exit(0);
+        stream.end();
+        return;
       default:
         write(`bash: ${command}: command not found\r\n`);
     }
   };
 
-  // The ordinal and the window size are the two facts a spec needs to tell a
-  // surviving shell from a reconnected one.
-  write(`ColabDesk E2E runtime · shell #${ordinal} · ${window.cols}x${window.rows}\r\n`);
+  // Asks for bracketed paste, like any readline would: a client that wraps what
+  // it pastes is then visible in the transcript below.
+  write(`\x1b[?2004hColabDesk E2E runtime · shell #${ordinal} · ${window.cols}x${window.rows}\r\n`);
   prompt();
 
   stream.on("data", (chunk: Buffer) => {
     for (const character of chunk.toString("utf8")) {
-      // Arrow keys and friends arrive as ESC [ X; nothing here reacts to them.
-      if (escape) {
-        if (character !== "[") escape = false;
+      if (escape === "esc") {
+        if (character === "[") {
+          escape = "csi";
+          sequence = "";
+          continue;
+        }
+        escape = "none";
+        continue;
+      }
+      if (escape === "csi") {
+        // The final byte of a control sequence is the first one in @–~.
+        if (character >= "@" && character <= "~") {
+          escape = "none";
+          if (sequence === "200") write("\r\n[paste-start]\r\n");
+          else if (sequence === "201") write("[paste-end]\r\n");
+          continue;
+        }
+        sequence += character;
         continue;
       }
       if (character === "\x1b") {
-        escape = true;
+        escape = "esc";
         continue;
       }
       if (character === "\r" || character === "\n") {
@@ -242,7 +296,7 @@ function attachShell(
         write("\r\n");
         run(line);
         line = "";
-        prompt();
+        if (!ended) prompt();
         continue;
       }
       if (character === "\x7f") {

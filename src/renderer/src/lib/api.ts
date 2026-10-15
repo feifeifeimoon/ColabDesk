@@ -39,6 +39,7 @@ export const openTerminal = (session: string, cols: number, rows: number) =>
 export const writeTerminal = (channelId: number, data: string) => bridge().writeTerminal(channelId, data);
 export const resizeTerminal = (channelId: number, cols: number, rows: number) =>
   bridge().resizeTerminal(channelId, cols, rows);
+export const ackTerminal = (channelId: number, bytes: number) => bridge().ackTerminal(channelId, bytes);
 export const closeTerminal = (channelId: number) => bridge().closeTerminal(channelId);
 export const onTerminalData = (listener: Parameters<ColabDeskApi["onTerminalData"]>[0]) =>
   bridge().onTerminalData(listener);

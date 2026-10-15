@@ -107,7 +107,11 @@
     "connectionClosedBanner": "[Connection closed]",
     "connectionClosedNotice": "Connection closed.",
     "connectionFailed": "Connection failed: {{message}}",
-    "retryConnection": "Reconnect"
+    "retryConnection": "Reconnect",
+    "searchPlaceholder": "Find in terminal",
+    "searchNext": "Next match",
+    "searchPrevious": "Previous match",
+    "searchClose": "Close find"
   },
   "files": {
     "widthLabel": "Files panel width",

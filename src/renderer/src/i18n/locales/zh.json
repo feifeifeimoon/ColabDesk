@@ -107,7 +107,11 @@
     "connectionClosedBanner": "[连接已断开]",
     "connectionClosedNotice": "连接已断开。",
     "connectionFailed": "连接失败：{{message}}",
-    "retryConnection": "重试连接"
+    "retryConnection": "重试连接",
+    "searchPlaceholder": "在终端里查找",
+    "searchNext": "下一个",
+    "searchPrevious": "上一个",
+    "searchClose": "关闭查找"
   },
   "files": {
     "widthLabel": "文件面板宽度",

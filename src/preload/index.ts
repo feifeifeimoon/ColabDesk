@@ -40,6 +40,7 @@ const api: ColabDeskApi = {
   openTerminal: (session, cols, rows) => invoke(IPC.termOpen, { session, cols, rows }),
   writeTerminal: (channelId, data) => invoke(IPC.termWrite, { channelId, data }),
   resizeTerminal: (channelId, cols, rows) => invoke(IPC.termResize, { channelId, cols, rows }),
+  ackTerminal: (channelId, bytes) => ipcRenderer.send(IPC.termAck, { channelId, bytes }),
   closeTerminal: (channelId) => invoke(IPC.termClose, channelId),
   onTerminalData: (listener) => subscribe(EVENTS.sshData, listener),
   onTerminalClosed: (listener) => subscribe(EVENTS.sshClosed, listener),

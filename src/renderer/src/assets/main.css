@@ -790,6 +790,23 @@ kbd {
   background: var(--surface, var(--canvas));
 }
 
+/* The find bar: app chrome above the grid, like the notice below it. The
+   terminal keeps its own colours; the controls stay the app's, so their focus
+   ring and hover states are the ones every other control has. */
+.terminal-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface, var(--canvas));
+}
+
+.terminal-search .input {
+  flex: 1;
+  min-width: 0;
+}
+
 .files-panel {
   width: 340px;
   /* Draggable — see `.sidebar`. */

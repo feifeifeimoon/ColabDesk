@@ -20,6 +20,7 @@ export const IPC = {
   termOpen: "term:open",
   termWrite: "term:write",
   termResize: "term:resize",
+  termAck: "term:ack",
   termClose: "term:close",
   sftpList: "sftp:list",
   sftpStat: "sftp:stat",

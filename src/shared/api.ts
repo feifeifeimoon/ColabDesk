@@ -74,12 +74,20 @@ export interface ColabDeskApi {
   resizeTerminal(channelId: number, cols: number, rows: number): Promise<void>;
   closeTerminal(channelId: number): Promise<void>;
   /**
-   * Terminal output arrives base64-encoded (IPC is string-oriented), tagged
-   * with its session: a pane subscribes before it knows its channel id, and the
-   * shell's first bytes can arrive in that window.
+   * Terminal output arrives as bytes, tagged with its session: a pane subscribes
+   * before it knows its channel id, and the shell's first bytes can arrive in
+   * that window. Bytes rather than base64 because this is the hot path.
    */
-  onTerminalData(listener: (payload: { channelId: number; session: string; data: string }) => void): () => void;
+  onTerminalData(
+    listener: (payload: { channelId: number; session: string; data: Uint8Array }) => void,
+  ): () => void;
   onTerminalClosed(listener: (payload: { channelId: number; session: string }) => void): () => void;
+  /**
+   * Tells the main process how much of a terminal's output has been parsed, so
+   * it can let the shell send more. Fire-and-forget on purpose: it travels with
+   * every screenful.
+   */
+  ackTerminal(channelId: number, bytes: number): void;
 
   listDirectory(session: string, path: string): Promise<RemoteEntry[]>;
   /** Which of these remote paths already exist, so a conflict can be asked about. */

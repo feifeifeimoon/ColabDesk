@@ -18,6 +18,12 @@ export function registerTerminalHandlers({ ssh }: IpcContext): void {
   ipcMain.handle(IPC.termResize, (_event, payload: { channelId: number; cols: number; rows: number }) => {
     ssh.resize(payload.channelId, payload.cols, payload.rows);
   });
+  // Sent rather than invoked: an acknowledgement travels with every screenful
+  // of output, and a round trip per one of them would be the slower half of the
+  // path it exists to protect.
+  ipcMain.on(IPC.termAck, (_event, payload: { channelId: number; bytes: number }) => {
+    ssh.ack(payload.channelId, payload.bytes);
+  });
   ipcMain.handle(IPC.termClose, (_event, channelId: number) => {
     ssh.closeTerminal(channelId);
   });
