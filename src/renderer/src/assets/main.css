@@ -640,6 +640,19 @@ kbd {
   border-bottom-color: var(--primary);
 }
 
+/* "Not on the runtime yet": the pane says it in words, the strip says it where
+   the tab is. A dot and not a colour — it survives grayscale, like every other
+   state in this system. */
+.session-tab__dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--warning);
+  vertical-align: middle;
+}
+
 /* The new-tab affordance belongs at the end of the tab run, like every browser
    and editor. */
 .session-tab--add {
@@ -1336,6 +1349,12 @@ kbd {
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
+}
+
+/* One line, and the path gives way instead: a fact that wraps mid-sentence
+   reads as two facts. */
+.file-area__facts {
+  white-space: nowrap;
 }
 
 .file-area .text-surface {

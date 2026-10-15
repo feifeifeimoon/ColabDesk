@@ -174,6 +174,19 @@ export function FilePane({
     for (const path of missing) void load(path);
   }, [visible, open, listings, load]);
 
+  /**
+   * A save in a file tab writes to the runtime behind this tree's back, and the
+   * one thing the tree shows about a file is its size. The store carries the
+   * directory the write landed in; re-reading that one listing is enough.
+   */
+  const fileWrite = useAppStore((state) => state.fileWrites[session]);
+  const lastWrite = useRef(0);
+  useEffect(() => {
+    if (!fileWrite || fileWrite.revision === lastWrite.current) return;
+    lastWrite.current = fileWrite.revision;
+    void load(fileWrite.dir);
+  }, [fileWrite, load]);
+
   useEffect(() => {
     return api.onTransferProgress((progress) => {
       setTransfers((current) => {

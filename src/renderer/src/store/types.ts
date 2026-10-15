@@ -72,6 +72,15 @@ export interface WorkspaceSlice {
    */
   expandedDirs: Record<string, string[]>;
   transferCounts: Record<string, number>;
+  /** File tabs with unsaved edits, by tab id: the strip asks before closing one. */
+  dirtyTabs: Record<string, boolean>;
+  /** A close waiting on an answer about unsaved edits — the pane that owns it asks. */
+  pendingCloseTabId: string | null;
+  /**
+   * Where a save last landed, per session: the tree re-reads that one directory
+   * instead of guessing which listing went stale.
+   */
+  fileWrites: Record<string, { dir: string; revision: number }>;
 
   /** Goes to a session, opening its first shell if it has none, and focuses it. */
   openSession(session: string): void;
@@ -80,6 +89,17 @@ export interface WorkspaceSlice {
   /** Opens a file beside the shells; one that is already open is focused. */
   openFileTab(session: string, path: string, name: string): void;
   closeTab(tabId: string): void;
+  /**
+   * What the strip's `×` and `Ctrl+Shift+W` do: close the tab, or — when it has
+   * unsaved edits — bring it forward and let its pane ask what to do.
+   */
+  requestCloseTab(tabId: string): void;
+  /** The pane's "never mind" to that question. */
+  cancelPendingClose(): void;
+  /** Says whether a file tab has edits that are not on the runtime yet. */
+  setTabDirty(tabId: string, dirty: boolean): void;
+  /** A save landed in this directory; the tree re-reads it. */
+  noteFileWrite(session: string, dir: string): void;
   /** Brings one tab of the selected session to the front. */
   focusTab(tabId: string): void;
   /** Closes every tab of a session, which is what releases its connection. */

@@ -47,8 +47,9 @@ export function TopBar() {
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
   const toggleFiles = useAppStore((state) => state.toggleFiles);
   const openTab = useAppStore((state) => state.openTab);
-  const closeTab = useAppStore((state) => state.closeTab);
+  const closeTab = useAppStore((state) => state.requestCloseTab);
   const focusTab = useAppStore((state) => state.focusTab);
+  const dirtyTabs = useAppStore((state) => state.dirtyTabs);
 
   // The strip is the selected session's workspace, so it shows that session's
   // shells and nothing else. Memoised rather than selected: a selector that
@@ -119,8 +120,10 @@ export function TopBar() {
               }}
             >
               {/* The path is the tooltip for a file: the strip truncates the name,
-                  and where the file lives is the thing a name cannot say. */}
+                  and where the file lives is the thing a name cannot say. A dot
+                  says "not on the runtime yet" — the pane puts it in words. */}
               <span className="truncate" title={tab.kind === "file" ? tab.path : undefined}>
+                {dirtyTabs[tab.id] ? <span className="session-tab__dot" aria-hidden="true" /> : null}
                 {label}
               </span>
               <button

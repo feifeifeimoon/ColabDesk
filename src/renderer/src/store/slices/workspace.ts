@@ -8,7 +8,18 @@ function dropKey<T>(record: Record<string, T>, key: string): Record<string, T> {
   return rest;
 }
 
+/** The dirty flags that still belong to a tab that exists. */
+function liveDirty(dirty: Record<string, boolean>, tabs: { id: string }[]): Record<string, boolean> {
+  const live = new Set(tabs.map((tab) => tab.id));
+  const kept: Record<string, boolean> = {};
+  for (const [id, value] of Object.entries(dirty)) if (live.has(id)) kept[id] = value;
+  return kept;
+}
+
 export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice> = (set, get) => {
+  /** Bumped by every save, so a tree can tell two writes to one directory apart. */
+  let writeRevision = 0;
+
   /** One more shell for a session, numbered after the highest it has. */
   function addTab(session: string): TerminalTab {
     const existing = get().tabs.filter(
@@ -59,6 +70,9 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
     connections: {},
     expandedDirs: {},
     transferCounts: {},
+    dirtyTabs: {},
+    pendingCloseTabId: null,
+    fileWrites: {},
 
     openSession: (session) => {
       const siblings = get().tabs.filter((tab) => tab.session === session);
@@ -93,11 +107,17 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
     },
 
     closeTab: (tabId) => {
-      const { tabs } = get();
+      const { tabs, dirtyTabs, pendingCloseTabId } = get();
       const closing = tabs.find((tab) => tab.id === tabId);
       if (!closing) return;
       const remaining = tabs.filter((tab) => tab.id !== tabId);
-      set({ tabs: remaining });
+      set({
+        tabs: remaining,
+        // The buffer goes with the tab: a flag for a tab that is gone would
+        // outlive the thing it described.
+        dirtyTabs: dropKey(dirtyTabs, tabId),
+        ...(pendingCloseTabId === tabId ? { pendingCloseTabId: null } : {}),
+      });
       reconcile();
       if (!remaining.some((tab) => tab.session === closing.session)) release(closing.session);
     },
@@ -111,12 +131,44 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
     },
 
     closeSessionTabs: (session) => {
-      const remaining = get().tabs.filter((tab) => tab.session !== session);
-      if (remaining.length === get().tabs.length) return;
-      set({ tabs: remaining });
+      const { tabs, dirtyTabs, pendingCloseTabId } = get();
+      const remaining = tabs.filter((tab) => tab.session !== session);
+      if (remaining.length === tabs.length) return;
+      const pending = remaining.some((tab) => tab.id === pendingCloseTabId) ? pendingCloseTabId : null;
+      set({ tabs: remaining, dirtyTabs: liveDirty(dirtyTabs, remaining), pendingCloseTabId: pending });
       reconcile();
       release(session);
     },
+
+    setTabDirty: (tabId, dirty) =>
+      set((current) =>
+        // A keystroke must not be a store write: the pane reports on the way in
+        // and on the way out of being dirty, not on every character.
+        (current.dirtyTabs[tabId] ?? false) === dirty
+          ? current
+          : { dirtyTabs: { ...current.dirtyTabs, [tabId]: dirty } },
+      ),
+
+    requestCloseTab: (tabId) => {
+      const { tabs, dirtyTabs } = get();
+      const target = tabs.find((tab) => tab.id === tabId);
+      if (!target) return;
+      if (!dirtyTabs[tabId]) {
+        get().closeTab(tabId);
+        return;
+      }
+      // The question belongs to the pane that owns the buffer, so bring that
+      // pane to the front first — a parked tab would be asked nothing anybody
+      // could see.
+      set({ selectedSession: target.session, activeTabId: tabId, pendingCloseTabId: tabId });
+    },
+
+    cancelPendingClose: () => set({ pendingCloseTabId: null }),
+
+    noteFileWrite: (session, dir) =>
+      set((current) => ({
+        fileWrites: { ...current.fileWrites, [session]: { dir, revision: ++writeRevision } },
+      })),
 
     focusTabAt: (index) => {
       const target = get()
@@ -158,12 +210,18 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       ),
 
     pruneTabs: () => {
-      const { tabs, sessions, selectedSession } = get();
+      const { tabs, sessions, selectedSession, dirtyTabs, pendingCloseTabId } = get();
       const existing = new Set(sessions.map((session) => session.name));
       const remaining = tabs.filter((tab) => existing.has(tab.session));
       const keepSelection = selectedSession !== null && existing.has(selectedSession);
       if (remaining.length === tabs.length && keepSelection) return;
-      set({ tabs: remaining, selectedSession: keepSelection ? selectedSession : null });
+      const pending = remaining.some((tab) => tab.id === pendingCloseTabId) ? pendingCloseTabId : null;
+      set({
+        tabs: remaining,
+        dirtyTabs: liveDirty(dirtyTabs, remaining),
+        pendingCloseTabId: pending,
+        selectedSession: keepSelection ? selectedSession : null,
+      });
       reconcile();
     },
   };

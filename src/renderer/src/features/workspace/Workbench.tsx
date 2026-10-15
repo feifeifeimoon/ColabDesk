@@ -56,6 +56,7 @@ export function Workbench() {
                     session={tab.session}
                     path={tab.path}
                     name={tab.name}
+                    tabId={tab.id}
                     active={active}
                   />
                 );

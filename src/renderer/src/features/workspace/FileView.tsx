@@ -7,22 +7,31 @@
  * the two. It parks the way a terminal does: switching tabs hides the pane and
  * keeps its read.
  *
- * Everything a person sees is `FileViewPanel`, a pure function of the state it
- * is given, so the rules the design system states about this surface — every
- * refusal says why, a file that is not text offers a way out — are assertable
- * without a terminal or a connection.
+ * Saving is three promises, each answered in a place the person can see:
  *
- * The size policy (whole file under 2 MiB, its two ends above) lives in the
- * main process; what arrives here is already the answer, including how many
- * bytes the preview is not showing.
+ * - **Nothing half-written.** The main process stages beside the target and
+ *   renames on top (`sftp-text`), so a save that dies halfway leaves the old
+ *   file, never half of the new one.
+ * - **Nobody's work disappears quietly.** The file is written against the
+ *   mtime/size it was read at; if the far side moved on, the write comes back
+ *   as a question and the buffer stays on screen until the person answers.
+ * - **A failure keeps the edits.** Nothing clears the dirty flag except a save
+ *   that landed.
+ *
+ * Everything a person sees is `FileViewPanel`, a pure function of the state it
+ * is given, so the design system's rules about this surface — every refusal
+ * says why, nothing that cannot be written offers a save — are assertable
+ * without a terminal or a connection.
  */
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import type { EditorView } from "@codemirror/view";
+import type { Text as EditorText } from "@codemirror/state";
 import type { RemoteTextRead } from "@shared/types";
 import * as api from "../../lib/api";
 import { messageOf } from "../../lib/api";
-import { formatSize } from "../../lib/format";
+import { formatSize, parentPath } from "../../lib/format";
 import { useAppStore } from "../../store";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
@@ -30,34 +39,74 @@ import { CopyButton } from "../../components/ui/CopyButton";
 import { Callout } from "../../components/ui/Notice";
 import { TextSurface } from "./TextSurface";
 
+/** How long 「已保存」 stays in the status line before the facts come back. */
+const SAVED_FLASH_MS = 2000;
+
 export type FileViewState =
   | { status: "loading" }
   | { status: "failed"; message: string }
   | { status: "ready"; read: RemoteTextRead };
 
+/** What the pane is asking, if anything, before it will go on. */
+type Pending =
+  | { kind: "conflict"; reason: "changed" | "missing" }
+  | { kind: "confirmReload" };
+
 export function FileView({
   session,
   path,
   name,
+  tabId,
   active,
 }: {
   session: string;
   path: string;
   name: string;
+  /** The tab this pane belongs to: how the strip and the store name it. */
+  tabId: string;
   /** The shown tab; a parked pane keeps its read and its scroll position. */
   active: boolean;
 }) {
   const { t } = useTranslation();
   const notify = useAppStore((state) => state.notify);
+  const closeTab = useAppStore((state) => state.closeTab);
+  const setTabDirty = useAppStore((state) => state.setTabDirty);
+  const cancelPendingClose = useAppStore((state) => state.cancelPendingClose);
+  const noteFileWrite = useAppStore((state) => state.noteFileWrite);
+  const closing = useAppStore((state) => state.pendingCloseTabId) === tabId;
+
   const [state, setState] = useState<FileViewState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [pending, setPending] = useState<Pending | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  /** What the far side looked like when the buffer was last in step with it. */
+  const [baseline, setBaseline] = useState<{ mtime: number; size: number } | null>(null);
+
+  const viewRef = useRef<EditorView | null>(null);
+  /** The document as the runtime has it — undo back to it counts as clean. */
+  const savedDoc = useRef<EditorText | null>(null);
+  const dirtyRef = useRef(false);
 
   useEffect(() => {
     let current = true;
     setState({ status: "loading" });
+    setPending(null);
+    setSaveError(null);
+    setBaseline(null);
+    // A fresh read is clean by definition; the flag is dropped here rather than
+    // in a cleanup, because this same effect is what a reload runs.
+    savedDoc.current = null;
+    dirtyRef.current = false;
+    setDirty(false);
+    setTabDirty(tabId, false);
     api.readTextFile(session, path).then(
       (read) => {
-        if (current) setState({ status: "ready", read });
+        if (!current) return;
+        setState({ status: "ready", read });
+        if (read.kind === "text") setBaseline({ mtime: read.mtime, size: read.size });
       },
       (cause: unknown) => {
         if (current) setState({ status: "failed", message: messageOf(cause) });
@@ -66,17 +115,77 @@ export function FileView({
     return () => {
       current = false;
     };
-  }, [session, path, attempt]);
+  }, [session, path, attempt, tabId, setTabDirty]);
 
-  async function download(): Promise<void> {
+  useEffect(() => {
+    if (savedAt === null) return;
+    const timer = setTimeout(() => setSavedAt(null), SAVED_FLASH_MS);
+    return () => clearTimeout(timer);
+  }, [savedAt]);
+
+  const read = state.status === "ready" ? state.read : null;
+  const writable = read?.kind === "text" && (read.mode & 0o222) !== 0;
+
+  /** Tells the strip — and the store — that the buffer is back in step. */
+  function markClean(): void {
+    savedDoc.current = viewRef.current?.state.doc ?? savedDoc.current;
+    dirtyRef.current = false;
+    setDirty(false);
+    setTabDirty(tabId, false);
+  }
+
+  function noteEdit(view: EditorView): void {
+    const next = savedDoc.current === null || !view.state.doc.eq(savedDoc.current);
+    // Only the crossings are news: a keystroke is not a store write.
+    if (next === dirtyRef.current) return;
+    dirtyRef.current = next;
+    setDirty(next);
+    setTabDirty(tabId, next);
+  }
+
+  /** Reads the document and writes it back. `true` when the runtime took it. */
+  async function save(force: boolean): Promise<boolean> {
+    const view = viewRef.current;
+    if (!view || read?.kind !== "text" || !writable || saving) return false;
+    setSaving(true);
+    setSaveError(null);
     try {
-      await api.download(session, path, name, t("files.saveDialogTitle", "保存到本地"));
+      const result = await api.writeTextFile({
+        session,
+        path,
+        text: view.state.doc.toString(),
+        eol: read.eol,
+        expected: baseline,
+        ...(force ? { force: true } : {}),
+      });
+      if (!result.ok) {
+        setPending({ kind: "conflict", reason: result.reason });
+        return false;
+      }
+      setPending(null);
+      setBaseline({ mtime: result.mtime, size: result.size });
+      setSavedAt(Date.now());
+      markClean();
+      // The tree shows a size, and the size just changed.
+      noteFileWrite(session, parentPath(path) || "/");
+      return true;
     } catch (cause) {
-      // A transfer that started reports itself on its row in the files panel —
-      // progress is a broadcast, not this pane's child. Only never getting that
-      // far lands here, and it is an action's result, so it is a message.
-      notify({ tone: "danger", text: messageOf(cause) });
+      // The edits stay: a save that failed is not a reason to lose them.
+      setSaveError(messageOf(cause));
+      return false;
+    } finally {
+      setSaving(false);
     }
+  }
+
+  function reload(): void {
+    setPending(null);
+    setAttempt((count) => count + 1);
+  }
+
+  function discardAndReload(): void {
+    markClean();
+    reload();
   }
 
   return (
@@ -85,14 +194,69 @@ export function FileView({
       name={name}
       active={active}
       state={state}
-      onReload={() => setAttempt((count) => count + 1)}
-      onDownload={() => void download()}
+      dirty={dirty}
+      saving={saving}
+      pending={pending}
+      closing={closing}
+      saveError={saveError}
+      savedAt={savedAt}
+      size={baseline?.size ?? null}
+      onReady={(view) => {
+        viewRef.current = view;
+        savedDoc.current = view.state.doc;
+      }}
+      onChange={noteEdit}
+      onSave={() => void save(false)}
+      onOverwrite={() => void save(true)}
+      onReload={() => {
+        if (dirtyRef.current) setPending({ kind: "confirmReload" });
+        else reload();
+      }}
+      onDiscardAndReload={discardAndReload}
+      onKeepEditing={() => setPending(null)}
+      onSaveAndClose={() => {
+        void save(false).then((saved) => {
+          if (!saved) {
+            // Whatever stopped the save (a conflict, a failed write) is the
+            // thing to show; the close question would sit on top of it.
+            cancelPendingClose();
+            return;
+          }
+          cancelPendingClose();
+          closeTab(tabId);
+        });
+      }}
+      onDiscardAndClose={() => {
+        cancelPendingClose();
+        closeTab(tabId);
+      }}
+      onCancelClose={() => cancelPendingClose()}
+      onDownload={() => {
+        void api
+          .download(session, path, name, t("files.saveDialogTitle", "保存到本地"))
+          .catch((cause: unknown) => {
+            // A transfer that started reports itself on its row in the files
+            // panel; only never getting that far lands here, and that is an
+            // action's result, so it is a message.
+            notify({ tone: "danger", text: messageOf(cause) });
+          });
+      }}
     />
   );
 }
 
 /** The text, or the reason there is not all of it. */
-function PreviewBody({ read }: { read: RemoteTextRead }) {
+function PreviewBody({
+  read,
+  editable,
+  onReady,
+  onChange,
+}: {
+  read: RemoteTextRead;
+  editable: boolean;
+  onReady: (view: EditorView) => void;
+  onChange: (view: EditorView) => void;
+}) {
   const { t } = useTranslation();
 
   if (read.kind === "binary") {
@@ -128,7 +292,7 @@ function PreviewBody({ read }: { read: RemoteTextRead }) {
     );
   }
 
-  return <TextSurface text={read.text} />;
+  return <TextSurface text={read.text} editable={editable} onReady={onReady} onChange={onChange} />;
 }
 
 export function FileViewPanel({
@@ -136,21 +300,59 @@ export function FileViewPanel({
   name,
   active,
   state,
+  dirty,
+  saving,
+  pending,
+  closing,
+  saveError,
+  savedAt,
+  size,
+  onReady,
+  onChange,
+  onSave,
+  onOverwrite,
   onReload,
+  onDiscardAndReload,
+  onKeepEditing,
+  onSaveAndClose,
+  onDiscardAndClose,
+  onCancelClose,
   onDownload,
 }: {
   path: string;
   name: string;
   active: boolean;
   state: FileViewState;
+  dirty: boolean;
+  saving: boolean;
+  pending: Pending | null;
+  /** The strip asked to close this tab and is waiting for an answer. */
+  closing: boolean;
+  saveError: string | null;
+  savedAt: number | null;
+  /** The size as last written, which is the one the facts line should show. */
+  size: number | null;
+  onReady: (view: EditorView) => void;
+  onChange: (view: EditorView) => void;
+  onSave: () => void;
+  onOverwrite: () => void;
   onReload: () => void;
+  onDiscardAndReload: () => void;
+  onKeepEditing: () => void;
+  onSaveAndClose: () => void;
+  onDiscardAndClose: () => void;
+  onCancelClose: () => void;
   onDownload: () => void;
 }) {
   const { t } = useTranslation();
   const read = state.status === "ready" ? state.read : null;
-  // The badge is for "this is text, and it is not all here": a binary file
-  // never offers reading to begin with, so it needs no such label.
-  const readOnly = read !== null && (read.kind === "truncated" || read.kind === "invalidUtf8");
+  const writable = read?.kind === "text" && (read.mode & 0o222) !== 0;
+  // The badge is for "there is text here you cannot change" — too large to send
+  // whole, not UTF-8, not writable. A binary file has no text to label, so it
+  // gets none: the callout already says why it cannot be opened.
+  const readOnly =
+    read !== null &&
+    (read.kind === "truncated" || read.kind === "invalidUtf8" || (read.kind === "text" && !writable));
 
   const eol =
     read?.kind === "text"
@@ -160,7 +362,16 @@ export function FileViewPanel({
           ? t("editor.eolMixed", "行尾 混合")
           : t("editor.eolLf", "行尾 LF")
       : null;
-  const status = read ? [eol, formatSize(read.size)].filter(Boolean).join(" · ") : "";
+  const bytes = size ?? read?.size ?? null;
+  const facts = [eol, bytes !== null ? formatSize(bytes) : null].filter(Boolean).join(" · ");
+  const mark = dirty
+    ? `● ${t("editor.unsaved", "未保存")}`
+    : savedAt !== null
+      ? t("editor.saved", "已保存")
+      : null;
+  const status = [facts, mark].filter(Boolean).join(" · ");
+
+  const conflict = pending?.kind === "conflict" ? pending : null;
 
   let actions: ReactNode = null;
   if (state.status === "failed") {
@@ -170,9 +381,59 @@ export function FileViewPanel({
         {t("editor.retry", "重试")}
       </Button>
     );
+  } else if (closing) {
+    actions = (
+      <>
+        <Button variant="primary" size="sm" onClick={onSaveAndClose}>
+          {t("editor.saveAndClose", "保存并关闭")}
+        </Button>
+        <Button variant="outline" size="sm" onClick={onDiscardAndClose}>
+          {t("editor.dontSave", "不保存")}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onCancelClose}>
+          {t("editor.cancel", "取消")}
+        </Button>
+      </>
+    );
+  } else if (conflict) {
+    actions = (
+      <>
+        <Button variant="destructive" size="sm" onClick={onOverwrite}>
+          {t("editor.overwrite", "覆盖")}
+        </Button>
+        <Button variant="outline" size="sm" onClick={onDiscardAndReload}>
+          {t("editor.discardAndReload", "放弃我的修改并重新加载")}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onKeepEditing}>
+          {t("editor.cancel", "取消")}
+        </Button>
+      </>
+    );
+  } else if (pending?.kind === "confirmReload") {
+    actions = (
+      <>
+        <Button variant="outline" size="sm" onClick={onDiscardAndReload}>
+          {t("editor.reloadDiscard", "重新加载并丢弃修改")}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onKeepEditing}>
+          {t("editor.cancel", "取消")}
+        </Button>
+      </>
+    );
   } else if (state.status === "ready") {
     actions = (
       <>
+        {writable ? (
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={!dirty || saving}
+            onClick={onSave}
+            data-testid="save-file"
+          >
+            {saving ? t("editor.saving", "保存中…") : t("editor.save", "保存")}
+          </Button>
+        ) : null}
         <Button variant="ghost" size="sm" onClick={onReload}>
           {t("editor.reload", "重新加载")}
         </Button>
@@ -184,14 +445,26 @@ export function FileViewPanel({
   }
 
   return (
-    <section className="file-area" hidden={!active} inert={!active} aria-label={name}>
+    <section
+      className="file-area"
+      hidden={!active}
+      inert={!active}
+      aria-label={name}
+      onKeyDown={(event) => {
+        // The pane's own save key, scoped to the pane: a global one would take
+        // Ctrl+S away from the terminal, where it is XOFF.
+        if (!(event.ctrlKey || event.metaKey) || event.key !== "s") return;
+        event.preventDefault();
+        if (writable && !saving && pending === null && !closing) onSave();
+      }}
+    >
       <div className="pane__head">
         <span className="pane__title mono truncate" title={path}>
           {path}
         </span>
         <span className="pane__actions">
           {readOnly ? <Badge tone="warn">{t("editor.readOnly", "只读")}</Badge> : null}
-          <span className="hint mono">{status}</span>
+          <span className="hint mono file-area__facts">{status}</span>
           <CopyButton
             text={path}
             label={t("editor.copyPath", "复制路径")}
@@ -207,7 +480,33 @@ export function FileViewPanel({
             {t("editor.readFailed", "读取失败")}：<span className="mono">{state.message}</span>
           </Callout>
         )}
-        {read && <PreviewBody read={read} />}
+        {read?.kind === "text" && !writable && (
+          <Callout tone="warn">{t("editor.notWritable", "这个文件不可写，只能查看。")}</Callout>
+        )}
+        {closing && <Callout tone="warn">{t("editor.closeAsk", "有未保存的修改。")}</Callout>}
+        {conflict && (
+          <Callout tone="danger">
+            {conflict.reason === "missing"
+              ? t("editor.conflictMissing", "文件在服务器上已不存在，保存会重新创建它。")
+              : t("editor.conflictBody", "文件在服务器上已改变，保存会覆盖那边的版本。")}
+          </Callout>
+        )}
+        {pending?.kind === "confirmReload" && (
+          <Callout tone="warn">{t("editor.reloadAsk", "有未保存的修改，重新加载会丢弃它们。")}</Callout>
+        )}
+        {saveError !== null && (
+          <Callout tone="danger">
+            {t("editor.saveFailed", "保存失败")}：<span className="mono">{saveError}</span>
+          </Callout>
+        )}
+        {read && (
+          <PreviewBody
+            read={read}
+            editable={Boolean(writable)}
+            onReady={onReady}
+            onChange={onChange}
+          />
+        )}
       </div>
     </section>
   );

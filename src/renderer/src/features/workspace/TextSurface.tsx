@@ -2,9 +2,10 @@
  * The text itself, drawn by CodeMirror.
  *
  * The view lives outside React on purpose: the document is the editor's, and
- * keystrokes never travel back through component state. What React owns is
- * which text is on screen — the surface is built once per `text` rather than
- * reconciled, because so far every change of text has meant a different file.
+ * keystrokes never travel back through component state — what React owns is
+ * which text is on screen, and whether it can be typed into. The surface is
+ * built once per `text` rather than reconciled, because so far every change of
+ * text has meant a different file.
  *
  * Colours arrive as the design system's own variables; a component here that
  * wrote a hex value would be the one place light and dark drift apart.
@@ -12,7 +13,8 @@
 
 import { useEffect, useRef } from "react";
 import { EditorState } from "@codemirror/state";
-import { EditorView, keymap, lineNumbers } from "@codemirror/view";
+import { EditorView, keymap, lineNumbers, type ViewUpdate } from "@codemirror/view";
+import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { search, searchKeymap } from "@codemirror/search";
 
 const surfaceTheme = EditorView.theme({
@@ -68,12 +70,25 @@ const surfaceTheme = EditorView.theme({
 export function TextSurface({
   text,
   lineNumbers: showLineNumbers = true,
+  editable = false,
+  onReady,
+  onChange,
 }: {
   text: string;
   /** Off when the text is two excerpts: numbers between them would be fiction. */
   lineNumbers?: boolean;
+  /** Writable: keystrokes land, and the editor keeps undo history for them. */
+  editable?: boolean;
+  /** The view, for the pane that has to read the document back at save time. */
+  onReady?: (view: EditorView) => void;
+  /** Fires on every document change; the pane decides what that means. */
+  onChange?: (view: EditorView) => void;
 }) {
   const host = useRef<HTMLDivElement | null>(null);
+  const latest = useRef({ onReady, onChange });
+  useEffect(() => {
+    latest.current = { onReady, onChange };
+  });
 
   useEffect(() => {
     const parent = host.current;
@@ -85,19 +100,23 @@ export function TextSurface({
           // `readOnly` and not `EditorView.editable(false)`: both stop the
           // content from changing, but the latter also drops `contenteditable`,
           // which takes focus away from the DOM — and with it the caret, the
-          // selection, copy, and the find panel's key binding. A viewer that
-          // cannot be focused is a picture of an editor.
-          EditorState.readOnly.of(true),
+          // selection, copy, and the find panel's key binding.
+          EditorState.readOnly.of(!editable),
+          ...(editable ? [history(), keymap.of([...defaultKeymap, ...historyKeymap])] : []),
           search(),
           keymap.of(searchKeymap),
           surfaceTheme,
           ...(showLineNumbers ? [lineNumbers()] : []),
+          EditorView.updateListener.of((update: ViewUpdate) => {
+            if (update.docChanged) latest.current.onChange?.(update.view);
+          }),
         ],
       }),
       parent,
     });
+    latest.current.onReady?.(view);
     return () => view.destroy();
-  }, [text, showLineNumbers]);
+  }, [text, showLineNumbers, editable]);
 
   return <div className="text-surface" ref={host} />;
 }
