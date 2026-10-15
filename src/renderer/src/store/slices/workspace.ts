@@ -143,6 +143,13 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       if (remaining.length === tabs.length && keepSelection) return;
       set({ tabs: remaining, selectedSession: keepSelection ? selectedSession : null });
       reconcile();
+      // A gone session's connection has nothing left to serve, and a runtime
+      // takes one SSH connection at a time: a connection nobody can reach is
+      // what a later reconnect would run into.
+      const gone = new Set(
+        tabs.filter((tab) => !existing.has(tab.session)).map((tab) => tab.session),
+      );
+      for (const session of gone) release(session);
     },
   };
 };

@@ -28,6 +28,11 @@ export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> 
       // The list is still shown when it could not be read; the banner says the
       // stale file is what is on screen.
       if (result.error) set({ error: result.error });
+      // Only a list that was actually read knows which sessions exist — a read
+      // that failed would take every live shell down with it. Every refresh
+      // (first paint, sync, stop, create) comes through here, which is what
+      // makes this the place that retires what the list no longer has.
+      else get().pruneTabs();
     } catch (cause) {
       set({ error: api.messageOf(cause) });
     } finally {
