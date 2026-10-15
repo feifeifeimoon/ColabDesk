@@ -11,7 +11,7 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Locator, Page } from "@playwright/test";
-import { expect, openSession, plantDialogAnswer, test } from "./app-launch";
+import { expect, MOD, openSession, plantDialogAnswer, test } from "./app-launch";
 
 function row(page: Page, name: string): Locator {
   return page.locator(".file-row").filter({ hasText: name });
@@ -151,7 +151,7 @@ test("在文件里查找：Ctrl+F 打开面板，命中处自己滚到眼前", a
   await expect(surface(page, "train.log")).toContainText("training begins");
 
   await filePane.locator(".cm-content").click();
-  await page.keyboard.press("Control+f");
+  await page.keyboard.press(`${MOD}+f`);
   await expect(filePane.locator(".cm-textfield")).toBeFocused();
 
   // An ASCII query on purpose: a spec cannot type CJK into a plain input (the
@@ -200,7 +200,7 @@ test("改了就存：未保存的标记、Ctrl+S 写回，重开是远端的新�
   await expect(filePane).toContainText("未保存");
   await expect(fileTab(page, "README.txt").locator(".session-tab__dot")).toHaveCount(1);
 
-  await page.keyboard.press("Control+s");
+  await page.keyboard.press(`${MOD}+s`);
 
   // Wait for the write to land (the button is disabled while it is in flight
   // too), then read the state it left behind.
@@ -216,7 +216,11 @@ test("改了就存：未保存的标记、Ctrl+S 写回，重开是远端的新�
   await expect(surface(page, "README.txt")).toContainText("EDITED");
 });
 
-test("远端先变了：保存不静默覆盖，问到答案才写", async ({ page, sandbox }) => {
+test("远端先变了：保存不静默覆盖，问到答案才写", async ({ app, page, sandbox }) => {
+  // A narrow middle column on purpose: the head has to hold its answers at the
+  // pane's own floor, or they slide under the panel next to them — which is how
+  // this was found (CI's window is narrower than a desktop's).
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setSize(980, 720));
   await openSession(page, "e2e-alpha");
   await rowButton(page, "README.txt").dblclick();
   const filePane = pane(page, "README.txt");
@@ -233,7 +237,7 @@ test("远端先变了：保存不静默覆盖，问到答案才写", async ({ pa
   await expect(row(page, "README.txt")).toContainText("25 B");
 
   await filePane.locator(".cm-content").click();
-  await page.keyboard.press("Control+s");
+  await page.keyboard.press(`${MOD}+s`);
 
   await expect(filePane).toContainText("文件在服务器上已改变");
   await expect(filePane).toContainText("未保存");
@@ -247,7 +251,10 @@ test("远端先变了：保存不静默覆盖，问到答案才写", async ({ pa
   await expect(surface(page, "README.txt")).toContainText("MINE");
 });
 
-test("有未保存的修改时，关标签先问一句；不保存就真的没写", async ({ page }) => {
+test("有未保存的修改时，关标签先问一句；不保存就真的没写", async ({ app, page }) => {
+  // Same narrow column as the conflict case: the guard's three answers have to
+  // be pressable where the pane can be at its floor.
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setSize(980, 720));
   await openSession(page, "e2e-alpha");
   await rowButton(page, "README.txt").dblclick();
   const filePane = pane(page, "README.txt");
@@ -262,7 +269,7 @@ test("有未保存的修改时，关标签先问一句；不保存就真的没�
   await expect(surface(page, "README.txt")).toContainText("XX");
 
   // The keyboard's way of closing asks the same question.
-  await page.keyboard.press("Control+Shift+W");
+  await page.keyboard.press(`${MOD}+Shift+W`);
   await expect(filePane).toContainText("有未保存的修改");
   await filePane.getByRole("button", { name: "不保存" }).click();
 
@@ -281,7 +288,7 @@ test("保存还在路上时继续输入：那些字仍然是未保存的", async
 
   await filePane.locator(".cm-content").click();
   await page.keyboard.type("ONE");
-  await page.keyboard.press("Control+s");
+  await page.keyboard.press(`${MOD}+s`);
   // Typed into the window the write is open for (the mock link is throttled to
   // 8 MB/s, so a 1.7 MB save holds it open for a moment). Whatever the
   // scheduling, the pane must not call this saved: the snapshot it wrote is not
@@ -295,7 +302,7 @@ test("保存还在路上时继续输入：那些字仍然是未保存的", async
   await expect(filePane).toContainText("未保存");
 
   // The second save carries both edits.
-  await page.keyboard.press("Control+s");
+  await page.keyboard.press(`${MOD}+s`);
   await expect(filePane).not.toContainText("未保存");
 });
 

@@ -1351,10 +1351,18 @@ kbd {
   padding: var(--space-3) var(--space-4);
 }
 
-/* One line, and the path gives way instead: a fact that wraps mid-sentence
-   reads as two facts. */
+/* The head is a row of two ends: the path truncates and the facts after it give
+   way before the buttons do — an action pushed past the pane's edge slides
+   under the panel next to it, where nothing can press it. `min-width: 0` is
+   what lets the row shrink into the facts instead of running over. */
+.file-area .pane__actions {
+  min-width: 0;
+}
+
 .file-area__facts {
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* The live region that holds the questions and a failed save. A flex column so

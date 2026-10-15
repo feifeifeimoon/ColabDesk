@@ -175,7 +175,7 @@ describe("file tab", () => {
     const changed = render(TEXT, { dirty: true, pending: { kind: "conflict", reason: "changed" } });
     expect(changed).toContain("文件在服务器上已改变");
     expect(changed).toContain("覆盖");
-    expect(changed).toContain("放弃我的修改并重新加载");
+    expect(changed).toContain("放弃修改并重新加载");
     expect(changed).toContain("未保存");
     // The buffer is what the question is about; losing sight of it is how the
     // three answers stop making sense.

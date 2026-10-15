@@ -398,6 +398,10 @@ export function FileViewPanel({
   const status = [facts, mark].filter(Boolean).join(" · ");
 
   const conflict = pending?.kind === "conflict" ? pending : null;
+  /** A question is up: the copy button steps out of the way so the answers fit
+      in a pane whose column can be at its 360px floor. The facts stay — "● 未保存"
+      is what the question is about — and they shrink first when room runs out. */
+  const asking = closing || conflict !== null || pending?.kind === "confirmReload";
 
   let actions: ReactNode = null;
   if (state.status === "failed") {
@@ -504,13 +508,15 @@ export function FileViewPanel({
           {path}
         </span>
         <span className="pane__actions">
-          {readOnly ? <Badge tone="warn">{t("editor.readOnly", "只读")}</Badge> : null}
-          <span className="hint mono file-area__facts">{status}</span>
-          <CopyButton
-            text={path}
-            label={t("editor.copyPath", "复制路径")}
-            copiedLabel={t("editor.copied", "已复制")}
-          />
+          {!asking && readOnly ? <Badge tone="warn">{t("editor.readOnly", "只读")}</Badge> : null}
+          {status !== "" && <span className="hint mono file-area__facts">{status}</span>}
+          {!asking && (
+            <CopyButton
+              text={path}
+              label={t("editor.copyPath", "复制路径")}
+              copiedLabel={t("editor.copied", "已复制")}
+            />
+          )}
           {actions}
         </span>
       </div>

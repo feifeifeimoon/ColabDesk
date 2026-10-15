@@ -168,7 +168,7 @@
     "conflictBody": "The file changed on the server. Saving would overwrite that version.",
     "conflictMissing": "The file is gone from the server. Saving would create it again.",
     "overwrite": "Overwrite",
-    "discardAndReload": "Discard my edits and reload",
+    "discardAndReload": "Discard edits and reload",
     "closeAsk": "There are unsaved edits.",
     "saveAndClose": "Save and close",
     "overwriteAndClose": "Overwrite and close",

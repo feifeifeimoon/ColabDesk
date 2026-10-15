@@ -17,6 +17,13 @@ import { join } from "node:path";
 /** Playwright runs from where it was invoked; the suite is run from the root. */
 export const projectRoot = process.cwd();
 
+/**
+ * The modifier for the app's own bindings is either one (they accept both), but
+ * CodeMirror's `Mod-*` bindings mean Meta on macOS — a spec that presses
+ * Control there is pressing a key nothing listens to.
+ */
+export const MOD = process.platform === "darwin" ? "Meta" : "Control";
+
 /** Electron needs these on a headless Linux container; they are inert elsewhere. */
 const LINUX_FLAGS = ["--no-sandbox", "--disable-gpu", "--disable-gpu-compositing", "--disable-dev-shm-usage"];
 

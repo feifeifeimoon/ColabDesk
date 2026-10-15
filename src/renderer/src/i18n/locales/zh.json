@@ -168,7 +168,7 @@
     "conflictBody": "文件在服务器上已改变，保存会覆盖那边的版本。",
     "conflictMissing": "文件在服务器上已不存在，保存会重新创建它。",
     "overwrite": "覆盖",
-    "discardAndReload": "放弃我的修改并重新加载",
+    "discardAndReload": "放弃修改并重新加载",
     "closeAsk": "有未保存的修改。",
     "saveAndClose": "保存并关闭",
     "overwriteAndClose": "覆盖并关闭",
