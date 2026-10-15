@@ -25,7 +25,7 @@ import {
   dirNameOf,
   isRegularFile,
   joinRemotePath,
-  nodeAt,
+  statNode,
   promoteStaged,
   removeQuietly,
   stagedName,
@@ -41,6 +41,8 @@ export const BINARY_PROBE = 8 * 1024;
 const MIN_ALIGNED = PREVIEW_CHUNK / 2;
 /** SFTP's own packet size, so the far side never reassembles what it could read. */
 const WRITE_CHUNK = 32 * 1024;
+/** How long a failed save's tidy-up may hold the answer open. */
+const STAGING_SWEEP_MS = 2_000;
 
 function readRange(sftp: SFTPWrapper, path: string, start: number, end: number): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -91,7 +93,7 @@ function tailText(buffer: Buffer): { text: string; bytes: number } {
 }
 
 export async function readTextFile(sftp: SFTPWrapper, path: string): Promise<RemoteTextRead> {
-  const entry = await nodeAt(sftp, path);
+  const entry = await statNode(sftp, path);
   if (!entry) throw new Error(`读取 ${path} 失败：文件不存在。`);
   if (!isRegularFile(entry.mode)) throw new Error(`读取 ${path} 失败：不是常规文件。`);
   const { size, mtime, mode } = entry;
@@ -143,17 +145,32 @@ export async function readTextFile(sftp: SFTPWrapper, path: string): Promise<Rem
 function writeThrough(sftp: SFTPWrapper, target: string, display: string, body: Buffer): Promise<void> {
   return new Promise((resolve, reject) => {
     const fail = (error: Error): void => reject(new Error(`写入 ${display} 失败：${error.message}`));
+    /** Housekeeping that must never hold an answer: ssh2 does not settle the
+        callback of a request it dropped, and a dropped channel is exactly when
+        this runs. */
+    const drop = (handle: Buffer): void => {
+      try {
+        sftp.close(handle, () => {});
+      } catch {
+        // The channel is gone; the handle went with it.
+      }
+    };
     sftp.open(target, "w", (openError, handle) => {
       if (openError) return fail(openError);
       const writeChunk = (offset: number): void => {
         if (offset >= body.length) {
-          sftp.close(handle, (closeError) => (closeError ? fail(closeError) : resolve()));
+          // Every byte was acknowledged one request ago, so the close is not
+          // what makes the data durable — not waiting for it is what keeps a
+          // dead channel from hanging the save.
+          drop(handle);
+          resolve();
           return;
         }
         const chunk = body.subarray(offset, Math.min(offset + WRITE_CHUNK, body.length));
         sftp.write(handle, chunk, 0, chunk.length, offset, (writeError) => {
           if (writeError) {
-            sftp.close(handle, () => fail(writeError));
+            drop(handle);
+            fail(writeError);
             return;
           }
           writeChunk(offset + chunk.length);
@@ -181,7 +198,9 @@ export async function writeTextFile(
 ): Promise<RemoteTextWrite> {
   const { path, text, eol, expected, force = false } = request;
 
-  const entry = await nodeAt(sftp, path);
+  // `statNode`, not `nodeAt`: a failure to *ask* must not arrive downstream as
+  // "the file is gone" — the answer to that is an invitation to overwrite.
+  const entry = await statNode(sftp, path);
   if (entry && !isRegularFile(entry.mode)) throw new Error(`写入 ${path} 失败：不是常规文件。`);
   if (!entry && !force && expected !== null) return { ok: false, reason: "missing" };
   if (entry && !force) {
@@ -203,13 +222,34 @@ export async function writeTextFile(
         sftp.chmod(staged, entry.mode & 0o7777, () => resolve());
       });
     }
-    await promoteStaged(sftp, staged, path);
   } catch (error) {
-    await removeQuietly(sftp, staged);
+    // The cleanup gets a budget and no more: on a dead channel the callback
+    // never comes, and a tidy-up nobody is waiting for is worth less than the
+    // answer. (Same shape as the transfer sweep in `handlers/files`.)
+    await Promise.race([
+      removeQuietly(sftp, staged),
+      new Promise<void>((resolve) => setTimeout(resolve, STAGING_SWEEP_MS)),
+    ]);
     throw error;
   }
 
-  const after = await nodeAt(sftp, path);
-  if (!after) throw new Error(`写入 ${path} 失败：写完后文件不在。`);
-  return { ok: true, size: after.size, mtime: after.mtime };
+  // Read the staged file before promoting it: renaming keeps the inode's times,
+  // so this is what the destination reports afterwards — and it is the baseline
+  // the *next* save compares against. Nothing is asked of the destination after
+  // the promote, where a failure would be reported as a save that never landed.
+  const stagedEntry = await statNode(sftp, staged);
+  try {
+    // From here the staged file may be the only copy of the new text: a failed
+    // promote leaves it alone (`promoteStaged` puts the old file back), rather
+    // than deleting what was just typed.
+    await promoteStaged(sftp, staged, path);
+  } catch (error) {
+    throw new Error(`写入 ${path} 失败：${(error as Error).message}`);
+  }
+
+  return {
+    ok: true,
+    size: stagedEntry?.size ?? body.length,
+    mtime: stagedEntry?.mtime ?? Date.now(),
+  };
 }
