@@ -123,8 +123,6 @@
     "folderNamePlaceholder": "New folder name",
     "create": "Create",
     "cancel": "Cancel",
-    "parentDir": "Parent directory",
-    "loading": "Loading…",
     "empty": "Empty directory",
     "openDir": "Open directory",
     "downloadFile": "Download to local",
@@ -138,7 +136,6 @@
     "transferCanceled": "Cancelled",
     "transferCancel": "Cancel",
     "transferSkipped": "{{count}} skipped",
-    "downloadFolderHint": "Download the whole folder",
     "folderDialogTitle": "Choose where to save",
     "uploadFolderTitle": "Choose a folder to upload",
     "chooseFolder": "Choose folder",
@@ -148,7 +145,11 @@
     "conflictReplace": "Replace",
     "conflictKeepBoth": "Keep both",
     "conflictSkip": "Skip",
-    "dropHint": "Drag files or folders here to upload"
+    "dropHint": "Drag files or folders here to upload",
+    "treeLabel": "Runtime files",
+    "newFolderHere": "New folder in here",
+    "menuLabel": "Actions for {{name}}",
+    "downloadFolder": "Download folder"
   },
   "dialog": {
     "close": "Close"

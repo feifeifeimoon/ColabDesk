@@ -15,16 +15,22 @@ function row(page: import("@playwright/test").Page, name: string) {
   return page.locator(".file-row").filter({ hasText: name });
 }
 
-test("文件面板列出运行时目录，面包屑进子目录", async ({ page }) => {
+/** A row's actions are behind its ⋯ trigger, the way a session row's are. */
+async function openRowMenu(page: import("@playwright/test").Page, name: string): Promise<void> {
+  await row(page, name).getByRole("button", { name: `${name} 的操作` }).click();
+}
+
+test("文件面板列出运行时目录，展开文件夹就地看到里面", async ({ page }) => {
   await openSession(page, "e2e-alpha");
 
   await expect(row(page, "README.txt")).toHaveCount(1);
   await expect(row(page, "model.pt")).toHaveCount(1);
 
-  await row(page, "data").locator(".file-name").click();
+  await row(page, "data").locator(".file-row__row").click();
 
   await expect(row(page, "sample.csv")).toHaveCount(1);
-  await expect(page.locator(".breadcrumb")).toContainText("data");
+  // 展开不换屏：兄弟行还在，层级靠缩进读出来。
+  await expect(row(page, "README.txt")).toHaveCount(1);
 });
 
 test("新建文件夹当场出现在列表里", async ({ page }) => {
@@ -49,20 +55,25 @@ test("删除文件夹要先确认，确认后从列表消失", async ({ page }) 
   await expect(row(page, "e2e-doomed")).toHaveCount(1);
 
   page.on("dialog", (dialog) => void dialog.accept());
-  await row(page, "e2e-doomed").getByRole("button", { name: "删除" }).click();
+  await openRowMenu(page, "e2e-doomed");
+  await page.getByRole("menuitem", { name: "删除" }).click();
 
   await expect(row(page, "e2e-doomed")).toHaveCount(0);
 });
 
-test("文件面板可收起再展开", async ({ page }) => {
+test("文件面板可收起再展开，树还是展开前那样", async ({ page }) => {
   await openSession(page, "e2e-alpha");
   await expect(page.locator(".files-panel")).toBeVisible();
+  await row(page, "data").locator(".file-row__row").click();
+  await expect(row(page, "sample.csv")).toHaveCount(1);
 
   await page.locator('[data-testid="toggle-files"]').click();
-  await expect(page.locator(".files-panel")).toHaveCount(0);
+  // 收起是藏起来，不是把树折回去——展开状态与读过的目录都留着。
+  await expect(page.locator(".files-panel")).toBeHidden();
 
   await page.locator('[data-testid="toggle-files"]').click();
   await expect(page.locator(".files-panel")).toBeVisible();
+  await expect(row(page, "sample.csv")).toHaveCount(1);
 });
 
 test("删除符号链接只删链接，它指向的目录还在", async ({ page }) => {
@@ -70,13 +81,14 @@ test("删除符号链接只删链接，它指向的目录还在", async ({ page 
   await expect(row(page, "mirror")).toHaveCount(1);
 
   page.on("dialog", (dialog) => void dialog.accept());
-  await row(page, "mirror").getByRole("button", { name: "删除" }).click();
+  await openRowMenu(page, "mirror");
+  await page.getByRole("menuitem", { name: "删除" }).click();
   await expect(row(page, "mirror")).toHaveCount(0);
 
   // The link is gone and its target is untouched — the whole reason delete
   // asks `lstat` rather than `stat`.
   await expect(row(page, "data")).toHaveCount(1);
-  await row(page, "data").locator(".file-name").click();
+  await row(page, "data").locator(".file-row__row").click();
   await expect(row(page, "sample.csv")).toHaveCount(1);
 });
 
@@ -146,9 +158,9 @@ test("上传文件夹会连子目录一起传，行里报文件的进度", async
   await expect(page.locator(".transfer")).toContainText("e2e-project (2/2)");
   await expect(page.locator(".transfer__state")).toHaveText("完成");
 
-  await row(page, "e2e-project").locator(".file-name").click();
+  await row(page, "e2e-project").locator(".file-row__row").click();
   await expect(row(page, "main.py")).toHaveCount(1);
-  await row(page, "sub").locator(".file-name").click();
+  await row(page, "sub").locator(".file-row__row").click();
   await expect(row(page, "helper.py")).toHaveCount(1);
 });
 
@@ -158,7 +170,8 @@ test("下载文件夹落到选定目录，中间没有残留的分片", async ({
   plantDialogAnswer(sandbox, "openDirectory", [target]);
 
   await openSession(page, "e2e-alpha");
-  await row(page, "data").getByRole("button", { name: "下载" }).click();
+  await openRowMenu(page, "data");
+  await page.getByRole("menuitem", { name: "下载文件夹" }).click();
   await expect(page.locator(".transfer__state")).toHaveText("完成");
 
   // The point of the download: a complete file at the chosen place, and no

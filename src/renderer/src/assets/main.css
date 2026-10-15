@@ -813,6 +813,11 @@ kbd {
   flex-shrink: 1;
   position: relative;
   border-left: 1px solid var(--hairline);
+  /* Collapsing hides the panel; `display` beats the `hidden` attribute, so the
+     parked state needs saying out loud, as it does for a terminal pane. */
+  &[hidden] {
+    display: none;
+  }
   background: var(--canvas);
   display: flex;
   flex-direction: column;
@@ -2306,11 +2311,73 @@ textarea.input {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
+  /* Row height is the click target, and the floor the density rule sets: a
+     directory of forty files reads as a list, not as forty buttons. */
+  min-height: 28px;
+  /* The row's own left padding is the tree's indent, written per row. */
+  padding: 0 var(--space-3) 0 0;
 }
 
-.file-row + .file-row {
-  border-top: 1px solid var(--hairline);
+/* The row itself is one button — the whole line is the target, as in any file
+   manager — and it carries the tree's keyboard focus. */
+.file-row__row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: none;
+  border: none;
+  padding: var(--space-1) 0;
+  text-align: left;
+  font: inherit;
+  font-size: var(--text-copy);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* The twisty keeps its column whether or not it draws: names line up across
+   folders and files, which is the point of the indent. */
+.file-row__twisty {
+  width: 12px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mute);
+  transition: transform 120ms ease;
+}
+
+/* An open folder's chevron points down, which is the whole twisty. */
+.file-row__chevron--open {
+  transform: rotate(90deg);
+}
+
+/* Icons are one quiet column: the name is what the eye should land on. */
+.file-row__icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  color: var(--mute);
+}
+
+.file-row:hover .file-row__icon,
+.file-row--focused .file-row__icon {
+  color: var(--ink);
+}
+
+/* The row the keyboard is on, marked the way the rail marks its selection:
+   one background, no second accent invented for the tree. */
+.file-row--focused {
+  background: var(--muted);
+}
+
+/* No rule between rows: a directory of forty files drawn with forty hairlines
+   reads as a table, which is not the shape of a folder. Depth comes from the
+   indent and from where the previous row left off — the rail's rows are drawn
+   the same way. */
+.file-row:hover {
+  background: var(--canvas-soft);
 }
 
 .file-row:hover {
