@@ -19,7 +19,21 @@ interface RuntimeDirectory {
   mtime: number;
 }
 
-export type RuntimeNode = RuntimeFile | RuntimeDirectory;
+/**
+ * A symbolic link, which the runtime side has and the app must not follow by
+ * accident: the file pane shows it as a link, `ls`/`cd` walk through it, and
+ * deleting it removes the link rather than what it points at.
+ */
+interface RuntimeLink {
+  kind: "link";
+  target: string;
+  mtime: number;
+}
+
+export type RuntimeNode = RuntimeFile | RuntimeDirectory | RuntimeLink;
+
+/** How many links a single lookup will follow before giving up. */
+const MAX_LINK_HOPS = 8;
 
 /** Where the app lands a fresh shell (`cd /content`). */
 export const RUNTIME_HOME = "/content";
@@ -72,14 +86,26 @@ export class RuntimeFilesystem {
     const data: RuntimeDirectory = { kind: "dir", entries: new Map(), mtime: now };
     data.entries.set("sample.csv", { kind: "file", content: Buffer.from("x,y\n1,2\n"), mtime: now });
     content.entries.set("data", data);
+
+    // A link to that directory, so a listing has a link in it and deleting one
+    // can be told apart from deleting what it points at.
+    content.entries.set("mirror", { kind: "link", target: "/content/data", mtime: now });
+  }
+
+  /** The entry as stored, without following anything. */
+  lstat(path: string, cwd = "/"): RuntimeNode | null {
+    const target = normalizePath(path, cwd);
+    if (target === "/") return this.root;
+    const parent = this.directory(parentOf(target) ?? "/");
+    return parent?.entries.get(baseName(target)) ?? null;
   }
 
   node(path: string, cwd = "/"): RuntimeNode | null {
-    const target = normalizePath(path, cwd);
-    if (target === "/") return this.root;
-
-    const parent = this.directory(parentOf(target) ?? "/");
-    return parent?.entries.get(baseName(target)) ?? null;
+    let current = this.lstat(path, cwd);
+    for (let hop = 0; current?.kind === "link" && hop < MAX_LINK_HOPS; hop += 1) {
+      current = this.lstat(current.target);
+    }
+    return current;
   }
 
   directory(path: string, cwd = "/"): RuntimeDirectory | null {
@@ -107,6 +133,24 @@ export class RuntimeFilesystem {
     const parent = this.directory(parentOf(target) ?? "/");
     if (!parent) return false;
     return parent.entries.delete(baseName(target));
+  }
+
+  /**
+   * Moves an entry inside its parent, refusing to replace what is already
+   * there — the semantics of a plain SFTP rename, and the reason the app has a
+   * fallback for the destination that does exist.
+   */
+  rename(from: string, to: string, cwd = "/"): "ok" | "missing" | "exists" | "missing-parent" {
+    const source = this.lstat(from, cwd);
+    if (!source) return "missing";
+    if (this.lstat(to, cwd)) return "exists";
+
+    const target = normalizePath(to, cwd);
+    const parent = this.directory(parentOf(target) ?? "/");
+    if (!parent) return "missing-parent";
+    parent.entries.set(baseName(target), source);
+    this.remove(from, cwd);
+    return "ok";
   }
 
   /** Creates a file (or truncates one) and returns it, for SFTP `OPEN`. */

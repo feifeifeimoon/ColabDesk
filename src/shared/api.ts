@@ -10,11 +10,13 @@ import type {
   CommandReport,
   EnvStatus,
   RemoteEntry,
+  RemotePathState,
   Session,
   SshSetup,
   SshState,
   TransferProgress,
   UpdateStatus,
+  UploadRequest,
   UsageReport,
   UsageTrend,
 } from "./types";
@@ -34,12 +36,6 @@ export interface CreateSessionOptions {
   tpu: string | null;
   name: string | null;
   highMem: boolean;
-}
-
-export interface TransferTargets {
-  session: string;
-  localPaths: string[];
-  remoteDir: string;
 }
 
 /** Every method is an `ipcRenderer.invoke`; every `on*` returns an unsubscribe. */
@@ -86,11 +82,16 @@ export interface ColabDeskApi {
   onTerminalClosed(listener: (payload: { channelId: number; session: string }) => void): () => void;
 
   listDirectory(session: string, path: string): Promise<RemoteEntry[]>;
+  /** Which of these remote paths already exist, so a conflict can be asked about. */
+  statPaths(session: string, paths: string[]): Promise<RemotePathState[]>;
   makeDirectory(session: string, path: string): Promise<void>;
   deletePath(session: string, path: string): Promise<void>;
   /**
    * Transfers. `title` is the native dialog's own caption, written by the
    * renderer: it is UI copy, and the main process has no catalog.
+   *
+   * A transfer that starts and then fails reports itself on its own row rather
+   * than by rejecting; a rejection here means it never got that far.
    */
   download(
     session: string,
@@ -98,8 +99,17 @@ export interface ColabDeskApi {
     name: string,
     title: string,
   ): Promise<{ canceled: boolean; path?: string }>;
-  upload(targets: TransferTargets): Promise<void>;
+  downloadFolder(
+    session: string,
+    remote: string,
+    name: string,
+    title: string,
+  ): Promise<{ canceled: boolean; path?: string }>;
+  upload(targets: UploadRequest): Promise<void>;
+  /** Stops a transfer by row id; its row reports the cancellation. */
+  cancelTransfer(id: string): Promise<void>;
   pickUploadTargets(title: string): Promise<string[]>;
+  pickUploadFolder(title: string): Promise<string[]>;
   onTransferProgress(listener: (payload: TransferProgress) => void): () => void;
 
   /** Drag-and-drop paths: modern Electron no longer exposes `File.path`. */

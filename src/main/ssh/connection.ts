@@ -91,8 +91,6 @@ export class ColabSshConnection extends EventEmitter {
   private ws: WebSocket | null = null;
   private sock: Duplex | null = null;
   private client: Client | null = null;
-  private sftpWrapper: SFTPWrapper | null = null;
-  private sftpPending: Promise<SFTPWrapper> | null = null;
   private shells = new Map<number, ClientChannel>();
   private nextShellId = 1;
   private identity: Identity | null = null;
@@ -290,28 +288,18 @@ export class ColabSshConnection extends EventEmitter {
     }
   }
 
-  /** One SFTP subsystem per connection, created on first use. */
-  async sftp(): Promise<SFTPWrapper> {
-    if (this.sftpWrapper) return this.sftpWrapper;
-    if (this.sftpPending) return this.sftpPending;
-
+  /**
+   * A fresh SFTP subsystem, one per operation.
+   *
+   * Sharing a single channel would be cheaper, but cancelling a transfer means
+   * closing its channel — and a shared one would take every other listing and
+   * transfer down with it. Callers close what they opened.
+   */
+  openSftp(): Promise<SFTPWrapper> {
     const client = this.requireClient();
-    this.sftpPending = new Promise<SFTPWrapper>((resolve, reject) => {
-      client.sftp((error, wrapper) => {
-        if (error) {
-          this.sftpPending = null;
-          reject(error);
-          return;
-        }
-        this.sftpWrapper = wrapper;
-        wrapper.on("close", () => {
-          this.sftpWrapper = null;
-          this.sftpPending = null;
-        });
-        resolve(wrapper);
-      });
+    return new Promise<SFTPWrapper>((resolve, reject) => {
+      client.sftp((error, wrapper) => (error ? reject(error) : resolve(wrapper)));
     });
-    return this.sftpPending;
   }
 
   get identityPath(): string | null {
@@ -344,8 +332,6 @@ export class ColabSshConnection extends EventEmitter {
       this.shells.delete(id);
       this.emit("exit", id);
     }
-    this.sftpWrapper = null;
-    this.sftpPending = null;
     this.sock?.destroy();
     this.sock = null;
     this.setStatus(hadError ? "error" : "closed", hadError ? this.error : reason);

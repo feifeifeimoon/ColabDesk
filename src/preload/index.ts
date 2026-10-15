@@ -45,11 +45,16 @@ const api: ColabDeskApi = {
   onTerminalClosed: (listener) => subscribe(EVENTS.sshClosed, listener),
 
   listDirectory: (session, path) => invoke(IPC.sftpList, { session, path }),
+  statPaths: (session, paths) => invoke(IPC.sftpStat, { session, paths }),
   makeDirectory: (session, path) => invoke(IPC.sftpMkdir, { session, path }),
   deletePath: (session, path) => invoke(IPC.sftpDelete, { session, path }),
   download: (session, remote, name, title) => invoke(IPC.sftpDownload, { session, remote, name, title }),
+  downloadFolder: (session, remote, name, title) =>
+    invoke(IPC.sftpDownloadFolder, { session, remote, name, title }),
   upload: (targets) => invoke(IPC.sftpUpload, targets),
+  cancelTransfer: (id) => invoke(IPC.sftpCancel, id),
   pickUploadTargets: (title) => invoke(IPC.pickUploadTargets, { title }),
+  pickUploadFolder: (title) => invoke(IPC.pickUploadFolder, { title }),
   onTransferProgress: (listener) => subscribe(EVENTS.transferProgress, listener),
 
   pathForFile: (file) => webUtils.getPathForFile(file),

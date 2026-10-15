@@ -131,7 +131,20 @@
     "deleteConfirm": "Delete {{name}}{{extra}}? This action cannot be undone.",
     "deleteConfirmDir": " (entire directory)",
     "transferDone": "Done",
-    "dropHint": "Drag files here to upload"
+    "transferCanceled": "Cancelled",
+    "transferCancel": "Cancel",
+    "transferSkipped": "{{count}} skipped",
+    "downloadFolderHint": "Download the whole folder",
+    "folderDialogTitle": "Choose where to save",
+    "uploadFolderTitle": "Choose a folder to upload",
+    "chooseFolder": "Choose folder",
+    "conflictTitle": "That name is taken",
+    "conflictBody": "{{list}} is already in this directory.",
+    "conflictHint": "Your choice applies to every file in this upload.",
+    "conflictReplace": "Replace",
+    "conflictKeepBoth": "Keep both",
+    "conflictSkip": "Skip",
+    "dropHint": "Drag files or folders here to upload"
   },
   "dialog": {
     "close": "Close"

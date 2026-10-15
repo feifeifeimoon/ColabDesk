@@ -2214,9 +2214,15 @@ textarea.input {
 
 /* ---------- feature: files ---------- */
 
-.file-pane.drag-over {
+.files-panel.drag-over {
   border-color: var(--link);
   box-shadow: var(--shadow-3);
+}
+
+/* The directory row a drop would land in: same emphasis, on the row itself. */
+.file-row--drop {
+  background: var(--canvas-soft-2);
+  box-shadow: inset 0 0 0 1px var(--link);
 }
 
 .breadcrumb {

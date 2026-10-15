@@ -18,6 +18,11 @@ export function joinPath(base: string, name: string): string {
   return `${base.replace(/\/$/, "")}/${name}`;
 }
 
+/** The last segment of a local path, whichever separator the machine writes. */
+export function localName(path: string): string {
+  return path.split(/[\\/]/).pop() ?? path;
+}
+
 export function parentPath(path: string): string {
   const trimmed = path.replace(/\/$/, "");
   const index = trimmed.lastIndexOf("/");
