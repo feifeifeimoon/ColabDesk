@@ -8,7 +8,7 @@
  * the pane and the gestures that reach it.
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Locator, Page } from "@playwright/test";
 import { expect, openSession, plantDialogAnswer, test } from "./app-launch";
@@ -186,4 +186,98 @@ test("不是 UTF-8 的文件能读，但只说能看", async ({ page }) => {
   await expect(filePane).toContainText("只读");
   await expect(surface(page, "legacy.txt")).toBeVisible();
   await expect(filePane.getByRole("button", { name: "保存" })).toHaveCount(0);
+});
+
+test("改了就存：未保存的标记、Ctrl+S 写回，重开是远端的新内容", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await rowButton(page, "README.txt").dblclick();
+  const filePane = pane(page, "README.txt");
+  await expect(surface(page, "README.txt")).toContainText("ColabDesk E2E runtime.");
+
+  await filePane.locator(".cm-content").click();
+  await page.keyboard.type("EDITED");
+
+  await expect(filePane).toContainText("未保存");
+  await expect(fileTab(page, "README.txt").locator(".session-tab__dot")).toHaveCount(1);
+
+  await page.keyboard.press("Control+s");
+
+  await expect(filePane.locator('[data-testid="save-file"]')).toBeDisabled();
+  await expect(filePane).not.toContainText("未保存");
+  await expect(fileTab(page, "README.txt").locator(".session-tab__dot")).toHaveCount(0);
+  // The tree shows what the runtime has now: six more bytes than the fixture.
+  await expect(row(page, "README.txt")).toContainText("51 B");
+
+  // A round trip, not a buffer: close the tab and open the file again.
+  await page.getByRole("button", { name: "关闭 README.txt" }).click();
+  await rowButton(page, "README.txt").dblclick();
+  await expect(surface(page, "README.txt")).toContainText("EDITED");
+});
+
+test("远端先变了：保存不静默覆盖，问到答案才写", async ({ page, sandbox }) => {
+  await openSession(page, "e2e-alpha");
+  await rowButton(page, "README.txt").dblclick();
+  const filePane = pane(page, "README.txt");
+  await filePane.locator(".cm-content").click();
+  await page.keyboard.type("MINE");
+  await expect(filePane).toContainText("未保存");
+
+  // Someone else writes the file — the upload path is the one the app has.
+  const replacement = join(sandbox, "README.txt");
+  writeFileSync(replacement, "REPLACED BY SOMEONE ELSE\n");
+  plantDialogAnswer(sandbox, "open", [replacement]);
+  await page.getByRole("button", { name: "上传" }).click();
+  await page.locator(".dialog").getByRole("button", { name: "替换" }).click();
+  await expect(row(page, "README.txt")).toContainText("25 B");
+
+  await filePane.locator(".cm-content").click();
+  await page.keyboard.press("Control+s");
+
+  await expect(filePane).toContainText("文件在服务器上已改变");
+  await expect(filePane).toContainText("未保存");
+  await filePane.getByRole("button", { name: "覆盖" }).click();
+
+  await expect(filePane.locator('[data-testid="save-file"]')).toBeDisabled();
+  await expect(filePane).not.toContainText("文件在服务器上已改变");
+  // The copy that won is the one the person chose.
+  await page.getByRole("button", { name: "关闭 README.txt" }).click();
+  await rowButton(page, "README.txt").dblclick();
+  await expect(surface(page, "README.txt")).toContainText("MINE");
+});
+
+test("有未保存的修改时，关标签先问一句；不保存就真的没写", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await rowButton(page, "README.txt").dblclick();
+  const filePane = pane(page, "README.txt");
+  await filePane.locator(".cm-content").click();
+  await page.keyboard.type("XX");
+  await expect(filePane).toContainText("未保存");
+
+  await page.getByRole("button", { name: "关闭 README.txt" }).click();
+  await expect(filePane).toContainText("有未保存的修改");
+  await filePane.getByRole("button", { name: "取消" }).click();
+  await expect(fileTab(page, "README.txt")).toBeVisible();
+  await expect(surface(page, "README.txt")).toContainText("XX");
+
+  // The keyboard's way of closing asks the same question.
+  await page.keyboard.press("Control+Shift+W");
+  await expect(filePane).toContainText("有未保存的修改");
+  await filePane.getByRole("button", { name: "不保存" }).click();
+
+  await expect(fileTab(page, "README.txt")).toHaveCount(0);
+  // Nothing was written: the runtime still has the fixture's own text.
+  await rowButton(page, "README.txt").dblclick();
+  await expect(surface(page, "README.txt")).toContainText("ColabDesk E2E runtime.");
+  await expect(surface(page, "README.txt")).not.toContainText("XX");
+});
+
+test("不可写的文件：说明白，也不给保存", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await rowButton(page, "locked.cfg").dblclick();
+
+  const filePane = pane(page, "locked.cfg");
+  await expect(filePane).toContainText("只读");
+  await expect(filePane).toContainText("这个文件不可写");
+  await expect(filePane.locator('[data-testid="save-file"]')).toHaveCount(0);
+  await expect(surface(page, "locked.cfg")).toContainText("seed=1");
 });
