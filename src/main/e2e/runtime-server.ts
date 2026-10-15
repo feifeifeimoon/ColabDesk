@@ -341,18 +341,34 @@ interface FileHandle {
  * be read. Serving bytes at a rate instead of at memory speed is what makes one
  * observable. 8 MB/s is slow enough to click into and fast enough that no spec
  * waits on it.
+ *
+ * One timer for the whole queue, not one per request: hundreds of pending
+ * timers starve the very process that hosts this fake (the app's main process),
+ * and a starved main process cannot answer the cancel the test is trying to
+ * click — measured, not feared.
  */
 const BYTES_PER_SECOND = 8 * 1024 * 1024;
 
-/** Books a rate-limited slot for `bytes`; earlier requests hold the line. */
 function makeBandwidth() {
   let freeAt = 0;
-  return async (bytes: number): Promise<void> => {
+  let timer: NodeJS.Timeout | null = null;
+  const queue: { at: number; release: () => void }[] = [];
+
+  const pump = (): void => {
+    timer = null;
     const now = Date.now();
-    const start = Math.max(now, freeAt);
-    freeAt = start + (bytes / BYTES_PER_SECOND) * 1000;
-    const wait = start - now;
-    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+    while (queue.length > 0 && queue[0].at <= now) queue.shift()?.release();
+    if (queue.length > 0) timer = setTimeout(pump, Math.max(1, queue[0].at - Date.now()));
+  };
+
+  return (bytes: number): Promise<void> => {
+    const now = Date.now();
+    const at = Math.max(now, freeAt);
+    freeAt = at + (bytes / BYTES_PER_SECOND) * 1000;
+    return new Promise((resolve) => {
+      queue.push({ at, release: resolve });
+      if (timer === null) timer = setTimeout(pump, Math.max(1, at - now));
+    });
   };
 }
 
@@ -382,7 +398,7 @@ function attachSftp(sftp: SFTPWrapper, filesystem: RuntimeFilesystem): void {
     mode: node.kind === "dir" ? DIRECTORY_MODE : node.kind === "link" ? LINK_MODE : FILE_MODE,
     uid: 0,
     gid: 0,
-    size: node.kind === "file" ? node.content.length : node.kind === "link" ? node.target.length : 0,
+    size: node.kind === "file" ? node.length : node.kind === "link" ? node.target.length : 0,
     atime: node.mtime,
     mtime: node.mtime,
   });
@@ -392,7 +408,7 @@ function attachSftp(sftp: SFTPWrapper, filesystem: RuntimeFilesystem): void {
       return `lrwxrwxrwx 1 root root ${node.target.length} ${name} -> ${node.target}`;
     }
     const permissions = node.kind === "dir" ? "drwxr-xr-x" : "-rw-r--r--";
-    const size = node.kind === "file" ? node.content.length : 4096;
+    const size = node.kind === "file" ? node.length : 4096;
     return `${permissions} 1 root root ${size} ${name}`;
   };
 
@@ -459,7 +475,10 @@ function attachSftp(sftp: SFTPWrapper, filesystem: RuntimeFilesystem): void {
     if (flags & OPEN_MODE.WRITE || flags & OPEN_MODE.APPEND) {
       const node = existing ?? filesystem.create(filename, RUNTIME_HOME);
       if (!node || node.kind !== "file") return failed(reqid);
-      if (flags & OPEN_MODE.TRUNC) node.content = Buffer.alloc(0);
+      if (flags & OPEN_MODE.TRUNC) {
+        node.content = Buffer.alloc(0);
+        node.length = 0;
+      }
       return sftp.handle(reqid, keep({ kind: "file", node }));
     }
 
@@ -469,9 +488,9 @@ function attachSftp(sftp: SFTPWrapper, filesystem: RuntimeFilesystem): void {
   sftp.on("READ", async (reqid: number, handle: Buffer, offset: number, length: number) => {
     const entry = held(handle);
     if (entry?.kind !== "file") return failed(reqid);
-    const { content } = entry.node;
-    if (offset >= content.length) return sftp.status(reqid, STATUS_CODE.EOF);
-    const slice = content.subarray(offset, Math.min(offset + length, content.length));
+    const { node } = entry;
+    if (offset >= node.length) return sftp.status(reqid, STATUS_CODE.EOF);
+    const slice = node.content.subarray(offset, Math.min(offset + length, node.length));
     await bandwidth(slice.length);
     respond(() => sftp.data(reqid, slice));
   });
@@ -481,11 +500,16 @@ function attachSftp(sftp: SFTPWrapper, filesystem: RuntimeFilesystem): void {
     if (entry?.kind !== "file") return failed(reqid);
     await bandwidth(data.length);
     const { node } = entry;
-    // `fastPut` writes chunks at arbitrary offsets, so the file grows to fit.
+    // `fastPut` writes chunks at arbitrary offsets, so the file grows to fit —
+    // doubling the allocation, because growing it exactly would turn an 8 MB
+    // upload into a gigabyte of copying through the app's own main process.
     if (offset + data.length > node.content.length) {
-      node.content = Buffer.concat([node.content, Buffer.alloc(offset + data.length - node.content.length)]);
+      const grown = Buffer.alloc(Math.max(offset + data.length, Math.max(node.content.length * 2, 64 * 1024)));
+      node.content.copy(grown);
+      node.content = grown;
     }
     data.copy(node.content, offset);
+    node.length = Math.max(node.length, offset + data.length);
     node.mtime = Math.floor(Date.now() / 1000);
     respond(() => sftp.status(reqid, STATUS_CODE.OK));
   });

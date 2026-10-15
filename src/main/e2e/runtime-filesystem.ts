@@ -9,7 +9,10 @@
 
 interface RuntimeFile {
   kind: "file";
+  /** The buffer may be a larger allocation than the file: see `length`. */
   content: Buffer;
+  /** The file's size. `content.length` is capacity, which an upload doubles. */
+  length: number;
   mtime: number;
 }
 
@@ -76,15 +79,23 @@ export class RuntimeFilesystem {
   private seed(): void {
     const content = this.ensureDirectory(RUNTIME_HOME);
     const now = SECONDS();
+    const readme = "ColabDesk E2E runtime.\nNothing here is real.\n";
     content.entries.set("README.txt", {
       kind: "file",
-      content: Buffer.from("ColabDesk E2E runtime.\nNothing here is real.\n"),
+      content: Buffer.from(readme),
+      length: Buffer.byteLength(readme),
       mtime: now,
     });
-    content.entries.set("model.pt", { kind: "file", content: Buffer.alloc(2048, 7), mtime: now });
+    content.entries.set("model.pt", { kind: "file", content: Buffer.alloc(2048, 7), length: 2048, mtime: now });
 
     const data: RuntimeDirectory = { kind: "dir", entries: new Map(), mtime: now };
-    data.entries.set("sample.csv", { kind: "file", content: Buffer.from("x,y\n1,2\n"), mtime: now });
+    const csv = "x,y\n1,2\n";
+    data.entries.set("sample.csv", {
+      kind: "file",
+      content: Buffer.from(csv),
+      length: Buffer.byteLength(csv),
+      mtime: now,
+    });
     content.entries.set("data", data);
 
     // A link to that directory, so a listing has a link in it and deleting one
@@ -162,7 +173,7 @@ export class RuntimeFilesystem {
 
     const parent = this.directory(parentOf(target) ?? "/");
     if (!parent) return null;
-    const created: RuntimeFile = { kind: "file", content: Buffer.alloc(0), mtime: SECONDS() };
+    const created: RuntimeFile = { kind: "file", content: Buffer.alloc(0), length: 0, mtime: SECONDS() };
     parent.entries.set(baseName(target), created);
     return created;
   }

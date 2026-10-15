@@ -136,6 +136,8 @@ export function registerFileHandlers({ ssh }: IpcContext): void {
     let outcome: TransferOutcome = { error: null, skipped: 0 };
     let failure: string | null = null;
     let canceled = false;
+    /** Set when the row has been told how it ended; nothing may reopen it. */
+    let settled = false;
     let tally: TransferTally = { transferred: 0, total: 0, filesDone: 0, filesTotal: 0 };
     emitRow(row, tally, {});
 
@@ -143,6 +145,11 @@ export function registerFileHandlers({ ssh }: IpcContext): void {
       sftp,
       { ...job, direction, signal: abort.signal, onStaged: (path) => staged.push(path) },
       (next) => {
+        // A cancelled transfer keeps ticking for a moment — the read or write
+        // already in flight has to land somewhere — and one of those late
+        // readouts would otherwise reopen a row that has already ended, leaving
+        // it in flight for good.
+        if (settled) return;
         tally = next;
         emitRow(row, next, {});
       },
@@ -169,6 +176,7 @@ export function registerFileHandlers({ ssh }: IpcContext): void {
       // Settled before the cleanup, never after it: what the row says must not
       // depend on a tidy-up finishing, and a cancelled transfer still has to
       // report itself.
+      settled = true;
       emitRow(row, tally, {
         done: true,
         canceled,
