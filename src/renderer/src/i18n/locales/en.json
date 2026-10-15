@@ -123,7 +123,6 @@
     "folderNamePlaceholder": "New folder name",
     "create": "Create",
     "cancel": "Cancel",
-    "parentDir": "Parent directory",
     "loading": "Loading…",
     "empty": "Empty directory",
     "openDir": "Open directory",
@@ -148,7 +147,9 @@
     "conflictReplace": "Replace",
     "conflictKeepBoth": "Keep both",
     "conflictSkip": "Skip",
-    "dropHint": "Drag files or folders here to upload"
+    "dropHint": "Drag files or folders here to upload",
+    "treeLabel": "Runtime files",
+    "newFolderHere": "New folder in here"
   },
   "dialog": {
     "close": "Close"

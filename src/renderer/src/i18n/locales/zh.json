@@ -123,7 +123,6 @@
     "folderNamePlaceholder": "新文件夹名称",
     "create": "创建",
     "cancel": "取消",
-    "parentDir": "返回上级",
     "loading": "读取中…",
     "empty": "当前目录为空",
     "openDir": "进入目录",
@@ -148,7 +147,9 @@
     "conflictReplace": "替换",
     "conflictKeepBoth": "两个都留",
     "conflictSkip": "跳过",
-    "dropHint": "拖拽文件或文件夹至此处上传"
+    "dropHint": "拖拽文件或文件夹至此处上传",
+    "treeLabel": "运行时文件",
+    "newFolderHere": "在此新建"
   },
   "dialog": {
     "close": "关闭"

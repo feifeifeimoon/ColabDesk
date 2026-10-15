@@ -39,7 +39,9 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
   /** Lets go of a connection: the session's last shell closed. */
   function release(session: string): void {
     set((current) => ({
-      remotePaths: dropKey(current.remotePaths, session),
+      // The tree goes with the connection: an expanded set describes listings
+      // that no longer exist, and reopening them would show a wrong tree.
+      expandedDirs: dropKey(current.expandedDirs, session),
       transferCounts: dropKey(current.transferCounts, session),
     }));
     // A runtime accepts one SSH connection, so holding it is what having a
@@ -52,7 +54,7 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
     selectedSession: null,
     activeTabId: null,
     connections: {},
-    remotePaths: {},
+    expandedDirs: {},
     transferCounts: {},
 
     openSession: (session) => {
@@ -104,14 +106,27 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
     setConnection: (state) =>
       set((current) => ({ connections: { ...current.connections, [state.session]: state } })),
 
-    // A pane reports on mount, so an unchanged value must not produce a write:
-    // re-rendering the tree that just mounted it is how a report becomes a loop.
-    setRemotePath: (session, path) =>
-      set((current) =>
-        current.remotePaths[session] === path
-          ? current
-          : { remotePaths: { ...current.remotePaths, [session]: path } },
-      ),
+    /**
+     * The tree is ordered by the store, not by the click: a parent always sorts
+     * before its children, which is what lets the pane walk the list and know
+     * where it is without keeping a second copy of the hierarchy.
+     */
+    toggleDirectory: (session, path) =>
+      set((current) => {
+        const expanded = current.expandedDirs[session] ?? [];
+        const next = expanded.includes(path)
+          ? expanded.filter((entry) => entry !== path && !entry.startsWith(`${path}/`))
+          : [...expanded, path].sort();
+        return { expandedDirs: { ...current.expandedDirs, [session]: next } };
+      }),
+
+    forgetDirectory: (session, path) =>
+      set((current) => {
+        const expanded = current.expandedDirs[session] ?? [];
+        const next = expanded.filter((entry) => entry !== path && !entry.startsWith(`${path}/`));
+        if (next.length === expanded.length) return current;
+        return { expandedDirs: { ...current.expandedDirs, [session]: next } };
+      }),
 
     setTransferCount: (session, active) =>
       set((current) =>

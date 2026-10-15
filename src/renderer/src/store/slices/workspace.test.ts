@@ -92,7 +92,7 @@ describe("closing shells", () => {
     store.getState().openTab("alpha");
     store.setState({
       connections: { alpha: { session: "alpha", status: "ready", error: null } },
-      remotePaths: { alpha: "/content/data" },
+      expandedDirs: { alpha: ["/content/data"] },
       transferCounts: { alpha: 2 },
     });
     const [first] = store.getState().tabs;
@@ -101,21 +101,21 @@ describe("closing shells", () => {
 
     expect(sshDisconnect).not.toHaveBeenCalled();
     expect(store.getState().tabs).toHaveLength(1);
-    expect(store.getState().remotePaths.alpha).toBe("/content/data");
+    expect(store.getState().expandedDirs.alpha).toEqual(["/content/data"]);
     expect(store.getState().activeTabId).toBe(store.getState().tabs[0]!.id);
   });
 
   it("releases the connection with the last shell, and drops what was reported", () => {
     const store = workspaceStore();
     store.getState().openTab("alpha");
-    store.setState({ remotePaths: { alpha: "/content/data" }, transferCounts: { alpha: 2 } });
+    store.setState({ expandedDirs: { alpha: ["/content/data"] }, transferCounts: { alpha: 2 } });
     const [only] = store.getState().tabs;
 
     store.getState().closeTab(only!.id);
 
     expect(store.getState().tabs).toHaveLength(0);
     expect(store.getState().activeTabId).toBeNull();
-    expect(store.getState().remotePaths.alpha).toBeUndefined();
+    expect(store.getState().expandedDirs.alpha).toBeUndefined();
     expect(store.getState().transferCounts.alpha).toBeUndefined();
     expect(sshDisconnect).toHaveBeenCalledWith("alpha");
   });
@@ -146,18 +146,39 @@ describe("closing shells", () => {
   });
 });
 
-describe("per-session reporting", () => {
-  it("an unchanged path is not a write", () => {
+describe("the file tree's shape", () => {
+  it("opens a directory, and closes it again", () => {
     const store = workspaceStore();
-    store.getState().setRemotePath("alpha", "/content");
 
-    const listener = vi.fn();
-    const unsubscribe = store.subscribe(listener);
-    store.getState().setRemotePath("alpha", "/content");
-    unsubscribe();
+    store.getState().toggleDirectory("alpha", "/content/data");
+    expect(store.getState().expandedDirs.alpha).toEqual(["/content/data"]);
 
-    expect(listener).not.toHaveBeenCalled();
-    expect(store.getState().remotePaths.alpha).toBe("/content");
+    store.getState().toggleDirectory("alpha", "/content/data");
+    expect(store.getState().expandedDirs.alpha).toEqual([]);
+  });
+
+  it("closing a folder closes everything under it", () => {
+    const store = workspaceStore();
+    store.getState().toggleDirectory("alpha", "/content");
+    store.getState().toggleDirectory("alpha", "/content/data");
+    store.getState().toggleDirectory("alpha", "/content/data/deep");
+
+    store.getState().toggleDirectory("alpha", "/content");
+
+    // A parent that is closed cannot have an open child: the child's row is not
+    // on screen, and reopening the parent must not resurrect it.
+    expect(store.getState().expandedDirs.alpha).toEqual([]);
+  });
+
+  it("forgetting a folder takes its subtree with it", () => {
+    const store = workspaceStore();
+    store.getState().toggleDirectory("alpha", "/content/data");
+    store.getState().toggleDirectory("alpha", "/content/data/deep");
+    store.getState().toggleDirectory("alpha", "/content/other");
+
+    store.getState().forgetDirectory("alpha", "/content/data");
+
+    expect(store.getState().expandedDirs.alpha).toEqual(["/content/other"]);
   });
 
   it("a changed count is a write", () => {
