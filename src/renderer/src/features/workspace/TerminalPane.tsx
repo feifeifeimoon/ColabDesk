@@ -19,13 +19,8 @@ import {
   writeClipboard,
   writeTerminal,
 } from "../../lib/api";
-import {
-  applyTerminalAppearance,
-  changesGrid,
-  fontStackFor,
-  isLightPalette,
-  type TerminalThemeId,
-} from "../../lib/terminal-appearance";
+import { applyTerminalAppearance, changesGrid, fontStackFor, isLightPalette, type TerminalThemeId } from "../../lib/terminal-appearance";
+import { answerColorQueries } from "../../lib/terminal-color-reply";
 import { readTerminalPalette } from "../../lib/terminal-theme";
 import { useAppStore } from "../../store";
 import { Button } from "../../components/ui/Button";
@@ -245,6 +240,11 @@ export function TerminalPane({
     fitRef.current = fit;
     searchRef.current = search;
     applied.current = opening;
+    // `bat`, `delta`, `eza` and friends ask which background they are drawing on;
+    // xterm has nobody to answer, so a light palette would get dark-assuming
+    // output. The reply goes out through `onData` below, i.e. the same path a
+    // keystroke takes, so it lands on this pane's channel and no other.
+    const colorReply = answerColorQueries(terminal);
     if (latest.current.active) {
       try {
         fit.fit();
@@ -356,6 +356,7 @@ export function TerminalPane({
       host.removeEventListener("contextmenu", onContextMenu);
       window.removeEventListener("keydown", onMacCopy);
       if (ackTimer.current !== null) window.clearTimeout(ackTimer.current);
+      colorReply.dispose();
       terminal.dispose();
       terminalRef.current = null;
       fitRef.current = null;

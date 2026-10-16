@@ -314,3 +314,39 @@ test("关闭按钮是个看得见的控件：24px 热区、悬停有底、激活
   );
   expect(await css(active, "color")).toBe(tokenColor(await token(page, "--ink")));
 });
+
+/**
+ * The remote asks what the terminal is drawing on — the way `bat`, `delta` and
+ * `eza` do — and the answer has to travel back: out of xterm, through the SSH
+ * channel, into the program's input. Both polarities, because the whole reason
+ * this reply exists is that a light palette must not be reported as a dark one.
+ */
+test("远端问底色，终端回话：深浅两套调色板各答一次", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await waitForPrompts(page, 1);
+
+  // Pin the polarity: the default is "follow the system", and the runner's
+  // desktop is not this test's business.
+  await page.locator('[data-testid="open-settings"]').click();
+  await page.getByRole("button", { name: "外观" }).click();
+  await page.locator('[data-testid="theme-choice-dark"]').click();
+  await page.locator('[data-testid="close-settings"]').click();
+
+  await focusTerminal(page);
+  await page.keyboard.type("bg");
+  await page.keyboard.press("Enter");
+  // Titanium's #0a0a0a, four hex digits to a channel.
+  await expect(terminalRows(page)).toContainText("bg-reply 0a0a/0a0a/0a0a");
+
+  // A light app follows into Catppuccin Latte, so the next question gets that
+  // answer instead — read live, not at connection time.
+  await page.locator('[data-testid="open-settings"]').click();
+  await page.getByRole("button", { name: "外观" }).click();
+  await page.locator('[data-testid="theme-choice-light"]').click();
+  await page.locator('[data-testid="close-settings"]').click();
+
+  await focusTerminal(page);
+  await page.keyboard.type("bg");
+  await page.keyboard.press("Enter");
+  await expect(terminalRows(page)).toContainText("bg-reply efef/f1f1/f5f5");
+});
