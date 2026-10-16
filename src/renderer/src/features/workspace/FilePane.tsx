@@ -19,7 +19,7 @@ import { Dialog } from "../../app-shell/AppShell";
 import { PanelDivider } from "../../components/ui/PanelDivider";
 import { ProgressBar } from "../../components/ui/ProgressBar";
 import { PANEL_WIDTH } from "../../lib/panel-width";
-import { childPath, isDirectoryRow, projectRows, type Listing } from "./file-tree";
+import { childPath, isDirectoryRow, projectRows, type Listing, type Row } from "./file-tree";
 import { makeRequestTokens } from "./request-tokens";
 import { useAppStore } from "../../store";
 
@@ -82,6 +82,7 @@ export function FilePane({
   const expanded = useAppStore((state) => state.expandedDirs[session]);
   const toggleDirectory = useAppStore((state) => state.toggleDirectory);
   const forgetDirectory = useAppStore((state) => state.forgetDirectory);
+  const openFileTab = useAppStore((state) => state.openFileTab);
   const width = useAppStore((state) => state.panelWidths.files);
   const setPanelWidth = useAppStore((state) => state.setPanelWidth);
   const panelRef = useRef<HTMLElement | null>(null);
@@ -173,6 +174,19 @@ export function FilePane({
     for (const path of missing) void load(path);
   }, [visible, open, listings, load]);
 
+  /**
+   * A save in a file tab writes to the runtime behind this tree's back, and the
+   * one thing the tree shows about a file is its size. The store carries the
+   * directory the write landed in; re-reading that one listing is enough.
+   */
+  const fileWrite = useAppStore((state) => state.fileWrites[session]);
+  const lastWrite = useRef(0);
+  useEffect(() => {
+    if (!fileWrite || fileWrite.revision === lastWrite.current) return;
+    lastWrite.current = fileWrite.revision;
+    void load(fileWrite.dir);
+  }, [fileWrite, load]);
+
   useEffect(() => {
     return api.onTransferProgress((progress) => {
       setTransfers((current) => {
@@ -211,6 +225,31 @@ export function FilePane({
     setFocused(path);
     const element = treeRef.current?.querySelector<HTMLElement>(`[data-path="${CSS.escape(path)}"]`);
     element?.focus();
+  }
+
+  /**
+   * One click selects, two open.
+   *
+   * Clicking a file no longer downloads it: the second click of a
+   * double-click arrives with `detail === 2` and is the one that opens the
+   * file as a tab, while the first (`detail === 1`) has to stay quiet —
+   * otherwise a native save dialog would open under the tab the user meant.
+   * Keyboard activation arrives as `detail === 0` and counts as the whole
+   * gesture, which is what makes `Enter` on a row work.
+   *
+   * A folder is the other way round: its first click already toggled, so the
+   * second click of a file-manager double-click is swallowed rather than
+   * toggling it back shut.
+   */
+  function activateRow(event: React.MouseEvent, row: Row, isDir: boolean): void {
+    if (isDir) {
+      if (event.detail === 2) return;
+      if (row.open && row.path !== TREE_ROOT) toggle(row.path);
+      else loadThenOpen(row.path);
+      return;
+    }
+    if (event.detail === 1 || !row.entry) return;
+    openFileTab(session, row.path, row.entry.name);
   }
 
   /** Arrow keys over the drawn rows, which is the whole of the tree's keyboard. */
@@ -529,15 +568,9 @@ export function FilePane({
                   aria-busy={listing?.loading ? true : undefined}
                   data-path={row.path}
                   tabIndex={focused === row.path || (focused === null && isRoot) ? 0 : -1}
-                  title={isDir ? t("files.openDir", "进入目录") : t("files.downloadFile", "下载到本地")}
+                  title={isDir ? t("files.openDir", "进入目录") : t("files.openFile", "双击打开")}
                   onFocus={() => setFocused(row.path)}
-                  onClick={() =>
-                    isDir
-                      ? row.open && !isRoot
-                        ? toggle(row.path)
-                        : loadThenOpen(row.path)
-                      : void download(row.entry!, row.path)
-                  }
+                  onClick={(event) => activateRow(event, row, isDir)}
                 >
                   <span className={`file-row__twisty ${isDir && !isRoot ? "" : "file-row__twisty--empty"}`} aria-hidden="true">
                     {isDir && !isRoot ? (
@@ -573,6 +606,14 @@ export function FilePane({
                   <Menu
                     label={t("files.menuLabel", "{{name}} 的操作", { name: isRoot ? TREE_ROOT : row.name })}
                     items={[
+                      ...(row.entry?.type === "file"
+                        ? [
+                            {
+                              label: t("files.open", "打开"),
+                              onSelect: () => openFileTab(session, row.path, row.entry!.name),
+                            },
+                          ]
+                        : []),
                       ...(isDir
                         ? [
                             {

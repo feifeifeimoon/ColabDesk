@@ -8,12 +8,25 @@ function dropKey<T>(record: Record<string, T>, key: string): Record<string, T> {
   return rest;
 }
 
+/** The dirty flags that still belong to a tab that exists. */
+function liveDirty(dirty: Record<string, boolean>, tabs: { id: string }[]): Record<string, boolean> {
+  const live = new Set(tabs.map((tab) => tab.id));
+  const kept: Record<string, boolean> = {};
+  for (const [id, value] of Object.entries(dirty)) if (live.has(id)) kept[id] = value;
+  return kept;
+}
+
 export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice> = (set, get) => {
+  /** Bumped by every save, so a tree can tell two writes to one directory apart. */
+  let writeRevision = 0;
+
   /** One more shell for a session, numbered after the highest it has. */
   function addTab(session: string): TerminalTab {
-    const existing = get().tabs.filter((tab) => tab.session === session);
+    const existing = get().tabs.filter(
+      (tab): tab is TerminalTab => tab.session === session && tab.kind === "shell",
+    );
     const ordinal = existing.reduce((highest, tab) => Math.max(highest, tab.ordinal), 0) + 1;
-    const tab: TerminalTab = { id: `${session}:${ordinal}`, session, ordinal };
+    const tab: TerminalTab = { kind: "shell", id: `${session}:${ordinal}`, session, ordinal };
     set({ tabs: [...get().tabs, tab], selectedSession: session, activeTabId: tab.id });
     return tab;
   }
@@ -36,13 +49,17 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
     set({ activeTabId: active });
   }
 
-  /** Lets go of a connection: the session's last shell closed. */
+  /** Lets go of a connection: the session's last tab closed. A file tab needs
+      the connection too, so it counts. */
   function release(session: string): void {
     set((current) => ({
       // The tree goes with the connection: an expanded set describes listings
       // that no longer exist, and reopening them would show a wrong tree.
       expandedDirs: dropKey(current.expandedDirs, session),
       transferCounts: dropKey(current.transferCounts, session),
+      // So does the record of where a save landed: a leftover would make the
+      // next mount re-read a directory nobody opened.
+      fileWrites: dropKey(current.fileWrites, session),
     }));
     // A runtime accepts one SSH connection, so holding it is what having a
     // shell means. The status stream reports the closure itself.
@@ -56,6 +73,9 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
     connections: {},
     expandedDirs: {},
     transferCounts: {},
+    dirtyTabs: {},
+    pendingCloseTabId: null,
+    fileWrites: {},
 
     openSession: (session) => {
       const siblings = get().tabs.filter((tab) => tab.session === session);
@@ -70,12 +90,37 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       set({ settingsOpen: false });
     },
 
+    openFileTab: (session, path, name) => {
+      const id = `${session}:file:${path}`;
+      const existing = get().tabs.some((tab) => tab.id === id);
+      if (existing) {
+        set({ selectedSession: session, activeTabId: id });
+      } else {
+        set({
+          tabs: [
+            ...get().tabs,
+            { kind: "file", id, session, path, name },
+          ],
+          selectedSession: session,
+          activeTabId: id,
+        });
+      }
+      // Asking for a file is asking for the workbench, wherever you asked from.
+      set({ settingsOpen: false });
+    },
+
     closeTab: (tabId) => {
-      const { tabs } = get();
+      const { tabs, dirtyTabs, pendingCloseTabId } = get();
       const closing = tabs.find((tab) => tab.id === tabId);
       if (!closing) return;
       const remaining = tabs.filter((tab) => tab.id !== tabId);
-      set({ tabs: remaining });
+      set({
+        tabs: remaining,
+        // The buffer goes with the tab: a flag for a tab that is gone would
+        // outlive the thing it described.
+        dirtyTabs: dropKey(dirtyTabs, tabId),
+        ...(pendingCloseTabId === tabId ? { pendingCloseTabId: null } : {}),
+      });
       reconcile();
       if (!remaining.some((tab) => tab.session === closing.session)) release(closing.session);
     },
@@ -89,12 +134,50 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
     },
 
     closeSessionTabs: (session) => {
-      const remaining = get().tabs.filter((tab) => tab.session !== session);
-      if (remaining.length === get().tabs.length) return;
-      set({ tabs: remaining });
+      const { tabs, dirtyTabs, pendingCloseTabId } = get();
+      const remaining = tabs.filter((tab) => tab.session !== session);
+      if (remaining.length === tabs.length) return;
+      const pending = remaining.some((tab) => tab.id === pendingCloseTabId) ? pendingCloseTabId : null;
+      set({ tabs: remaining, dirtyTabs: liveDirty(dirtyTabs, remaining), pendingCloseTabId: pending });
       reconcile();
       release(session);
     },
+
+    setTabDirty: (tabId, dirty) =>
+      set((current) =>
+        // A keystroke must not be a store write: the pane reports on the way in
+        // and on the way out of being dirty, not on every character.
+        (current.dirtyTabs[tabId] ?? false) === dirty
+          ? current
+          : { dirtyTabs: { ...current.dirtyTabs, [tabId]: dirty } },
+      ),
+
+    requestCloseTab: (tabId) => {
+      const { tabs, dirtyTabs } = get();
+      const target = tabs.find((tab) => tab.id === tabId);
+      if (!target) return;
+      if (!dirtyTabs[tabId]) {
+        get().closeTab(tabId);
+        return;
+      }
+      // The question belongs to the pane that owns the buffer, so bring that
+      // pane to the front first — a parked tab would be asked nothing anybody
+      // could see. Leaving settings is part of the same move: the question is
+      // raised in the workbench, and the workbench is what has to be on screen.
+      set({
+        selectedSession: target.session,
+        activeTabId: tabId,
+        pendingCloseTabId: tabId,
+        settingsOpen: false,
+      });
+    },
+
+    cancelPendingClose: () => set({ pendingCloseTabId: null }),
+
+    noteFileWrite: (session, dir) =>
+      set((current) => ({
+        fileWrites: { ...current.fileWrites, [session]: { dir, revision: ++writeRevision } },
+      })),
 
     focusTabAt: (index) => {
       const target = get()
@@ -136,12 +219,18 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       ),
 
     pruneTabs: () => {
-      const { tabs, sessions, selectedSession } = get();
+      const { tabs, sessions, selectedSession, dirtyTabs, pendingCloseTabId } = get();
       const existing = new Set(sessions.map((session) => session.name));
       const remaining = tabs.filter((tab) => existing.has(tab.session));
       const keepSelection = selectedSession !== null && existing.has(selectedSession);
       if (remaining.length === tabs.length && keepSelection) return;
-      set({ tabs: remaining, selectedSession: keepSelection ? selectedSession : null });
+      const pending = remaining.some((tab) => tab.id === pendingCloseTabId) ? pendingCloseTabId : null;
+      set({
+        tabs: remaining,
+        dirtyTabs: liveDirty(dirtyTabs, remaining),
+        pendingCloseTabId: pending,
+        selectedSession: keepSelection ? selectedSession : null,
+      });
       reconcile();
       // A gone session's connection has nothing left to serve, and a runtime
       // takes one SSH connection at a time: a connection nobody can reach is

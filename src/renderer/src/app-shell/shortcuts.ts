@@ -42,7 +42,8 @@ export function useAppShortcuts(): void {
       } else if (event.code === "KeyW") {
         event.preventDefault();
         event.stopPropagation();
-        if (store.activeTabId) store.closeTab(store.activeTabId);
+        // Closing a tab with unsaved edits is a question, not an action.
+        if (store.activeTabId) store.requestCloseTab(store.activeTabId);
       } else if (event.code === "KeyB") {
         event.preventDefault();
         event.stopPropagation();

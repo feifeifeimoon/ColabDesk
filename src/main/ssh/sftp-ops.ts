@@ -22,6 +22,9 @@ import type { RemoteEntry } from "@shared/types";
 const S_IFMT = 0o170000;
 const S_IFDIR = 0o040000;
 const S_IFLNK = 0o120000;
+const S_IFREG = 0o100000;
+/** SSH_FX_NO_SUCH_FILE, the one lstat answer that is an answer. */
+const SSH_FX_NO_SUCH_FILE = 2;
 
 export type RemoteNodeType = RemoteEntry["type"];
 
@@ -30,6 +33,15 @@ function typeOf(mode: number): RemoteNodeType {
   if (kind === S_IFDIR) return "dir";
   if (kind === S_IFLNK) return "link";
   return "file";
+}
+
+/**
+ * Whether the mode describes an ordinary file. `typeOf` answers a coarser
+ * question — for the tree, a FIFO or a device is something you can download —
+ * but reading one to edit is a different claim, and `S_IFREG` is what it needs.
+ */
+export function isRegularFile(mode: number): boolean {
+  return (mode & S_IFMT) === S_IFREG;
 }
 
 /** Remote paths are always forward-slashed, whatever this machine is. */
@@ -61,7 +73,7 @@ function segmentsOf(path: string): string[] {
 }
 
 /** A staging name in the destination's own directory, so promoting is a rename. */
-function stagedName(base: string): string {
+export function stagedName(base: string): string {
   return `.${base}.part-${randomBytes(4).toString("hex")}`;
 }
 
@@ -105,14 +117,33 @@ export function listDirectory(sftp: SFTPWrapper, path: string): Promise<RemoteEn
 
 /**
  * What the path is, without resolving a link to say so: `null` when nothing is
- * there. Every caller that would otherwise reach for `stat` uses this.
+ * there, and a rejection when the question could not be asked.
+ *
+ * The distinction matters to a writer and not to a reader: a listing can live
+ * with "nothing there" for a dropped connection, but calling a transport
+ * failure "the file is gone" would invite the user to overwrite a file that
+ * never went away.
  */
-export function nodeAt(sftp: SFTPWrapper, path: string): Promise<RemoteEntry | null> {
-  return new Promise((resolve) => {
+export function statNode(sftp: SFTPWrapper, path: string): Promise<RemoteEntry | null> {
+  return new Promise((resolve, reject) => {
     sftp.lstat(path, (error, attrs) => {
-      resolve(error ? null : entryOf(baseNameOf(path), attrs));
+      if (error) {
+        // ssh2 puts the SFTP status number on the error's `code`.
+        if ((error as { code?: number }).code === SSH_FX_NO_SUCH_FILE) return resolve(null);
+        reject(new Error(`读取 ${path} 失败：${error.message}`));
+        return;
+      }
+      resolve(attrs ? entryOf(baseNameOf(path), attrs) : null);
     });
   });
+}
+
+/**
+ * The same question with every failure answering "nothing there". Every caller
+ * that would otherwise reach for `stat` uses this one.
+ */
+export function nodeAt(sftp: SFTPWrapper, path: string): Promise<RemoteEntry | null> {
+  return statNode(sftp, path).catch(() => null);
 }
 
 /** True when the path exists (file, directory or link). */
@@ -204,9 +235,12 @@ export function renamePath(sftp: SFTPWrapper, from: string, to: string): Promise
  *
  * Plain SFTP rename refuses to replace an existing file, and the extension that
  * does replace one (`posix-rename@openssh.com`) is not something every server
- * offers — so the extension is tried first and the destination is removed only
- * when it is unavailable. That second path is briefly non-atomic; the first is
- * the reason it is not the default.
+ * offers — so the extension is tried first, and the fallback **never deletes
+ * anything it cannot put back**: the destination is renamed aside, the staged
+ * file is renamed in, and only then is the aside copy dropped. If that middle
+ * rename fails, the old file is put back and the staged file is left where it
+ * is — by then it may be the only copy of what was just written, and deleting
+ * it would leave nothing at all.
  */
 export async function promoteStaged(
   sftp: SFTPWrapper,
@@ -224,8 +258,26 @@ export async function promoteStaged(
   });
   if (renamed) return;
 
-  await removeQuietly(sftp, destination);
-  await renamePath(sftp, staged, destination);
+  const aside = joinRemotePath(dirNameOf(destination), stagedName(`${baseNameOf(destination)}.old`));
+  // No destination to move aside (the file is being created), or a server that
+  // will not let it be moved: either way the rename below is what has to work,
+  // and a plain rename onto an existing file fails loudly rather than clobbering.
+  const setAside = await renamePath(sftp, destination, aside).then(
+    () => true,
+    () => false,
+  );
+  try {
+    await renamePath(sftp, staged, destination);
+  } catch (error) {
+    if (setAside) {
+      await renamePath(sftp, aside, destination).catch(() => {
+        // Best effort, and the caller's error is the news; the aside copy is
+        // still on the far side under its staging name.
+      });
+    }
+    throw error;
+  }
+  if (setAside) await removeQuietly(sftp, aside);
 }
 
 export type ProgressCallback = (transferred: number, total: number) => void;

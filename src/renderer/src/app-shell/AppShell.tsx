@@ -47,8 +47,11 @@ export function TopBar() {
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
   const toggleFiles = useAppStore((state) => state.toggleFiles);
   const openTab = useAppStore((state) => state.openTab);
-  const closeTab = useAppStore((state) => state.closeTab);
+  // Closing a tab is a request, not an action: a file tab with unsaved edits
+  // gets asked about first (see the workspace slice).
+  const requestCloseTab = useAppStore((state) => state.requestCloseTab);
   const focusTab = useAppStore((state) => state.focusTab);
+  const dirtyTabs = useAppStore((state) => state.dirtyTabs);
 
   // The strip is the selected session's workspace, so it shows that session's
   // shells and nothing else. Memoised rather than selected: a selector that
@@ -100,6 +103,8 @@ export function TopBar() {
       <div className="topbar__tabs" role="tablist">
         {sessionTabs.map((tab) => {
           const onScreen = tab.id === activeTabId && !settingsOpen;
+          const label =
+            tab.kind === "file" ? tab.name : t("topbar.terminalTab", "终端 {{index}}", { index: tab.ordinal });
           return (
             <div
               key={tab.id}
@@ -107,24 +112,35 @@ export function TopBar() {
               aria-selected={onScreen}
               className={`session-tab ${onScreen ? "session-tab--active" : ""}`}
               onMouseDown={(event) => {
-                // Middle click closes, like every terminal emulator.
+                // Middle click closes, like every terminal emulator does — and
+                // like the × does: a file tab with unsaved edits is a question.
                 if (event.button === 1) {
                   event.preventDefault();
-                  closeTab(tab.id);
+                  requestCloseTab(tab.id);
                 } else if (event.button === 0) {
                   focusTab(tab.id);
                 }
               }}
             >
-              <span className="truncate">{t("topbar.terminalTab", "终端 {{index}}", { index: tab.ordinal })}</span>
+              {/* The path is the tooltip for a file: the strip truncates the name,
+                  and where the file lives is the thing a name cannot say. A dot
+                  says "not on the runtime yet" — the pane puts it in words. */}
+              <span className="truncate" title={tab.kind === "file" ? tab.path : undefined}>
+                {dirtyTabs[tab.id] ? <span className="session-tab__dot" aria-hidden="true" /> : null}
+                {label}
+              </span>
               <button
                 type="button"
                 className="session-tab__close"
-                aria-label={t("topbar.terminalClose", "关闭终端 {{index}}", { index: tab.ordinal })}
-                title={t("topbar.terminalCloseTitle", "关闭终端")}
+                aria-label={
+                  tab.kind === "file"
+                    ? t("topbar.fileTabClose", "关闭 {{name}}", { name: tab.name })
+                    : t("topbar.terminalClose", "关闭终端 {{index}}", { index: tab.ordinal })
+                }
+                title={tab.kind === "file" ? t("topbar.fileTabCloseTitle", "关闭文件") : t("topbar.terminalCloseTitle", "关闭终端")}
                 onClick={(event) => {
                   event.stopPropagation();
-                  closeTab(tab.id);
+                  requestCloseTab(tab.id);
                 }}
               >
                 <CloseIcon />
@@ -299,7 +315,9 @@ export function StatusBar() {
   const balance = usage?.usage.balance ?? null;
   const rate = usage?.usage.rate ?? 0;
   const assignments = usage?.usage.assignments ?? 0;
-  const terminalCount = tabs.length;
+  // Shells only: a file tab is a tab, but it is not a terminal, and this
+  // readout has always meant "how many shells are open".
+  const terminalCount = tabs.filter((tab) => tab.kind === "shell").length;
 
   const ratio = computeBalanceRatio(balance);
   const meterTone = balanceMeterTone(ratio);
@@ -489,7 +507,7 @@ export function StatusBar() {
   );
 }
 
-/** Centered modal for a form that is genuinely a detour — the create-session one. */
+/** Centered modal for a surface that is genuinely a detour — a form, a question. */
 export function Dialog({
   title,
   onClose,
@@ -517,7 +535,7 @@ export function Dialog({
           </IconButton>
         </header>
         <div className="dialog__body">{children}</div>
-        {footer ? <footer className="dialog__head">{footer}</footer> : null}
+        {footer ? <footer className="dialog__footer">{footer}</footer> : null}
       </div>
     </div>
   );

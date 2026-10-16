@@ -14,6 +14,11 @@ interface RuntimeFile {
   /** The file's size. `content.length` is capacity, which an upload doubles. */
   length: number;
   mtime: number;
+  /**
+   * Raw POSIX mode when the seed cares (a read-only fixture, a save restoring
+   * what it found); `FILE_MODE` stands in otherwise.
+   */
+  mode?: number;
 }
 
 interface RuntimeDirectory {
@@ -87,6 +92,51 @@ export class RuntimeFilesystem {
       mtime: now,
     });
     content.entries.set("model.pt", { kind: "file", content: Buffer.alloc(2048, 7), length: 2048, mtime: now });
+
+    // The three verdicts the text preview can reach beyond plain text: a file
+    // too large to send whole, one that is not text at all, and one that is
+    // text in some other encoding.
+    const logLine = "2026-01-01 12:00:00 [INFO] step 0000 loss=0.1234\n";
+    const log = Buffer.from(
+      `2026-01-01 00:00:00 [INFO] training begins\n${logLine.repeat(60_000)}2026-01-01 23:59:59 [INFO] training done\n`,
+    );
+    content.entries.set("train.log", { kind: "file", content: log, length: log.length, mtime: now });
+    content.entries.set("blob.bin", {
+      kind: "file",
+      content: Buffer.alloc(4096, 0),
+      length: 4096,
+      mtime: now,
+    });
+    const legacy = Buffer.from([0xc3, 0x28, 0x0a, 0xc3, 0x28]);
+    content.entries.set("legacy.txt", {
+      kind: "file",
+      content: legacy,
+      length: legacy.length,
+      mtime: now,
+    });
+
+    // Big enough that a save takes long enough for a keystroke to land inside
+    // it — the e2e link is throttled to 8 MB/s — and small enough to stay
+    // editable (the preview cap is 2 MiB).
+    const big = "the quick brown fox jumps over the lazy dog\n".repeat(40_000);
+    const bigBuffer = Buffer.from(big);
+    content.entries.set("big.txt", {
+      kind: "file",
+      content: bigBuffer,
+      length: bigBuffer.length,
+      mtime: now,
+    });
+
+    // Not writable by its mode: the preview has to say so rather than offer a
+    // save the server would refuse.
+    const locked = "seed=1\n";
+    content.entries.set("locked.cfg", {
+      kind: "file",
+      content: Buffer.from(locked),
+      length: Buffer.byteLength(locked),
+      mtime: now,
+      mode: 0o100444,
+    });
 
     const data: RuntimeDirectory = { kind: "dir", entries: new Map(), mtime: now };
     const csv = "x,y\n1,2\n";

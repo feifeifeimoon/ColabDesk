@@ -18,6 +18,10 @@
     "package:mac": "npm run bundle:cli && npm run build && electron-builder --config config/electron-builder.config.cjs --mac --publish never"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/search": "^6.7.2",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.14",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-search": "^0.16.0",
     "@xterm/addon-unicode11": "^0.9.0",

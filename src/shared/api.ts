@@ -11,6 +11,8 @@ import type {
   EnvStatus,
   RemoteEntry,
   RemotePathState,
+  RemoteTextRead,
+  RemoteTextWrite,
   Session,
   SshSetup,
   SshState,
@@ -19,6 +21,7 @@ import type {
   UploadRequest,
   UsageReport,
   UsageTrend,
+  WriteTextRequest,
 } from "./types";
 
 export interface SessionList {
@@ -92,6 +95,19 @@ export interface ColabDeskApi {
   listDirectory(session: string, path: string): Promise<RemoteEntry[]>;
   /** Which of these remote paths already exist, so a conflict can be asked about. */
   statPaths(session: string, paths: string[]): Promise<RemotePathState[]>;
+  /**
+   * A remote file as text, for the preview: the whole file when it is small
+   * enough to be worth reading, its two ends when it is not, and a verdict
+   * (`binary` / `invalidUtf8`) when it is not text at all.
+   */
+  readTextFile(session: string, path: string): Promise<RemoteTextRead>;
+  /**
+   * Writes a file's text back through a staging file beside it.
+   *
+   * Resolves with `{ ok: false }` when the file changed underneath: that is a
+   * completed request carrying a question, not a failure.
+   */
+  writeTextFile(request: WriteTextRequest): Promise<RemoteTextWrite>;
   makeDirectory(session: string, path: string): Promise<void>;
   deletePath(session: string, path: string): Promise<void>;
   /**

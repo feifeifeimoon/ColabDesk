@@ -158,6 +158,59 @@ export interface RemotePathState {
   type: RemoteEntry["type"];
 }
 
+/** How a text file ends its lines, as a fact about the file — not a preference. */
+export type EolStyle = "lf" | "crlf" | "mixed";
+
+/**
+ * A remote file read as text, in the shapes the preview can act on.
+ *
+ * `size` is bytes and `mtime` is milliseconds — the unit `RemoteEntry` already
+ * uses. The SFTP protocol itself reports seconds, so anything that compares a
+ * protocol mtime against one of these has to multiply first.
+ */
+export type RemoteTextRead =
+  | { kind: "text"; text: string; eol: EolStyle; size: number; mtime: number; mode: number }
+  | { kind: "invalidUtf8"; text: string; size: number; mtime: number; mode: number }
+  /** Too large to send whole: the two ends, cut at line boundaries. */
+  | {
+      kind: "truncated";
+      head: string;
+      tail: string;
+      /** Bytes between the two ends — what the preview is not showing. */
+      omitted: number;
+      size: number;
+      mtime: number;
+      mode: number;
+    }
+  | { kind: "binary"; size: number };
+
+/**
+ * One write of a file's text, and the baseline it was read at.
+ *
+ * `expected` is what the read returned. A save that finds different numbers on
+ * the far side has a decision to make, and `force` is how the user's answer
+ * travels — resolution belongs to the person, not to the app.
+ */
+export interface WriteTextRequest {
+  session: string;
+  path: string;
+  text: string;
+  /** How the file ended its lines when it was read; the buffer is LF. */
+  eol: EolStyle;
+  /** mtime (milliseconds) and size (bytes) as read; null when there was no file. */
+  expected: { mtime: number; size: number } | null;
+  /** Writes even when `expected` no longer matches — the user chose to. */
+  force?: boolean;
+}
+
+/**
+ * How a write ended. `ok: false` is a completed request carrying a question —
+ * the file moved on (or disappeared) — not a failure.
+ */
+export type RemoteTextWrite =
+  | { ok: true; size: number; mtime: number }
+  | { ok: false; reason: "changed" | "missing" };
+
 export interface TransferProgress {
   id: string;
   session: string;

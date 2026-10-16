@@ -13,6 +13,12 @@ async function loadRail(get: () => AppState): Promise<void> {
   await Promise.all([get().loadSessions(), get().loadUntracked()]);
 }
 
+/** Whether this session has a file tab holding edits the runtime does not have. */
+function hasUnsavedEdits(get: () => AppState, session: string): boolean {
+  const { tabs, dirtyTabs } = get();
+  return tabs.some((tab) => tab.session === session && dirtyTabs[tab.id] === true);
+}
+
 export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> = (set, get) => ({
   sessions: [],
   sessionsLoading: true,
@@ -85,6 +91,17 @@ export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> 
       return;
     }
     if (action === "close-all") {
+      // Closing every tab is how the session's connection is let go — and a
+      // file tab can be holding edits. Asked once, the way stopping asks:
+      // nothing else in this app can lose work without a question.
+      if (
+        hasUnsavedEdits(get, name) &&
+        !globalThis.confirm?.(
+          translate("sessions.closeAllConfirm", `「${name}」有未保存的文件修改，全部关闭会丢失它们。`, { name }),
+        )
+      ) {
+        return;
+      }
       get().closeSessionTabs(name);
       return;
     }
@@ -97,8 +114,12 @@ export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> 
       return;
     }
     // Outside a window there is nobody to ask, so the answer is no.
-    if (action === "stop" && !globalThis.confirm?.(translate("sessions.stopConfirm", `停止会话「${name}」？未保存的运行时数据会丢失。`, { name }))) {
-      return;
+    if (action === "stop") {
+      const unsaved = hasUnsavedEdits(get, name);
+      const question = unsaved
+        ? translate("sessions.stopConfirmDirty", `停止会话「${name}」？未保存的运行时数据与文件修改都会丢失。`, { name })
+        : translate("sessions.stopConfirm", `停止会话「${name}」？未保存的运行时数据会丢失。`, { name });
+      if (!globalThis.confirm?.(question)) return;
     }
 
     set({ busyAction: `${name}:${action}` });

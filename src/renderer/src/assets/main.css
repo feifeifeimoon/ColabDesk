@@ -640,6 +640,19 @@ kbd {
   border-bottom-color: var(--primary);
 }
 
+/* "Not on the runtime yet": the pane says it in words, the strip says it where
+   the tab is. A dot and not a colour — it survives grayscale, like every other
+   state in this system. */
+.session-tab__dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--warning);
+  vertical-align: middle;
+}
+
 /* The new-tab affordance belongs at the end of the tab run, like every browser
    and editor. */
 .session-tab--add {
@@ -1279,13 +1292,23 @@ kbd {
   overflow: hidden;
 }
 
-.dialog__head {
+.dialog__head,
+.dialog__footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
+}
+
+.dialog__head {
   border-bottom: 1px solid var(--hairline);
+}
+
+/* The footer shares the head's row; the line it draws belongs between the body
+   and the actions, which is why it is a top border and not a bottom one. */
+.dialog__footer {
+  border-top: 1px solid var(--hairline);
 }
 
 .dialog__title {
@@ -1302,6 +1325,60 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+/* The file tab: a pane like the terminal's, in the middle column. Hiding is
+   explicit for the same reason it is there — a parked tab keeps its read. */
+.file-area[hidden] {
+  display: none;
+}
+
+.file-area {
+  flex: 1;
+  min-width: 360px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--canvas);
+}
+
+.file-area__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+
+/* The head is a row of two ends: the path truncates and the facts after it give
+   way before the buttons do — an action pushed past the pane's edge slides
+   under the panel next to it, where nothing can press it. `min-width: 0` is
+   what lets the row shrink into the facts instead of running over. */
+.file-area .pane__actions {
+  min-width: 0;
+}
+
+.file-area__facts {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The live region that holds the questions and a failed save. A flex column so
+   it keeps the body's own rhythm when two of them are up at once. */
+.file-area__status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.file-area .text-surface {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
 }
 
 /* ---- settings: a page over the workbench ----

@@ -35,6 +35,10 @@ function workspaceStore() {
 /** Only the name matters to the tab bookkeeping. */
 const named = (name: string) => ({ name }) as TestState["sessions"][number];
 
+/** Just the shells, so a test about numbering reads like one. */
+const shells = (store: { getState: () => TestState }) =>
+  store.getState().tabs.flatMap((tab) => (tab.kind === "shell" ? [tab] : []));
+
 beforeEach(() => vi.mocked(sshDisconnect).mockClear());
 
 describe("opening shells", () => {
@@ -43,7 +47,7 @@ describe("opening shells", () => {
 
     store.getState().openTab("alpha");
     store.getState().openTab("alpha");
-    const [first, second] = store.getState().tabs;
+    const [first, second] = shells(store);
 
     expect(store.getState().tabs).toHaveLength(2);
     expect(new Set([first!.id, second!.id]).size).toBe(2);
@@ -54,7 +58,7 @@ describe("opening shells", () => {
     // session can never share a name.
     store.getState().closeTab(first!.id);
     store.getState().openTab("alpha");
-    const ordinals = store.getState().tabs.map((tab) => tab.ordinal);
+    const ordinals = shells(store).map((tab) => tab.ordinal);
     expect(new Set(ordinals).size).toBe(ordinals.length);
     expect(ordinals).toContain(second!.ordinal);
   });
@@ -85,6 +89,127 @@ describe("opening shells", () => {
   });
 });
 
+describe("opening files", () => {
+  it("opens each file once: asking again focuses the tab it already has", () => {
+    const store = workspaceStore();
+    store.getState().openFileTab("alpha", "/content/train.log", "train.log");
+    store.getState().openTab("alpha");
+
+    store.getState().openFileTab("alpha", "/content/train.log", "train.log");
+
+    const files = store.getState().tabs.filter((tab) => tab.kind === "file");
+    expect(files).toHaveLength(1);
+    expect(store.getState().activeTabId).toBe(files[0]!.id);
+    expect(store.getState().selectedSession).toBe("alpha");
+  });
+
+  it("a file tab is a reason to stay connected, the same as a shell is", () => {
+    const store = workspaceStore();
+    store.getState().openTab("alpha");
+    store.getState().openFileTab("alpha", "/content/train.log", "train.log");
+    const [shell] = shells(store);
+
+    store.getState().closeTab(shell!.id);
+    // The file is still being read; hanging up would take it with the session.
+    expect(sshDisconnect).not.toHaveBeenCalled();
+
+    const [file] = store.getState().tabs;
+    store.getState().closeTab(file!.id);
+    expect(sshDisconnect).toHaveBeenCalledWith("alpha");
+  });
+});
+
+describe("unsaved edits", () => {
+  it("closing a dirty tab asks instead of closing it, and brings it forward", () => {
+    const store = workspaceStore();
+    store.getState().openTab("alpha");
+    store.getState().openFileTab("alpha", "/content/train.log", "train.log");
+    const file = store.getState().tabs[1]!;
+    store.getState().focusTab(store.getState().tabs[0]!.id);
+    store.getState().setTabDirty(file.id, true);
+    store.setState({ settingsOpen: true });
+
+    store.getState().requestCloseTab(file.id);
+
+    expect(store.getState().tabs).toHaveLength(2);
+    expect(store.getState().pendingCloseTabId).toBe(file.id);
+    // The pane that owns the buffer has to be the one on screen, or the
+    // question would be asked of nobody — and the workbench, not the settings
+    // page, is where the pane lives.
+    expect(store.getState().activeTabId).toBe(file.id);
+    expect(store.getState().settingsOpen).toBe(false);
+  });
+
+  it("a clean tab closes without a question, and cancelling drops one", () => {
+    const store = workspaceStore();
+    store.getState().openTab("alpha");
+    store.getState().requestCloseTab(store.getState().tabs[0]!.id);
+    expect(store.getState().tabs).toHaveLength(0);
+    expect(store.getState().pendingCloseTabId).toBeNull();
+
+    store.getState().openFileTab("alpha", "/content/x", "x");
+    const file = store.getState().tabs[0]!;
+    store.getState().setTabDirty(file.id, true);
+    store.getState().requestCloseTab(file.id);
+    store.getState().cancelPendingClose();
+
+    expect(store.getState().pendingCloseTabId).toBeNull();
+    expect(store.getState().tabs).toHaveLength(1);
+  });
+
+  it("a closed tab takes its dirt with it", () => {
+    const store = workspaceStore();
+    store.getState().openFileTab("alpha", "/content/x", "x");
+    const file = store.getState().tabs[0]!;
+    store.getState().setTabDirty(file.id, true);
+
+    store.getState().closeTab(file.id);
+
+    expect(store.getState().dirtyTabs[file.id]).toBeUndefined();
+  });
+
+  it("closing every tab leaves no dirt behind", () => {
+    const store = workspaceStore();
+    store.getState().openFileTab("alpha", "/content/x", "x");
+    store.getState().openFileTab("beta", "/content/y", "y");
+    const [alphaFile] = store.getState().tabs;
+    store.getState().setTabDirty(alphaFile!.id, true);
+
+    store.getState().closeSessionTabs("alpha");
+
+    expect(store.getState().dirtyTabs[alphaFile!.id]).toBeUndefined();
+  });
+
+  it("repeating a dirty flag is not a write — a keystroke must not be one", () => {
+    const store = workspaceStore();
+    store.getState().openFileTab("alpha", "/content/x", "x");
+    const file = store.getState().tabs[0]!;
+    store.getState().setTabDirty(file.id, true);
+    const listener = vi.fn();
+    const unsubscribe = store.subscribe(listener);
+
+    store.getState().setTabDirty(file.id, true);
+
+    unsubscribe();
+    expect(listener).not.toHaveBeenCalled();
+  });
+});
+
+describe("saves", () => {
+  it("notes the directory a save landed in, one revision at a time", () => {
+    const store = workspaceStore();
+
+    store.getState().noteFileWrite("alpha", "/content");
+    const first = store.getState().fileWrites.alpha!;
+    store.getState().noteFileWrite("alpha", "/content/data");
+    const second = store.getState().fileWrites.alpha!;
+
+    expect(second.dir).toBe("/content/data");
+    // A revision, not a timestamp: two saves in the same millisecond are two.
+    expect(second.revision).toBeGreaterThan(first.revision);
+  });
+});
+
 describe("closing shells", () => {
   it("keeps the connection while another shell of the session is open", () => {
     const store = workspaceStore();
@@ -108,7 +233,11 @@ describe("closing shells", () => {
   it("releases the connection with the last shell, and drops what was reported", () => {
     const store = workspaceStore();
     store.getState().openTab("alpha");
-    store.setState({ expandedDirs: { alpha: ["/content/data"] }, transferCounts: { alpha: 2 } });
+    store.setState({
+      expandedDirs: { alpha: ["/content/data"] },
+      transferCounts: { alpha: 2 },
+      fileWrites: { alpha: { dir: "/content", revision: 1 } },
+    });
     const [only] = store.getState().tabs;
 
     store.getState().closeTab(only!.id);
@@ -117,6 +246,8 @@ describe("closing shells", () => {
     expect(store.getState().activeTabId).toBeNull();
     expect(store.getState().expandedDirs.alpha).toBeUndefined();
     expect(store.getState().transferCounts.alpha).toBeUndefined();
+    // A leftover would make the next mount re-read a directory nobody opened.
+    expect(store.getState().fileWrites.alpha).toBeUndefined();
     expect(sshDisconnect).toHaveBeenCalledWith("alpha");
   });
 

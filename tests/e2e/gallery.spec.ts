@@ -135,6 +135,48 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
   await capture(page, "07-file-row-menu");
   await page.keyboard.press("Escape");
 
+  // A file as a tab. Its body is CodeMirror's surface, so the picture answers
+  // what no assertion can: whether a document reads as part of this workbench
+  // next to a live terminal, rather than as another program's window.
+  await page.locator(".file-row").filter({ hasText: "README.txt" }).locator(".file-row__row").dblclick();
+  const readmePane = page.locator('.file-area[aria-label="README.txt"]');
+  await expect(page.getByRole("tab", { name: "README.txt" })).toBeVisible();
+  await page.waitForTimeout(500);
+  await capture(page, "08-file-tab");
+
+  // …and with an edit in it: the dot on the tab, the state line, the save. What
+  // a picture answers here is whether "unsaved" reads without colour.
+  await readmePane.locator(".cm-content").click();
+  await page.keyboard.type("edited in the gallery");
+  await expect(readmePane).toContainText("未保存");
+  await page.waitForTimeout(400);
+  await capture(page, "08-file-tab-edited");
+
+  // …and the oversized one, where two excerpts and a stated gap are the design:
+  // whether that reads as one document or as three is a judgment, not a test.
+  // The jump is made with the editor's own find — "MB" occurs only on the
+  // marker line — so the picture is of the line the design is about rather than
+  // of wherever a `scrollTop` write happened to land.
+  await page.locator(".file-row").filter({ hasText: "train.log" }).locator(".file-row__row").dblclick();
+  const logPane = page.locator('.file-area[aria-label="train.log"]');
+  await expect(logPane.locator(".cm-content")).toContainText("training begins");
+  await logPane.locator(".cm-content").click();
+  await page.keyboard.press("Control+f");
+  await page.keyboard.type("MB");
+  await page.keyboard.press("Enter");
+  await expect(logPane.locator(".cm-searchMatch")).toHaveCount(1);
+  await page.waitForTimeout(500);
+  await capture(page, "08-file-tab-truncated");
+  await page.keyboard.press("Escape");
+
+  // Leave the strip the way the later shots expect to find it. The edited tab
+  // goes through its own question — which is also the only place the close
+  // guard would show up in a run of the gallery.
+  await page.getByRole("button", { name: "关闭 train.log" }).click();
+  await page.getByRole("button", { name: "关闭 README.txt" }).click();
+  await readmePane.getByRole("button", { name: "不保存" }).click();
+  await expect(page.getByRole("tab", { name: "README.txt" })).toHaveCount(0);
+
   await page.locator('[data-testid="open-settings"]').click();
   for (const theme of ["as-is", "other"] as const) {
     if (theme === "other") await toggleTheme(page);

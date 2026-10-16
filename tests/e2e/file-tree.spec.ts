@@ -43,10 +43,10 @@ test("文件夹是展开才去读的，收起只藏不删", async ({ page }) => 
   await expect(row(page, "data")).toHaveCount(1);
 });
 
-test("文件行没有可展开的语义，点击仍然是下载", async ({ page }) => {
+test("文件行是叶子：既没有可展开的语义，也没有那个三角", async ({ page }) => {
   await openSession(page, "e2e-alpha");
 
-  // 文件是叶子：既没有 aria-expanded，也没有那个三角（图标都在 aria-hidden 里）。
+  // 打开与下载都在行尾菜单里；行本身只报"这是什么"。见 editor.spec：双击开预览。
   await expect(rowButton(page, "model.pt")).not.toHaveAttribute("aria-expanded", /.*/);
   await expect(row(page, "model.pt").locator(".file-row__twisty svg")).toHaveCount(0);
   await expect(row(page, "data").locator(".file-row__twisty svg")).toHaveCount(1);
