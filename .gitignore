@@ -1,34 +1,40 @@
-# 依赖
+# Dependencies
 node_modules/
 
-# 构建产物：electron-vite 出 out/，electron-builder 出 dist/
+# Build output: electron-vite writes out/, electron-builder writes dist/
 out/
 dist/
 resources/cli/
 
-# Playwright 的痕迹、逐用例产物与 HTML 报告
+# Playwright's traces, per-case artifacts and HTML report
 test-results/
 playwright-report/
 
-# `npm run gallery` 出的图——评审用的证据，按需重新生成，没有图片基线
+# Pictures written by `npm run gallery` — evidence for a review, regenerated on demand, no image baseline
 screenshots/
 
-# 品牌资产：故意不入库——文件仍在本地 brand/（logo 真源、变体与过程档案），只是先不进 git
+# Brand assets: deliberately not in the repo — the files stay local in brand/ (the logo's source of truth,
+# variants and process archive); they just do not go into git yet
 brand/
 
-# 设计稿与实施计划：brainstorming / writing-plans 的产物，留在本机配合对话用，不进仓库
+# Design drafts and implementation plans: the output of brainstorming / writing-plans, kept on this machine
+# to go with the conversation, not committed
 docs/superpowers/
 
-# Python 字节码
+# Python bytecode
 __pycache__/
 
-# 本机 shim：写死了绝对路径与 PATH，不属于构建
+# A local shim: absolute paths and PATH baked in, not part of the build
 npm.ps1
 
-# 系统噪声
+# ZCode's file-search ignore rules: written by the editor for this machine (and
+# rewritten by its own sync), so they are configuration, not code
+.zcodeignore
+
+# OS noise
 .DS_Store
 Thumbs.db
 
-# 日志
+# Logs
 *.log
 npm-debug.log*

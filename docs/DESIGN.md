@@ -1,30 +1,28 @@
 ---
 version: alpha
 name: colabdesk-design-system
-description: ColabDesk 的设计语言——把团队在 GitSquad 里确立的那套系统（ink 主色、浅色表面阶梯、堆叠阴影、Geist 字体、点+文字的状态）搬到一个桌面工作台上：界面外壳是浅色的工程表面，唯一的高饱和色是指示动作与链接的蓝，一切机器汇报的值走等宽字体，终端面板永久深色。
-source: 移植自 D:\odyssey\GitSquad 的 DESIGN.md（该系统的原始定义），并针对桌面控制台做了增删
-
+description: ColabDesk's design language — a restrained grey scale built to carry a lot of machine state on a desktop console: a light engineering surface for the shell, one saturated blue that means "action or link", every value the machine reports in mono, and a terminal panel with an axis of its own.
 colors:
-  # 品牌与强调
-  primary: "#171717"          # 唯一的 ink 主色：肯定动作、导航激活指示
+  # Brand and accent
+  primary: "#171717"          # the single ink primary: affirmative actions, the active nav indicator
   on-primary: "#ffffff"
-  link: "#0070f3"             # 行内链接，以及"信息 / 健康"语义
+  link: "#0070f3"             # inline links, and the "info / healthy" semantic
   link-deep: "#0761d1"
   link-bg-soft: "#d3e5ff"
-  success: "{colors.link}"    # 刻意与 link 同值：这套系统里没有绿色
-  # 表面阶梯：从后到前
-  chrome: "#ffffff"           # 页面框架（顶栏、标签条、面板头）
-  page: "#fafafa"             # 内容所在的平面（body）
-  canvas: "#ffffff"           # 卡片、面板、对话框、输入框
-  canvas-soft: "#f5f5f5"      # 井与内嵌区（表头行、空态、内联代码），绝不是卡片
-  canvas-soft-2: "#efefef"    # 第二级内嵌（原始输出块、进度条底色）
-  hairline: "#ebebeb"         # 所有 1px 分隔线与边框
-  hairline-strong: "#a1a1a1"  # 悬停边框、焦点环、拖拽条
-  # 文字
+  success: "{colors.link}"    # deliberately the same value as link: there is no green in this system
+  # Surface ladder, back to front
+  chrome: "#ffffff"           # page frame (top bar, tab strip, panel heads)
+  page: "#fafafa"             # the plane content sits on (body)
+  canvas: "#ffffff"           # cards, panes, dialogs, inputs
+  canvas-soft: "#f5f5f5"      # wells and insets (table header rows, empty states, inline code) — never a card
+  canvas-soft-2: "#efefef"    # the second inset step (raw-output blocks, progress tracks)
+  hairline: "#ebebeb"         # every 1px divider and border
+  hairline-strong: "#a1a1a1"  # hover borders, focus rings, resize handles
+  # Text
   ink: "#171717"
   body: "#4d4d4d"
   mute: "#888888"
-  # 语义（每个都有 soft 变体：底色 + 可读文字色成对出现）
+  # Semantics (each has a -soft background and a -deep readable text colour, used in pairs)
   warning: "#f5a623"
   warning-soft: "#ffefcf"
   warning-deep: "#ab570a"
@@ -34,15 +32,15 @@ colors:
   violet-soft: "#d8ccf1"
   cyan-deep: "#29bc9b"
   cyan-soft: "#aaffec"
-  # 终端有一根自己的轴：调色板在 terminal-themes.css，不在这份令牌表里
+  # The terminal has an axis of its own: its palettes live in terminal-themes.css, not in this table
 
 typography:
   font-sans:
     fontFamily: Geist, Inter, system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif
-    note: "字重集合 400 / 500 / 600；600 是显示上限，永不用 700"
+    note: "weights 400 / 500 / 600; 600 is the ceiling, 700 is never used"
   font-mono:
     fontFamily: Geist Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, monospace
-    note: "一切机器汇报的值：路径、时间、字节、百分比、退出码、原始输出"
+    note: "everything the machine reports: paths, times, bytes, percentages, exit codes, raw output"
   display: { fontSize: 26px, fontWeight: 600, letterSpacing: -0.96px }
   title: { fontSize: 19px, fontWeight: 600, letterSpacing: -0.6px }
   title-sm: { fontSize: 16px, fontWeight: 600, letterSpacing: -0.4px }
@@ -52,12 +50,12 @@ typography:
   micro: { fontSize: 11px, fontWeight: 400 }
 
 rounded:
-  xs: 4px      # 代码片段、键位提示、状态徽标
-  sm: 6px      # 所有应用内控件：按钮、输入框
-  md: 8px      # callout、原始输出块、空态框
-  lg: 12px     # 卡片、面板、表格容器、工作面板
+  xs: 4px      # code snippets, keycaps, status badges
+  sm: 6px      # every control in the app: buttons, inputs
+  md: 8px      # callouts, raw-output blocks, empty-state boxes
+  lg: 12px     # cards, panes, table containers, work surfaces
   xl: 16px
-  full: 9999px # 徽标、状态点
+  full: 9999px # badges, status dots
 
 spacing:
   "1": 4px
@@ -71,370 +69,368 @@ spacing:
 
 elevation:
   "1": "inset 0 0 0 1px #00000014"
-  "2": "Level 1 + 0 1px 1px #00000005, 0 2px 2px #0000000a"   # 默认卡片
-  "3": "Level 1 + 0 2px 2px #0000000a, 0 8px 8px -8px #0000000a"  # 悬停/拖拽
-  "4": "Level 1 + 0 2px 2px #0000000a, 0 8px 16px -4px #0000000a"  # 浮层
-  "5": "Level 1 + 0 1px 1px #00000005, 0 8px 16px -4px #0000000a, 0 24px 32px -8px #0000000f"  # 对话框
+  "2": "Level 1 + 0 1px 1px #00000005, 0 2px 2px #0000000a"   # the default card
+  "3": "Level 1 + 0 2px 2px #0000000a, 0 8px 8px -8px #0000000a"  # hover and drag
+  "4": "Level 1 + 0 2px 2px #0000000a, 0 8px 16px -4px #0000000a"  # floating layers
+  "5": "Level 1 + 0 1px 1px #00000005, 0 8px 16px -4px #0000000a, 0 24px 32px -8px #0000000f"  # dialogs
 
 components:
   button:
     variants: [default, primary, secondary, outline, ghost, destructive, link]
     sizes: [md 32px, sm 28px, lg 36px, icon 32px]
     rounded: "{rounded.sm}"
-    note: "primary 一屏一个；ghost 用于密集行；destructive 只给不可逆动作"
+    note: "one primary per flow; ghost for dense rows; destructive only for irreversible actions"
   input: { height: 32px, rounded: "{rounded.sm}", backgroundColor: "{colors.canvas}", borderColor: "{colors.hairline}" }
   card: { backgroundColor: "{colors.canvas}", rounded: "{rounded.lg}", shadow: "Level 2", padding: "{spacing.5}" }
-  panel: { note: "一节一张卡；行与行之间用 hairline 分隔（不是一行一张卡）" }
-  panel-row: { padding: "{spacing.3} {spacing.5}", structure: "左：标签+说明；右：mono 值或动作" }
+  panel: { note: "one card per section, rows divided by hairlines (not one card per row)" }
+  panel-row: { padding: "{spacing.3} {spacing.5}", structure: "left: label + description; right: a mono value or an action" }
   badge: { shape: "pill", backgroundColor: "{colors.canvas-soft}", typography: "caption + mono" }
-  badge-off: { note: "这个账号拿不到的东西（无权申请的加速器）：{colors.mute} + 删除线。删除线承担语义，颜色只是附和——和 status 同一条规矩" }
-  status: { structure: "6px 圆点 + 文字标签", rule: "状态不得仅用颜色表达" }
+  badge-off: { note: "what this account cannot get (an accelerator it may not request): {colors.mute} + strikethrough. The strikethrough carries the meaning and the colour merely agrees — the same rule as status" }
+  status: { structure: "6px dot + a written label", rule: "state is never carried by colour alone" }
   callout: { backgroundColor: "{colors.link-bg-soft}", textColor: "{colors.link-deep}", rounded: "{rounded.md}" }
   metric: { backgroundColor: "{colors.canvas-soft}", rounded: "{rounded.lg}", value: "{typography.display}" }
   empty: { padding: "{spacing.8} {spacing.5}", rounded: "{rounded.md}", textColor: "{colors.mute}" }
-  start-page: { layout: "居中一列（760px）：品牌锁版 → 主张 → 下一步 → 动作 → 四条能力（auto-fit 网格）→ star 页脚", note: "正门与空态是同一屏；名字是锁版图形不是字，字号阶梯不变；能力条说用户要做的事，机制留给说明行" }
-  pane: { note: "工作面（终端、文件）：chrome 头 + canvas 体", rounded: "{rounded.lg}", shadow: "Level 2" }
+  start-page: { layout: "one centred column (760px): brand lockup → claim → next step → actions → four capabilities (auto-fit grid) → star footer", note: "the front door and the empty state are the same screen; the name is a lockup graphic, not type, so the size ladder is unchanged; a capability line names what the user does, the mechanism goes on the description line" }
+  pane: { note: "a work surface (terminal, file): chrome head + canvas body", rounded: "{rounded.lg}", shadow: "Level 2" }
   progress: { height: 4px, fill: "{colors.ink}" }
-  raw-output: { backgroundColor: "{colors.canvas-soft-2}", typography: "mono", note: "折叠但永远存在" }
-  chart: { plot: "{colors.canvas-soft} 井", bar: "{colors.ink}", unmeasured: "基线虚线 {colors.hairline-strong}", scale: "{typography.caption} + {colors.mute}", note: "柱状，只表达量" }
-  segmented: { note: "小集合互斥选择：一排 Button，激活项 primary、其余 outline；超时时长的字号与趋势粒度都用它" }
-  settings-page: { nav: "260px 分节栏（与左栏同宽同色）+ 一次一节地显示正文", entry: "左栏底部一行", exit: "分节栏首行 + Esc", note: "是图层不是对话框：底下的终端保持挂载" }
+  raw-output: { backgroundColor: "{colors.canvas-soft-2}", typography: "mono", note: "collapsed but always there" }
+  chart: { plot: "{colors.canvas-soft} well", bar: "{colors.ink}", unmeasured: "dashed baseline {colors.hairline-strong}", scale: "{typography.caption} + {colors.mute}", note: "bars only, and only for quantity" }
+  segmented: { note: "mutually exclusive choice from a small set: a row of Buttons, the active one primary and the rest outline; used for the timeout duration and the trend granularity" }
+  settings-page: { nav: "a 260px section rail (same width and colour as the left rail) + one section at a time in the body", entry: "the last row of the left rail", exit: "the rail's first row + Esc", note: "a layer, not a dialog: the terminals underneath stay mounted" }
 ---
 
 ## Overview
 
-ColabDesk 是一个**把远程 GPU 运行时当本地机器用的桌面控制台**：左边一个交互终端，右边是运行时的文件系统，后面站着会话管理与计算单元额度。它的大部分屏幕时间都在替别人托管界面（xterm、文件列表），所以它自己的壳应该**后退、框住内容**，而不是抢戏。
+ColabDesk is a **desktop console that treats a remote GPU runtime like a local machine**: an interactive terminal on the left, that runtime's filesystem on the right, session management and compute-unit quota behind both. Most of its screen time is spent hosting somebody else's interface (xterm, a file listing), so its own shell should **step back and frame the content** rather than compete with it.
 
-这套语言直接移植自团队在 GitSquad 里确立的系统，因为那套系统解决的是同一类问题——**用克制的灰阶承载大量机器状态**——而它给出的答案是现成的：一个 ink 主色承担全部肯定动作；一套五级表面阶梯让卡片"坐在页面上"而不是"浮在页面上面"；一个毫不含糊的排版分工，让人一眼分辨"产品在说话"还是"机器在说话"。
+The language exists to solve one problem: **carrying a large amount of machine state on restrained greys**. It gives that problem a small set of answers — one ink primary for every affirmative action; a five-step surface ladder so cards *sit on* the page rather than *float above* it; and an unambiguous typographic split so that a glance tells "the product is talking" from "the machine is talking".
 
-移植时做的三处调整，都是桌面控制台特有的：
+Three choices belong to a desktop console in particular:
 
-1. **Geist 常规体替代展示体。** 没有营销页，所以 `display-xl`/`display-lg` 都被去掉，最高一级是 26px 的 `{typography.display}`——它只出现在额度数值上。起始页（见「起始页」）后来带回了一点品牌材料，但**那不是字**：名字用的是标识套件里的锁版图形，字号阶梯一格没动。
-2. **终端有自己的轴。** GitSquad 用 `.dark` 局部固定深色来渲染终端 mockup：终端模拟的是机器，不该跟随读者的主题。这里保留了这句话的结论，但换了做法——终端的颜色是**用户选的调色板**（`terminal-themes.css` 的七套，`titanium` 与当年那四个令牌逐字相同），而不是"钉死的深色"。它仍然不从 `data-theme` 继承：`ls`、`git`、`htop` 在 16 个 ANSI 槽位里填什么色是远端决定的，让终端跟着正片翻转就等于要求两套极性各自都可读。详见「终端配色」。
-3. **状态语义按本产品重排。** `{colors.success}` 仍是链接蓝（"已连接"），`{colors.warning}` 是"运行中 / 连接中"，`{colors.error}` 只给失败与不可逆动作。
+1. **Regular Geist instead of a display face.** There is no marketing page here, so `display-xl` / `display-lg` are gone and the top of the ladder is the 26px `{typography.display}` — which appears only on quota figures. The start page (see "Start page") later brought back a little brand material, but **not as type**: the name is the lockup graphic from the mark, and the size ladder did not move a step.
+2. **The terminal has an axis of its own.** A terminal is a picture of a *machine*, so it should not follow the reader's theme — the conclusion stands; the mechanism changed. A terminal's colours are **a palette the user picks** (`terminal-themes.css`, seven of them; `titanium` is the four old tokens, word for word), not a hard-coded dark. It still does not inherit from `data-theme`: what `ls`, `git` and `htop` put into the 16 ANSI slots is the far machine's decision, and flipping the terminal with the rest of the interface would mean having to make two polarities each readable. See "Terminal palettes".
+3. **State semantics, re-ordered for this product.** `{colors.success}` is still the link blue ("Connected"), `{colors.warning}` is "running / connecting", and `{colors.error}` is for failures and irreversible actions only.
 
-## 唯一真源
+## Single source of truth
 
-| 关注点 | 权威位置 |
+| Concern | Where it lives |
 | --- | --- |
-| 设计令牌（颜色、字体、间距、圆角、阴影） | `src/renderer/src/assets/tokens.css` |
-| 终端调色板（七套 × 21 个通道） | `src/renderer/src/assets/terminal-themes.css`；契约与钳制在 `lib/terminal-appearance.ts`，读取在 `lib/terminal-theme.ts` |
-| 基础样式与组件类 | `src/renderer/src/assets/main.css` |
-| UI 原语 | `src/renderer/src/components/ui/`（`Button` / `Card`·`Panel`·`PanelRow` / `Badge`·`Status` / `Field` / `Callout`·`EmptyState` / `Menu` / `PanelDivider` / `ProgressBar` / `RawOutput` / `icons`） |
-| 应用外壳 | `src/renderer/src/app-shell/AppShell.tsx` |
-| 起始页与品牌锁版 | `src/renderer/src/features/workspace/StartPage.tsx`、`src/renderer/src/app-shell/BrandLockup.tsx` |
-| 设置页 | `src/renderer/src/app-shell/SettingsPage.tsx` |
-| 主题偏好 | `src/renderer/src/lib/theme.ts` |
-| 功能页面 | `src/renderer/src/features/*` |
-| 渲染层目视（给人看） | `npm run gallery`：在 mock 后端上跑**真实应用**并出图到 `screenshots/`。**没有图片基线**——图是评审时的证据，不是测试 |
-| 设计规则的回归网 | 渲染断言：真组件 + `renderToStaticMarkup`（不需要 DOM，走 `npm test`）。例：`components/ui/icons.test.tsx`（图标之间必须能互相区分）、`features/workspace/Workbench.test.tsx`（停靠面板必须 `hidden` + `inert`） |
+| Design tokens (colour, type, spacing, radius, elevation) | `src/renderer/src/assets/tokens.css` |
+| Terminal palettes (seven × 21 channels) | `src/renderer/src/assets/terminal-themes.css`; the contract and clamping in `lib/terminal-appearance.ts`, the reading in `lib/terminal-theme.ts` |
+| Base styles and component classes | `src/renderer/src/assets/main.css` |
+| UI primitives | `src/renderer/src/components/ui/` (`Button` / `Card`·`Panel`·`PanelRow` / `Badge`·`Status` / `Field` / `Callout`·`EmptyState` / `Menu` / `PanelDivider` / `ProgressBar` / `RawOutput` / `icons`) |
+| Application shell | `src/renderer/src/app-shell/AppShell.tsx` |
+| Start page and brand lockup | `src/renderer/src/features/workspace/StartPage.tsx`, `src/renderer/src/app-shell/BrandLockup.tsx` |
+| Settings page | `src/renderer/src/app-shell/SettingsPage.tsx` |
+| Theme preference | `src/renderer/src/lib/theme.ts` |
+| Feature pages | `src/renderer/src/features/*` |
+| What the renderer looks like (for a person) | `npm run gallery`: runs the **real app** against the mock backend and writes pictures to `screenshots/`. **There is no image baseline** — pictures are evidence in a review, not tests |
+| The regression net for design rules | Render assertions: real components + `renderToStaticMarkup` (no DOM needed, runs under `npm test`). Examples: `components/ui/icons.test.tsx` (icons must be distinguishable from each other), `features/workspace/Workbench.test.tsx` (a parked panel must be `hidden` + `inert`) |
 
-规则：**组件代码里不出现十六进制颜色。** 需要新令牌时先加进 `tokens.css`（浅色与深色两个块都要有），再引用；角色说明补进本文件。**先找原语，再写自定义 CSS。** 唯一的例外是上面那行终端调色板：那是**数据**（别的项目的色值表，逐条可核对），它自己的文件里全是十六进制，而组件仍然一个都不写；`lib/terminal-theme.ts` 里只有一个"读不到就用它"的兜底前景色，那不是配色决定，是失败时的退路。
+The rules: **no hex colours in component code.** A new token goes into `tokens.css` first (both the light and the dark block), then gets referenced; its role is described in this file. **Look for a primitive before writing custom CSS.** The one exception is the terminal palette line above: that is **data** (other projects' colour tables, checkable entry by entry), its own file is full of hex, and no component writes one. `lib/terminal-theme.ts` holds a single fallback foreground colour for "the variable could not be read" — that is not a colour decision, it is the way out of a failure.
 
 ## Colors
 
-### 表面阶梯
+### Surface ladder
 
-五级，从后到前。卡片 `{colors.canvas}` 坐在页面 `{colors.page}` 上，由框架 `{colors.chrome}` 框住——这就是"卡片看起来是抬起的、却不需要靠边框说明"的原因。
+Five steps, back to front. A card (`{colors.canvas}`) sits on the page (`{colors.page}`) and is framed by the chrome (`{colors.chrome}`) — which is why a card looks lifted without a border having to say so.
 
-| 令牌 | 浅色 | 深色 | 用途 |
+| Token | Light | Dark | Use |
 | --- | --- | --- | --- |
-| `{colors.chrome}` | `#ffffff` | `#0a0a0a` | 顶栏、标签条、面板头 |
-| `{colors.page}` | `#fafafa` | `#0f0f0f` | 内容平面（body） |
-| `{colors.canvas}` | `#ffffff` | `#171717` | 卡片、面板、对话框、输入框 |
-| `{colors.canvas-soft}` | `#f5f5f5` | `#0a0a0a` | 井与内嵌：表头行、空态、指标块底 |
-| `{colors.canvas-soft-2}` | `#efefef` | `#262626` | 第二级内嵌：原始输出块、进度条底 |
-| `{colors.hairline}` | `#ebebeb` | `#ffffff14` | 所有 1px 分隔线 |
-| `{colors.hairline-strong}` | `#a1a1a1` | `#ffffff2e` | 悬停边框、焦点环 |
+| `{colors.chrome}` | `#ffffff` | `#0a0a0a` | Top bar, tab strip, panel heads |
+| `{colors.page}` | `#fafafa` | `#0f0f0f` | The plane content sits on (body) |
+| `{colors.canvas}` | `#ffffff` | `#171717` | Cards, panes, dialogs, inputs |
+| `{colors.canvas-soft}` | `#f5f5f5` | `#0a0a0a` | Wells and insets: header rows, empty states, metric blocks |
+| `{colors.canvas-soft-2}` | `#efefef` | `#262626` | The second inset step: raw-output blocks, progress tracks |
+| `{colors.hairline}` | `#ebebeb` | `#ffffff14` | Every 1px divider |
+| `{colors.hairline-strong}` | `#a1a1a1` | `#ffffff2e` | Hover borders, focus rings |
 
-深色下边框变成半透明白（`#ffffff14`），这样"卡片上的 hairline"和"页面上的 hairline"读起来一致——这正是 GitSquad 记录下的那条经验。
+In dark, a border becomes translucent white (`#ffffff14`) so that "a hairline on a card" and "a hairline on the page" read the same way.
 
-### 文字
+### Text
 
-`{colors.ink}` 标题与主要文本；`{colors.body}` 次级文本与表格单元格；`{colors.mute}` 提示、字段说明、表头；`{colors.on-primary}` 只出现在 ink 主按钮上。
+`{colors.ink}` for headings and primary text; `{colors.body}` for secondary text and table cells; `{colors.mute}` for hints, field descriptions and table headings; `{colors.on-primary}` appears only on the ink primary button.
 
-### Accent 与语义
+### Accent and semantics
 
-- **Ink**（`{colors.primary}`，浅色 `#171717` / 深色 `#ededed`）：每一个肯定动作、导航激活指示。深色下它自动翻转成"浅底深字"，这是极性翻转的直接结果，不是另一个令牌。
-- **Link**（`{colors.link}`）：行内链接、"信息"语气、以及**成功**——`{colors.success}` 就是它，这套系统没有绿色。
-- **Warning**（`{colors.warning}`）：进行中、待确认、超时。**Error**（`{colors.error}`）：失败与删除类动作。
-- 每个语义色都有 `-soft`（底）与 `-deep`（可读文字）配对，callout 与徽标直接成对使用，不需要第二套调色板。
+- **Ink** (`{colors.primary}`, light `#171717` / dark `#ededed`): every affirmative action and the active navigation indicator. In dark it flips to "light fill, dark text" by itself — the direct result of the polarity flip, not a second token.
+- **Link** (`{colors.link}`): inline links, the "info" tone, and **success** — `{colors.success}` is this same blue; there is no green in this system.
+- **Warning** (`{colors.warning}`): in progress, awaiting confirmation, timed out. **Error** (`{colors.error}`): failures and destructive actions.
+- Every semantic colour comes as a pair: `-soft` (the fill) and `-deep` (the readable text). Callouts and badges use them together; no second palette is needed.
 
-### 深色主题
+### Dark theme
 
-深色是**同一阶梯的极性翻转**：`lib/theme.ts` 把解析后的主题写到 `:root[data-theme]`，来源可能是系统偏好（默认）或用户明确选的那一项（见「主题」）。终端**不参与这次翻转**，它有自己的一根轴（见「终端配色」）——`tokens.css` 里已经没有终端色，那四个老令牌搬去了 `terminal-themes.css` 的 `titanium`，一词未改。
+Dark is **a polarity flip of the same ladder**: `lib/theme.ts` writes the resolved theme to `:root[data-theme]`, from the system preference (the default) or from the choice the user made (see "Theme preference"). The terminal **does not take part in that flip** — it has its own axis (see "Terminal palettes"), and `tokens.css` no longer holds any terminal colour: those four old tokens moved into `terminal-themes.css` as `titanium`, unchanged.
 
-**硬规则：任何出现在组件里的颜色，必须在浅色与深色两个块里都有值。** 只在一边定义的颜色，是一个等着被"切换系统主题"触发的 bug。
+**Hard rule: any colour a component uses must have a value in both the light and the dark block.** A colour defined on one side only is a bug waiting for "the system theme changed".
 
-### 主题偏好
+### Theme preference
 
-- **三态**：`system`（默认，跟系统）/ `light` / `dark`，存在 localStorage（`lib/theme.ts`）。选了具体一项之后**它压过系统**。
-- **唯一的入口是设置 → 外观**（跟随系统 / 浅色 / 深色，用 `segmented`）。顶栏右端不再有那个"当前主题的反面"图标按钮——上一版在这里放过它，一个整窗的偏好在工作台里放了一个副本，设置页打开时两个入口还说同一件事。
-- **落地方式**：`data-theme` 写到 `<html>` 上，`tokens.css` 里浅色一套、深色一套；`color-scheme` 跟着一起写，免得滚动条与原生控件在深色下还是亮的。
+- **Three states**: `system` (the default, follow the OS) / `light` / `dark`, kept in localStorage (`lib/theme.ts`). An explicit choice **beats the system**.
+- **The one entry point is Settings → Appearance** ("Follow system / Light / Dark", a `segmented` control). The top bar's right end no longer carries that "the opposite of the current theme" icon button — an earlier version put it there, which made an app-wide preference a copy of itself inside the workbench, and gave one fact two entry points while settings was open.
+- **How it lands**: `data-theme` is written to `<html>`, with one light and one dark block in `tokens.css`; `color-scheme` is written alongside it, so scrollbars and native controls do not stay light in the dark theme.
 
-### 终端配色
+### Terminal palettes
 
-终端是这台产品里**唯一内容由别人绘制**的表面：16 个 ANSI 槽位填什么色，是远端程序（`ls`、`git`、`htop`、`tmux`）按自己的判断决定的。所以它的颜色不是"跟随主题"的问题，而是**要有一套完整的调色板**——xterm 缺哪个通道就回落它内置的那套（浅底 Tango），于是 ANSI 黑和深蓝糊在暗底上，这正是这个轴存在的原因。
+The terminal is the **only surface in this product whose content somebody else draws**: what goes into the 16 ANSI slots is decided by the far-side program (`ls`, `git`, `htop`, `tmux`). Its colours are therefore not a "follow the theme" question but a **need for a complete palette** — xterm falls back to its own built-in set (light Tango) for any channel the theme does not name, which is how ANSI black and dark blue end up smeared on a dark background. That is why this axis exists.
 
-- **一根轴，一个属性**：`data-terminal-theme` 写在 `<html>` 上（`main.tsx` 首帧前写、`setTerminalAppearance` 之后重写）。七套调色板各自是一整块 `:root`/`[data-terminal-theme="…"]` 规则，每块 21 个变量：5 个表面（`bg`/`fg`/`cursor`/`cursor-accent`/`selection`）加 16 个 ANSI。
-- **画布与框架同源**：`.terminal-area` 的背景就是 `var(--terminal-bg)`，xterm 的 `theme` 由 `lib/terminal-theme.ts` 从同一批变量读出来。两处不可能各说各话——早先"画布换了、留白环没换"就是两种黑并排的 bug。
-- **`titanium` 是默认，也是老样子**：它的五个表面值逐字等于这个轴出现之前的四个令牌（`#0a0a0a`/`#ededed`/`#aaffec`/`#262626`），所以从没打开过设置的人看到的还是同一块屏。其余六套是各项目**官方发布**的终端调色板，逐条可核对；上游在 bright 行重复色值时这里也照抄，不自作主张提亮。
-- **`black` 与 `brightBlack` 分工**：`black` 是"最深的墨"，可以贴近背景（这正是惯例）；负责暗淡文字的是 `brightBlack`，七套都用各自主题的注释灰。
-- **七套**全是暗色，这是本轮的范围而不是规则：加一套浅色就是再加一个数据块。真正让浅色可用的是另一件事——`bat`/`delta`/`eza` 这类工具会问 `OSC 11`"你背景是亮还是暗"，而 **xterm 不回答**（它只把查询 fire 给宿主，库内没有回话），所以浅色终端下它们会继续按暗底画。要加浅色，先接上那句回话。
-- **留白是偏好，不是这一层的决定**：`.terminal-host` 的四边留白由 `[data-terminal-padding]` 给出，三档都落在 `--space-*` 刻度上（4 / 8+12 / 16），`normal` 就是终端一直以来的那圈（比上下略宽的 8×12）。改它会重算列宽——这是终端自己的事，不需要新规则。
-- **回归网**：`lib/terminal-theme.test.ts` 直接解析 `terminal-themes.css`，要求每套都齐 21 个通道、且值是纯十六进制——`color-mix()` 这类东西在自定义属性里不会求值，xterm 解析不了就会悄悄用回自己那套浅色调色板。
+- **One axis, one attribute**: `data-terminal-theme` on `<html>` (written before the first frame in `main.tsx`, rewritten after `setTerminalAppearance`). Each of the seven palettes is one `:root` / `[data-terminal-theme="…"]` block with 21 variables: 5 surfaces (`bg` / `fg` / `cursor` / `cursor-accent` / `selection`) plus the 16 ANSI slots.
+- **The canvas and the frame come from one source**: `.terminal-area`'s background *is* `var(--terminal-bg)`, and xterm's `theme` is read from the same variables by `lib/terminal-theme.ts`. The two cannot disagree — an earlier "the canvas changed but the ring around it did not" was exactly the bug of two blacks side by side.
+- **`titanium` is the default, and it is the old look**: its five surface values are word for word the four tokens from before this axis existed (`#0a0a0a` / `#ededed` / `#aaffec` / `#262626`), so nobody who has never opened settings sees a different screen. The other six are each project's **officially published** terminal palette, checkable entry by entry; where upstream repeats a colour on the bright row, this file repeats it too and does not "improve" it.
+- **`black` and `brightBlack` have different jobs**: `black` is "the deepest ink" and may sit close to the background (that is the convention); dim text is `brightBlack`'s job, and all seven use their own theme's comment grey for it.
+- **All seven are dark** — that is the scope of this round, not a rule: adding a light palette is one more data block. What actually makes a light terminal usable is something else — tools like `bat` / `delta` / `eza` ask `OSC 11` whether the background is light or dark, and **xterm does not answer** (it fires the query at the host; the library itself has no reply). Under a light terminal they would keep drawing for a dark one. To add a light palette, wire that reply up first.
+- **Padding is a preference, not a decision of this layer**: the ring around `.terminal-host` comes from `[data-terminal-padding]`, and all three steps land on the `--space-*` scale (4 / 8+12 / 16); `normal` is the ring the terminal always had (8 by 12, slightly wider than tall). Changing it recomputes the column count — that is the terminal's own business and needs no new rule.
+- **The regression net**: `lib/terminal-theme.test.ts` parses `terminal-themes.css` directly and requires all 21 channels per palette with plain hex values — `color-mix()` and friends do not evaluate inside custom properties, and xterm would silently fall back to its own light palette.
 
 ## Typography
 
-| 角色 | 字号 / 字重 | 用途 |
+| Role | Size / weight | Use |
 | --- | --- | --- |
-| `{typography.display}` | 26px / 600 / -0.96px | 额度数值——全产品唯一的大字号 |
-| `{typography.title}` | 19px / 600 | 页面级标题 |
-| `{typography.title-sm}` | 16px / 600 | 卡片与面板标题、品牌名 |
-| `{typography.copy}` | 14px / 400 | 正文、表格单元格、按钮标签 |
-| `{typography.label}` | 13px / 400 | 字段标签、面板标题、文件行 |
-| `{typography.caption}` | 12px / 400 | 提示、说明、徽标、表头文字 |
-| `{typography.micro}` | 11px / 400 | 卡片元信息：文件大小、路径片段 |
+| `{typography.display}` | 26px / 600 / -0.96px | Quota figures — the only large type in the product |
+| `{typography.title}` | 19px / 600 | Page-level headings |
+| `{typography.title-sm}` | 16px / 600 | Card and pane headings, the brand name |
+| `{typography.copy}` | 14px / 400 | Body text, table cells, button labels |
+| `{typography.label}` | 13px / 400 | Field labels, panel titles, file rows |
+| `{typography.caption}` | 12px / 400 | Hints, descriptions, badges, table headings |
+| `{typography.micro}` | 11px / 400 | Card meta: file sizes, path fragments |
 
-原则：
+Principles:
 
-- **等宽体是机器之声。** 端点、令牌到期、字节数、传输百分比、路径、退出码、CLI 原始输出、以及**表头**（mono 大写是"这是一个标识符"的语气）。人写给人看的句子一律无衬线。
-- **字重上限 600。** 界面安静的一半来自这条。
-- **数字用 tabular-nums。** 额度值、文件大小、百分比——跳动的数字不该让布局抖动。
-- **不缩小字号来表达层级。** 层级由字号+颜色+字重共同承担，且相邻两级至少差两档。
+- **Mono is the machine's voice.** Endpoints, token expiry, byte counts, transfer percentages, paths, exit codes, raw CLI output, and **table headings** (mono uppercase is the tone of "this is an identifier"). Sentences a person wrote for a person are always sans.
+- **Weight stops at 600.** Half of the interface's quietness comes from this.
+- **Numbers use tabular-nums.** Quota values, file sizes, percentages — a figure that changes should not make the layout jump.
+- **Do not shrink type to express hierarchy.** Hierarchy is carried by size + colour + weight together, and two adjacent steps differ by at least two rungs.
 
 ## Layout
 
-### 间距
+### Spacing
 
-4px 基准，`--space-1`…`--space-8`（4/8/12/16/24/32/40/48）。同级元素 `--space-2`，卡片内部 `--space-3`~`--space-4`，页面分块 `--space-4`。**不要均匀堆叠**：组间间距要比组内大一档。
+A 4px base, `--space-1` … `--space-8` (4/8/12/16/24/32/40/48). Siblings get `--space-2`, inside a card `--space-3`–`--space-4`, between page blocks `--space-4`. **Do not stack evenly**: the gap between groups is one step larger than the gap inside one.
 
-### 应用外壳：一块工作台，不是一组页面
+### The shell: one workbench, not a set of pages
 
-界面按终端工具的习惯组织（参照 Orca / Termius / PyCharm）：**没有"页面"可导航**，所有东西同时在场；**应用自绘窗口标题栏**，而且**顶部只有这一条栏**——它是标题栏、标签栏、工具栏和窗口控制的合体，桌面应用不该在它上面再叠一行。
-
-```
-┌ 窗口标题栏 = 顶栏 ── [▭] │ 标签… + │ [▥] [☾] │ − □ × ─────────────────┐
-├─ 左栏 ────────┬──────────────────────────────────┬─ 右栏 ──────────────┤
-│ 会话列表      │                                  │ 文件（SFTP）        │
-│ · 状态点+名称 │   终端（中间，占满剩余空间）      │ 文件树（/content 起）│
-│ · 加速器徽标  │                                  │ 上传 / 下载 / 删除   │
-│ ────────────  │                                  │                     │
-│ ⚙ 设置        │                                  │                     │
-├───────────────┴──────────────────────────────────┴─────────────────────┤
-│ 状态栏：[进度条 · 计算单元] · 消耗速率 · 活跃会话 ─────────────── 终端总数 │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
-- **顶栏（40px，唯一的顶部栏，同时是窗口标题栏）**：最左端是**品牌符号**（`app-shell/BrandMark.tsx`，18px，`--ink`）。**没有品牌字标**——应用自己画标题栏，不必再用一行文字重复窗口标题；符号在、字标不在，这一条没有被推翻。符号用的是**小尺寸切口**而不是母版：母版的下限是 24px，这条栏只有 40px（见 `brand/guidelines.md` 的最小尺寸表）。它是这条栏里唯一**不**声明 `no-drag` 的非控件元素——它不承载动作，所以拖拽区不该在这里被打断。**这条栏按窗口的分栏分三段，和下面的布局一一对齐**：最左一段**与会话栏同宽**（品牌符号 + 会话栏开关），所以中间的标签条**正好从终端上方开始**。那一段的宽度是**从会话栏量出来的**（`Sidebar.tsx` 把渲染宽度发布成 `--rail-width`），不是在这里重算一遍——窗口变窄时会让位的是会话栏，量它才能跟着让位；写第二份算法，两边第一次改动就会漂仪。会话栏收起时变量消失，这一段缩回自己的两个控件。**分栏处画一条 1px 的竖线**（`{colors.hairline}`），和下面那条分界是同一条：左边由这一段自己的 `border-right` 画——它的宽度就是会话栏宽度，所以边框正好落在会话栏 `border-right` 那一列上；右边落在文件面板的左缘（`--files-width` 同样是量出来的，`FilePane.tsx` 发布）。会话栏收起时左边那条线不画：那里没有分界，线就没有对象。中间是标签条——**它是"选中会话的工作区"**：一个终端一个标签（`终端 1`、`终端 2`…），**一个文件一个标签**（文件名就是标签名，完整路径在 tooltip 里），行尾一个 `+` 再开一个终端（文件从右侧的文件面板开）。左栏只有一个会话时，这条栏就是那个运行时的全部 shell 与文件；换会话，整条栏跟着换。**标签上不再画状态点**：同一条栏里的标签共享同一条 SSH 连接，连接状态已经在左栏那行和状态栏里各写了一遍，再画第三遍是同一个事实说三次。右端是**文件面板开关**与**主题切换**，最右是**窗口控制**（最小化 / 最大化-还原 / 关闭）——这一组不随右栏宽度移动，开关离窗口控制太远就成了两处。Windows/Linux 上完全不画系统边框（`frame: false`），macOS 上保留内嵌的红绿灯（`titleBarStyle: "hiddenInset"`，左侧留 78px）。整条栏是拖拽区（`-webkit-app-region: drag`），栏内每个**控件**都反向声明 `no-drag`；双击同一片区域最大化，和系统标题栏一致。**"每个控件 no-drag"不等于"每条容器 no-drag"**：标签条横跨栏的中间且 `flex: 1`，它必须保持拖拽区，只有标签自身（`+` 在内）退出——容器一旦整条 `no-drag`，两端的控件之间就没有可抓的地方了，窗口会完全拖不动。窗口控制是我们画在栏里的，所以它必须是 `<button>` + IPC，而不是"看起来像按钮"。**设置页打开时，两个面板开关退场**（它们作用在那一刻不在屏上的布局），标签条与主题切换留下：标签是回到终端的路，主题是整窗的事。
-- **左栏（默认 260px，可拖拽 180–420，`chrome` 底 + 右 hairline，可完全收起）**：会话列表——**这是主机列表，不是菜单**。每行是"状态点 + 名称 + 加速器徽标"（开了多个终端时前面再加一枚 `N 终端`），**点击即选中这个会话**——它没有终端就开一个，有就聚焦最后一个，标签条随之切换；非静息状态（连接中/已连接/失败）在行内写出文字。**行内动作藏在悬停才出现的 `⋯` 菜单里**（打开/聚焦终端 · **新建终端** · 重启内核 · 写入 SSH 配置 · 复制 ssh 命令 · **关闭全部标签** · **停止会话**）——静息时动作不占空间，指向它才出现；`停止会话` 是破坏性项，用 `{colors.error}` 着色并先确认。**"关闭全部标签"是唯一会挂断连接的那个**：关掉一个标签只是关掉一条 shell（或一个文件视图），同一个运行时的其它标签还在这条连接上跑（一个运行时只接受一条 SSH 连接，关一条 shell 不该把别人的活带走）；**文件标签也算一个标签**——它读的正是这条连接上的文件，所以只关终端不会把它带走，要挂断就一起关。栏脚是应用自己的角落：**设置**（带齿轮图标、悬停提示 `Ctrl+,` 的真按钮）。设置入口在这条栏的最底部，因为它是这个工具的边角，不是工作台的一部分（额度与速率已整合至底部常驻状态栏）。
-- **中间：终端。** 它占满剩余的**全部**空间，没有额外的边框或标题——终端工具的屏幕属于终端。没有终端在屏上时，这块面积换成**起始页**（见「起始页」）。终端的**内容区**是固定的 `{colors.terminal-bg}`（页面里唯一比 canvas 更暗的区域，"机器"与"界面"因此一眼分开）；断开时底部出现一条只有"重试"的细条，原因已经写在终端里了。**一个会话可以有多条终端**——每条是这条 SSH 连接上的一条 shell，有各自的 PTY 尺寸，所以"一个标签跑训练、另开一个标签看文件"不需要第二条连接（运行时也只会给一条）。选中会话的终端叠在同一块面积上：只有当前那条在布局里，其余停靠但**继续跑**，切终端、换会话都不重连——这是终端工具的底线，也是 `Workbench.tsx` 里两级停靠（会话一级、终端一级）的原因。
-- **右栏（默认 340px，可拖拽 220–560，可完全收起）**：运行时的文件系统。与终端**共用同一条 SSH 连接**，所以它必须与终端同屏——这正是不把它做成独立页面的原因。它按**会话**一个，不按终端：一个运行时只有一个文件系统，两条 shell 看的是同一个。
-- **两条栏的边界是拖拽条**（`components/ui/PanelDivider.tsx`）：它骑在面板自己的 hairline 上（9px 宽、左右各探出 4px），**静息时什么都不画**——边界就是面板原来那条 hairline——**悬停、聚焦或正在拖动时那条线变成 `{colors.hairline-strong}`**。界线由面板的 hairline 画，所以拖拽条不占布局宽度，拖动时也不会有东西"跳"。键盘同样是调整手段：`role="separator"` + 方向键（按住 `Shift` 一大步），并把 `aria-valuemin` / `aria-valuemax` 报给辅助技术。**窄窗口下先收窄两条栏、终端的地板是 360px**：拖出来的宽度是偏好而不是保证（`lib/panel-width.ts` 是唯一真源）。
-- **两侧收起后**，终端独占整行，就是"专注模式"。
-- **状态栏（26px，mono）**：左侧是算力驾驶舱——胶囊微型进度条（阶梯自适应算法：<=100 CU / <=500 CU 满格基准，低于 15% 警示）、当前计算单元余额（`42.50 CU`）、预估扣费速率（`~1.25/h`）与云端活跃计费会话数（`<ActivityIcon />` + 纯数字计数），悬停给出预计可用时长；中间弹性留白；右侧是全局打开的终端总数（`<TerminalIcon />` + 纯数字计数）。SSH 别名复制由左栏 `⋯` 菜单提供，不再平铺占用底栏。
-- **设置**：一个**页面**，`Ctrl+,` 或左栏底部的齿轮进入。它不是对话框：没有遮罩、没有点外关闭，工作台也**不被卸载**——底下的终端是活着的 SSH 会话，为读一个设置把它们拆掉是错的。详见下面的「设置页」。
-
-图标一律用内联 SVG（`components/ui/icons.tsx`）：`▤`/`▥`/`⚙` 这类字形在不同平台会落到不同字体的不同形状上，而顶栏整条都是图标。**图标之间必须能互相区分**：齿轮是"环 + 齿 + 轴心"，不是"圆 + 放射线"——后者在 15px 上和主题切换的太阳是同一个形状（这条是踩出来的）。**纯图标按钮必须另外给名字**：`IconButton` 的 `label` 同时落到 `aria-label` 和 `title`——字形给不出这个名字。
-
-### 设置页
-
-设置是**工作台上的一层**，不是工作台之外的一个地方（`app-shell/SettingsPage.tsx`）：
+The interface is organised the way terminal tools are (Orca / Termius / PyCharm as references): **there are no pages to navigate to**, everything is present at once; the app **draws its own window title bar**, and **there is only this one bar at the top** — it is the title bar, the tab strip, the toolbar and the window controls in one, and a desktop app should not stack another row above it.
 
 ```
-┌ 返回工作台 ─────────────────┬──────────────────────────────────────────┐
-│ 账号                        │  ㊢ 账号与额度                            │
-│  · 账号与额度    ← 当前     │  授权状态、余额与速率……                  │
-│  · 用量趋势                 │ ──────────────────────────────────────── │
-│ 工作台                      │  ┌ 指标 · 登录 ─────────────────────────┐ │
-│  · 外观                     │  └──────────────────────────────────────┘ │
-│  · 终端                     │                                          │
-│ 运行时                      │                                          │
-│  · 运行环境                 │                                          │
-│  · 外部工具                 │                                          │
-│ 应用                        │                                          │
-│  · 关于                     │                                          │
-└─────────────────────────────┴──────────────────────────────────────────┘
+┌ window title bar = top bar ── [▭] │ tabs… + │ [▥] [☾] │ − □ × ─────────────┐
+├─ left rail ────┬──────────────────────────────────┬─ right rail ──────────┤
+│ sessions       │                                  │ files (SFTP)          │
+│ · dot + name   │   terminal (middle, fills the    │ file tree (from       │
+│ · accelerator  │   remaining space)               │ /content)             │
+│ ─────────────  │                                  │ upload / download /   │
+│ ⚙ settings     │                                  │ delete                │
+├────────────────┴──────────────────────────────────┴───────────────────────┤
+│ status bar: [progress · compute units] · spend rate · active sessions ─ open terminals │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **分节栏（260px）**：与左栏**同宽、同底、同 hairline、同行样式**，所以进入设置读起来是"这条栏换了内容"，而不是"弹出了一个新窗口"。首行是**返回工作台**（`PanelLeft` 那种左向 chevron + 文字，整行宽的 ghost 按钮），以下是分组的节：`{typography.micro}` 大写组名（账号 / 工作台 / 运行时），下面是"图标 + 标题"的行，激活项用 `{colors.canvas-soft}` 底 + hairline + ink 字重 500——与左栏会话行的激活态同一套。
-- **正文：一次一节。** 不是把所有设置堆成一列滚动，而是分节栏选中的那一节独占正文（`max-width: 760px` 居中）。每节自带 `{typography.title}` 标题 + 一行 `{typography.mute}` 说明 + 一条 hairline，下面才是内容（`Card` 或 `Panel`）。**没有"设置"这个页面标题**——每节说的是自己的事。
-- **进出**：进——左栏底部的齿轮、`Ctrl+,`；出——分节栏首行、`Esc`、或点顶栏的任一会话标签（标签是回到终端的路，点它就回到工作台并聚焦那个终端）。
-- **焦点交接**：页面打开时把焦点从底下的终端收上来，关闭时交还给原来那个元素。否则用户对着设置打字，字会打进看不见的终端里。**改终端外观时同样不能碰焦点**：终端面板仍在这层之下活着，替它 `focus()` 就等于把键盘交回给一个看不见的面板——热更新那条路径因此不聚焦，只有用户真的点了终端才聚焦。
-- **一节内部也可以有画面**：「终端」一节在最上面放一个只读沙箱（`features/workspace/TerminalPreview.tsx`），用的是**同一个 xterm、同一批选项、同一份调色板**，而不是一张仿制的图。它仍然是**一列**：正文宽度（760px）与"一次一节"的规矩不因为多了个预览就破例，两边并排的双栏是另一种页面形状。
-- **动效**：入场 180ms `ease-out`（透明度 0→1 + 上移 8px），`prefers-reduced-motion` 下关闭。**设置页的这一入场是全产品唯一的"换了一层"动效**——它用来把"换了一层"和"界面抖了一下"分开。唯一的另一处动效是消息提示的 120ms 淡入上浮（同样在 `prefers-reduced-motion` 下关掉）：它标的是"刚出现的"，不是"换了一层"。
-- **日志**：应用自己的日志在 `userData/logs/colabdesk.log`——**不是安装目录**：那可能是 Program Files（要管理员才可写）、macOS 上是签名 bundle（不可写），卸载还会连同它一起删掉，而这份日志要能活过一次卸载，和旁边的用量历史一样。行格式是 `时间戳 [scope] 正文`，一次调用一条：CLI 的 argv、退出码、耗时与原始输出（`colab/`）、登录流程的每一步、主进程的未捕获异常与未处理 rejection（`process-guards.ts`），启动时另写一行版本 / 平台 / 安装目录 / CLI 来源——一份粘贴出来的日志要能自己说明它是哪个构建、装在哪。**写入前一律脱敏**（OAuth 的 `code`/`state`、`token`/`secret`/`password` 形式的键值、`Bearer`），因为这份文件是拿来发出去的；写失败一律吞掉（fail-open），2 MB 轮转一份 `.1`。用户入口只有一个：**设置 → 关于** 的「运行日志」一行，显示路径 + 「打开日志」——路径本身要露出来，因为提交问题时它常常要跟着一起写。**但界面从不指路到日志**：没有人会为了看一个按钮为什么没反应去翻安装目录里的文件。失败要**当场把原因说清楚**——用 CLI 自己最后那句人话（`failureReason`），配一个「复制详情」把完整输出交到用户手里；日志是给维护者事后读的，不是给用户的作业。
+- **Top bar (40px, the only bar on top, and the window title bar as well)**: the far left is the **brand symbol** (`app-shell/BrandMark.tsx`, 18px, `--ink`). **There is no wordmark** — an app that draws its own title bar does not need a line of text repeating the window title; the symbol is there and the wordmark is not, and that has not been overturned. The symbol is the **small-size cut**, not the master: the master's floor is 24px and this bar is 40px (see the minimum-size table in `brand/guidelines.md`). It is the one non-control element on the bar that does **not** declare `no-drag` — it carries no action, so the drag region should not be interrupted there. **The bar is split into three sections that line up with the layout below**: the left section is **as wide as the session rail** (brand symbol + rail toggle), so the tab strip in the middle **starts exactly above the terminal**. That section's width is **measured from the rail** (`Sidebar.tsx` publishes its rendered width as `--rail-width`) rather than recomputed here — the rail is what gives way when the window narrows, and measuring it is what lets this follow; a second algorithm would drift on the first change to either. When the rail is collapsed the variable disappears and the section shrinks back to its two controls. **A 1px vertical line is drawn at each seam** (`{colors.hairline}`), the same line as the divider below: the left one is this section's own `border-right` — its width *is* the rail's width, so the border lands exactly on the rail's `border-right` column; the right one lands on the files panel's left edge (`--files-width`, also measured, published by `FilePane.tsx`). When the rail is collapsed the left line is not drawn: there is no seam there, so the line would have no subject. The middle is the tab strip — **it is "the selected session's workbench"**: one terminal per tab (`Terminal 1`, `Terminal 2`, …), **one file per tab** (the file name is the tab name, the full path lives in its tooltip), with a `+` at the end for another terminal (files open from the files panel on the right). With one session in the rail, this strip is that runtime's whole set of shells and files; change sessions and the whole strip changes with it. **No status dot on a tab**: the tabs in one strip share one SSH connection, the connection state is already written out on the rail's row and again in the status bar, and a third copy would be the same fact said three times. The right end is the **files-panel toggle** and the **theme toggle**, and the far right is the **window controls** (minimize / maximize-restore / close) — this group does not move with the right rail's width, because a toggle far from the window controls becomes two places. On Windows and Linux the system frame is not drawn at all (`frame: false`); on macOS the inset traffic lights stay (`titleBarStyle: "hiddenInset"`, 78px reserved on the left). The whole bar is a drag region (`-webkit-app-region: drag`) and every **control** in it declares `no-drag` in return; double-clicking the same area maximizes, like a system title bar. **"Every control is no-drag" is not "every container is no-drag"**: the tab strip spans the middle with `flex: 1` and must stay draggable, with only the tabs themselves (the `+` included) opting out — make the container `no-drag` as a whole and there is nothing left to grab between the controls at its ends, and the window cannot be dragged at all. The window controls are ours, so they must be `<button>` + IPC rather than something that looks like a button. **While the settings page is open the two panel toggles stand down** (they act on a layout that is not on screen at that moment) and the tab strip and theme toggle stay: the tabs are the way back to a terminal, and the theme is the whole window's business.
+- **Left rail (260px by default, draggable 180–420, `chrome` ground + right hairline, can be collapsed entirely)**: the session list — **this is a host list, not a menu**. Each row is "status dot + name + accelerator badge" (with an `N terminals` badge in front once more than one is open), and **clicking it selects that session** — if it has no terminal, one opens; if it has one, the last is focused, and the tab strip follows. A non-resting state (connecting / connected / failed) is written out in the row. **Row actions hide in a `⋯` menu that appears on hover** (Focus terminal · **New terminal** · Restart kernel · Configure SSH · Copy ssh command · **Close all tabs** · **Stop session**) — actions take no space at rest and appear when pointed at; `Stop session` is destructive, coloured with `{colors.error}` and confirmed first. **"Close all tabs" is the one action that hangs up**: closing a tab closes one shell (or one file view), while a runtime's other tabs keep running on that same connection (a runtime accepts one SSH connection, and closing one shell should not take somebody else's work with it); **a file tab counts as a tab** — it is reading files over that connection, so closing the terminals alone will not take it away, and hanging up means closing both. The foot of the rail is the app's own corner: **Settings** (a real button with a gear icon, tooltip `Ctrl+,`). It sits at the very bottom because it is this tool's edge, not part of the workbench (quota and spend rate have moved into the always-present status bar).
+- **Middle: the terminal.** It takes the **entire** remaining space, with no extra border or heading — a terminal tool's screen belongs to the terminal. When no terminal is on screen, that area becomes the **start page** (see "Start page"). The terminal's **content area** is a fixed `{colors.terminal-bg}` (the only region in the page darker than canvas, which is what tells "machine" from "interface" at a glance); when the connection drops, a thin bar with only "Reconnect" appears at the bottom, because the reason is already written in the terminal. **One session can have several terminals** — each is a shell on that one SSH connection with its own PTY size, so "one tab for training, another to look at files" needs no second connection (and the runtime would only grant one anyway). The selected session's terminals are stacked on the same area: only the current one is in the layout, the rest park but **keep running**, and switching terminals or sessions reconnects nothing — that is the floor for a terminal tool, and the reason `Workbench.tsx` has two levels of parking (one per session, one per tab).
+- **Right rail (340px by default, draggable 220–560, can be collapsed entirely)**: the runtime's filesystem. It **shares the terminal's SSH connection**, which is why it has to be on the same screen — and why it is not a page of its own. There is one per **session**, not per terminal: a runtime has one filesystem, and its two shells see the same one.
+- **The border between the two rails is the resize handle** (`components/ui/PanelDivider.tsx`): it rides on the panel's own hairline (9px wide, reaching 4px out on each side) and **draws nothing at rest** — the seam is the hairline that was already there — and **on hover, focus or drag that line becomes `{colors.hairline-strong}`**. The seam is drawn by the panel's hairline, so the handle takes no layout width and nothing "jumps" while dragging. The keyboard adjusts too: `role="separator"` + arrow keys (`Shift` for a large step), with `aria-valuemin` / `aria-valuemax` reported to assistive technology. **Under a narrow window the two rails narrow first and the terminal's floor is 360px**: a dragged width is a preference, not a guarantee (`lib/panel-width.ts` is the only source of truth).
+- **With both rails collapsed** the terminal owns the row: focus mode.
+- **Status bar (26px, mono)**: on the left is the compute cockpit — a capsule micro progress bar (step-adaptive scale: full-width basis at ≤100 CU / ≤500 CU, a warning below 15%), the current compute-unit balance (`42.50 CU`), the estimated spend rate (`~1.25/h`) and the count of cloud sessions being billed (`<ActivityIcon />` + a bare number), with projected time remaining on hover; the middle is elastic whitespace; on the right is the total number of open terminals (`<TerminalIcon />` + a bare number). Copying the SSH alias lives in the rail's `⋯` menu and no longer takes up the bottom bar.
+- **Settings**: a **page**, entered with `Ctrl+,` or the gear at the foot of the rail. It is not a dialog: no backdrop, no click-outside-to-close, and the workbench is **not unmounted** — the terminals under it are live SSH sessions, and tearing them down to read a setting is wrong. See "Settings page" below.
 
-### 键盘
+Icons are always inline SVG (`components/ui/icons.tsx`): glyphs like `▤` / `▥` / `⚙` land on different shapes from different fonts on different platforms, and the whole top bar is icons. **Icons must be distinguishable from one another**: the gear is "ring + teeth + hub", not "circle + radial lines" — the latter is the same shape as the theme toggle's sun at 15px (learned the hard way). **An icon-only button must be given a name**: `IconButton`'s `label` lands on both `aria-label` and `title` — a glyph cannot supply that name.
 
-终端优先：应用级快捷键一律带 `Shift`，不占用 shell 需要的组合（`Ctrl+C` 永远是 SIGINT）。
+### Settings page
 
-| 快捷键 | 作用 |
+Settings is **a layer over the workbench**, not a place outside it (`app-shell/SettingsPage.tsx`):
+
+```
+┌ Back to Workbench ──────────┬───────────────────────────────────────────┐
+│ Account                     │  ✎ Account & Quota                        │
+│  · Account & Quota  ← here  │  Authorization, balance and spend rate…   │
+│  · Usage Trend              │ ───────────────────────────────────────── │
+│ Workbench                   │  ┌ Metrics · Sign-in ────────────────────┐│
+│  · Appearance               │  └───────────────────────────────────────┘│
+│  · Terminal                 │                                           │
+│ Runtime                     │                                           │
+│  · Environment              │                                           │
+│  · External Tools           │                                           │
+│ App                         │                                           │
+│  · About                    │                                           │
+└─────────────────────────────┴───────────────────────────────────────────┘
+```
+
+- **Section rail (260px)**: the **same width, same ground, same hairline, same row style** as the left rail, so entering settings reads as "this rail changed its contents" rather than "a new window opened". The first row is **Back to Workbench** (a left-chevron like `PanelLeft` + text, a full-width ghost button), then grouped sections: a `{typography.micro}` uppercase group name (Account / Workbench / Runtime / App), and under it "icon + title" rows, the active one on `{colors.canvas-soft}` with a hairline and ink at weight 500 — the same treatment as an active session row in the left rail.
+- **Body: one section at a time.** Rather than stacking every setting into one scrolling column, the section the rail has selected owns the body (`max-width: 760px`, centred). Each section brings its own `{typography.title}` heading + one `{typography.mute}` line + a hairline, and only then the content (`Card` or `Panel`). **There is no "Settings" page title** — every section talks about its own subject.
+- **In and out**: in — the gear at the foot of the rail, `Ctrl+,`; out — the rail's first row, `Esc`, or clicking any session tab in the top bar (a tab is the way back to a terminal; clicking it returns to the workbench and focuses that terminal).
+- **Focus handoff**: opening the page takes focus up from the terminals below, and closing it gives focus back to the element it came from. Otherwise the user types into settings and the characters land in a terminal they cannot see. **Changing the terminal's appearance must not touch focus either**: the terminal pane is still alive under this layer, and calling `focus()` on it hands the keyboard back to an invisible pane — which is why the hot-update path does not focus, and only a real click on the terminal does.
+- **A section may contain a picture**: the "Terminal" section puts a read-only sandbox at the top (`features/workspace/TerminalPreview.tsx`) built from **the same xterm, the same options and the same palette**, not an imitation. It is still **one column**: the 760px body width and the one-section-at-a-time rule do not bend for a preview, and a two-column side-by-side layout would be a different page shape.
+- **Motion**: entry is 180ms `ease-out` (opacity 0→1 plus an 8px rise), disabled under `prefers-reduced-motion`. **This entry is the product's only "a layer changed" motion** — it is what tells "a layer changed" apart from "the interface flickered". The one other motion is the toast's 120ms fade-and-rise (also off under `prefers-reduced-motion`): it marks "this just appeared", not "a layer changed".
+- **Log**: the app's own log lives in `userData/logs/colabdesk.log` — **not in the install directory**: that may be Program Files (administrator-only writes), or a signed bundle on macOS (not writable), and an uninstall would take the log with it, while this one has to survive an uninstall, like the usage history beside it. A line is `timestamp [scope] text`, one per call: the CLI's argv, exit code, duration and raw output (`colab/`), every step of the sign-in flow, the main process's uncaught exceptions and unhandled rejections (`process-guards.ts`), plus one line at startup with version / platform / install directory / CLI source — a pasted log should be able to explain which build it is and where it is installed. **Everything is redacted before writing** (OAuth `code` / `state`, `token` / `secret` / `password` style key-values, `Bearer`), because this file is meant to be sent to somebody; write failures are swallowed (fail-open), and at 2 MB it rotates one `.1`. There is exactly one user entry point: the **Run log** row in **Settings → About**, showing the path + "Open log" — the path itself stays visible because it usually has to be quoted in a bug report. **But the interface never points at the log**: nobody goes digging in an install directory to find out why a button did nothing. A failure states its cause **on the spot** — the CLI's own last human sentence (`failureReason`), with a "Copy details" that hands the full output over; the log is for whoever maintains this later, not homework for the user.
+
+### Keyboard
+
+Terminal first: application shortcuts always carry `Shift` and never take a combination a shell wants (`Ctrl+C` is SIGINT, always).
+
+| Shortcut | What it does |
 | --- | --- |
-| `Ctrl/Cmd+Shift+C` / `Cmd+C` | 复制选中内容 |
-| `Ctrl/Cmd+Shift+V` / `Cmd+V` | 粘贴（走终端的括号粘贴，多行是一个整体） |
-| 右键 | 有选中就复制，否则粘贴 |
-| `Ctrl/Cmd+Shift+F` | 在终端里查找 |
-| `Ctrl+Shift+=` / `-` | 终端字号（记忆到 localStorage） |
-| `Ctrl/Cmd+Shift+T` | 在当前会话里新建终端（标签条上那个 `+`） |
-| `Ctrl/Cmd+Shift+N` | 新建会话（申请运行时） |
-| `Ctrl/Cmd+Shift+W` | 关闭当前标签（最后一个标签才挂断 SSH；文件标签也算一个；有未保存的修改会先问） |
-| `Ctrl/Cmd+Shift+1…9` | 切换当前会话的标签（终端与文件在一条栏里） |
-| `Ctrl/Cmd+Shift+E` | 显示 / 隐藏会话栏 |
-| `Ctrl/Cmd+Shift+B` | 显示 / 隐藏文件面板 |
-| `↑/↓` `→/←` `Home/End` | 文件树里行走（行必须有焦点：`→` 展开、`←` 收起或回到父行） |
-| `Enter`（文件树里） | 打开这一行：文件夹展开／收起，文件开成一个标签（与双击同一个动作，按钮原生的键盘激活） |
-| `Ctrl/Cmd+,` | 打开设置 |
-| `Esc` | 关闭设置（设置没开时 `Esc` 归终端，不拦截；文件标签里的 `Esc` 归查找面板） |
+| `Ctrl/Cmd+Shift+C` / `Cmd+C` | Copy the selection |
+| `Ctrl/Cmd+Shift+V` / `Cmd+V` | Paste (through the terminal's bracketed paste; multiple lines are one unit) |
+| Right-click | Copy if there is a selection, otherwise paste |
+| `Ctrl/Cmd+Shift+F` | Find in the terminal |
+| `Ctrl+Shift+=` / `-` | Terminal font size (remembered in localStorage) |
+| `Ctrl/Cmd+Shift+T` | New terminal in the current session (the `+` on the tab strip) |
+| `Ctrl/Cmd+Shift+N` | New session (request a runtime) |
+| `Ctrl/Cmd+Shift+W` | Close the current tab (the last tab is what hangs up SSH; a file tab counts; unsaved edits are asked about first) |
+| `Ctrl/Cmd+Shift+1…9` | Switch tabs of the current session (terminals and files share one strip) |
+| `Ctrl/Cmd+Shift+E` | Show / hide the session rail |
+| `Ctrl/Cmd+Shift+B` | Show / hide the files panel |
+| `↑/↓` `→/←` `Home/End` | Walk the file tree (a row must have focus: `→` expands, `←` collapses or returns to the parent row) |
+| `Enter` (in the file tree) | Open this row: a folder expands/collapses, a file opens as a tab (the same action as a double-click; a button's native keyboard activation) |
+| `Ctrl/Cmd+,` | Open settings |
+| `Esc` | Close settings (with settings closed, `Esc` belongs to the terminal and is not intercepted; inside a file tab it belongs to the find panel) |
 
-### 起始页（中间没有终端时）
+### Start page (when no terminal is on screen)
 
-中间没有终端时不是空白，而是这台应用的**正门**（`features/workspace/StartPage.tsx`）：
+With no terminal in the middle, the area is not blank — it is this app's **front door** (`features/workspace/StartPage.tsx`):
 
 ```
-              品牌锁版：符号 + 名字（图形，200px）
-                 把远程 GPU 运行时当本地机器用
-                 选一个会话，或新建一个运行时。        ← 下一步
-                    [ 新建会话 ]   [ 展开会话栏 ]
-   连接 GPU 机器   跑训练和推理   传输文件   查看用量
+              brand lockup: symbol + name (graphic, 200px)
+                 Run a remote GPU runtime like a local machine
+                 Pick a session, or create a runtime.      ← the next step
+                    [ New session ]   [ Expand sidebar ]
+   GPU Runtimes   Training & Inference   File Management   Usage Monitoring
        ───────────────────────────────────────────────
-                    ☆ 在 GitHub 上点个 Star            ← 页脚
+                    ☆ Star on GitHub                       ← footer
 ```
 
-- **这一屏既是营销页也是空态。** 上半是产品的主张（品牌锁版 + 一句话），下半仍然守空态的老规矩：说明**这一步**该做什么。只有装饰而不指路，是比朴素空态更差的空态。
-- **名字是图形，不是字。** 锁版来自标识套件（`app-shell/BrandLockup.tsx`：母版符号 + 转曲字标，`brand/` 不入库所以几何内联）。因此这一屏**没有更大的字号**——阶梯最高仍是 26px 的 `{typography.display}`。锁版走 `currentColor`：浅色是 ink，深色自动反白。
-- **两种情形共用一列。** **还没选会话**（启动时就是这一屏）：锁版 + 主张 + "选一个会话，或新建一个运行时"（本地一个会话都没有时是"新建一个运行时开始使用"），动作是**新建会话**，会话栏收起时补一个**展开会话栏**。**选中了会话但它还没有终端**：同一个容器只留"「&lt;会话&gt;」还没有终端 + 新建终端"——来的人要的是终端而不是品牌故事，所以这一屏**不画锁版、也不出现 star**。
-- **一屏一个 primary。** 肯定是**新建会话**（或**新建终端**）；star 是 `outline` 的小药丸，任何时候都不与它争。
-- **star 只问一次。** 页脚那颗药丸指向源码仓库（`lib/star-prompt.ts`）。应用没有办法核实谁真的点了 star（这里没有 GitHub 账号，也没有 `gh`），所以点开即算回答：此后那颗药丸换成 mono 的仓库地址，链接还在、不再央求。文案只说"点个 Star"，从不声称已经加过。
-- **每条是"你能拿它做什么"，不是"它内部长什么样"。** 图标 + 标题 + 一行说明，无底色无阴影，横排一条——正门上一排抬起来的盒子会是全应用最吵的东西。标题写成**动词 + 对象**（*连接 GPU 机器 · 跑训练和推理 · 传输文件 · 查看用量*），一条一件事；"一个会话装多条终端""文件与终端共用一条连接"这类机制属于说明那一行，它才是补事实的地方——**机制换个说法当标题就成了黑话**。条数跟着内容走，布局让步：`.startpage__features` 是 `auto-fit` 网格（每条 ≈160px），栏窄了自己降到两三条一行。
-- **「跑训练和推理」说的是那台机器，不是这个应用。** 这里没有 Run 按钮，所以图标是终端而不是播放键——播放键等于承诺一个不存在的功能。凡是"机器能做到、应用只负责把机器交给你"的事，都按这条写：标题落在用户要做的事上，说明行交代它在哪儿发生。
+- **This screen is both a marketing page and an empty state.** The top half is the product's claim (the lockup + one sentence); the bottom half still obeys the old empty-state rule: it says what **this step** is. Decoration without directions is a worse empty state than a plain one.
+- **The name is a graphic, not type.** The lockup comes from the brand kit (`app-shell/BrandLockup.tsx`: the master symbol + outlined lettering; `brand/` is not in the repo, so the geometry is inlined). This screen therefore has **no larger type** — the ladder still tops out at the 26px `{typography.display}`. The lockup goes through `currentColor`: ink in light, automatically reversed in dark.
+- **Two situations share one column.** **No session selected yet** (the state at launch): the lockup + the claim + "Pick a session, or create a runtime" ("Create a runtime to get started" when there are no local sessions), the action is **New session**, plus **Expand sidebar** when the rail is collapsed. **A session is selected but has no terminal**: the same container keeps only "&lt;session&gt; has no active terminals + New terminal" — whoever arrives wants a terminal, not a brand story, so this screen **draws no lockup and shows no star**.
+- **One primary per screen.** It is **New session** (or **New terminal**); the star is a small `outline` pill and never competes with it.
+- **The star asks once.** The footer pill points at the source repository (`lib/star-prompt.ts`). The app cannot verify that anyone actually starred it (there is no GitHub account here, and no `gh`), so opening it counts as the answer: after that the pill becomes the repository address in mono — the link stays, the pleading stops. The copy says "Star on GitHub" and never claims one was given.
+- **Every line says what you can do, not how it works inside.** Icon + title + one description line, no fill and no shadow, in a row — a row of lifted boxes on the front door would be the loudest thing in the app. Titles are **verb + object** (*GPU Runtimes · Training & Inference · File Management · Usage Monitoring*), one thing each; mechanisms like "one session holds several terminals" or "files and terminals share one connection" belong on the description line, which is where facts get added — **a mechanism rephrased as a title is jargon**. The number of lines follows the content and the layout gives way: `.startpage__features` is an `auto-fit` grid (each ≈160px), and a narrow rail drops it to two or three per row.
+- **"Training & Inference" is about that machine, not about this app.** There is no Run button here, so the icon is a terminal and not a play button — a play button promises a feature that does not exist. Anything "the machine can do, and the app only hands the machine to you" is written this way: the title lands on what the user does, and the description line says where it happens.
 
-**空态不许声称"没有"。** 列表有两个来源（本地记录、服务器）时，只说得出本地那半就只写"本地还没有会话"，服务器那半没读到就再写一行"读不到服务器上的运行时列表 + 去哪重试"——"什么都没有"是一句只有在两半都读到、而且都是空的时候才成立的话。
+**An empty state may not claim "there is nothing."** When a list has two sources (the local record, the server), and only the local half could be read, it says "no local sessions yet" and nothing more; when the server half could not be read, it adds a line saying so and where to retry — "there is nothing" is a sentence that is only true when both halves were read and both were empty.
 
-### 密度与点击面积
+### Density and hit areas
 
-桌面控制台以紧凑取胜：表格行 `--space-3` 上下留白，按钮 32px、小号 28px。**低于 28px 高的可点区域算缺陷**，行内图标按钮除外（它们成组出现且间距足够）。
+A desktop console wins by being compact: table rows get `--space-3` above and below, buttons are 32px and small ones 28px. **A click target shorter than 28px counts as a defect**, except inline icon buttons (they come in groups with enough spacing).
 
 ## Elevation & Depth
 
-五级，全部实现为**堆叠的小偏移 + 一圈内嵌 hairline**（见 frontmatter 的 elevation）。等级 2 是默认卡片；等级 3 是悬停与拖拽中；等级 4/5 留给真正悬浮的层（下拉、对话框）。
+Five levels, all built as **stacked small offsets plus an inset hairline** (see `elevation` in the frontmatter). Level 2 is the default card; level 3 is hover and drag; levels 4/5 are for layers that genuinely float (popovers, dialogs).
 
-**永远不要用单个大模糊投影。** 那会让工作台看起来像仪表盘；"坐在页面上"而不是"浮在页面上面"才是这套系统的重量感来源。**也永远不要给表格行加投影**——行靠 hairline 和 `{colors.canvas-soft}` 的悬停底色表达。
+**Never use a single large blur.** That makes the workbench look like a dashboard; "sitting on the page" rather than "floating above it" is where this system's sense of weight comes from. **Never put a shadow on a table row either** — rows are expressed by hairlines and the `{colors.canvas-soft}` hover fill.
 
 ## Shapes
 
-| 令牌 | 值 | 用途 |
+| Token | Value | Use |
 | --- | --- | --- |
-| `{rounded.xs}` | 4px | 键位提示、徽标内侧 |
-| `{rounded.sm}` | 6px | **所有应用内控件**：按钮、输入框、callout 内的控件 |
-| `{rounded.md}` | 8px | callout、原始输出块、空态框 |
-| `{rounded.lg}` | 12px | 卡片、面板、表格容器、工作面板 |
-| `{rounded.full}` | 9999px | 徽标、状态点 |
+| `{rounded.xs}` | 4px | Keycaps, the inside of a badge |
+| `{rounded.sm}` | 6px | **Every control in the app**: buttons, inputs, controls inside a callout |
+| `{rounded.md}` | 8px | Callouts, raw-output blocks, empty-state boxes |
+| `{rounded.lg}` | 12px | Cards, panes, table containers, work surfaces |
+| `{rounded.full}` | 9999px | Badges, status dots |
 
-两套尺度分工明确：**控件 6px，容器 12px**。同一屏里不要用两种半径表达同一种东西。状态点是 6px 圆，进度条 4px 高全圆角。
+Two scales with distinct jobs: **controls are 6px, containers are 12px**. Do not use two radii for the same kind of thing on one screen. A status dot is a 6px circle; the progress bar is 4px tall and fully rounded.
 
 ## Components
 
 ### Button
 
-`components/ui/Button.tsx`，七个变体、四个尺寸（md 32 / sm 28 / lg 36 / icon 32）。
+`components/ui/Button.tsx`, seven variants and four sizes (md 32 / sm 28 / lg 36 / icon 32).
 
-- `primary` —— ink 实底 + `on-primary` 文字。**每个流程只有一个**（创建、打开工作区、上传、登录、提交）。
-- `secondary` —— canvas 底 + Level 1 阴影，与 primary 配对的非承诺动作（重读、同步、刷新、连接）。
-- `outline` —— canvas 底 + 可见 hairline 边框，用于密集工具栏（SSH 配置、写入 ~/.ssh/config、下载）。
-- `ghost` —— 无底无框，悬停 `{colors.canvas-soft}`；表格行与文件行的辅助动作（重启内核、断开、删除文件）。
-- `destructive` —— `{colors.error}` 实底白字；只给不可逆动作（停止会话）。
-- `link` —— 链接蓝文字，悬停下划线；用于"查看环境"这类行内跳转。
+- `primary` — ink fill + `on-primary` text. **One per flow** (create, open a workbench, upload, sign in, submit).
+- `secondary` — canvas fill + a Level 1 shadow; the non-committal action paired with a primary (re-read, sync, refresh, connect).
+- `outline` — canvas fill + a visible hairline border; for dense toolbars (SSH configuration, write `~/.ssh/config`, download).
+- `ghost` — no fill and no border, `{colors.canvas-soft}` on hover; the secondary actions of a table row or a file row (restart kernel, disconnect, delete a file).
+- `destructive` — `{colors.error}` fill with white text; irreversible actions only (stop session).
+- `link` — link-blue text, underlined on hover; inline jumps like "view environment".
 
-所有按钮 `active` 下沉 1px，`:focus-visible` 用 `--focus-ring`（3px 半透明 hairline-strong），禁用态 45% 透明度但**保持可见**——用户需要知道那里有个动作。
+Every button sinks 1px on `active`, uses `--focus-ring` (a 3px translucent hairline-strong) for `:focus-visible`, and is 45% opacity when disabled but **stays visible** — the user needs to know an action is there.
 
 ### Field / Input / Select / Checkbox
 
-控件高 32px、canvas 底、`{rounded.sm}`。标签在控件上方（13px/500 ink），可选说明以 `{typography.caption}` + `{colors.mute}` 跟在标签后；行内场景用 `field--inline`。焦点态是 `{colors.hairline-strong}` 边框 + 3px 半透明环，不做硬 outline。
+Controls are 32px tall, canvas-filled, `{rounded.sm}`. The label sits above the control (13px/500 ink), an optional description follows it in `{typography.caption}` + `{colors.mute}`; inline cases use `field--inline`. The focus state is a `{colors.hairline-strong}` border plus a 3px translucent ring — no hard outline.
 
-### Card 与 Panel
+### Card and Panel
 
-- **`Card`**：页面内容容器（新建会话、会话列表、额度）。头部是"标题 + 说明 + 动作"三件套，说明永远是一句话、最多 62ch。
-- **`Panel` + `PanelRow`**：**一节一张卡，行与行用 hairline 分隔**——这是事实与设置的形态。左列是"这是什么"（标签 + 可选说明），右列是"怎么读 / 怎么改"（mono 值或动作）。环境页整页就是这个形态；一行一卡会把一页四件事变成四屏。
+- **`Card`**: the content container of a page (new session, session list, quota). Its head is the three-piece "title + description + actions", and the description is always one sentence, at most 62ch.
+- **`Panel` + `PanelRow`**: **one card per section, rows divided by hairlines** — this is the shape of facts and settings. The left column is "what is this" (a label plus an optional description), the right column is "how to read it / change it" (a mono value or an action). The environment page is this shape end to end; one card per row would turn four facts into four screens.
 
-### 快捷键对照表
+### The shortcut table
 
-设置 → 终端 里那张表是一张 `.table`：**无边框**，`td` 之间 hairline、末行不画线，单元格不折行。左列是键位，键帽用 `.kbd`（mono + `{colors.muted}` 底 + `{rounded.xs}`）；右列说这一步在做什么。它**不是通用的列表形态**——没有表头、没有动作、不可点，会话列表是 `.session-row`（见「功能组件」）。
+The table in Settings → Terminal is a `.table`: **no outer border**, hairlines between `td`s, no line on the last row, and cells do not wrap. The left column is the key, drawn as a `.kbd` cap (mono on `{colors.muted}` with `{rounded.xs}`); the right column says what the step does. It is **not the general list shape** — no header, no actions, nothing clickable; the session list is `.session-row` (see "Functional components").
 
 ### Callout / EmptyState / Metric / ProgressBar / RawOutput
 
-- **`Callout`**：`-soft` 底 + `-deep` 文字的软填充块，级别由底色区分（info = link-bg-soft、warn = warning-soft、danger = error-soft）。解释、告警、失败都在这里说，**不用弹窗**。
-- **`EmptyState`**：所有可能为空的列表都有；标题说"没有什么"，正文说"下一步做什么"。
-- **`Metric`**：KPI 块——`{typography.display}` 数值 + `{typography.caption}` 标签，底色 `{colors.canvas-soft}`。免费版的 `—` 是合法显示，不是错误。
-- **`ProgressBar`**：4px、ink 填充，只出现在传输进行中。
-- **`RawOutput`**：折叠的原始文本，`{colors.canvas-soft-2}` 底 + mono，默认收起。它**只服务于"这段内容用户可能想读"**——现在唯一的用处是设置里那份写进 `~/.ssh/config` 的配置块。**CLI 的原始输出既不走这里、也不在界面上露头**：那些进日志（见「设置页」的「日志」），用户要的是"为什么失败"，由失败文案当场回答，「复制详情」负责把完整输出交出去。
-- **`CopyButton`**：复制一段文本，标签就地变成「已复制」两秒后变回来。剪贴板写入是无声的，而为一个复制动作再发一条消息比这件事本身还重——**标签就是全部的确认**。它存在是因为"把证据交给别人"这件事不该要求用户先找到某个文件。
+- **`Callout`**: a soft block of `-soft` fill with `-deep` text, the level told by the fill (info = link-bg-soft, warn = warning-soft, danger = error-soft). Explanations, warnings and failures are stated here, **not in a dialog**.
+- **`EmptyState`**: every list that can be empty has one; the title says "there is nothing here", the body says what the next step is.
+- **`Metric`**: a KPI block — a `{typography.display}` value + a `{typography.caption}` label on `{colors.canvas-soft}`. On the free tier a `—` is a legitimate display, not an error.
+- **`ProgressBar`**: 4px, ink fill, and only while a transfer is running.
+- **`RawOutput`**: collapsed raw text, `{colors.canvas-soft-2}` fill + mono, collapsed by default. It exists **only for "the user may want to read this"** — today its one use is the configuration block written into `~/.ssh/config`. **The CLI's raw output neither goes here nor surfaces in the interface**: it goes to the log (see "Log" under "Settings page"); what the user wants is "why did it fail", which the failure copy answers on the spot, with "Copy details" handing over the full output.
+- **`CopyButton`**: copies a piece of text, and its label turns into "Copied" for two seconds. A clipboard write is silent, and raising another message for a copy would be heavier than the act itself — **the label is the whole confirmation**. It exists because handing evidence to somebody should not require the user to go find a file first.
 
-### 功能组件
+### Functional components
 
-- **会话行（左栏）**：状态点 + 名称 + 加速器徽标；`session-row--active` 用 `{colors.muted}` 底标出当前标签；悬停出现 `{colors.canvas-soft}`。连接状态在行内以文字写出（`已连接` / `连接中` / `失败`），静息的"已断开"不写。行尾是 `⋯` 菜单触发器（悬停或键盘聚焦才显形），破坏性项在菜单里排最后并用 `{colors.error}`。
-- **未在本地记录的行（左栏，`.session-row--untracked`）**：服务器上有、本地记录里没有的运行时——`colab sessions` 把这些打成一行 `[?]`——排在会话行之后。它没有名字，所以行内用 **mono** 写 endpoint；状态是 `status--warn` 点 + 文字"未在本地记录"。**没有 `⋯` 菜单、没有悬停底色、指针不是手型**——这个应用对它无能为力，一行就不该看起来可点。"要关掉它请到 Colab 网页版"这句在 tooltip 里，不在行内。
-- **菜单（`Menu`）**：`canvas` 底 + Level 4 阴影 + 8px 圆角的小浮层，靠触发器的右下角对齐；`Escape` 或点击别处关闭。它承载"属于这一行、但不常用"的动作，因此**永远不占静息布局的空间**。
-- **图表（柱状，`.trend__*`）**：只表达量，不做多序列。绘图区是 `{colors.canvas-soft}` 的井（1px `{colors.hairline}` + `{rounded.lg}`），柱是 `{colors.ink}`——**图里不出现第二个颜色**，语义由文字承担。三条规则：
-  - **量级必须有参照**：图上方一行 `{typography.caption}` 写区间与峰值，否则柱高无从读起。
-  - **"没测到"不等于"没消耗"**：没有读数的区间在基线画 `1px dashed {colors.hairline-strong}`，柱照常画（消耗是按相邻读数摊出来的），并在图下的说明里写出这一段是推算的。**不得**用空柱表示零。
-  - 横轴标签 `{font-mono}` + `{typography.micro}` + `{colors.mute}`，桶多了就每 N 个标一个，绝不折行、绝不旋转。
-- **分段选择（`.row` + `Button`）**：小集合互斥选择（终端字号、趋势的天/周/月）用一排 `Button`，激活项 `primary`、其余 `outline`，`size="sm"`。它不是"一屏一个 primary"的那类动作按钮，是状态指示，因此不受该约束。
-- **消息提示（toast）**：行内动作的结果落在**右下角**，用 `Callout` 的三级色浮一层（Level 4 阴影、`rounded.md`、400px 宽），**自己走开**（info 4s / warn 8s / danger 12s），带一个 `IconButton` 的 `×`（有可访问名称），**同文替换而不是叠一条**，最多 3 条，`prefers-reduced-motion` 下不做入场。它是 `role="status"` + `aria-live="polite"`——**报告，不打断**。它和横幅的分工是这条规则的全部：消息属于**一个动作**（"已复制""已停止"），横幅属于**一种状态**（更新待装、环境读不到）——状态要等到被处理，所以它不能自己消失，也就不能是 toast。**成功永不用弹窗**。
-- **终端标签**：状态点 + 名称 + `×`；激活标签是 `canvas` 底 + ink 下划线；中键关闭是终端用户的肌肉记忆，必须支持。
-- **文件树**：**一棵树，不是"列表 + 面包屑"**。文件夹就地展开、兄弟行留在屏上，「我在哪」由缩进直接读出来——换屏式的进入/返回会把这一信息每走一步扔掉一次，而这块面板回答的正是"那个文件跟这个是什么关系"。树顶**第一行是根目录自己的名字**（mono 的 `/content`，跟着 shell 的落点走），它既是拖动上传的默认落点，也是"这棵树扎在哪"的唯一说明。**没有面包屑**：层级已经在树里，再说一遍是同一条信息说两次；跳到深目录要另加可编辑路径栏，不靠面包屑。
-  - **行**：`▸/▾` 三角（**只在文件夹行上**，文件行留空列以保持名字对齐）+ 一个 14px 的描边图标（关闭的文件夹 / 打开的文件夹 / 文件 / 链接；正在读取的目录换成会转的同步图标，行上报 `aria-busy`）+ 名称（占满剩余宽度）+ mono 大小（micro、右对齐）。**行里没有动作按钮**：整行是一个 `<button>`（**单击只选中**：文件夹的行就地展开／收起，文件的**双击**开成一个标签），**打开、下载与删除都在行尾**悬停才出现**的 `⋯` 菜单里（与左栏会话行同一套 `Menu`，破坏性项排最后并用 `{colors.error}`）——一行挂两个按钮正是"文件一多就乱"的根因，动作属于菜单；单击不再下载，因为双击必然先触发两次单击，那会先弹出两个原生保存对话框。**图标一律是 `--mute` 的描边图形，不用 emoji**：emoji 在每个平台长得都不一样、自带颜色，跟这套系统的克制打架；悬停或聚焦时图标转 `--ink`，名字始终是视线落点。行高 **28px**（密度底线，与最小可点面积同一条规则）。**行与行之间不画线**——四十个文件画四十条 hairline 会把文件夹读成表格，位置由缩进表达，指向它时用 `{colors.canvas-soft}` 底色，和左栏会话行同一套。
-  - **缩进**：每层 16px，封顶 6 层。面板最窄 220px，深到看不见名字的树等于没有树。
-  - **展开才去读**：一个目录只在第一次展开时读一次，读到就留着——**收起不清缓存**，再展开不该为一份没人动过的目录再跑一个来回。读失败就地写原因（其它分支照常可用）。
-  - **焦点行**：`file-row--focused` 用 `{colors.muted}` 底标出键盘在哪一行——**和左栏会话行的选中是同一种表达**，不为树另发明一套；它也是唯一 `tabIndex=0` 的行，树是一个可键盘行走的整体，不是几十个 tab 停靠点。
-  - **语义**：容器 `role="tree"` + 行 `role="treeitem"`，文件夹行报 `aria-expanded` 与 `aria-level`，文件行**不报** `aria-expanded`（它没有可展开的东西，报了是撒谎）。
-  - **键盘**：`↑/↓` 换行、`→` 展开（已展开则下到第一个子行）、`←` 收起（已收起则回到父行）、`Home/End` 到首尾——与文件管理器一致，不必另记一套。
-- **文件标签**（双击文件行、`Enter` 或行菜单的「打开」）：文件开成**与终端并列的标签**，不是弹框——它读的正是终端在写的那台机器（训练日志就该一边跑一边看），标签把两者放在同一块屏上，切换只是换前台。它是**一个工作面**：`chrome` 头（mono 全路径 + 「复制路径」+ 状态 + 动作）+ `canvas` 体，与文件面板的头部同一套。**尾部动作**：左起「只读」徽标（有理由时）、`行尾 LF · 12.3 KB` 一行状态（**不换行**，让路径去截断——一句事实断成两行读起来是两条）、`复制路径`、**`保存`**（可写文件才有；脏了才可用，是这一屏唯一的 primary）、`重新加载`、`下载到本地`。读取失败时这一格换成唯一的 primary「重试」。`Ctrl/Cmd+S` 是保存，**只在文件标签里生效**（终端里它是 XOFF）。**停靠与终端完全一致**：不是当前标签就 `hidden` + `inert`（内容、滚动位置、撤销历史都留着），换会话时随整槽停靠；**它也算一个"需要连接"的标签**——关掉最后一个标签才挂断 SSH，只关终端不会把正在读的文件一起带走。
-  - **体量规则只有一条，写死在主进程**：≤ 2 MiB 整读；更大的文件只取**开头与结尾各 256 KiB**，各自截到整行，中间以一行「⋯⋯ 省略 X ⋯⋯」的正文相接——复制会把这句一起带走，缺一段这件事必须跟着文本走。**截断态不显示行号、也不能编辑**：拼接出来的行号是假的，能编的一半也不该被写回去。
-  - **三种拒绝各自给理由，且给一条出路**，不许说一句笼统的「无法打开」：**二进制**（首 8 KiB 有 NUL，读都不读——只有「下载到本地」这条路）、**非 UTF-8**（带替换符显示，只能看）、**不可写**（mode 没有写位——显示正常，但不给保存）。二进制不挂「只读」徽标：它没有可读的正文，标签会是在说一件不存在的事。
-  - **保存的承诺，一条一条兑现**：文本先落在目标旁边的**暂存文件**再改名顶上（半成品不可能以目标的名字出现，`sftp-ops` 那套），**权限位随后带回来**（`.sh` 不该因为改一行就丢 `+x`）；写之前**比对读进来时的 mtime/size**，远端先变了就**不写**——把三个选择摆出来（`覆盖`(destructive) / `放弃修改并重新加载` / `取消`），`覆盖` 用破坏色是因为它销毁的是别人在服务端留下的副本，而"不保存"丢的是自己刚做的选择，那就只是 outline。**保存失败就地说明原因，缓冲区一动不动**——编辑不因为一次失败丢掉。
-  - **头部要在最窄的列里也放得下**：这一栏的最小宽度是 360px，所以（a）事实行溢出时收缩成省略号而不是换行——换行读起来是两条事实，而**被挤出面板的按钮会滑到旁边的文件面板底下**（一次真实的 CI 失败：按钮点不到，命中它的是隔壁面板的标题）；（b）一次提问占着头部时，`复制路径` 让位，只留事实行与答案——事实行不能藏，`● 未保存` 正是这个问题成立的前提。答案的文案也因此取短的（`放弃修改并重新加载`，不是"我的"）。
-  - **未保存是「点 + 文字」**：状态行写 `● 未保存`（存成后短暂换成 `已保存` 再回到事实），标签上另有一个小点指出是哪一个。**关标签先问**（`×`、中键、`Ctrl/Cmd+Shift+W` 都走同一问）：`保存并关闭`(primary) / `不保存` / `取消`；选「不保存」就真的一个字节都没写。这一问出现在**面板头部**并把键盘焦点直接交给「保存并关闭」（`autofocus`），同时整条问题走 `role="status"` 播报——问句是从别处（标签条、快捷键）冒出来的，不能只靠看得见。**远端先变了再点关闭**时，第一个按钮换成「覆盖并关闭」：普通保存只会再冲突一次，两个问题会互相顶替。**「关闭全部标签」与「停止会话」各问一次**（会话有条脏标签时；后者把这句并进既有的确认里），一次问句管一批，不逐个弹。保存成功后，文件面板里那一行会重读（体积变了）。
-  - **欠账**：没有文件监视器——远端在别处的改动要等到保存那一刻才暴露；跟随刷新（tail）与 ANSI 去码也还没有；应用退出时没有全局的未保存守卫。
-- **拖拽上传**：拖到面板空白处落进**根目录**（树顶那一行），拖到某个文件夹行上落进那个文件夹（行有 `file-row--drop` 的描边与底色，松手前就能看出会落到哪）。**指针在一行收起的文件夹上停留 600ms 它会自己展开**：否则"拖进一个还没打开的目录"得先松开、再展开、再拖一次。文件夹整棵上传，**符号链接跳过**：指向外部的链接会把没选中的东西一起带走，指回内部的链接会让遍历永远走不完。跳过的量算进传输行右端的「已跳过 N 项」。
-- **传输行**：`↑/↓ + 文件名` 一行（文件夹在名字后带 `(已完成/总数)`），右端是 mono 的百分比，进行中显示 4px 进度条与一个「取消」——**取消是真的停**：通道关掉、远端半截文件清掉、行里写「已取消」。结束态依次是：失败（`{colors.error}` 就地写明原因）、已取消、已跳过 N 项、完成。进行中的传输数会出现在状态栏。
-- **传到一半不出现的半成品**：传输先落在目标旁边的暂存名（`.名字.part-xxxx`）再改名顶上，所以列表里要么没有它，要么就是完整的它。同名文件**从不静默覆盖**：一次上传开始前问一次（见「对话框」）。
-- **查找栏（终端）**：终端唯一的浮出控件，`Ctrl/Cmd+Shift+F` 打开，钉在终端网格**上方**（不浮在网格上），`Esc` 关闭并把键盘还给终端。命中用终端自己的选中色标出，不另发明高亮色——那要同时对付七套终端配色。控件是应用自己的（和「连接已断开」那条通知条同源），因为终端配色是它自己的一根轴，控件不是。
-- **收起文件面板是"藏起来"，不是"折回去"**：面板仍然挂载（`hidden` + `inert`），展开到哪、读过哪些目录都留着——与终端面板停靠同理。按「刷新」重读的是**根与所有已展开的目录**：没打开的子树不动。
-- **状态**：`Status` 永远是"点 + 文字"（已连接 / 连接中… / 运行中 / 未授权）。**颜色从不单独承载语义。**
-- **对话框**：`Dialog` = `canvas` 底 + Level 5 阴影 + 半透明遮罩；点遮罩或右上角的 `×` 退出（`IconButton` + `CloseIcon`，和终端标签上的关闭是同一个字形）。**只给真正的中途岔路用**：新建会话、上传遇到同名文件（那个问题只有用户能回答，且回答覆盖整批文件——`替换` / `两个都留` / `跳过`）。**文件不是岔路**：它是一条标签（见「文件标签」）——弹框会把它和产生它的那台终端隔开，而那正是它要被对照着读的东西。设置不是对话框，它是页面（见「设置页」）。**页脚与正文之间由一条 hairline 分开**（`.dialog__footer` 的上边框）：页脚不复用表头的类——那会把线画在页脚的下缘，按钮和对话框底边之间多一条，正文与页脚之间反而没有。**新建会话里的加速器选项会标注本账号拿不到的那些**：加 `disabled` 并在文字后缀"（当前账号不可用）"，不去掉整个选项——"这台机器有过 H100，只是这个账号拿不到"才是要看的信息；标题的 hint 同时列出可用的清单，因为一串删除线不说明还剩什么。后端没回答时（离线、响应读不懂）全部可选：`colab new` 才是唯一真正做决定的地方，界面不替它拒绝。账号与可用加速器在设置页的「账号与额度」里，一行一个：邮箱一行、可用加速器一行（不可用的用 `badge-off`）。
+- **Session row (left rail)**: status dot + name + accelerator badge; `session-row--active` marks the current tab with a `{colors.muted}` fill; hover brings `{colors.canvas-soft}`. The connection state is written in words (`Connected` / `Connecting…` / `Connection failed`), and the resting "disconnected" is not written at all. At the row's end is the `⋯` menu trigger (visible on hover or keyboard focus), and destructive items come last in the menu, coloured with `{colors.error}`.
+- **Untracked row (left rail, `.session-row--untracked`)**: a runtime the server has that no local record mentions — `colab sessions` prints these as one `[?]` line — listed after the session rows. It has no name, so the row writes the endpoint in **mono**; its state is a `status--warn` dot plus the words "Not in local records". **No `⋯` menu, no hover fill, and the pointer is not a hand** — this app can do nothing about it, and a row should not look clickable when it is not. "Manage it from the Colab web console" lives in the tooltip, not in the row.
+- **Menu (`Menu`)**: a small popover on `canvas` with a Level 4 shadow and an 8px radius, aligned to the trigger's bottom-right; `Escape` or a click elsewhere closes it. It carries "belongs to this row, but is not used often", so it **never occupies space in the resting layout**.
+- **Chart (bars, `.trend__*`)**: quantity only, never multiple series. The plot area is a `{colors.canvas-soft}` well (1px `{colors.hairline}` + `{rounded.lg}`) and the bars are `{colors.ink}` — **no second colour appears in the chart**, semantics are carried by words. Three rules:
+  - **A magnitude needs a reference**: a `{typography.caption}` line above the plot states the range and the peak, or the bar heights cannot be read.
+  - **"Not measured" is not "no spend"**: a span with no reading gets a `1px dashed {colors.hairline-strong}` on the baseline, its bars still drawn (spend is apportioned from the neighbouring readings), and the note under the chart says that span was inferred. **Do not** draw an empty bar to mean zero.
+  - Axis labels are `{font-mono}` + `{typography.micro}` + `{colors.mute}`; with many buckets, label every Nth — never wrap, never rotate.
+- **Segmented choice (`.row` + `Button`)**: a mutually exclusive choice from a small set (terminal font size, the trend's day/week/month) is a row of `Button`s, the active one `primary` and the rest `outline`, `size="sm"`. It is not one of the "one primary per screen" action buttons; it is a state indicator, and is therefore not bound by that rule.
+- **Toast**: the result of an inline action lands in the **bottom-right**, a layer in the `Callout`'s three tones (Level 4 shadow, `rounded.md`, 400px wide) that **walks away by itself** (info 4s / warn 8s / danger 12s), with an `IconButton` `×` (which has an accessible name), **replacing the same text rather than stacking a second copy**, at most 3 at once, and no entry animation under `prefers-reduced-motion`. It is `role="status"` + `aria-live="polite"` — **it reports, it does not interrupt**. Its split from the banner is the whole of that rule: a message belongs to **an action** ("Copied", "Stopped"), a banner belongs to **a state** (an update waiting to install, an environment that cannot be read) — a state is waiting to be dealt with, so it cannot walk away, and therefore cannot be a toast. **Success never uses a dialog.**
+- **Terminal tab**: status dot + name + `×`; the active tab is a `canvas` fill with an ink underline; middle-click to close is muscle memory for terminal users and must work.
+- **File tree**: **a tree, not "a list behind a breadcrumb"**. Folders open in place and their siblings stay on screen, so "where am I" is read off the indent — a screen-replacing enter/back throws that information away at every step, and this panel exists to answer "how is that file related to this one". The tree's **first row is the root's own name** (a mono `/content`, following the shell's landing point); it is both the default drop target for a dragged upload and the only statement of where the tree is rooted. **No breadcrumb**: the hierarchy is already in the tree, and saying it again says one thing twice; jumping to a deep directory would want an editable path bar, not a breadcrumb.
+  - **Row**: a `▸/▾` triangle (**on folder rows only**; file rows keep the column empty so names line up) + a 14px stroked icon (closed folder / open folder / file / link; a directory being read swaps in a spinning sync icon and the row reports `aria-busy`) + the name (taking the remaining width) + a mono size (micro, right-aligned). **No action buttons in the row**: the whole row is one `<button>` (**a single click only selects**: a folder's row expands/collapses in place, a file's **double-click** opens it as a tab), and **open, download and delete all live in the `⋯` menu at the row's end** that appears on hover (the same `Menu` as a session row, destructive items last and coloured `{colors.error}`) — two buttons on every row is exactly what makes a full directory unreadable, so actions belong in the menu; a single click no longer downloads, because a double-click necessarily fires two clicks first, which would pop two native save dialogs. **Icons are always `--mute` stroked shapes, never emoji**: emoji look different on every platform and carry their own colours, which fights this system's restraint; on hover or focus the icon turns `--ink`, and the name always stays the place the eye lands. Row height **28px** (the density floor, the same rule as the minimum click target). **No lines between rows** — forty files with forty hairlines reads the folder as a table; position comes from the indent, and pointing at a row uses the `{colors.canvas-soft}` fill, the same treatment as a session row.
+  - **Indent**: 16px per level, capped at 6. The panel's narrowest is 220px, and a tree too deep to show names is no tree at all.
+  - **Read on open**: a directory is read the first time it is opened and kept when it closes — **closing does not clear the cache**, and reopening a folder nobody touched should not cost a round trip. A failed read writes its reason in place (the other branches keep working).
+  - **The focused row**: `file-row--focused` marks where the keyboard is with a `{colors.muted}` fill — **the same expression as the selected session row**, not a second one invented for the tree; it is also the only row with `tabIndex=0`: the tree is one keyboard-walkable whole, not dozens of tab stops.
+  - **Semantics**: the container is `role="tree"` and rows are `role="treeitem"`; folder rows report `aria-expanded` and `aria-level`, and file rows report **no** `aria-expanded` (there is nothing to expand; reporting one would be a lie).
+  - **Keyboard**: `↑/↓` move, `→` expands (or drops to the first child when already open), `←` collapses (or returns to the parent row when already closed), `Home/End` jump to the ends — the same as a file manager, so there is nothing new to learn.
+- **File tab** (double-click a file row, `Enter`, or "Open" in the row's menu): a file opens as **a tab beside the terminal**, not a dialog — it is reading the very machine the terminal is writing to (a training log should be readable while it runs), and a tab puts both on one screen where switching is only bringing one forward. It is **a work surface**: a `chrome` head (mono full path + "Copy path" + state + actions) over a `canvas` body, the same shape as the files panel's head. **The actions, left to right**: a "Read-only" badge (when there is a reason), a one-line state (`LF · 12.3 KB`; **it does not wrap** — the path truncates instead, because a fact broken over two lines reads as two facts), "Copy path", **"Save"** (only for a writable file; enabled only once it is dirty, and the single primary on this screen), "Reload", "Download". When the read failed, that slot becomes a single primary "Retry". `Ctrl/Cmd+S` is save and **works only inside a file tab** (in a terminal that key is XOFF). **Parking is exactly a terminal's**: not the current tab means `hidden` + `inert` (content, scroll position and undo history all stay), and it parks with its whole slot when the session changes; **it also counts as a tab that needs the connection** — the last tab is what hangs up SSH, and closing the terminals alone will not take a file you are reading with it.
+  - **There is exactly one size rule, and it lives in the main process**: ≤ 2 MiB is read whole; anything larger sends **256 KiB of the head and 256 KiB of the tail**, each cut to whole lines, joined by a line of text reading "⋯⋯ X omitted ⋯⋯" — copying includes that sentence, because a missing stretch has to travel with the text. **A truncated tab shows no line numbers and cannot be edited**: numbers stitched across the gap would be fiction, and the half that could be edited should not be written back.
+  - **Each refusal gives its reason and a way out**, never a blanket "cannot open": **binary** (a NUL in the first 8 KiB — it is not even read; "Download" is the only path), **not UTF-8** (shown with replacement characters, viewable only), **not writable** (no write bit in the mode — it displays normally but offers no save). A binary file gets no "Read-only" badge: it has no text to read, so the label would be describing something that does not exist.
+  - **The save's promises, kept one by one**: the text lands in a **staging file** beside the target and is renamed on top (a half-written file can never appear under the target's name, the `sftp-ops` way), and **the mode comes back with it** (a `.sh` should not lose `+x` because one line changed); before writing, the **mtime/size it was read at is compared**, and if the far side moved on it **does not write** — instead it puts up three choices (`Overwrite` (destructive) / `Discard edits and reload` / `Cancel`), where `Overwrite` takes the destructive colour because it destroys a copy somebody else left on the server, while "Don't save" throws away a choice the user just made and is therefore only `outline`. **A failed save states its reason in place and the buffer does not move** — edits are not lost to one failure.
+  - **The head has to fit in the narrowest column**: this pane's floor is 360px, so (a) the facts line shrinks to an ellipsis rather than wrapping — wrapping reads as two facts, and **a button pushed past the pane's edge slides under the files panel beside it** (a real CI failure: the button could not be pressed, and the thing hit was the neighbouring panel's title); (b) while a question occupies the head, "Copy path" steps aside and only the facts line and the answers remain — the facts cannot be hidden, because `● Unsaved` is the premise the question rests on. The answers' copy is short for the same reason (`Discard edits and reload`, not "my edits").
+  - **Unsaved is a dot plus a word**: the state line reads `● Unsaved` (briefly `Saved` after a write lands, then back to the facts), and a small dot on the tab says which one. **Closing a tab asks first** (`×`, middle click and `Ctrl/Cmd+Shift+W` all go through the same question): "Save and close" (primary) / "Don't save" / "Cancel"; choosing "Don't save" writes not one byte. The question appears **in the pane's head** and hands the keyboard straight to "Save and close" (`autofocus`), and the whole thing goes out through `role="status"` — a question raised from somewhere else (the tab strip, a shortcut) must not rely on being seen. **When the far side has already moved on and the user clicks close**, the first button becomes "Overwrite and close": a plain save would only conflict again, and the two questions would take turns hiding each other. **"Close all tabs" and "Stop session" each ask once** (when the session has a dirty tab; the latter folds the fact into the confirmation it already asks), one question for the whole batch rather than one per tab. After a save lands, that row in the files panel is re-read (its size changed).
+  - **Debts**: there is no file watcher — a change made elsewhere on the far side only surfaces at the moment of saving; follow-refresh (tail) and ANSI stripping are not here either; and there is no global unsaved-changes guard when the app quits.
+- **Drag upload**: dragging onto the panel's empty area lands in the **root** (the row at the top of the tree); dragging onto a folder row lands in that folder (the row gets a `file-row--drop` border and fill, so the destination is visible before the mouse is released). **A pointer resting on a closed folder for 600ms opens it**: otherwise "drop into a folder that is not open yet" means release, expand, drag again. A folder uploads as a whole tree and **symbolic links are skipped**: a link pointing outside would drag along files that were never selected, and one pointing back inside would make the walk never finish. The skipped count goes into "N skipped" at the transfer row's right end.
+- **Transfer row**: one line of `↑/↓ + file name` (a folder adds `(done/total)` after the name), with a mono percentage at the right end, and while running a 4px progress bar plus a "Cancel" — **cancel really stops**: the channel is closed, the half-written remote file is cleaned up, and the row says "Cancelled". The end states, in order: failed (the reason written in place in `{colors.error}`), cancelled, N skipped, done. The number of transfers in flight appears in the status bar.
+- **No half-written file ever appears**: a transfer first lands on a staging name beside the target (`.name.part-xxxx`) and is renamed on top, so the listing either has nothing or the complete thing. A file of the same name is **never silently overwritten**: one question before an upload starts (see "Dialogs").
+- **Find bar (terminal)**: the terminal's only floating control, opened with `Ctrl/Cmd+Shift+F`, pinned **above** the terminal grid (not floating on it), and `Esc` closes it and gives the keyboard back to the terminal. Matches are marked with the terminal's own selection colour rather than an invented highlight — that would have to work across seven terminal palettes. The control is the app's own (the same stock as the "Connection closed" notice bar), because the terminal's colours are an axis of their own and the control is not.
+- **Collapsing the files panel is "hiding it", not "folding it away"**: the panel stays mounted (`hidden` + `inert`), and how far it was expanded and which directories were read all stay — the same reasoning as parking the terminal. "Refresh" re-reads **the root and every open directory**; subtrees that were never opened are not touched.
+- **Status**: `Status` is always "dot + words" (Connected / Connecting… / Running / Not authorized). **Colour never carries semantics alone.**
+- **Dialogs**: `Dialog` = `canvas` fill + a Level 5 shadow + a translucent backdrop; clicking the backdrop or the `×` in the top right leaves (`IconButton` + `CloseIcon`, the same glyph as closing a terminal tab). **Only for a genuine mid-way fork**: creating a session, and an upload meeting a file of the same name (a question only the user can answer, whose answer covers the whole batch — `Replace` / `Keep both` / `Skip`). **A file is not a fork**: it is a tab (see "File tab") — a dialog would put it on the other side of the terminal that produces it, and being read against that terminal is the point. Settings is not a dialog either; it is a page (see "Settings page"). **A hairline separates the footer from the body** (the top border of `.dialog__footer`): the footer does not reuse the header's class — that draws the line under the footer's bottom edge, adding one between the buttons and the dialog's edge while leaving the body and the footer unseparated. **The accelerator options in the new-session dialog mark the ones this account cannot get**: they get `disabled` and a " (Unavailable to this account)" suffix rather than being removed — "this machine had an H100, this account just cannot have it" is the information worth having; the title's hint lists what *is* available, because a row of strikethroughs does not say what is left. When the backend did not answer (offline, or an unreadable response) everything stays selectable: `colab new` is the only place that really decides, and the interface does not refuse on its behalf. The account and its accelerators live in Settings → "Account & Quota", one per row: the email on one row, the available accelerators on another (the unavailable ones in `badge-off`).
 
 ## Do's and Don'ts
 
 ### Do
 
-- 用 `{colors.primary}`（ink）承担每一个肯定动作；深色下它自动翻转。
-- 用 `{colors.page}` → `{colors.canvas}` → `{colors.canvas-soft}` 的阶梯表达层次，卡片配 Level 2 阴影。
-- 机器汇报的每个值都用 mono：路径、时间、字节、百分比、退出码。
-- 每个状态都是"点 + 文字"；每个可能为空的列表都有 `EmptyState`。
-- 事实与设置用 `Panel` + `PanelRow`；列表用 `.session-row`（左栏）；解释用 `Callout`；量的对比用柱状图（`.trend__*`）。
-- 时间戳转成本地时间短格式，原始值放 tooltip。
-- 新令牌先落地 `tokens.css`（浅色 + 深色），再在组件里用。
-- 设置改成一整片界面（页面、图层），用**分节栏 + 一次一节**；主题这类整窗的偏好也住在设置里（「外观」），不另设顶栏按钮。
+- Use `{colors.primary}` (ink) for every affirmative action; in dark it flips by itself.
+- Express hierarchy with the `{colors.page}` → `{colors.canvas}` → `{colors.canvas-soft}` ladder, with a Level 2 shadow on cards.
+- Put every value the machine reports in mono: paths, times, bytes, percentages, exit codes.
+- Make every state "dot + words"; give every list that can be empty an `EmptyState`.
+- Use `Panel` + `PanelRow` for facts and settings; `.session-row` (left rail) for lists; `Callout` for explanations; a bar chart (`.trend__*`) to compare quantities.
+- Convert timestamps to a short local format and keep the raw value in a tooltip.
+- Land a new token in `tokens.css` (light + dark) before using it in a component.
+- Keep settings as one whole surface (a page, a layer) with **a section rail and one section at a time**; app-wide preferences like the theme live in settings too ("Appearance") rather than on a top-bar button.
 
 ### Don't
 
-- 不要引入第二个高饱和色；也没有绿色——`{colors.success}` 就是链接蓝。
-- 不要用单个大模糊投影，也不要给表格行加投影。
-- 不要把正文或标签放进 mono 大写（那是"标识符"的语气，`令牌到期` 不是标识符，`ENDPOINT` 是）。
-- 不要用颜色单独表达状态。
-- 不要给终端面板做浅色——**除非先把 `OSC 11` 的回话接上**（见「终端配色」）：远端工具问不到底色时会按暗底画，浅色下就成了糊。
-- 不要让同一屏出现两个 primary 按钮，也不要让可点区域低于 28px。
-- 不要一行一张卡地堆事实；用 `Panel` 的 hairline 分行。
-- 不要在组件里写死十六进制颜色——即使是"临时"的。
-- 不要为了显示一屏设置去卸载工作台（终端、文件面板）；设置是**盖在上面的一层**。
-- 不要让顶栏出现第二个形状相近的图标：主题切换是日/月，齿轮就必须是别的形状。
-- 不要写省掉 `type` 的裸 `<button>`：HTML 的默认值是 `submit`，落在表单里就会替用户再提交一次——"有副作用的命令绝不重试"这条，在界面上同样成立。门禁是 `react/button-has-type`，唯一例外是转发 `type` 的 `Button` 自己。
+- Don't introduce a second saturated colour; there is no green either — `{colors.success}` is the link blue.
+- Don't use a single large blur, and don't put shadows on table rows.
+- Don't put body text or labels in mono uppercase (that is the tone of "an identifier"; `Token expiry` is not an identifier, `ENDPOINT` is).
+- Don't express a state with colour alone.
+- Don't make the terminal panel light — **unless the `OSC 11` reply is wired up first** (see "Terminal palettes"): a far-side tool that cannot ask what the background is draws for a dark one, and on light that smears.
+- Don't put two primary buttons on one screen, and don't let a click target go below 28px.
+- Don't stack facts one card per row; divide them with a `Panel`'s hairlines.
+- Don't hard-code a hex colour in a component — not even "temporarily".
+- Don't unmount the workbench (terminals, files panel) to show one screen of settings; settings is **a layer on top**.
+- Don't give the top bar a second icon of a similar shape: the theme toggle is a sun/moon, so the gear must be a different shape.
+- Don't write a bare `<button>` without a `type`: HTML's default is `submit`, and inside a form it submits on the user's behalf — "commands with side effects are never retried" holds in the interface too. The gate is `react/button-has-type`, with the `Button` primitive (which forwards `type`) as its one exception.
 
 ## Provenance
 
-这套系统**移植自团队在 `D:\odyssey\GitSquad` 的 `DESIGN.md`**：表面阶梯、ink 主色、堆叠阴影的五个等级、Geist 字体族与"mono 是机器之声"的分工、`-soft`/`-deep` 成对的语义色、"状态是点加文字"、"深色是一次极性翻转而非第二套调色板"、"一节一张卡 + hairline 分行"——都来自那份文档，那里是这些决定的原始出处与理由（包括几条从事故里写出来的规则，例如"只在一边定义的颜色是一个 bug"）。
+The visual language here descends from the language of Vercel's marketing site: the surface ladder, the ink primary, the five stacked elevations, the Geist family and the "mono is the machine's voice" split, the `-soft` / `-deep` semantic pairs, "status is a dot plus words", "dark is a polarity flip rather than a second palette", and "one card per section, rows divided by hairlines". **ColabDesk did not invent its colours or its elevation**; it applies that system to the console of a remote machine, with the three adjustments the Overview records (no display sizes, a terminal axis of its own, state semantics re-ordered for this product).
 
-GitSquad 自己声明它的这套视觉语言是对 Vercel 营销站语言的一次诠释。本节只说明本文件的谱系：**ColabDesk 没有独立发明颜色或层级，它把 GitSquad 的系统应用到一台远程机器的控制台上**，并按控制台的需要做了三处增删（去掉展示级字号、把终端面板固定深色、重排状态语义）——这三处都记在 Overview 里。
-
-终端那一条后来长成了自己的轴：`terminal-themes.css` 的六套外来调色板各自带着出处（Tokyo Night、Catppuccin、One Dark、Dracula、Nord、Monokai 的官方终端配色），只有 `titanium` 是这套系统自己的——它的表面对是这个文件里原本那四个令牌，色相取自 `tokens.css` 的语义色，bright 行按"在 `#0a0a0a` 上可读"提亮。机制本身仍是 GitSquad 那条：`D:\odyssey\GitSquad\DESIGN.md` 用 `.dark` 包一层来渲染终端 mockup，理由是"它是终端的**图片**，不该跟随读者主题，而 `bg-primary` 从来不是表达这件事的方式，因为 primary 会翻转"。这里保留了理由、换掉了机制（可选项比单一钉死更符合"终端是机器"）。
+The terminal line later grew into an axis of its own: the six foreign palettes in `terminal-themes.css` each carry their source (the official terminal colours of Tokyo Night, Catppuccin, One Dark, Dracula, Nord and Monokai), and only `titanium` belongs to this system — its surfaces are the four tokens this file used to hold, its hues come from the semantic colours in `tokens.css`, and its bright row is lightened for "readable on `#0a0a0a`". The reasoning behind the axis is the one that has always been there: a terminal is a **picture of a machine**, so it should not follow the reader's theme — while the mechanism changed from a single pinned dark to palettes the user can pick, which suits "the terminal is a machine" better than one fixed answer.
