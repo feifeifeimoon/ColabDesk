@@ -672,10 +672,11 @@ kbd {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  /* The rail's `⋯` is what this control is: the same metrics, the same tokens. */
+  width: 24px;
+  height: 24px;
   border: none;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   background: none;
   color: var(--mute);
   font-size: 13px;
@@ -683,9 +684,35 @@ kbd {
   cursor: pointer;
 }
 
+/* The active tab is the one being looked at: its × keeps up with its title
+   instead of sitting a whole step below it. */
+.session-tab--active .session-tab__close {
+  color: var(--body);
+}
+
 .session-tab__close:hover {
-  background: var(--hairline);
+  /* --hairline over the tab's own --canvas-soft hover wash is 2.5% apart, i.e.
+     no feedback at all; this is the step meant for a chip on a soft surface. */
+  background: var(--canvas-soft-2);
   color: var(--ink);
+}
+
+/* Renaming in place. This is not the form input: a 32px `.input` would burst a
+   40px bar. It borrows that control's tokens (canvas, hairline-strong,
+   focus-ring) and takes its own metrics from the strip it sits in. */
+.session-tab__rename {
+  width: 120px;
+  height: 22px;
+  padding: 0 6px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--canvas);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-xs);
+}
+
+.session-tab__rename:focus-visible {
+  box-shadow: var(--focus-ring);
 }
 
 /* ---- the work surface: terminal in the middle, files on the right ---- */

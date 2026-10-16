@@ -61,9 +61,16 @@ test("换配色当场生效：沙箱与工作台一起换，shell 不受影响",
 
   await openTerminalSection(page);
   await expect(page.locator(".terminal-preview")).toBeVisible();
+  // The palette that is live depends on the app's polarity, so pin it: what the
+  // runner's desktop prefers is not this test's business, and the default is
+  // "follow the system".
+  await page.getByRole("button", { name: "外观" }).click();
+  await page.locator('[data-testid="theme-choice-dark"]').click();
+  await page.locator(".settings__nav-item").filter({ hasText: "终端" }).click();
+
   const before = await painted(page, ".terminal-area");
 
-  await page.getByRole("button", { name: "Tokyo Night" }).click();
+  await page.getByRole("button", { name: "Tokyo Night", exact: true }).click();
 
   // Both surfaces, and both through the same palette.
   await expect.poll(() => painted(page, ".terminal-area")).toBe("rgb(26, 27, 38)");
@@ -109,11 +116,11 @@ test("改字号与行高会重排网格，但不动连接、也不抢走设置�
   await expect(terminalRows(page)).toContainText("shell #1");
 });
 
-test("七套调色板各自解析出颜色，且互不相同", async ({ page }) => {
+test("十套调色板各自解析出颜色，且互不相同", async ({ page }) => {
   await openSession(page, "e2e-alpha");
   await openTerminalSection(page);
 
-  // Each chip scopes its own palette, so all seven can be read at once — and it
+  // Each chip scopes its own palette, so all ten can be read at once — and it
   // is the same mechanism (the attribute) the panes switch on.
   const swatches = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>(".terminal-swatch")].map((chip) => {
@@ -126,7 +133,7 @@ test("七套调色板各自解析出颜色，且互不相同", async ({ page }) 
     }),
   );
 
-  expect(swatches).toHaveLength(7);
+  expect(swatches).toHaveLength(10);
   for (const swatch of swatches) {
     expect(swatch.id, JSON.stringify(swatch)).not.toBe("");
     // A channel that never resolved would come back empty, and xterm would fill
@@ -134,7 +141,41 @@ test("七套调色板各自解析出颜色，且互不相同", async ({ page }) 
     expect(swatch.background, swatch.id).toMatch(/^#[0-9a-f]{6}$/i);
     expect(swatch.dim, swatch.id).toMatch(/^#[0-9a-f]{6}$/i);
   }
-  expect(new Set(swatches.map((swatch) => swatch.background)).size).toBe(7);
+  expect(new Set(swatches.map((swatch) => swatch.background)).size).toBe(10);
+});
+
+test("浅色槽位当场生效：关掉跟随就禁用，打开后再选它，画布跟着换", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await waitForPrompts(page, 1);
+  await openTerminalSection(page);
+
+  const follow = page.locator(".panel-row", { hasText: "跟随界面深浅" }).getByRole("checkbox");
+  const light = page.getByRole("button", { name: "One Half Light" });
+
+  // Following is the default, so the light slot is live out of the box.
+  await expect(follow).toBeChecked();
+  await expect(light).toBeEnabled();
+
+  // Turning it off leaves the row visible but not choosable: "these exist, the
+  // switch above is what turns them on" is the fact worth reading.
+  await follow.uncheck();
+  await expect(light).toBeDisabled();
+  await expect(
+    page.locator(".panel-row", { hasText: "浅色时用" }),
+  ).toContainText("需先开启");
+
+  await follow.check();
+  await expect(light).toBeEnabled();
+  await light.click();
+
+  await page.getByRole("button", { name: "外观" }).click();
+  await page.locator('[data-testid="theme-choice-light"]').click();
+  await page.locator(".settings__nav-item").filter({ hasText: "终端" }).click();
+
+  // #fafafa — One Half Light on a light window, in the sandbox and under it.
+  await expect.poll(() => painted(page, ".terminal-area")).toBe("rgb(250, 250, 250)");
+  await expect.poll(() => painted(page, ".terminal-preview")).toBe("rgb(250, 250, 250)");
+  await expect(page.locator('[data-testid="terminal-status"]')).toContainText("已连接");
 });
 
 test("配色与字号跨重启保留", async ({ app, page }) => {
@@ -142,8 +183,14 @@ test("配色与字号跨重启保留", async ({ app, page }) => {
   await expect(terminalRows(page)).toContainText("shell #1");
 
   await openTerminalSection(page);
-  await page.getByRole("button", { name: "Nord" }).click();
-  await expect.poll(() => painted(page, ".terminal-area")).toBe("rgb(46, 52, 64)");
+  // Which slot is live depends on the app's polarity, so pin it: the default is
+  // "follow the system", and the runner's desktop is not this test's business.
+  await page.getByRole("button", { name: "外观" }).click();
+  await page.locator('[data-testid="theme-choice-light"]').click();
+  await page.locator(".settings__nav-item").filter({ hasText: "终端" }).click();
+
+  await page.getByRole("button", { name: "One Half Light" }).click();
+  await expect.poll(() => painted(page, ".terminal-area")).toBe("rgb(250, 250, 250)");
   await page.getByRole("button", { name: "增大字号" }).click();
   await expect(page.locator('[data-testid="terminal-font-size"]')).toHaveText("14 px");
 
@@ -152,5 +199,5 @@ test("配色与字号跨重启保留", async ({ app, page }) => {
   await page.locator(".settings__nav-item").filter({ hasText: "终端" }).click();
 
   await expect(page.locator('[data-testid="terminal-font-size"]')).toHaveText("14 px");
-  await expect.poll(() => painted(page, ".terminal-preview")).toBe("rgb(46, 52, 64)");
+  await expect.poll(() => painted(page, ".terminal-preview")).toBe("rgb(250, 250, 250)");
 });

@@ -126,6 +126,40 @@ test("主题切换写下显式偏好，并在重启后仍然生效", async ({ ap
   expect(await resolved()).toBe(nextTheme);
 });
 
+/**
+ * The terminal's palette follows the app's polarity out of the box, which is the
+ * whole point of the light palettes: a light window with a black terminal is
+ * what this answers. Both halves are on screen — the attribute, and the painted
+ * background of the surface the user is looking at.
+ */
+test("界面切浅色，终端跟着换浅色调色板，shell 不受影响", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await expect(page.locator(".xterm-rows")).toContainText("shell #1");
+
+  const palette = (): Promise<string> =>
+    page.evaluate(() => document.documentElement.dataset.terminalTheme ?? "");
+  const painted = (): Promise<string> =>
+    page.locator(".terminal-area").evaluate((el) => getComputedStyle(el).backgroundColor);
+
+  // An explicit choice first: the default is "follow the system", and what the
+  // runner's desktop prefers is not this test's business.
+  await page.locator('[data-testid="open-settings"]').click();
+  await page.getByRole("button", { name: "外观" }).click();
+  await page.locator('[data-testid="theme-choice-dark"]').click();
+  await expect.poll(palette).toBe("titanium");
+
+  await page.locator('[data-testid="theme-choice-light"]').click();
+  await expect.poll(palette).toBe("catppuccin-latte");
+  // #eff1f5 — Catppuccin Latte's base, the same value the frame and xterm take.
+  await expect.poll(painted).toBe("rgb(239, 241, 245)");
+
+  // The swap is a repaint, not a reconnect: same shell, same directory.
+  await page.locator('[data-testid="close-settings"]').click();
+  await expect(page.locator('[data-testid="terminal-status"]')).toContainText("已连接");
+  await expect(page.locator(".xterm-rows")).toContainText("cd /content");
+  await expect(page.locator('[data-testid="terminal-count"]')).toHaveText("1");
+});
+
 test("语言切换写下偏好并在重载后生效，且动态更新界面文案", async ({ app, page }) => {
   // 打开设置
   await page.locator('[data-testid="open-settings"]').click();

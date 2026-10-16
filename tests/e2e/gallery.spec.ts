@@ -189,11 +189,14 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
 });
 
 /**
- * Seven terminal palettes, one shot each. The sandbox in the section is a real
+ * The ten terminal palettes, one shot each. The sandbox in the section is a real
  * terminal, so these are also the only pictures of how the 16 ANSI channels and
  * the ring around the canvas read — the reviewer's job, not a test's.
+ *
+ * The three light ones are also shot with the app flipped light, since a palette
+ * only shows on the workbench when its polarity is the one in force.
  */
-test("@gallery 七套终端配色", async ({ page }) => {
+test("@gallery 十套终端配色", async ({ page }) => {
   test.slow();
   mkdirSync(directory, { recursive: true });
 
@@ -210,11 +213,26 @@ test("@gallery 七套终端配色", async ({ page }) => {
     "Dracula",
     "Nord",
     "Monokai",
+    "Catppuccin Latte",
+    "One Half Light",
+    "Tokyo Night Light",
   ];
 
   for (const palette of palettes) {
     await page.getByRole("button", { name: palette, exact: true }).click();
     await page.waitForTimeout(500);
-    await capture(page, `05-terminal-${palette.split(" ")[0].toLowerCase()}`);
+    // The whole name: "Catppuccin Latte" and "Catppuccin Mocha" would otherwise
+    // land on one file, and a shot that silently overwrites another is worse
+    // than no shot.
+    const slug = palette.toLowerCase().replace(/\s+/g, "-");
+    await capture(page, `05-terminal-${slug}`);
   }
+
+  // And the combination the feature exists for: a light app with the light
+  // palette it follows into.
+  await page.getByRole("button", { name: "外观" }).click();
+  await page.locator('[data-testid="theme-choice-light"]').click();
+  await page.locator(".settings__nav-item").filter({ hasText: "终端" }).click();
+  await page.waitForTimeout(500);
+  await capture(page, "06-terminal-light-following");
 });

@@ -375,3 +375,48 @@ describe("pruneTabs", () => {
     expect(sshDisconnect).toHaveBeenCalledWith("alpha");
   });
 });
+
+describe("naming a tab", () => {
+  it("keeps the name the user typed, without the blank space around it", () => {
+    const store = workspaceStore();
+    store.getState().openTab("alpha");
+    const id = shells(store)[0]!.id;
+
+    store.getState().renameTab(id, "  训练机 A  ");
+
+    expect(shells(store)[0]!.customTitle).toBe("训练机 A");
+  });
+
+  it("treats a blank name as 'no name of mine', not as an empty label", () => {
+    const store = workspaceStore();
+    store.getState().openTab("alpha");
+    const id = shells(store)[0]!.id;
+    store.getState().renameTab(id, "训练机 A");
+
+    store.getState().renameTab(id, "   ");
+
+    expect(shells(store)[0]!.customTitle).toBeNull();
+  });
+
+  it("leaves a file tab alone: its name is the file's", () => {
+    const store = workspaceStore();
+    store.getState().openFileTab("alpha", "/content/train.log", "train.log");
+    const before = store.getState().tabs[0]!;
+
+    store.getState().renameTab(before.id, "训练机 A");
+
+    expect(store.getState().tabs[0]).toEqual(before);
+  });
+
+  it("renames the tab it was asked about, and only that one", () => {
+    const store = workspaceStore();
+    store.getState().openTab("alpha");
+    store.getState().openTab("beta");
+    const [alpha, beta] = shells(store);
+
+    store.getState().renameTab(alpha!.id, "训练机 A");
+
+    expect(shells(store).map((tab) => tab.customTitle)).toEqual(["训练机 A", null]);
+    expect(beta!.ordinal).toBe(1);
+  });
+});

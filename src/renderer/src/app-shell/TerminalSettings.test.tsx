@@ -57,19 +57,37 @@ describe("the terminal section", () => {
     expect(render()).toContain('data-preview="sandbox"');
   });
 
-  it("marks exactly one option in each of its four choice rows", () => {
-    expect(pressed(render())).toHaveLength(4);
+  it("marks exactly one option in each of its choice rows", () => {
+    // Five rows of buttons — the two palette slots, line height, cursor shape and
+    // the viewport's padding. The follow switch is a checkbox, and the two lists
+    // that can run long are selects, so neither is one of them.
+    expect(pressed(render())).toHaveLength(5);
   });
 
-  it("offers every theme once, with labels you can tell apart", () => {
+  it("offers every palette once, each in its own slot", () => {
     const markup = render();
     const chips = [...markup.matchAll(/<span class="terminal-swatch" data-terminal-theme="([a-z-]+)"/g)].map(
       (match) => match[1],
     );
 
-    expect(chips).toEqual([...TERMINAL_THEME_IDS]);
-    const labels = buttons(markup).filter((_, index) => index < TERMINAL_THEME_IDS.length);
+    expect([...chips].sort()).toEqual([...TERMINAL_THEME_IDS].sort());
+    expect(new Set(chips).size).toBe(chips.length);
+    const labels = buttons(markup);
     expect(new Set(labels).size, labels.join(" / ")).toBe(labels.length);
+  });
+
+  it("disables the light slot while the terminal is not following the app", () => {
+    store.current = {
+      terminal: { ...DEFAULT_TERMINAL_APPEARANCE, followAppTheme: false },
+      setTerminalAppearance: noop,
+    };
+    const markup = render();
+
+    // Shown, not taken away: that these exist and the switch above is what turns
+    // them on is the fact worth reading.
+    const lightRow = markup.slice(markup.indexOf("浅色时用"));
+    expect(lightRow).toContain("disabled");
+    expect(lightRow).toContain("需先开启");
   });
 
   it("shows the font size it is set to, between the two steps", () => {

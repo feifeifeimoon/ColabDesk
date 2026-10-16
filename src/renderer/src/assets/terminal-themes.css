@@ -1,12 +1,14 @@
 /**
  * The terminal's palettes — its own axis, not the app's light/dark one.
  *
- * The terminal is a machine surface: it keeps its own colours instead of
- * following the reader's theme. `[data-terminal-theme]` on `<html>` is the
- * switch, written before the first render (`main.tsx`) and by the one action
- * that changes it; xterm reads these as computed values in `lib/terminal-theme.ts`
- * and the pane's frame takes its background straight from `--terminal-bg`, so the
- * canvas and the ring around it can never disagree.
+ * The terminal is a machine surface: the 16 ANSI slots are filled in by remote
+ * programs (`ls`, `git`, `htop`, `tmux`), which is why its colours are chosen
+ * palettes rather than a polarity flip of the interface. `[data-terminal-theme]`
+ * on `<html>` is the switch, written before the first render (`main.tsx`) and by
+ * whichever action changes it — including the one that flips the app's theme,
+ * since a palette follows that by default (`lib/terminal-theme.ts` resolves
+ * which). The pane's frame takes its background straight from `--terminal-bg`, so
+ * the canvas and the ring around it can never disagree.
  *
  * Every block declares all `TERMINAL_THEME_VARIABLES`. A missing one is not a
  * loud failure: xterm fills the gap from its built-in Tango palette, which is a
@@ -14,14 +16,17 @@
  * feature exists to remove. `lib/terminal-theme.test.ts` parses this file and
  * holds that line, so a half-copied palette fails the suite instead of shipping.
  *
- * `black` is "the darkest ink" and sits near the background by design; dimmed
- * output is `brightBlack` (every theme below uses its own comment grey for it).
+ * `black` sits near the background by design, and dimmed output is `brightBlack`
+ * (every theme below uses its own comment grey for it). On the light palettes
+ * that reads backwards — `black` is the near-white slot, and Tokyo Night Day sets
+ * it all but equal to the background — which is what the light-palette contrast
+ * floor in the terminal settings is for.
  *
- * The six imported palettes are their projects' published terminal colours,
+ * The nine imported palettes are their projects' published terminal colours,
  * verbatim — where an upstream spec repeats a colour in the bright row, so does
  * this file rather than inventing a brighter one. `titanium` is the app's own:
  * hues from the semantic tokens, bright row lightened so it stays legible on
- * `#0a0a0a`. It is also the default, and it keeps the values the terminal has
+ * `#0a0a0a`. It is the dark default, and it keeps the values the terminal has
  * always had, so this file changes nothing for anyone who never opens settings.
  */
 
@@ -213,4 +218,97 @@
   --terminal-ansi-bright-magenta: #ae81ff;
   --terminal-ansi-bright-cyan: #a1efe4;
   --terminal-ansi-bright-white: #ffffff;
+}
+
+/* Catppuccin Latte — catppuccin/kitty `themes/latte.conf`, whose ANSI mapping
+   matches the official style guide (color0 = Subtext 1, color7 = Surface 2).
+   `selection` is the one channel taken from `catppuccin/iterm` instead: kitty
+   publishes the rosewater cursor colour there, and a selection the same colour
+   as the cursor hides the cursor inside it. The bright row repeats the normal
+   one, as that port publishes it. */
+[data-terminal-theme="catppuccin-latte"] {
+  --terminal-bg: #eff1f5;
+  --terminal-fg: #4c4f69;
+  --terminal-cursor: #dc8a78;
+  --terminal-cursor-accent: #eff1f5;
+  --terminal-selection: #acb0be;
+
+  --terminal-ansi-black: #5c5f77;
+  --terminal-ansi-red: #d20f39;
+  --terminal-ansi-green: #40a02b;
+  --terminal-ansi-yellow: #df8e1d;
+  --terminal-ansi-blue: #1e66f5;
+  --terminal-ansi-magenta: #ea76cb;
+  --terminal-ansi-cyan: #179299;
+  --terminal-ansi-white: #acb0be;
+
+  --terminal-ansi-bright-black: #6c6f85;
+  --terminal-ansi-bright-red: #d20f39;
+  --terminal-ansi-bright-green: #40a02b;
+  --terminal-ansi-bright-yellow: #df8e1d;
+  --terminal-ansi-bright-blue: #1e66f5;
+  --terminal-ansi-bright-magenta: #ea76cb;
+  --terminal-ansi-bright-cyan: #179299;
+  --terminal-ansi-bright-white: #bcc0cc;
+}
+
+/* One Half Light — sonph/onehalf `iterm/OneHalfLight.itermcolors`. One Half is
+   this family's *terminal* palette (Atom's One is an editor theme and publishes
+   no ANSI, cursor or selection at all), and its bright row is verbatim the
+   normal row of the One Dark above, so the pair switches cleanly. */
+[data-terminal-theme="one-half-light"] {
+  --terminal-bg: #fafafa;
+  --terminal-fg: #383a42;
+  --terminal-cursor: #bfceff;
+  --terminal-cursor-accent: #383a42;
+  --terminal-selection: #bfceff;
+
+  --terminal-ansi-black: #383a42;
+  --terminal-ansi-red: #e45649;
+  --terminal-ansi-green: #50a14f;
+  --terminal-ansi-yellow: #c18401;
+  --terminal-ansi-blue: #0184bc;
+  --terminal-ansi-magenta: #a626a4;
+  --terminal-ansi-cyan: #0997b3;
+  --terminal-ansi-white: #fafafa;
+
+  --terminal-ansi-bright-black: #4f525e;
+  --terminal-ansi-bright-red: #e06c75;
+  --terminal-ansi-bright-green: #98c379;
+  --terminal-ansi-bright-yellow: #e5c07b;
+  --terminal-ansi-bright-blue: #61afef;
+  --terminal-ansi-bright-magenta: #c678dd;
+  --terminal-ansi-bright-cyan: #56b6c2;
+  --terminal-ansi-bright-white: #ffffff;
+}
+
+/* Tokyo Night Day — iTerm2-Color-Schemes `schemes/TokyoNight Day.itermcolors`,
+   the light half of the same family the Tokyo Night above comes from (that one
+   fingerprints to `schemes/TokyoNight.itermcolors`: selection `#33467c`). Its
+   `black` is all but the background — upstream blends it there — so ordinary
+   black text leans on the light-palette contrast floor. */
+[data-terminal-theme="tokyo-night-light"] {
+  --terminal-bg: #e1e2e7;
+  --terminal-fg: #3760bf;
+  --terminal-cursor: #3760bf;
+  --terminal-cursor-accent: #e1e2e7;
+  --terminal-selection: #99a7df;
+
+  --terminal-ansi-black: #e9e9ed;
+  --terminal-ansi-red: #f52a65;
+  --terminal-ansi-green: #587539;
+  --terminal-ansi-yellow: #8c6c3e;
+  --terminal-ansi-blue: #2e7de9;
+  --terminal-ansi-magenta: #9854f1;
+  --terminal-ansi-cyan: #007197;
+  --terminal-ansi-white: #6172b0;
+
+  --terminal-ansi-bright-black: #a1a6c5;
+  --terminal-ansi-bright-red: #f52a65;
+  --terminal-ansi-bright-green: #587539;
+  --terminal-ansi-bright-yellow: #8c6c3e;
+  --terminal-ansi-bright-blue: #2e7de9;
+  --terminal-ansi-bright-magenta: #9854f1;
+  --terminal-ansi-bright-cyan: #007197;
+  --terminal-ansi-bright-white: #3760bf;
 }

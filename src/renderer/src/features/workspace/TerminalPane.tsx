@@ -19,7 +19,8 @@ import {
   writeClipboard,
   writeTerminal,
 } from "../../lib/api";
-import { applyTerminalAppearance, changesGrid, fontStackFor } from "../../lib/terminal-appearance";
+import { applyTerminalAppearance, changesGrid, fontStackFor, isLightPalette, type TerminalThemeId } from "../../lib/terminal-appearance";
+import { answerColorQueries } from "../../lib/terminal-color-reply";
 import { readTerminalPalette } from "../../lib/terminal-theme";
 import { useAppStore } from "../../store";
 import { Button } from "../../components/ui/Button";
@@ -82,6 +83,7 @@ export function TerminalPane({
 }) {
   const { t } = useTranslation();
   const appearance = useAppStore((state) => state.terminal);
+  const terminalThemeId = useAppStore((state) => state.terminalThemeId);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
@@ -92,6 +94,12 @@ export function TerminalPane({
   const unclaimedClosed = useRef(new Set<number>());
   /** What the pane's terminal is already wearing, so a change applies once. */
   const applied = useRef<typeof appearance | null>(null);
+  /**
+   * The palette the terminal is wearing. Separate from `applied` because it can
+   * move while the appearance record sits perfectly still: following the app's
+   * polarity is a change to the *resolved* id and nothing else.
+   */
+  const paletteApplied = useRef<TerminalThemeId | null>(null);
   const [state, setState] = useState<ConnectionState>("connecting");
   const [error, setError] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -198,6 +206,11 @@ export function TerminalPane({
     const opening = latest.current.appearance;
     const terminal = new Terminal({
       theme: readTerminalPalette(),
+      // A palette drawn on a light background gets a contrast floor: yellow on
+      // white is the light-terminal failure, and one number beats hand-tuning 16
+      // colours. Dark palettes keep xterm's own default (1) — they are published
+      // values, and correcting them at paint time would undo that.
+      minimumContrastRatio: isLightPalette(terminalThemeId) ? 4.5 : 1,
       fontFamily: fontStackFor(opening.fontId),
       fontSize: opening.fontSize,
       lineHeight: opening.lineHeight,
@@ -209,6 +222,7 @@ export function TerminalPane({
       // and emoji, so the flag is the price.
       allowProposedApi: true,
     });
+    paletteApplied.current = terminalThemeId;
     const fit = new FitAddon();
     const search = new SearchAddon();
     terminal.loadAddon(fit);
@@ -226,6 +240,11 @@ export function TerminalPane({
     fitRef.current = fit;
     searchRef.current = search;
     applied.current = opening;
+    // `bat`, `delta`, `eza` and friends ask which background they are drawing on;
+    // xterm has nobody to answer, so a light palette would get dark-assuming
+    // output. The reply goes out through `onData` below, i.e. the same path a
+    // keystroke takes, so it lands on this pane's channel and no other.
+    const colorReply = answerColorQueries(terminal);
     if (latest.current.active) {
       try {
         fit.fit();
@@ -337,11 +356,13 @@ export function TerminalPane({
       host.removeEventListener("contextmenu", onContextMenu);
       window.removeEventListener("keydown", onMacCopy);
       if (ackTimer.current !== null) window.clearTimeout(ackTimer.current);
+      colorReply.dispose();
       terminal.dispose();
       terminalRef.current = null;
       fitRef.current = null;
       searchRef.current = null;
       applied.current = null;
+      paletteApplied.current = null;
     };
     // Appearance and visibility are applied by the effects below: neither may
     // restart the shell.
@@ -407,10 +428,6 @@ export function TerminalPane({
     applied.current = appearance;
 
     applyTerminalAppearance(terminal, appearance, previous);
-    if (previous === null || previous.themeId !== appearance.themeId) {
-      // Read after the store switched the attribute, so this is the new palette.
-      terminal.options.theme = readTerminalPalette();
-    }
     if (!changesGrid(appearance, previous)) return;
     if (!latest.current.active) return;
     try {
@@ -419,6 +436,22 @@ export function TerminalPane({
       // ignore transient sizes
     }
   }, [appearance]);
+
+  // The palette follows the *resolved* id rather than the record: with the
+  // terminal set to follow the app, flipping the interface's polarity changes the
+  // palette while the record it came from sits still.
+  useEffect(() => {
+    const terminal = terminalRef.current;
+    if (!terminal) return;
+    if (paletteApplied.current === terminalThemeId) return;
+    paletteApplied.current = terminalThemeId;
+
+    // Read after the store switched the attribute, so this is the new palette.
+    terminal.options.theme = readTerminalPalette();
+    // In xterm's re-measure list: written only when it really changes, or the
+    // grid is cleared and re-measured (and the remote PTY told) for nothing.
+    terminal.options.minimumContrastRatio = isLightPalette(terminalThemeId) ? 4.5 : 1;
+  }, [terminalThemeId]);
 
   // Back into view: the pane was out of the layout, so it neither repainted nor
   // followed the window's size while it was parked.

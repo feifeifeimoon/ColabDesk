@@ -7,8 +7,9 @@
  * and rules: `docs/DESIGN.md`.
  *
  * Light is the default; dark is a polarity flip of the same ladder, not a
- * second palette. Permanently-dark surfaces (the terminal pane) carry a
- * `dark` class and get the same values as `[data-theme="dark"]`.
+ * second palette. The terminal does not come from this ladder at all: its
+ * colours are chosen palettes (`terminal-themes.css`), one per polarity, so its
+ * surface is a preference rather than a derived value.
  */
 
 :root {

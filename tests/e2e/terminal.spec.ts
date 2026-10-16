@@ -6,10 +6,24 @@
  * once let a broken renderer ship, and the point of this lane is the pixels.
  */
 
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { expect, focusTerminal, openSession, terminalRows, terminalText, test } from "./app-launch";
 
 const PROMPT = "root@e2e-runtime:";
+
+/** A token (`#4d4d4d`) as the browser reports a resolved colour (`rgb(77, 77, 77)`). */
+function tokenColor(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((at) => Number.parseInt(hex.slice(at, at + 2), 16));
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+/** The value of a design token right now — the reader's polarity decides it. */
+function token(page: Page, name: string): Promise<string> {
+  return page.evaluate(
+    (property) => getComputedStyle(document.documentElement).getPropertyValue(property).trim(),
+    name,
+  );
+}
 
 /** Waits until the shell has answered `times` commands (its prompt, that often). */
 async function waitForPrompts(page: Page, times: number): Promise<void> {
@@ -262,4 +276,77 @@ test("一次刷掉几兆输出，提示符还会回来", async ({ page }) => {
   await page.keyboard.type("echo STILL-ALIVE");
   await page.keyboard.press("Enter");
   await expect(terminalRows(page)).toContainText("STILL-ALIVE");
+});
+
+/**
+ * The `×` has to read as a control rather than as decoration. The rule is the
+ * rail's `⋯` one: a 24px hit area and a `--canvas-soft-2` chip on hover, with
+ * the active tab's `×` one step under its title (`--body`, not `--mute`).
+ *
+ * Compared against the live tokens instead of literals: which polarity is on
+ * screen is the reader's, and the rule is the relationship, not one palette.
+ */
+test("关闭按钮是个看得见的控件：24px 热区、悬停有底、激活时跟上标题", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await waitForPrompts(page, 1);
+  await page.locator('[data-testid="new-terminal"]').click();
+  await expect(page.locator('[role="tab"]')).toHaveCount(2);
+
+  const active = page.locator(".session-tab--active .session-tab__close");
+  const resting = page.locator(".session-tab:not(.session-tab--active) .session-tab__close");
+  const css = (target: Locator, property: "color" | "backgroundColor"): Promise<string> =>
+    target.evaluate((element, name) => getComputedStyle(element)[name], property);
+
+  // The hit area matches .menu__trigger: same kind of control, same metrics.
+  const box = await active.boundingBox();
+  expect(box?.width).toBe(24);
+  expect(box?.height).toBe(24);
+
+  // Hierarchy: the active tab's × keeps up with its title, the others stay quiet.
+  expect(await css(active, "color")).toBe(tokenColor(await token(page, "--body")));
+  expect(await css(resting, "color")).toBe(tokenColor(await token(page, "--mute")));
+
+  // Hovering gives it a real chip: --hairline over the tab's own --canvas-soft
+  // hover wash is 2.5% apart, which is the same as no feedback at all.
+  await active.hover();
+  expect(await css(active, "backgroundColor")).toBe(
+    tokenColor(await token(page, "--canvas-soft-2")),
+  );
+  expect(await css(active, "color")).toBe(tokenColor(await token(page, "--ink")));
+});
+
+/**
+ * The remote asks what the terminal is drawing on — the way `bat`, `delta` and
+ * `eza` do — and the answer has to travel back: out of xterm, through the SSH
+ * channel, into the program's input. Both polarities, because the whole reason
+ * this reply exists is that a light palette must not be reported as a dark one.
+ */
+test("远端问底色，终端回话：深浅两套调色板各答一次", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await waitForPrompts(page, 1);
+
+  // Pin the polarity: the default is "follow the system", and the runner's
+  // desktop is not this test's business.
+  await page.locator('[data-testid="open-settings"]').click();
+  await page.getByRole("button", { name: "外观" }).click();
+  await page.locator('[data-testid="theme-choice-dark"]').click();
+  await page.locator('[data-testid="close-settings"]').click();
+
+  await focusTerminal(page);
+  await page.keyboard.type("bg");
+  await page.keyboard.press("Enter");
+  // Titanium's #0a0a0a, four hex digits to a channel.
+  await expect(terminalRows(page)).toContainText("bg-reply 0a0a/0a0a/0a0a");
+
+  // A light app follows into Catppuccin Latte, so the next question gets that
+  // answer instead — read live, not at connection time.
+  await page.locator('[data-testid="open-settings"]').click();
+  await page.getByRole("button", { name: "外观" }).click();
+  await page.locator('[data-testid="theme-choice-light"]').click();
+  await page.locator('[data-testid="close-settings"]').click();
+
+  await focusTerminal(page);
+  await page.keyboard.type("bg");
+  await page.keyboard.press("Enter");
+  await expect(terminalRows(page)).toContainText("bg-reply efef/f1f1/f5f5");
 });

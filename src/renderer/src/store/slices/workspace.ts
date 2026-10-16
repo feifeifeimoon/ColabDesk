@@ -26,7 +26,13 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       (tab): tab is TerminalTab => tab.session === session && tab.kind === "shell",
     );
     const ordinal = existing.reduce((highest, tab) => Math.max(highest, tab.ordinal), 0) + 1;
-    const tab: TerminalTab = { kind: "shell", id: `${session}:${ordinal}`, session, ordinal };
+    const tab: TerminalTab = {
+      kind: "shell",
+      id: `${session}:${ordinal}`,
+      session,
+      ordinal,
+      customTitle: null,
+    };
     set({ tabs: [...get().tabs, tab], selectedSession: session, activeTabId: tab.id });
     return tab;
   }
@@ -88,6 +94,16 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
     openTab: (session) => {
       addTab(session);
       set({ settingsOpen: false });
+    },
+
+    /** Blank means "no name of mine", not "a tab with no name". */
+    renameTab: (tabId, title) => {
+      const customTitle = title?.trim() ? title.trim() : null;
+      set({
+        tabs: get().tabs.map((tab) =>
+          tab.id === tabId && tab.kind === "shell" ? { ...tab, customTitle } : tab,
+        ),
+      });
     },
 
     openFileTab: (session, path, name) => {

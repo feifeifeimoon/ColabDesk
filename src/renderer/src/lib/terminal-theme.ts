@@ -13,7 +13,8 @@
  */
 
 import type { ITheme } from "@xterm/xterm";
-import type { TerminalThemeId } from "./terminal-appearance";
+import type { TerminalAppearance, TerminalThemeId } from "./terminal-appearance";
+import type { Theme } from "./theme";
 
 /**
  * The channels a palette declares, in xterm's own vocabulary. One table serves
@@ -46,6 +47,24 @@ const PALETTE: readonly (readonly [keyof ITheme, string])[] = [
 
 /** Every variable a stylesheet block has to declare to be a complete palette. */
 export const TERMINAL_THEME_VARIABLES: readonly string[] = PALETTE.map(([, variable]) => variable);
+
+/**
+ * Which palette the terminal should be wearing right now.
+ *
+ * One function because the answer needs two preferences — the slots and the
+ * app's polarity — and every writer of the attribute has to agree on it: the
+ * first frame, an app-theme change, and a change to the terminal's own settings.
+ * Following is what makes the light palettes reachable at all; turning it off
+ * means the dark slot, always.
+ */
+export function resolveTerminalThemeId(
+  appearance: Pick<TerminalAppearance, "themeDark" | "themeLight" | "followAppTheme">,
+  appTheme: Theme,
+): TerminalThemeId {
+  return appearance.followAppTheme && appTheme === "light"
+    ? appearance.themeLight
+    : appearance.themeDark;
+}
 
 /** Where the palette is switched. Read by the stylesheet, so it switches there too. */
 export function applyTerminalThemeAttribute(themeId: TerminalThemeId): void {

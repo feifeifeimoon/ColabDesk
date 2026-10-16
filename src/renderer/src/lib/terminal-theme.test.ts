@@ -8,8 +8,8 @@
 
 import { describe, expect, it } from "vitest";
 import css from "../assets/terminal-themes.css?raw";
-import { TERMINAL_THEME_IDS } from "./terminal-appearance";
-import { TERMINAL_THEME_VARIABLES, readTerminalPalette } from "./terminal-theme";
+import { TERMINAL_THEMES, TERMINAL_THEME_IDS } from "./terminal-appearance";
+import { TERMINAL_THEME_VARIABLES, readTerminalPalette, resolveTerminalThemeId } from "./terminal-theme";
 
 /**
  * The declarations of each `[data-terminal-theme="…"]` block. `titanium` shares
@@ -65,6 +65,43 @@ describe("the palette stylesheet", () => {
         channels.get("--terminal-ansi-bright-black"),
       );
     }
+  });
+
+  it("labels each palette's polarity honestly", () => {
+    // The app's polarity picks the slot, so a palette filed under the wrong one
+    // is a light window drawing with dark values — and the check is the palette's
+    // own background, not the table's word for it.
+    const luminance = (hex: string): number => {
+      const [r = 0, g = 0, b = 0] = [1, 3, 5].map((at) => Number.parseInt(hex.slice(at, at + 2), 16));
+      return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    };
+
+    for (const theme of TERMINAL_THEMES) {
+      const background = declared(blocks.get(theme.id) ?? "").get("--terminal-bg") ?? "";
+      expect(luminance(background) > 0.5, `${theme.id} ${background}`).toBe(
+        theme.polarity === "light",
+      );
+    }
+  });
+});
+
+describe("resolving which palette the app's polarity asks for", () => {
+  const slots = {
+    themeDark: "titanium",
+    themeLight: "catppuccin-latte",
+    followAppTheme: true,
+  } as const;
+
+  it("hands the light slot to a light app and the dark slot to a dark one", () => {
+    expect(resolveTerminalThemeId(slots, "light")).toBe("catppuccin-latte");
+    expect(resolveTerminalThemeId(slots, "dark")).toBe("titanium");
+  });
+
+  it("stays on the dark slot when following is off, whatever the app is", () => {
+    const fixed = { ...slots, followAppTheme: false };
+
+    expect(resolveTerminalThemeId(fixed, "light")).toBe("titanium");
+    expect(resolveTerminalThemeId(fixed, "dark")).toBe("titanium");
   });
 });
 

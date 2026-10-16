@@ -174,6 +174,8 @@ function attachShell(
   let escape: "none" | "esc" | "csi" = "none";
   let sequence = "";
   let carriageReturn = false;
+  /** Set by the `bg` probe while it waits for the terminal's answer. */
+  let pendingProbe = false;
 
   const write = (text: string): void => {
     stream.write(text);
@@ -229,6 +231,15 @@ function attachShell(
       case "uname":
         write("Linux e2e-runtime 6.1.0 #1 SMP x86_64 GNU/Linux\r\n");
         return;
+      /**
+       * Asks the terminal which background it is drawing on, and reports the
+       * answer. The reply has to leave xterm, cross the SSH channel and arrive
+       * here as input — which is the only place a test can watch it land.
+       */
+      case "bg":
+        pendingProbe = true;
+        write("\x1b]11;?\x1b\\");
+        return;
       case "stty":
         return;
       /**
@@ -276,7 +287,21 @@ function attachShell(
   prompt();
 
   stream.on("data", (chunk: Buffer) => {
-    for (const character of chunk.toString("utf8")) {
+    const text = chunk.toString("utf8");
+
+    // What a probe gets back is an escape sequence, not a command line: report
+    // it instead of feeding it to the line editor, which would eat the ESC.
+    if (pendingProbe) {
+      const channels = /rgb:([0-9a-f]{4}\/[0-9a-f]{4}\/[0-9a-f]{4})/i.exec(text);
+      if (channels) {
+        pendingProbe = false;
+        write(`bg-reply ${channels[1]}\r\n`);
+        prompt();
+        return;
+      }
+    }
+
+    for (const character of text) {
       if (escape === "esc") {
         if (character === "[") {
           escape = "csi";
