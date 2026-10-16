@@ -36,6 +36,13 @@ export interface TerminalTab {
   session: string;
   /** Its number among the session's shells: "终端 1", "终端 2", … */
   ordinal: number;
+  /**
+   * The name the user gave this shell, or `null` for "never renamed" — the strip
+   * then shows the derived "终端 N". Two states instead of one because that
+   * default is translated: storing it would freeze the label into whichever
+   * language happened to be on screen.
+   */
+  customTitle: string | null;
 }
 
 /**
@@ -86,6 +93,11 @@ export interface WorkspaceSlice {
   openSession(session: string): void;
   /** One more shell on the same connection — the reason tabs exist. */
   openTab(session: string): void;
+  /**
+   * Names a shell. `null`, or nothing but whitespace, goes back to the derived
+   * "终端 N". File tabs are not renameable: their name is the file's.
+   */
+  renameTab(tabId: string, customTitle: string | null): void;
   /** Opens a file beside the shells; one that is already open is focused. */
   openFileTab(session: string, path: string, name: string): void;
   closeTab(tabId: string): void;

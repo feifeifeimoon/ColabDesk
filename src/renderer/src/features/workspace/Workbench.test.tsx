@@ -69,6 +69,7 @@ const shell = (session: string, ordinal: number): TerminalTab => ({
   id: `${session}:${ordinal}`,
   session,
   ordinal,
+  customTitle: null,
 });
 
 /** A file tab: the same strip, the other kind. */

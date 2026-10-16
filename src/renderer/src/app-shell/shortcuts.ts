@@ -22,6 +22,14 @@ export function useAppShortcuts(): void {
 
       if (!event.ctrlKey && !event.metaKey) return;
 
+      // While a field has the keyboard, the app's combinations stand down. The
+      // xterm helper textarea is exempt on purpose: it *is* the terminal's
+      // keyboard, and these combinations belong to it (Ctrl+Shift+T, W, F, …).
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea:not(.xterm-helper-textarea), [contenteditable='true']")) {
+        return;
+      }
+
       if (event.key === "," && !event.shiftKey) {
         event.preventDefault();
         event.stopPropagation();

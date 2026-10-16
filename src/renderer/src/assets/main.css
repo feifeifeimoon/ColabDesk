@@ -697,6 +697,24 @@ kbd {
   color: var(--ink);
 }
 
+/* Renaming in place. This is not the form input: a 32px `.input` would burst a
+   40px bar. It borrows that control's tokens (canvas, hairline-strong,
+   focus-ring) and takes its own metrics from the strip it sits in. */
+.session-tab__rename {
+  width: 120px;
+  height: 22px;
+  padding: 0 6px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--canvas);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-xs);
+}
+
+.session-tab__rename:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
 /* ---- the work surface: terminal in the middle, files on the right ---- */
 
 .work-surface {
