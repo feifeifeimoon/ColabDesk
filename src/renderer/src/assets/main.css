@@ -1,10 +1,10 @@
 /**
  * ColabDesk component styles.
  *
- * The vocabulary is the GitSquad design system's: an ink primary, a light
- * surface ladder, hairline dividers, stacked-shadow elevation, uppercase mono
- * table headings, and status as a dot plus a written label. Tokens come from
- * `tokens.css`; roles and rules live in `docs/DESIGN.md`.
+ * The vocabulary: an ink primary, a light surface ladder, hairline dividers,
+ * stacked-shadow elevation, uppercase mono table headings, and status as a dot
+ * plus a written label. Tokens come from `tokens.css`; roles and rules live in
+ * `docs/DESIGN.md`.
  */
 
 @import "./tokens.css";
@@ -1813,7 +1813,7 @@ textarea.input {
   flex-shrink: 0;
 }
 
-/* one card per section, rows divided by hairlines (GitSquad's panel-settings) */
+/* one card per section, rows divided by hairlines */
 .panel {
   display: flex;
   flex-direction: column;

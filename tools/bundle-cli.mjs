@@ -83,7 +83,7 @@ function findStandalonePython(uvPath) {
 
   const install = spawnSync(uvPath, ["python", "install", PYTHON_VERSION], { encoding: "utf8" });
   if (install.status !== 0) {
-    error(`uv python install ${PYTHON_VERSION} 失败: ${install.stderr || install.stdout}`);
+    error(`uv python install ${PYTHON_VERSION} failed: ${install.stderr || install.stdout}`);
     process.exit(1);
   }
 
@@ -275,7 +275,7 @@ async function bundle() {
 
   const uv = findUv();
   if (!uv) {
-    error("未找到 uv 可执行文件。请先安装 uv: https://github.com/astral-sh/uv");
+    error("uv executable not found. Install uv first: https://github.com/astral-sh/uv");
     process.exit(1);
   }
 
@@ -284,7 +284,7 @@ async function bundle() {
   // 1. Python standalone
   const pythonSource = findStandalonePython(uv);
   if (!pythonSource) {
-    error("未找到可用 standalone Python。可通过 `uv python install 3.12` 获取。");
+    error("No usable standalone Python found. Get one with `uv python install 3.12`.");
     process.exit(1);
   }
 
@@ -299,7 +299,7 @@ async function bundle() {
 
   const pythonBin = join(PYTHON_DEST, pythonExeName);
   if (!existsSync(pythonBin)) {
-    error(`Python 可执行文件未就绪: ${pythonBin}`);
+    error(`Python executable is not ready: ${pythonBin}`);
     process.exit(1);
   }
 
@@ -326,7 +326,7 @@ async function bundle() {
   ];
   const res = spawnSync(uv, installArgs, { stdio: "inherit", encoding: "utf8" });
   if (res.status !== 0) {
-    error(`使用 uv 安装 ${CLI_PACKAGE}==${CLI_VERSION} 失败。`);
+    error(`Installing ${CLI_PACKAGE}==${CLI_VERSION} with uv failed.`);
     process.exit(1);
   }
 
@@ -340,14 +340,14 @@ async function bundle() {
   const env = { ...process.env, PYTHONPATH: SITE_DEST, PYTHONDONTWRITEBYTECODE: "1" };
   const check = spawnSync(pythonBin, ["-m", "colab_cli.cli", "version"], { env, encoding: "utf8" });
   if (check.status !== 0) {
-    error(`验证 CLI 失败: ${check.stderr || check.stdout}`);
+    error(`CLI verification failed: ${check.stderr || check.stdout}`);
     process.exit(1);
   }
 
   const versionMatch = check.stdout.match(/Version:\s*([0-9a-zA-Z.-]+)/);
   if (versionMatch && versionMatch[1] !== CLI_VERSION) {
     // The pin is the contract; a mismatch means the index served something else.
-    error(`预期 ${CLI_PACKAGE}==${CLI_VERSION}，但内置运行时报告 ${versionMatch[1]}`);
+    error(`Expected ${CLI_PACKAGE}==${CLI_VERSION}, but the bundled runtime reports ${versionMatch[1]}`);
     process.exit(1);
   }
   log(`Bundled CLI verified successfully: version ${CLI_VERSION}`);

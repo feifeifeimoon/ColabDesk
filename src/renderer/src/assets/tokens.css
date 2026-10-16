@@ -1,10 +1,10 @@
 /**
  * ColabDesk design tokens — the canonical source of truth.
  *
- * The ladder, the ink primary, the stacked-shadow elevation levels and the
- * Geist type family come from the team's GitSquad design system
- * (`D:\odyssey\GitSquad\DESIGN.md`); the terminal surface and the two
- * machine-state tones are ColabDesk's own. Roles and rules: `docs/DESIGN.md`.
+ * The surface ladder, the ink primary, the stacked-shadow elevation levels and
+ * the Geist type family are the palette this app's interfaces are built on; the
+ * terminal surface and the two machine-state tones are ColabDesk's own. Roles
+ * and rules: `docs/DESIGN.md`.
  *
  * Light is the default; dark is a polarity flip of the same ladder, not a
  * second palette. Permanently-dark surfaces (the terminal pane) carry a
