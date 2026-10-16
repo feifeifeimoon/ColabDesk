@@ -27,6 +27,10 @@ __pycache__/
 # A local shim: absolute paths and PATH baked in, not part of the build
 npm.ps1
 
+# ZCode's file-search ignore rules: written by the editor for this machine (and
+# rewritten by its own sync), so they are configuration, not code
+.zcodeignore
+
 # OS noise
 .DS_Store
 Thumbs.db
