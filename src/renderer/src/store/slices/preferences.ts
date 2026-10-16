@@ -23,7 +23,7 @@ import {
   readTerminalAppearance,
   saveTerminalAppearance,
 } from "../../lib/terminal-appearance";
-import { applyTerminalThemeAttribute } from "../../lib/terminal-theme";
+import { applyTerminalThemeAttribute, resolveTerminalThemeId } from "../../lib/terminal-theme";
 import { normalizeUiLanguage, type UiLanguage } from "@shared/ui-language";
 import type { AppState, PreferencesSlice } from "../types";
 
@@ -57,6 +57,10 @@ export const createPreferencesSlice: StateCreator<AppState, [], [], PreferencesS
     resolvedTheme: resolveTheme(theme),
     language: readLanguage(),
     terminal,
+    // The palette the terminal is wearing, resolved once here rather than in each
+    // pane: the app's polarity can change without the terminal's record moving,
+    // and panes need a value to subscribe to when that happens.
+    terminalThemeId: resolveTerminalThemeId(terminal, resolveTheme(theme)),
     sidebarOpen: true,
     filesOpen: true,
     panelWidths: { sidebar: readPanelWidth("sidebar"), files: readPanelWidth("files") },
@@ -64,12 +68,20 @@ export const createPreferencesSlice: StateCreator<AppState, [], [], PreferencesS
     /** An explicit choice, which from then on outranks the OS. */
     setTheme: (preference) => {
       saveThemePreference(preference);
-      set({ theme: preference, resolvedTheme: applyTheme(preference) });
+      const resolvedTheme = applyTheme(preference);
+      const terminalThemeId = resolveTerminalThemeId(get().terminal, resolvedTheme);
+      applyTerminalThemeAttribute(terminalThemeId);
+      set({ theme: preference, resolvedTheme, terminalThemeId });
     },
 
     toggleTheme: () => get().setTheme(toggleThemePreference(get().theme)),
 
-    applySystemTheme: () => set({ resolvedTheme: applyTheme(get().theme) }),
+    applySystemTheme: () => {
+      const resolvedTheme = applyTheme(get().theme);
+      const terminalThemeId = resolveTerminalThemeId(get().terminal, resolvedTheme);
+      applyTerminalThemeAttribute(terminalThemeId);
+      set({ resolvedTheme, terminalThemeId });
+    },
 
     setLanguage: (language) => {
       try {
@@ -84,9 +96,12 @@ export const createPreferencesSlice: StateCreator<AppState, [], [], PreferencesS
       const next = normalizeTerminalAppearance({ ...get().terminal, ...patch });
       saveTerminalAppearance(next);
       // The palette is CSS: switching the attribute is what repaints the frames,
-      // and the panes read it back when they hand xterm a new theme.
-      applyTerminalThemeAttribute(next.themeId);
-      set({ terminal: next });
+      // and the panes read it back when they hand xterm a new theme. Resolved
+      // first (the slot depends on the app's polarity), written before the store
+      // so a pane that reacts to the store never reads the previous palette.
+      const terminalThemeId = resolveTerminalThemeId(next, get().resolvedTheme);
+      applyTerminalThemeAttribute(terminalThemeId);
+      set({ terminal: next, terminalThemeId });
     },
 
     toggleSidebar: () => set({ sidebarOpen: !get().sidebarOpen }),

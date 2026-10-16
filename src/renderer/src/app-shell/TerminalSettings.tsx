@@ -22,8 +22,10 @@ import {
   TERMINAL_LINE_HEIGHTS,
   TERMINAL_PADDINGS,
   TERMINAL_SCROLLBACKS,
-  TERMINAL_THEME_IDS,
+  TERMINAL_THEMES,
+  terminalThemesOf,
   type TerminalFontId,
+  type TerminalThemeId,
 } from "../lib/terminal-appearance";
 import { TerminalPreview } from "../features/workspace/TerminalPreview";
 import { useAppStore } from "../store";
@@ -47,16 +49,11 @@ const PADDING_LABELS: Record<string, [string, string]> = {
   spacious: ["settings.terminalPaddingSpacious", "宽松"],
 };
 
-/** The palettes are other people's work; the names are theirs too. */
-const THEME_LABELS: Record<string, string> = {
-  titanium: "Titanium",
-  "tokyo-night": "Tokyo Night",
-  catppuccin: "Catppuccin Mocha",
-  "one-dark": "One Dark",
-  dracula: "Dracula",
-  nord: "Nord",
-  monokai: "Monokai",
-};
+/** The palettes are other people's work; the names are theirs too, so they live
+    in the contract beside the values rather than in this file. */
+function themeLabel(id: TerminalThemeId): string {
+  return TERMINAL_THEMES.find((theme) => theme.id === id)?.label ?? id;
+}
 
 /**
  * Which of the offered faces this machine does not have. Asked once on mount
@@ -82,6 +79,7 @@ function Choices<T extends string | number>({
   current,
   text,
   theme,
+  disabled,
   chosen,
 }: {
   label: string;
@@ -91,6 +89,12 @@ function Choices<T extends string | number>({
   text: (value: T) => string;
   /** Renders a chip in the value's own palette; only themes have one. */
   theme?: boolean;
+  /**
+   * For a row that is simply not this row's turn yet. Disabled rather than
+   * taken away: "these exist, the switch above is what turns them on" is the
+   * fact worth reading, and an absent row says nothing.
+   */
+  disabled?: boolean;
   chosen: (value: T) => void;
 }) {
   return (
@@ -105,6 +109,7 @@ function Choices<T extends string | number>({
               size="sm"
               variant={value === current ? "primary" : "outline"}
               aria-pressed={value === current}
+              disabled={disabled}
               onClick={() => chosen(value)}
             >
               {theme ? (
@@ -162,17 +167,44 @@ export function TerminalSettings() {
       </Card>
 
       <Panel title={t("settings.terminalPanelTheme", "配色")}>
-        <Choices
-          label={t("settings.terminalThemeLabel", "配色方案")}
+        <PanelRow
+          label={t("settings.terminalThemeFollowLabel", "跟随界面深浅")}
           description={t(
-            "settings.terminalThemeDesc",
-            "配置终端色彩与 ANSI 调色板。",
+            "settings.terminalThemeFollowDesc",
+            "界面切到浅色时，用下面那套浅色配色；关掉就一直用深色的那套。",
           )}
-          values={TERMINAL_THEME_IDS}
-          current={terminal.themeId}
-          text={(id) => THEME_LABELS[id] ?? id}
+          actions={
+            <Checkbox
+              checked={terminal.followAppTheme}
+              onChange={(event) =>
+                setTerminalAppearance({ followAppTheme: event.target.checked })
+              }
+              label={t("settings.terminalThemeFollowOn", "跟随")}
+            />
+          }
+        />
+        <Choices
+          label={t("settings.terminalThemeDarkLabel", "深色时用")}
+          description={t("settings.terminalThemeDarkDesc", "界面是深色时终端的 ANSI 调色板。")}
+          values={terminalThemesOf("dark")}
+          current={terminal.themeDark}
+          text={(id) => themeLabel(id)}
           theme
-          chosen={(themeId) => setTerminalAppearance({ themeId })}
+          chosen={(themeDark) => setTerminalAppearance({ themeDark })}
+        />
+        <Choices
+          label={t("settings.terminalThemeLightLabel", "浅色时用")}
+          description={
+            terminal.followAppTheme
+              ? t("settings.terminalThemeLightDesc", "界面是浅色时终端的 ANSI 调色板。")
+              : t("settings.terminalThemeLightNeedsFollow", "需先开启「跟随界面深浅」。")
+          }
+          values={terminalThemesOf("light")}
+          current={terminal.themeLight}
+          text={(id) => themeLabel(id)}
+          theme
+          disabled={!terminal.followAppTheme}
+          chosen={(themeLight) => setTerminalAppearance({ themeLight })}
         />
       </Panel>
 

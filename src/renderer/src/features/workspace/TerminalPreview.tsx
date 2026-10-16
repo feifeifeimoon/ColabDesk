@@ -16,7 +16,14 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import "@xterm/xterm/css/xterm.css";
-import { applyTerminalAppearance, changesGrid, fontStackFor, type TerminalAppearance } from "../../lib/terminal-appearance";
+import {
+  applyTerminalAppearance,
+  changesGrid,
+  fontStackFor,
+  isLightPalette,
+  type TerminalAppearance,
+  type TerminalThemeId,
+} from "../../lib/terminal-appearance";
 import { readTerminalPalette } from "../../lib/terminal-theme";
 import { useAppStore } from "../../store";
 
@@ -50,18 +57,26 @@ function paintSample(terminal: Terminal): void {
 
 export function TerminalPreview() {
   const appearance = useAppStore((state) => state.terminal);
+  const terminalThemeId = useAppStore((state) => state.terminalThemeId);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const applied = useRef<TerminalAppearance | null>(null);
+  /** The palette on screen, which can move while the record above sits still. */
+  const paletteApplied = useRef<TerminalThemeId | null>(null);
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
 
     const opening = useAppStore.getState().terminal;
+    // Read now rather than subscribed to: this effect builds the terminal once,
+    // and a palette change is applied by the effect below instead of by
+    // rebuilding the sandbox (which would re-run its resize observer).
+    const openingThemeId = useAppStore.getState().terminalThemeId;
     const terminal = new Terminal({
       theme: readTerminalPalette(),
+      minimumContrastRatio: isLightPalette(openingThemeId) ? 4.5 : 1,
       fontFamily: fontStackFor(opening.fontId),
       fontSize: opening.fontSize,
       lineHeight: opening.lineHeight,
@@ -81,6 +96,7 @@ export function TerminalPreview() {
     terminalRef.current = terminal;
     fitRef.current = fit;
     applied.current = opening;
+    paletteApplied.current = openingThemeId;
     paintSample(terminal);
 
     // The section is unmounted while settings is closed, so this pane is laid
@@ -115,9 +131,6 @@ export function TerminalPreview() {
     applied.current = appearance;
 
     applyTerminalAppearance(terminal, appearance, previous);
-    if (previous === null || previous.themeId !== appearance.themeId) {
-      terminal.options.theme = readTerminalPalette();
-    }
     if (!changesGrid(appearance, previous)) return;
     try {
       fitRef.current?.fit();
@@ -126,6 +139,18 @@ export function TerminalPreview() {
     }
     paintSample(terminal);
   }, [appearance]);
+
+  // The sandbox shows the palette the panes are wearing, so it follows the
+  // resolved id too — including when only the app's polarity moved.
+  useEffect(() => {
+    const terminal = terminalRef.current;
+    if (!terminal) return;
+    if (paletteApplied.current === terminalThemeId) return;
+    paletteApplied.current = terminalThemeId;
+
+    terminal.options.theme = readTerminalPalette();
+    terminal.options.minimumContrastRatio = isLightPalette(terminalThemeId) ? 4.5 : 1;
+  }, [terminalThemeId]);
 
   return (
     <div className="terminal-preview" data-terminal-padding={appearance.padding} inert>

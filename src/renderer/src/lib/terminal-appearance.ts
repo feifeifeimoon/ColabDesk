@@ -20,17 +20,42 @@
 
 import type { ITerminalOptions } from "@xterm/xterm";
 
-export const TERMINAL_THEME_IDS = [
-  "titanium",
-  "tokyo-night",
-  "catppuccin",
-  "one-dark",
-  "dracula",
-  "nord",
-  "monokai",
+/**
+ * The palettes on offer. `label` is the upstream project's own name and is never
+ * translated, so it lives beside the values rather than in the catalogue.
+ *
+ * `polarity` is a claim about the palette, and `terminal-theme.test.ts` checks it
+ * against the background the stylesheet actually declares — a light name over
+ * dark values would hand a light reading a dark palette every time the app
+ * flipped.
+ */
+export const TERMINAL_THEMES = [
+  { id: "titanium", label: "Titanium", polarity: "dark" },
+  { id: "tokyo-night", label: "Tokyo Night", polarity: "dark" },
+  { id: "catppuccin", label: "Catppuccin Mocha", polarity: "dark" },
+  { id: "one-dark", label: "One Dark", polarity: "dark" },
+  { id: "dracula", label: "Dracula", polarity: "dark" },
+  { id: "nord", label: "Nord", polarity: "dark" },
+  { id: "monokai", label: "Monokai", polarity: "dark" },
+  { id: "catppuccin-latte", label: "Catppuccin Latte", polarity: "light" },
+  { id: "one-half-light", label: "One Half Light", polarity: "light" },
+  { id: "tokyo-night-light", label: "Tokyo Night Light", polarity: "light" },
 ] as const;
 
-export type TerminalThemeId = (typeof TERMINAL_THEME_IDS)[number];
+export type TerminalThemeId = (typeof TERMINAL_THEMES)[number]["id"];
+export type TerminalThemePolarity = (typeof TERMINAL_THEMES)[number]["polarity"];
+
+export const TERMINAL_THEME_IDS: readonly TerminalThemeId[] = TERMINAL_THEMES.map((theme) => theme.id);
+
+/** The palettes of one polarity: what each slot in settings offers. */
+export function terminalThemesOf(polarity: TerminalThemePolarity): readonly TerminalThemeId[] {
+  return TERMINAL_THEMES.filter((theme) => theme.polarity === polarity).map((theme) => theme.id);
+}
+
+/** Whether a palette is drawn for a light background: what the contrast floor keys off. */
+export function isLightPalette(themeId: TerminalThemeId): boolean {
+  return TERMINAL_THEMES.find((theme) => theme.id === themeId)?.polarity === "light";
+}
 
 /**
  * The choices. `bundled` means the face ships with the app, so it can never be
@@ -92,7 +117,17 @@ export type TerminalCursorStyle = (typeof TERMINAL_CURSOR_STYLES)[number];
 export type TerminalPadding = (typeof TERMINAL_PADDINGS)[number];
 
 export interface TerminalAppearance {
-  themeId: TerminalThemeId;
+  /** What the terminal uses while the app is dark. */
+  themeDark: TerminalThemeId;
+  /** …and while it is light. */
+  themeLight: TerminalThemeId;
+  /**
+   * Whether the palette follows the app's polarity. Off means "always the dark
+   * slot", which is the honest way to say "I want Monokai in a light window" —
+   * the alternative, letting the light slot hold a dark palette, is the same
+   * setting with two names.
+   */
+  followAppTheme: boolean;
   fontId: TerminalFontId;
   fontSize: number;
   lineHeight: number;
@@ -107,9 +142,15 @@ export interface TerminalAppearance {
  * design's preferred `1.2` is offered in settings, but making it the default
  * would reflow every existing terminal on the first launch after an upgrade, and
  * the grid of a running session is not ours to move.
+ *
+ * Following the app's polarity is on by default: a light window with a black
+ * terminal is the complaint this feature answers. Anyone who wants the dark
+ * palette in a light window has one switch to flip.
  */
 export const DEFAULT_TERMINAL_APPEARANCE: TerminalAppearance = {
-  themeId: "titanium",
+  themeDark: "titanium",
+  themeLight: "catppuccin-latte",
+  followAppTheme: true,
   fontId: "geist-mono",
   fontSize: TERMINAL_FONT_SIZE.initial,
   lineHeight: 1,
@@ -134,12 +175,25 @@ function numberIn(value: unknown, min: number, max: number, fallback: number): n
 /**
  * Anything unreadable, out of range or written by an older build lands on the
  * nearest legal value instead of on a terminal nobody can read. Exported because
- * the test for this is the only cheap way to hold eight fields to their limits.
+ * the test for this is the only cheap way to hold the fields to their limits.
+ *
+ * `themeId` is what the single-slot record stored before the palette learned to
+ * follow the polarity: it becomes the dark slot, and the light slot and the
+ * switch take their defaults.
  */
 export function normalizeTerminalAppearance(raw: unknown): TerminalAppearance {
-  const value = (raw ?? {}) as Partial<Record<keyof TerminalAppearance, unknown>>;
+  const value = (raw ?? {}) as Partial<Record<keyof TerminalAppearance | "themeId", unknown>>;
   return {
-    themeId: pick(TERMINAL_THEME_IDS, value.themeId, DEFAULT_TERMINAL_APPEARANCE.themeId),
+    themeDark: pick(
+      TERMINAL_THEME_IDS,
+      value.themeDark ?? value.themeId,
+      DEFAULT_TERMINAL_APPEARANCE.themeDark,
+    ),
+    themeLight: pick(TERMINAL_THEME_IDS, value.themeLight, DEFAULT_TERMINAL_APPEARANCE.themeLight),
+    followAppTheme:
+      typeof value.followAppTheme === "boolean"
+        ? value.followAppTheme
+        : DEFAULT_TERMINAL_APPEARANCE.followAppTheme,
     fontId: pick(
       TERMINAL_FONTS.map((font) => font.id),
       value.fontId,

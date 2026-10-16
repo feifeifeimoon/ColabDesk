@@ -11,7 +11,7 @@
 import type { EnvStatus, Session, SshState, UpdateStatus, UsageReport } from "@shared/types";
 import type { PanelSide } from "../lib/panel-width";
 import type { Theme, ThemePreference } from "../lib/theme";
-import type { TerminalAppearance } from "../lib/terminal-appearance";
+import type { TerminalAppearance, TerminalThemeId } from "../lib/terminal-appearance";
 
 /** A message about what just happened, in one sentence, gone by itself. */
 export interface Toast {
@@ -182,6 +182,12 @@ export interface PreferencesSlice {
   language: import("@shared/ui-language").UiLanguage;
   /** How the terminal looks — colours, type, cursor, ring, buffer. One record. */
   terminal: TerminalAppearance;
+  /**
+   * Which palette is switched on, after the slots and the app's polarity are
+   * resolved. Its own field because the terminal's record does not change when
+   * the app flips: panes subscribe to this to know the palette moved.
+   */
+  terminalThemeId: TerminalThemeId;
   sidebarOpen: boolean;
   filesOpen: boolean;
   /** How wide each rail is, in pixels; the terminal takes what is left. */

@@ -12,9 +12,11 @@ import {
   applyTerminalAppearance,
   changesGrid,
   fontStackFor,
+  isLightPalette,
   normalizeTerminalAppearance,
   readTerminalAppearance,
   saveTerminalAppearance,
+  terminalThemesOf,
 } from "./terminal-appearance";
 
 const STORAGE_KEY = "colabdesk.terminal.appearance";
@@ -52,7 +54,8 @@ describe("defaults", () => {
 describe("limits", () => {
   it("brings every field back inside its own range", () => {
     const normalized = normalizeTerminalAppearance({
-      themeId: "solarized",
+      themeDark: "solarized",
+      themeLight: "gone",
       fontId: "comic-sans",
       fontSize: 99,
       lineHeight: 3,
@@ -79,9 +82,42 @@ describe("limits", () => {
   });
 
   it("keeps a record that is already legal exactly as it is", () => {
-    const stored = { ...DEFAULT_TERMINAL_APPEARANCE, themeId: "nord" as const, fontSize: 18 };
+    const stored = { ...DEFAULT_TERMINAL_APPEARANCE, themeDark: "nord" as const, fontSize: 18 };
     storage({ [STORAGE_KEY]: JSON.stringify(stored) });
     expect(readTerminalAppearance()).toEqual(stored);
+  });
+});
+
+describe("upgrading from the record that held one palette", () => {
+  /** The shape the single-slot build wrote: one `themeId`, no slots, no switch. */
+  const legacy = {
+    themeId: "monokai",
+    fontId: "geist-mono",
+    fontSize: 15,
+    lineHeight: 1.2,
+    cursorStyle: "bar",
+    cursorBlink: false,
+    padding: "spacious",
+    scrollback: 20_000,
+  };
+
+  it("moves the palette someone chose into the dark slot", () => {
+    storage({ [STORAGE_KEY]: JSON.stringify(legacy) });
+    const appearance = readTerminalAppearance();
+
+    expect(appearance.themeDark).toBe("monokai");
+    // The rest of the record is theirs and survives untouched.
+    expect(appearance.fontSize).toBe(15);
+    expect(appearance.lineHeight).toBe(1.2);
+    expect(appearance.cursorStyle).toBe("bar");
+  });
+
+  it("fills the light slot and the switch with the defaults", () => {
+    storage({ [STORAGE_KEY]: JSON.stringify(legacy) });
+    const appearance = readTerminalAppearance();
+
+    expect(appearance.themeLight).toBe(DEFAULT_TERMINAL_APPEARANCE.themeLight);
+    expect(appearance.followAppTheme).toBe(DEFAULT_TERMINAL_APPEARANCE.followAppTheme);
   });
 });
 
@@ -106,7 +142,13 @@ describe("upgrading from the font size that used to live alone", () => {
 
   it("round-trips through storage", () => {
     const map = storage();
-    const chosen = { ...DEFAULT_TERMINAL_APPEARANCE, themeId: "dracula" as const, padding: "spacious" as const };
+    const chosen = {
+      ...DEFAULT_TERMINAL_APPEARANCE,
+      themeDark: "dracula" as const,
+      themeLight: "one-half-light" as const,
+      followAppTheme: false,
+      padding: "spacious" as const,
+    };
     saveTerminalAppearance(chosen);
     expect(map.get(STORAGE_KEY)).toBe(JSON.stringify(chosen));
     expect(readTerminalAppearance()).toEqual(chosen);
@@ -160,7 +202,7 @@ describe("applying to a live terminal", () => {
     const previous = DEFAULT_TERMINAL_APPEARANCE;
     applyTerminalAppearance(
       terminal,
-      { ...previous, themeId: "monokai", padding: "compact" },
+      { ...previous, themeDark: "monokai", padding: "compact" },
       previous,
     );
 
@@ -179,7 +221,16 @@ describe("applying to a live terminal", () => {
   });
 
   it("offers every theme the stylesheet is expected to define", () => {
-    expect([...TERMINAL_THEME_IDS]).toHaveLength(7);
+    expect([...TERMINAL_THEME_IDS]).toHaveLength(10);
     expect(new Set(TERMINAL_THEME_IDS).size).toBe(TERMINAL_THEME_IDS.length);
+  });
+
+  it("has palettes on both sides of the polarity, or following the app is a lie", () => {
+    // The switch hands the light slot to a light window: with no light palette
+    // that slot would hold a dark one and "following" would change nothing.
+    expect(terminalThemesOf("light").length).toBeGreaterThan(0);
+    expect(terminalThemesOf("dark").length).toBeGreaterThan(0);
+    expect(isLightPalette(DEFAULT_TERMINAL_APPEARANCE.themeLight)).toBe(true);
+    expect(isLightPalette(DEFAULT_TERMINAL_APPEARANCE.themeDark)).toBe(false);
   });
 });
