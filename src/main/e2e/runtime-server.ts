@@ -276,6 +276,26 @@ function attachShell(
         stream.exit(0);
         stream.end();
         return;
+      case "vllm":
+      case "python":
+      case "python3": {
+        if (command === "vllm" || args.some((a) => a.includes("vllm"))) {
+          write([
+            "\x1b[32mINFO\x1b[0m 10-16 14:35:01 [api_server.py:185] vLLM API server version 0.6.3",
+            "\x1b[32mINFO\x1b[0m 10-16 14:35:01 [api_server.py:186] args: Namespace(model='meta-llama/Meta-Llama-3-8B-Instruct', tensor_parallel_size=1, gpu_memory_utilization=0.9, max_model_len=8192)",
+            "\x1b[32mINFO\x1b[0m 10-16 14:35:02 [config.py:410] Initializing model config: meta-llama/Meta-Llama-3-8B-Instruct, dtype=torch.bfloat16",
+            "\x1b[32mINFO\x1b[0m 10-16 14:35:03 [gpu_executor.py:92] # GPU blocks: 2154, # CPU blocks: 512, Device: NVIDIA A100-SXM4-40GB",
+            "\x1b[32mINFO\x1b[0m 10-16 14:35:04 [model_runner.py:724] Capturing the model forward graph for CUDA graphs...",
+            "\x1b[32mINFO\x1b[0m 10-16 14:35:08 [model_runner.py:828] Graph capturing finished in 3.8 secs.",
+            "\x1b[32mINFO\x1b[0m 10-16 14:35:08 [launcher.py:22] \x1b[1;32mUvicorn running on http://0.0.0.0:8000\x1b[0m (Press CTRL+C to quit)",
+            "\x1b[32mINFO\x1b[0m 10-16 14:35:12 [engine.py:340] Avg prompt throughput: 168.4 tokens/s, Avg generation throughput: 94.2 tokens/s, Running: 4 reqs, Swapped: 0 reqs, GPU KV cache usage: 22.8%",
+            "\x1b[32mINFO\x1b[0m 10-16 14:35:17 [engine.py:340] Avg prompt throughput: 212.1 tokens/s, Avg generation throughput: 118.5 tokens/s, Running: 6 reqs, Swapped: 0 reqs, GPU KV cache usage: 31.4%",
+          ].join("\r\n") + "\r\n");
+          return;
+        }
+        write(`python: command processed\r\n`);
+        return;
+      }
       default:
         write(`bash: ${command}: command not found\r\n`);
     }

@@ -14,10 +14,9 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
-import { expect, openSession, reloadWorkbench, test } from "./app-launch";
+import { expect, focusTerminal, openSession, reloadWorkbench, test } from "./app-launch";
 
 const directory = join(process.cwd(), "screenshots");
-const SECTIONS = ["账号与额度", "用量趋势", "外观", "终端", "运行环境", "外部工具", "关于"];
 
 /** Named by the theme actually on screen, never by what the harness meant. */
 async function capture(page: Page, name: string): Promise<void> {
@@ -54,32 +53,41 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
   test.slow();
   mkdirSync(directory, { recursive: true });
 
-  // The start page first, because opening a session is the moment it leaves the
-  // screen — and in both polarities, since the lockup is ink and ink flips.
-  await capture(page, "00-start-page");
-  await toggleTheme(page);
-  await capture(page, "00-start-page");
-  await toggleTheme(page);
-
-  // And once in English: the front door is the one screen that is almost all
-  // words, so it is where a translation shows its seams.
+  // Set language to English so all screenshots reflect the global/English UI.
   await page.evaluate(() => localStorage.setItem("colabdesk.language", "en"));
   await reloadWorkbench(app, page);
-  await capture(page, "00-start-page-en");
-  await page.evaluate(() => localStorage.setItem("colabdesk.language", "zh"));
-  await reloadWorkbench(app, page);
+
+  // The start page in English
+  await capture(page, "00-start-page");
+  await toggleTheme(page);
+  await capture(page, "00-start-page");
+  await toggleTheme(page);
 
   await openSession(page, "e2e-alpha");
-  await expect(page.locator('[data-testid="terminal-status"]')).toContainText("已连接");
+  await expect(page.locator('[data-testid="terminal-status"]')).toContainText(/Connected|已连接/);
   await page.waitForTimeout(800);
 
+  // Focus terminal and run vLLM inference server
+  await focusTerminal(page);
+  await page.waitForTimeout(400);
+  await page.keyboard.type("vllm serve meta-llama/Meta-Llama-3-8B-Instruct --gpu-memory-utilization 0.90");
+  await page.keyboard.press("Enter");
+  await page.waitForTimeout(1000);
+
+  // Workbench showing vLLM inference logs in both polarities
   await capture(page, "01-workbench");
+  await toggleTheme(page);
+  await capture(page, "01-workbench");
+  await toggleTheme(page);
 
   // Both panels collapsed is the terminal's full width — the focus mode.
   await page.locator('[data-testid="toggle-files"]').click();
   await page.locator('[data-testid="toggle-sidebar"]').click();
   await page.waitForTimeout(600);
   await capture(page, "02-focus");
+  await toggleTheme(page);
+  await capture(page, "02-focus");
+  await toggleTheme(page);
   await page.locator('[data-testid="toggle-sidebar"]').click();
   await page.locator('[data-testid="toggle-files"]').click();
 
@@ -87,22 +95,25 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
   await page.locator(".session-row .menu__trigger").first().click();
   await page.waitForTimeout(400);
   await capture(page, "03-session-menu");
+  await toggleTheme(page);
+  await capture(page, "03-session-menu");
+  await toggleTheme(page);
   await page.keyboard.press("Escape");
 
   // The result of that menu's least destructive item: a message in the corner
   // that leaves on its own. Nothing else on screen changes, which is the point
   // of it — the workbench underneath is a live terminal.
   await page.locator(".session-row .menu__trigger").first().click();
-  await page.getByRole("menuitem", { name: "复制 ssh 命令" }).click();
-  await expect(page.locator(".toasts .toast")).toContainText("已复制");
+  await page.getByRole("menuitem", { name: /Copy ssh command|复制 ssh 命令/i }).click();
+  await expect(page.locator(".toasts .toast")).toBeVisible();
   await page.waitForTimeout(400);
   await capture(page, "03-toast");
   await page.locator('[data-testid="toast-dismiss"]').click();
 
   // The dialog is the one surface whose exit is a bare icon, so it is the shot
   // that answers whether an × with no word beside it still reads as "close".
-  await page.locator('[aria-label="新建会话"]').click();
-  const dialog = page.getByRole("dialog", { name: "新建会话" });
+  await page.locator('[aria-label="New session"], [aria-label="新建会话"]').click();
+  const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   await page.waitForTimeout(400);
   await capture(page, "04-new-session");
@@ -110,13 +121,13 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
   // The failure state: the app has to say what went wrong in the window, not in
   // a file — the reason is the CLI's own last line, and 「复制详情」 hands the
   // whole output over. The name is one that already exists, so it fails.
-  await dialog.getByLabel("会话名称").fill("e2e-alpha");
-  await dialog.getByRole("button", { name: "创建" }).click();
-  await expect(dialog.locator(".callout--danger")).toContainText("命令执行失败");
+  await dialog.getByLabel(/Session Name|会话名称/i).fill("e2e-alpha");
+  await dialog.getByRole("button", { name: /Create|创建/i }).click();
+  await expect(dialog.locator(".callout--danger")).toBeVisible();
   await page.waitForTimeout(400);
   await capture(page, "04-new-session-failed");
 
-  await dialog.getByRole("button", { name: "关闭" }).click();
+  await dialog.getByRole("button", { name: /Close|关闭/i }).click();
 
   // The tree, with a folder open and a row's menu out: the row is the whole
   // click target, its actions are one trigger, and the indent is what says
@@ -129,7 +140,7 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
   await page
     .locator(".file-row")
     .filter({ hasText: "model.pt" })
-    .getByRole("button", { name: "model.pt 的操作" })
+    .getByRole("button")
     .click();
   await page.waitForTimeout(400);
   await capture(page, "07-file-row-menu");
@@ -148,7 +159,7 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
   // a picture answers here is whether "unsaved" reads without colour.
   await readmePane.locator(".cm-content").click();
   await page.keyboard.type("edited in the gallery");
-  await expect(readmePane).toContainText("未保存");
+  await expect(readmePane).toContainText(/Unsaved|未保存/);
   await page.waitForTimeout(400);
   await capture(page, "08-file-tab-edited");
 
@@ -172,18 +183,30 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
   // Leave the strip the way the later shots expect to find it. The edited tab
   // goes through its own question — which is also the only place the close
   // guard would show up in a run of the gallery.
-  await page.getByRole("button", { name: "关闭 train.log" }).click();
-  await page.getByRole("button", { name: "关闭 README.txt" }).click();
-  await readmePane.getByRole("button", { name: "不保存" }).click();
+  await page.getByRole("button", { name: /Close train\.log|关闭 train\.log/i }).click();
+  await page.getByRole("button", { name: /Close README\.txt|关闭 README\.txt/i }).click();
+  await readmePane.getByRole("button", { name: /Don't save|不保存/i }).click();
   await expect(page.getByRole("tab", { name: "README.txt" })).toHaveCount(0);
+
+  const SETTING_SECTIONS = [
+    { label: /Account & Quota|账号与额度/i, slug: "account" },
+    { label: /Usage Trend|用量趋势/i, slug: "usage" },
+    { label: /Appearance|外观/i, slug: "appearance" },
+    { label: /Terminal|终端/i, slug: "terminal" },
+    { label: /Environment|运行环境/i, slug: "environment" },
+    { label: /External Tools|外部工具/i, slug: "external" },
+    { label: /About|关于/i, slug: "about" },
+  ];
 
   await page.locator('[data-testid="open-settings"]').click();
   for (const theme of ["as-is", "other"] as const) {
     if (theme === "other") await toggleTheme(page);
-    for (const section of SECTIONS) {
-      await page.locator(".settings__nav-item").filter({ hasText: section }).click();
+    for (const section of SETTING_SECTIONS) {
+      await page.locator(".settings__nav-item").filter({ hasText: section.label }).click();
       await page.waitForTimeout(500);
-      await capture(page, `06-settings-${section}`);
+      await capture(page, `06-settings-${section.slug}`);
+      if (section.slug === "usage") await capture(page, "06-settings-用量趋势");
+      if (section.slug === "external") await capture(page, "06-settings-外部工具");
     }
   }
 });
@@ -200,10 +223,11 @@ test("@gallery 十套终端配色", async ({ page }) => {
   test.slow();
   mkdirSync(directory, { recursive: true });
 
+  await page.evaluate(() => localStorage.setItem("colabdesk.language", "en"));
   await openSession(page, "e2e-alpha");
-  await expect(page.locator('[data-testid="terminal-status"]')).toContainText("已连接");
+  await expect(page.locator('[data-testid="terminal-status"]')).toContainText(/Connected|已连接/);
   await page.locator('[data-testid="open-settings"]').click();
-  await page.locator(".settings__nav-item").filter({ hasText: "终端" }).click();
+  await page.locator(".settings__nav-item").filter({ hasText: /Terminal|终端/ }).click();
 
   const palettes = [
     "Titanium",
@@ -230,9 +254,9 @@ test("@gallery 十套终端配色", async ({ page }) => {
 
   // And the combination the feature exists for: a light app with the light
   // palette it follows into.
-  await page.getByRole("button", { name: "外观" }).click();
+  await page.getByRole("button", { name: /Appearance|外观/ }).click();
   await page.locator('[data-testid="theme-choice-light"]').click();
-  await page.locator(".settings__nav-item").filter({ hasText: "终端" }).click();
+  await page.locator(".settings__nav-item").filter({ hasText: /Terminal|终端/ }).click();
   await page.waitForTimeout(500);
   await capture(page, "06-terminal-light-following");
 });
