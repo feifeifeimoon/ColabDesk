@@ -2,7 +2,7 @@
 
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 import { EVENTS, IPC } from "@shared/ipc";
-import type { ColabDeskApi, SessionList } from "@shared/api";
+import type { ColabDeskApi, RuntimeList, SessionList } from "@shared/api";
 
 const invoke = <T>(channel: string, ...args: unknown[]): Promise<T> =>
   ipcRenderer.invoke(channel, ...args) as Promise<T>;
@@ -16,7 +16,7 @@ function subscribe<T>(channel: string, listener: (payload: T) => void): () => vo
 const api: ColabDeskApi = {
   envStatus: () => invoke(IPC.envStatus),
   listSessions: () => invoke<SessionList>(IPC.listSessions),
-  listUntracked: () => invoke<SessionList>(IPC.listUntracked),
+  listUntracked: () => invoke<RuntimeList>(IPC.listUntracked),
   usage: () => invoke(IPC.usage),
   usageTrend: () => invoke(IPC.usageTrend),
 

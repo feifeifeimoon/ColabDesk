@@ -7,6 +7,7 @@
  */
 
 import { existsSync } from "node:fs";
+import type { RuntimeList } from "@shared/api";
 import type { ColabEnvironment, CommandReport, EnvStatus, Session, SshSetup, UsageReport } from "@shared/types";
 import type { LogSink } from "../log-file";
 import { accountStatus } from "./account";
@@ -48,7 +49,6 @@ function untrackedSession(assignment: Assignment): Session {
     machine_shape: assignment.machine_shape,
     kernel_id: null,
     session_id: null,
-    token_expires_at: null,
     running: null,
     last_execution: null,
   };
@@ -153,19 +153,24 @@ export class Service {
 
   /**
    * Runtimes the server has that the local store has never heard of — the `[?]`
-   * rows of `colab sessions`.
+   * rows of `colab sessions` — together with every runtime it does have, which
+   * is the one read of the server that says whether a session's record still
+   * points at something.
    *
-   * They cannot be folded into the store: the CLI's own sync only ever prunes,
-   * and with an empty store it writes nothing at all, so an assignment created
-   * outside the CLI stays invisible to every `colab` command. Without this read
-   * it is invisible here too — which is a runtime spending compute units behind
-   * an empty session list.
+   * The unknowns cannot be folded into the store: the CLI's own sync only ever
+   * prunes, and with an empty store it writes nothing at all, so an assignment
+   * created outside the CLI stays invisible to every `colab` command. Without
+   * this read it is invisible here too — which is a runtime spending compute
+   * units behind an empty session list.
    */
-  async listUntracked(): Promise<{ sessions: Session[]; error: string | null }> {
+  async listUntracked(): Promise<RuntimeList> {
     const assignments = await fetchAssignments(this.log);
     if (!assignments) {
       return {
         sessions: [],
+        // Not an empty list: the caller must be able to tell "nothing is
+        // allocated" from "nobody answered", and only one of them is news.
+        live_endpoints: null,
         error: "读不到服务器上的运行时列表（令牌过期或网络不通）。点上面的同步重试。",
       };
     }
@@ -175,7 +180,7 @@ export class Service {
       .filter((assignment) => !known.has(assignment.endpoint))
       .map(untrackedSession)
       .sort((a, b) => a.name.localeCompare(b.name));
-    return { sessions, error: null };
+    return { sessions, live_endpoints: assignments.map((assignment) => assignment.endpoint), error: null };
   }
 
   async usage(): Promise<UsageReport> {

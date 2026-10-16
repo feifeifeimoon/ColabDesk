@@ -25,6 +25,7 @@ export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> 
   sessionsSyncing: false,
   untrackedSessions: [],
   untrackedError: null,
+  runtimeEndpoints: null,
   busyAction: null,
 
   loadSessions: async () => {
@@ -47,17 +48,23 @@ export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> 
   },
 
   /**
-   * The runtimes the server has that the local store does not. A failure here
-   * is deliberately not a banner — this read loses to every network blip, and
-   * what the person needs to know is that the *list* may be short, which the
-   * rail says in place of an empty state that would claim there is nothing.
+   * The runtimes the server has that the local store does not, and — from the
+   * same answer — which runtimes it has at all. A failure here is deliberately
+   * not a banner: this read loses to every network blip, and what the person
+   * needs to know is that the *list* may be short, which the rail says in place
+   * of an empty state that would claim there is nothing. The rows themselves go
+   * quiet on a failure: `null` is "not answered", never "not there".
    */
   loadUntracked: async () => {
     try {
       const result = await api.listUntracked();
-      set({ untrackedSessions: result.sessions, untrackedError: result.error });
+      set({
+        untrackedSessions: result.sessions,
+        untrackedError: result.error,
+        runtimeEndpoints: result.live_endpoints,
+      });
     } catch (cause) {
-      set({ untrackedSessions: [], untrackedError: api.messageOf(cause) });
+      set({ untrackedSessions: [], untrackedError: api.messageOf(cause), runtimeEndpoints: null });
     }
   },
 

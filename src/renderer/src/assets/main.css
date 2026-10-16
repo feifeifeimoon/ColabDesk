@@ -373,12 +373,26 @@ kbd {
   }
 }
 
+/*
+  Two lines: the name owns the first one outright, the machine's facts sit under
+  it. Splitting them is what makes the rail narrowable — an accelerator as long
+  as `A100-SXM4-40GB` used to take its width out of the name, and the name lost.
+
+  The first line is a band exactly as tall as a `sm` control so the dot, the
+  name and the action strip all sit on one centre line; `--session-row-band` is
+  named for that constraint rather than repeated as a number in three rules.
+  `--session-row-reserve` is the strip's width plus the gap beside it, and it is
+  reserved out of the NAME only: the strip floats over the row's own column so
+  the facts line keeps the card's whole width — at 180px that difference is a
+  fact printed or a fact lost.
+*/
 .session-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  --session-row-band: 28px;
+  --session-row-reserve: 64px;
+  position: relative;
+  display: block;
   width: 100%;
-  padding: 0 var(--space-1) 0 var(--space-2);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   background: none;
@@ -398,15 +412,18 @@ kbd {
   color: var(--ink);
 }
 
-/* The clickable body carries the row's own click; the menu trigger sits beside
-   it so the row is not a button inside a button. */
+/* The clickable body carries the row's own click and fills the card; the action
+   strip floats above its right end, so the row is not a button inside a button. */
 .session-row__main {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: var(--session-row-band) auto;
   align-items: center;
-  gap: var(--space-2);
-  flex: 1;
+  column-gap: var(--space-2);
+  row-gap: 2px;
+  width: 100%;
   min-width: 0;
-  padding: var(--space-2) 0;
+  padding: 0;
   border: none;
   background: none;
   color: inherit;
@@ -416,8 +433,10 @@ kbd {
 }
 
 .session-row__name {
-  flex: 1;
   min-width: 0;
+  /* The strip's width, kept out of the name whether or not the strip is drawn:
+     a name that reflowed on hover would move the very word being read. */
+  padding-right: var(--session-row-reserve);
   font-size: var(--text-label);
   font-weight: 500;
   overflow: hidden;
@@ -425,23 +444,78 @@ kbd {
   white-space: nowrap;
 }
 
-.session-row__sub {
+/* Full width rather than indented under the name: the facts line is the one
+   that has to survive the narrowest rail, and those 14px are most of a word.
+   Inline flow, not flex: the line ends in ONE ellipsis when the rail is too
+   narrow for everything, and a flex row would cut it mid-item instead — which
+   left a separator with no word after it, a promise of facts that are not
+   there. The order below is the order the ellipsis eats, least important last. */
+.session-row__facts {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--mute);
+  font-size: var(--text-micro);
+}
+
+/* Identifiers are the machine's voice: the accelerator is mono, and the words
+   around it are not. */
+.session-row__fact:first-child {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.session-row__sep {
+  color: var(--hairline-strong);
+  margin: 0 var(--space-1);
+}
+
+/* Only a non-resting connection paints its words: connecting and failing are
+   the two the person came to the rail to find, and `--body` at 11px is not
+   loud enough for either. */
+.session-row__state {
+  color: var(--body);
+}
+
+.session-row__state--warn {
+  color: var(--warning-deep);
+}
+
+.session-row__state--danger {
+  color: var(--error);
+}
+
+/*
+  The action strip keeps its width at rest and only hides its ink: the name's
+  width is what makes a row readable, and a strip that slid in on hover would
+  reflow the very thing being read. It appears on hover, on keyboard focus, and
+  while its own menu is open — a trigger that vanished under an open menu would
+  read as a broken control.
+
+  At rest it takes no clicks either: with the ink hidden there is nothing to
+  aim at, and a click meant for the row used to land on a button nobody could
+  see. Keyboard focus still finds it, and focusing it reveals it.
+*/
+.session-row__actions {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  flex-shrink: 0;
-}
-
-/* Revealed on hover or keyboard focus, so actions cost no space at rest. */
-.session-row .menu__trigger {
+  height: var(--session-row-band);
   opacity: 0;
+  pointer-events: none;
   transition: opacity 120ms ease;
 }
 
-.session-row:hover .menu__trigger,
-.session-row:focus-within .menu__trigger,
-.session-row .menu__trigger[aria-expanded="true"] {
+.session-row:hover .session-row__actions,
+.session-row:focus-within .session-row__actions,
+.session-row__actions:has([aria-expanded="true"]) {
   opacity: 1;
+  pointer-events: auto;
 }
 
 /*
@@ -457,6 +531,12 @@ kbd {
 
 .session-row--untracked .session-row__main {
   cursor: default;
+}
+
+/* This row has no action strip, so nothing is reserved for one: an endpoint is
+   long, and the width a strip-bearing row gives up is this row's to keep. */
+.session-row--untracked .session-row__name {
+  padding-right: 0;
 }
 
 .session-row__name--endpoint {
@@ -759,6 +839,13 @@ kbd {
   display: flex;
   flex-direction: column;
   background: var(--terminal-bg);
+  /* A pane paints its own surface and nothing else. xterm asks for its grid in
+     rows of a fixed height and rounds up against a box it measures itself, so a
+     disagreement used to put its last row on the status bar — outside the pane,
+     on top of chrome that has nothing to do with the terminal. Clipping turns
+     that whole class of mistake into a row that is visibly cut, inside the
+     surface that owns it. */
+  overflow: hidden;
 }
 
 .terminal-area .terminal-host,
@@ -770,6 +857,24 @@ kbd {
 .terminal-area .xterm,
 .terminal-preview .xterm {
   height: 100%;
+}
+
+/*
+  xterm's own boxes take the palette's background as well. The grid is a whole
+  number of rows, the box it sits in is not, so a sliver of whatever is painted
+  underneath is always exposed along one edge — and xterm's own default for that
+  is black, which is a colour no palette here uses. Painting the frame the same
+  as the canvas is what makes "the pane ends here" true to the eye at any font
+  size, any line height and any ring: it is the rule the terminal's surface has
+  had since the palettes became an axis, applied one element deeper.
+*/
+.terminal-area .xterm,
+.terminal-area .xterm-viewport,
+.terminal-area .xterm-scrollable-element,
+.terminal-preview .xterm,
+.terminal-preview .xterm-viewport,
+.terminal-preview .xterm-scrollable-element {
+  background: var(--terminal-bg);
 }
 
 /* The settings sandbox: the same surface, small enough to sit above the controls
@@ -811,17 +916,26 @@ kbd {
    sits on whichever frame holds a terminal — the panes and the settings
    preview — so both get the ring from these three rules. `normal` is what the
    terminal had before it was a choice (a little wider than tall); moving it
-   would re-fit every open shell. */
+   would re-fit every open shell.
+
+   **A margin, not a padding, and that is not a style preference.**
+   `FitAddon.proposeDimensions()` sizes the grid from the PARENT's computed
+   height and width and subtracts only the TERMINAL ELEMENT's own padding — a
+   padding on the host is invisible to it. `.xterm` is `height: 100%` of the
+   host's *content* box, so the two disagreed by exactly the ring: the fit asked
+   for 42 rows in a box that held 41, and the last row was painted outside the
+   pane — over the status bar, since nothing clipped it. A margin takes itself
+   out of the host's box, so the fit and the CSS finally measure one thing. */
 [data-terminal-padding="compact"] .terminal-host {
-  padding: var(--space-1);
+  margin: var(--space-1);
 }
 
 [data-terminal-padding="normal"] .terminal-host {
-  padding: var(--space-2) var(--space-3);
+  margin: var(--space-2) var(--space-3);
 }
 
 [data-terminal-padding="spacious"] .terminal-host {
-  padding: var(--space-4);
+  margin: var(--space-4);
 }
 
 .terminal-notice {

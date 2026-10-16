@@ -83,8 +83,11 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
   await page.locator('[data-testid="toggle-sidebar"]').click();
   await page.locator('[data-testid="toggle-files"]').click();
 
-  // The session row's menu, the only place a runtime can be stopped.
-  await page.locator(".session-row .menu__trigger").first().click();
+  // The session row's menu, the only place a runtime can be stopped. The row's
+  // actions appear when it is pointed at, which is also how they are used.
+  const firstRow = page.locator('[data-testid="session-row"]').first();
+  await firstRow.hover();
+  await firstRow.locator(".menu__trigger").click();
   await page.waitForTimeout(400);
   await capture(page, "03-session-menu");
   await page.keyboard.press("Escape");
@@ -92,7 +95,8 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
   // The result of that menu's least destructive item: a message in the corner
   // that leaves on its own. Nothing else on screen changes, which is the point
   // of it — the workbench underneath is a live terminal.
-  await page.locator(".session-row .menu__trigger").first().click();
+  await firstRow.hover();
+  await firstRow.locator(".menu__trigger").click();
   await page.getByRole("menuitem", { name: "复制 ssh 命令" }).click();
   await expect(page.locator(".toasts .toast")).toContainText("已复制");
   await page.waitForTimeout(400);

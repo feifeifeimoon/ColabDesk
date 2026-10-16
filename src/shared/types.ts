@@ -15,7 +15,6 @@ export interface Session {
   machine_shape: string;
   kernel_id: string | null;
   session_id: string | null;
-  token_expires_at: string | null;
   running: string | null;
   last_execution: [string, string | null, string] | null;
 }

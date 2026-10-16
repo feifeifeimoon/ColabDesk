@@ -1,11 +1,10 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../store", () => ({
   useAppStore: (select: (state: unknown) => unknown) => select({}),
 }));
 
-import { setRendererUiLanguage } from "../i18n/i18n";
-import { balanceMeterTone, computeBalanceRatio, formatSessionExpiry } from "./AppShell";
+import { balanceMeterTone, computeBalanceRatio } from "./AppShell";
 
 describe("computeBalanceRatio", () => {
   it("returns 0 for zero, negative, or invalid balance", () => {
@@ -48,46 +47,5 @@ describe("balanceMeterTone", () => {
     expect(balanceMeterTone(0.05)).toBe("danger");
     expect(balanceMeterTone(0.01)).toBe("danger");
     expect(balanceMeterTone(0)).toBe("danger");
-  });
-});
-
-describe("formatSessionExpiry", () => {
-  afterEach(async () => {
-    await setRendererUiLanguage("zh");
-  });
-
-  it("returns null for null, undefined, empty, or invalid ISO", () => {
-    expect(formatSessionExpiry(null)).toBeNull();
-    expect(formatSessionExpiry(undefined)).toBeNull();
-    expect(formatSessionExpiry("")).toBeNull();
-    expect(formatSessionExpiry("invalid-date")).toBeNull();
-  });
-
-  it("returns 已过期 for past dates", async () => {
-    await setRendererUiLanguage("zh");
-    const past = new Date(Date.now() - 60000).toISOString();
-    expect(formatSessionExpiry(past)).toBe("已过期");
-  });
-
-  /**
-   * The label is the status bar's own copy, so it follows the reader. The units
-   * do not change with it — `2h 15m` is what both languages put inside the
-   * sentence — which is the half that would rot silently if this only ever ran
-   * in Chinese.
-   */
-  it("跟着界面语言走，单位不变", async () => {
-    await setRendererUiLanguage("en");
-    const twoHoursFuture = new Date(Date.now() + 2 * 3600000 + 15 * 60000 + 2000).toISOString();
-    expect(formatSessionExpiry(twoHoursFuture)).toBe("~2h 15m left");
-    expect(formatSessionExpiry(new Date(Date.now() - 1000).toISOString())).toBe("Expired");
-
-    await setRendererUiLanguage("zh");
-    expect(formatSessionExpiry(twoHoursFuture)).toBe("剩余 ~2h 15m");
-  });
-
-  it("不到一小时只写分钟", async () => {
-    await setRendererUiLanguage("zh");
-    const twentyMinsFuture = new Date(Date.now() + 20 * 60000 + 2000).toISOString();
-    expect(formatSessionExpiry(twentyMinsFuture)).toBe("剩余 ~20m");
   });
 });

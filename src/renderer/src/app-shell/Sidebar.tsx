@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, Status, type StatusTone } from "../components/ui/Badge";
-import { Button } from "../components/ui/Button";
+import type { StatusTone } from "../components/ui/Badge";
+import { Button, IconButton } from "../components/ui/Button";
 import { PlusIcon, SettingsIcon, SyncIcon } from "../components/ui/icons";
 import { Menu } from "../components/ui/Menu";
 import { PanelDivider } from "../components/ui/PanelDivider";
@@ -17,10 +17,18 @@ const CONNECTION_TONE: Record<string, StatusTone> = {
 };
 
 /**
- * The left rail: one row per session, the way a terminal app lists hosts.
- * Clicking a row opens (or focuses) its tab; the row's own actions live behind
- * the ⋯ trigger, which only appears while the row is pointed at. The foot of the
- * rail is the app's own corner: the quota readout and the way into settings.
+ * The left rail: one card per session, the way a terminal app lists hosts.
+ * Clicking the card opens (or focuses) its tab; the card's own actions live
+ * behind the `+` and `⋯` at its top right, which only appear while the card is
+ * pointed at. The foot of the rail is the app's own corner: the way into
+ * settings.
+ *
+ * A row is two lines because the name and the machine's facts used to share
+ * one. They were never equal: the accelerator is as long as it likes
+ * (`A100-SXM4-40GB`) and it was the name that paid, down to an ellipsis three
+ * characters wide. The name now owns the first line outright, and the facts
+ * sit under it — which is also what lets the rail be narrowed, the one thing a
+ * host list must survive.
  */
 export function Sidebar() {
   const { t } = useTranslation();
@@ -59,6 +67,7 @@ export function Sidebar() {
   const loading = useAppStore((state) => state.sessionsLoading);
   const untrackedSessions = useAppStore((state) => state.untrackedSessions);
   const untrackedError = useAppStore((state) => state.untrackedError);
+  const runtimeEndpoints = useAppStore((state) => state.runtimeEndpoints);
   const selectedSession = useAppStore((state) => state.selectedSession);
   const tabs = useAppStore((state) => state.tabs);
   const connections = useAppStore((state) => state.connections);
@@ -155,6 +164,9 @@ export function Sidebar() {
         {sessions.map((session) => {
           const connection = connections[session.name];
           const state = connection?.status ?? "closed";
+          // `neutral` has no modifier: the resting dot is `.status`'s own colour.
+          const tone = CONNECTION_TONE[state] ?? "neutral";
+          const dotClass = ["status", tone === "neutral" ? "" : `status--${tone}`].filter(Boolean).join(" ");
           // "Closed" is the resting state and says nothing; every other state
           // is written out (a dot alone never carries the state).
           const stateLabel = state === "closed" ? null : (connectionLabels[state] ?? state);
@@ -163,15 +175,24 @@ export function Sidebar() {
           // The tooltip counts shells, which is what it says; the menu below is
           // about the session's workbench, which is every tab it has.
           const shells = sessionTabs.filter((tab) => tab.kind === "shell").length;
-          // The shell count goes in the tooltip rather than a second badge: the
-          // tab strip is the authoritative "how many shells" display, and the
-          // badge squeezed the session name down to an ellipsis.
+          /*
+            What the server said about this record — or nothing, which is the
+            third answer and the reason it is not a boolean. A read that did not
+            come back must leave the row silent: "gone" is a claim about
+            somebody's machine, and a network blip is not allowed to make it.
+          */
+          const cloud =
+            runtimeEndpoints === null || !session.endpoint
+              ? null
+              : runtimeEndpoints.includes(session.endpoint)
+                ? "running"
+                : "gone";
           return (
             <div
               key={session.name}
               data-testid="session-row"
               className={`session-row ${session.name === selectedSession ? "session-row--active" : ""}`}
-              title={`${connection?.error ?? session.endpoint ?? session.name}${shells > 1 ? t("sidebar.terminalsCount", " · {{count}} 个终端", { count: shells }) : ""}`}
+              title={`${connection?.error ?? session.endpoint ?? session.name}${shells > 1 ? ` · ${t("sidebar.terminalsCount", "{{count}} 个终端", { count: shells })}` : ""}`}
               onContextMenu={(event) => {
                 event.preventDefault();
                 void runSessionAction(session.name, "open");
@@ -182,62 +203,107 @@ export function Sidebar() {
                 className="session-row__main"
                 onClick={() => void runSessionAction(session.name, "open")}
               >
-                <span
-                  aria-hidden="true"
-                  className={`status ${CONNECTION_TONE[state] ? `status--${CONNECTION_TONE[state]}` : ""}`}
-                />
+                <span aria-hidden="true" className={dotClass} />
                 <span className="session-row__name">{session.name}</span>
+                {/*
+                  The machine's half of the card, in the order it survives a
+                  narrow rail: what the machine is, whether it is still there,
+                  how this window is getting on with it, and — last, because it
+                  is the least of it — how many terminals are open on it.
+                */}
+                <span className="session-row__facts">
+                  <span className="session-row__fact">{acceleratorLabel(session)}</span>
+                  {cloud && (
+                    <>
+                      <span className="session-row__sep" aria-hidden="true">·</span>
+                      <span
+                        className="session-row__fact"
+                        {...(cloud === "gone"
+                          ? { title: t("sidebar.cloudGoneTitle", "云端已查不到这台运行时；同步会清掉这条本地记录。") }
+                          : {})}
+                      >
+                        {cloud === "running"
+                          ? t("sidebar.cloudRunning", "云端运行中")
+                          : t("sidebar.cloudGone", "云端已无")}
+                      </span>
+                    </>
+                  )}
+                  {stateLabel && (
+                    <>
+                      <span className="session-row__sep" aria-hidden="true">·</span>
+                      <span
+                        {...(session.name === selectedSession ? { "data-testid": "terminal-status" } : {})}
+                        className={[
+                          "session-row__fact",
+                          "session-row__state",
+                          tone === "danger" ? "session-row__state--danger" : "",
+                          tone === "warn" ? "session-row__state--warn" : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                      >
+                        {stateLabel}
+                      </span>
+                    </>
+                  )}
+                  {shells > 1 && (
+                    <>
+                      <span className="session-row__sep" aria-hidden="true">·</span>
+                      <span className="session-row__fact">
+                        {t("sidebar.terminalsCount", "{{count}} 个终端", { count: shells })}
+                      </span>
+                    </>
+                  )}
+                </span>
               </button>
 
-              <span className="session-row__sub">
-                {stateLabel && (
-                  <span
-                    {...(session.name === selectedSession ? { "data-testid": "terminal-status" } : {})}
-                    className={`status ${CONNECTION_TONE[state] ? `status--${CONNECTION_TONE[state]}` : ""}`}
-                  >
-                    {stateLabel}
-                  </span>
-                )}
-                <Badge tone="ink">{acceleratorLabel(session)}</Badge>
+              <span className="session-row__actions">
+                <IconButton
+                  variant="ghost"
+                  size="sm"
+                  label={t("sidebar.newTerminalFor", "为「{{name}}」新建终端", { name: session.name })}
+                  onClick={() => void runSessionAction(session.name, "new-terminal")}
+                >
+                  <PlusIcon size={14} />
+                </IconButton>
+                <Menu
+                  label={t("sidebar.menuActionLabel", "{{name}} 的操作", { name: session.name })}
+                  items={[
+                    sessionTabs.length > 0
+                      ? { label: t("sidebar.menuFocusTerminal", "聚焦终端"), onSelect: () => void runSessionAction(session.name, "open") }
+                      : { label: t("sidebar.menuOpenTerminal", "打开终端"), onSelect: () => void runSessionAction(session.name, "open") },
+                    { label: t("sidebar.menuNewTerminal", "新建终端"), onSelect: () => void runSessionAction(session.name, "new-terminal") },
+                    {
+                      label: busy && busyAction?.endsWith("restart-kernel") ? t("sidebar.menuRestartingKernel", "重启中…") : t("sidebar.menuRestartKernel", "重启内核"),
+                      disabled: busy,
+                      onSelect: () => void runSessionAction(session.name, "restart-kernel"),
+                    },
+                    {
+                      label: t("sidebar.menuSshConfig", "写入 SSH 配置"),
+                      disabled: busy,
+                      onSelect: () => void runSessionAction(session.name, "ssh-config"),
+                    },
+                    { label: t("sidebar.menuCopySsh", "复制 ssh 命令"), onSelect: () => void runSessionAction(session.name, "copy-ssh") },
+                    // Closing every tab is what hangs up — a file tab holds the
+                    // connection too — and one tab on its own leaves it up for the
+                    // others.
+                    ...(sessionTabs.length > 0
+                      ? [
+                          {
+                            label: t("sidebar.menuCloseAllTerminals", "关闭全部标签"),
+                            onSelect: () => void runSessionAction(session.name, "close-all"),
+                          },
+                        ]
+                      : []),
+                    {
+                      label: busy && busyAction?.endsWith("stop") ? t("sidebar.menuStoppingSession", "停止中…") : t("sidebar.menuStopSession", "停止会话"),
+                      danger: true,
+                      disabled: busy,
+                      onSelect: () => void runSessionAction(session.name, "stop"),
+                    },
+                  ]}
+                />
               </span>
-
-              <Menu
-                label={t("sidebar.menuActionLabel", "{{name}} 的操作", { name: session.name })}
-                items={[
-                  sessionTabs.length > 0
-                    ? { label: t("sidebar.menuFocusTerminal", "聚焦终端"), onSelect: () => void runSessionAction(session.name, "open") }
-                    : { label: t("sidebar.menuOpenTerminal", "打开终端"), onSelect: () => void runSessionAction(session.name, "open") },
-                  { label: t("sidebar.menuNewTerminal", "新建终端"), onSelect: () => void runSessionAction(session.name, "new-terminal") },
-                  {
-                    label: busy && busyAction?.endsWith("restart-kernel") ? t("sidebar.menuRestartingKernel", "重启中…") : t("sidebar.menuRestartKernel", "重启内核"),
-                    disabled: busy,
-                    onSelect: () => void runSessionAction(session.name, "restart-kernel"),
-                  },
-                  {
-                    label: t("sidebar.menuSshConfig", "写入 SSH 配置"),
-                    disabled: busy,
-                    onSelect: () => void runSessionAction(session.name, "ssh-config"),
-                  },
-                  { label: t("sidebar.menuCopySsh", "复制 ssh 命令"), onSelect: () => void runSessionAction(session.name, "copy-ssh") },
-                  // Closing every tab is what hangs up — a file tab holds the
-                  // connection too — and one tab on its own leaves it up for the
-                  // others.
-                  ...(sessionTabs.length > 0
-                    ? [
-                        {
-                          label: t("sidebar.menuCloseAllTerminals", "关闭全部标签"),
-                          onSelect: () => void runSessionAction(session.name, "close-all"),
-                        },
-                      ]
-                    : []),
-                  {
-                    label: busy && busyAction?.endsWith("stop") ? t("sidebar.menuStoppingSession", "停止中…") : t("sidebar.menuStopSession", "停止会话"),
-                    danger: true,
-                    disabled: busy,
-                    onSelect: () => void runSessionAction(session.name, "stop"),
-                  },
-                ]}
-              />
             </div>
           );
         })}
@@ -262,11 +328,16 @@ export function Sidebar() {
             <div className="session-row__main">
               <span aria-hidden="true" className="status status--warn" />
               <span className="session-row__name session-row__name--endpoint">{session.name}</span>
+              {/* The state is written once, in the facts line: this row's dot
+                  and its words are the same one state, not two. */}
+              <span className="session-row__facts">
+                <span className="session-row__fact">{acceleratorLabel(session)}</span>
+                <span className="session-row__sep" aria-hidden="true">·</span>
+                <span className="session-row__fact session-row__state session-row__state--warn">
+                  {t("sidebar.untracked", "未在本地记录")}
+                </span>
+              </span>
             </div>
-            <span className="session-row__sub">
-              <Status tone="warn">{t("sidebar.untracked", "未在本地记录")}</Status>
-              <Badge tone="ink">{acceleratorLabel(session)}</Badge>
-            </span>
           </div>
         ))}
       </div>

@@ -108,7 +108,15 @@ function normalize(name: string, raw: Record<string, unknown>): RawSession {
     machine_shape: str("machine_shape", "STANDARD"),
     kernel_id: opt("kernel_id"),
     session_id: opt("session_id"),
-    token_expires_at: opt("token_expires_at"),
+    /*
+      The file's `token_expires_at` is deliberately not read: it is the expiry of
+      the runtime *proxy token* (an hour, minted by the session backend), not the
+      runtime's own lifetime. The CLI renews it in passing whenever it runs a
+      command; this app does not run the CLI, so on any machine that uses this
+      app the value freezes and then goes stale — and an hour-long countdown
+      labelled like a session's remaining time is worse than no countdown. What
+      is really still allocated is asked of the server instead (`assignments.ts`).
+    */
     running: opt("running"),
     last_execution: Array.isArray(lastExecution) ? (lastExecution as RawSession["last_execution"]) : null,
   };

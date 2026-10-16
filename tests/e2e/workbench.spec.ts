@@ -88,6 +88,27 @@ test("无边框窗口的控制通道接通", async ({ page }) => {
   expect(roundTrip).toBe("ok");
 });
 
+/*
+  状态栏横跨整个窗口，压在两栏和终端之上。终端那一列曾经把自己的最后一行画到它
+  上面（fit 取的行数比它的盒子能装的多一行，而没有东西裁剪它），肉眼看到的正是
+  「状态栏和终端重叠」。这里问的是 z 序——在状态栏自己那一行的每个 x 上，最上面的
+  元素都得是它；终端那一侧由 settings-terminal.spec.ts 从网格那边钉住。
+*/
+test("状态栏横跨整个窗口，终端画不到它上面", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await expect(page.locator('[data-testid="terminal-status"]')).toContainText("已连接");
+
+  const topmost = await page.evaluate(() => {
+    const width = window.innerWidth;
+    const columns = [4, 130, 400, 700, 1000, width - 4];
+    const rows = [window.innerHeight - 4, window.innerHeight - 20];
+    return columns
+      .flatMap((x) => rows.map((y) => [x, y] as const))
+      .map(([x, y]) => `${x},${y} → ${Boolean(document.elementFromPoint(x, y)?.closest(".statusbar"))}`);
+  });
+  expect(topmost.filter((probe) => !probe.endsWith("true"))).toEqual([]);
+});
+
 test("两侧面板可收起再展开", async ({ page }) => {
   const sidebar = page.locator(".sidebar");
   await expect(sidebar).toBeVisible();
@@ -356,7 +377,10 @@ test("会话没了之后，工作台回到前门，不会停在「还没有终�
 
   // 停止会话：桩把它从 sessions.json 里删掉，和真机上「删除运行时后同步」是同一条路。
   page.on("dialog", (dialog) => void dialog.accept());
-  await page.locator(".session-row", { hasText: "e2e-alpha" }).locator(".menu__trigger").click();
+  const row = page.locator(".session-row", { hasText: "e2e-alpha" });
+  // 行上的动作指向它才出现，所以先移过去——人也得先指到那一行。
+  await row.hover();
+  await row.locator(".menu__trigger").click();
   await page.getByRole("menuitem", { name: "停止会话" }).click();
 
   await expect(page.locator('[data-testid="session-row"]')).toHaveCount(1);
