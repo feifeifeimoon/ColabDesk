@@ -672,10 +672,11 @@ kbd {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  /* The rail's `⋯` is what this control is: the same metrics, the same tokens. */
+  width: 24px;
+  height: 24px;
   border: none;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   background: none;
   color: var(--mute);
   font-size: 13px;
@@ -683,8 +684,16 @@ kbd {
   cursor: pointer;
 }
 
+/* The active tab is the one being looked at: its × keeps up with its title
+   instead of sitting a whole step below it. */
+.session-tab--active .session-tab__close {
+  color: var(--body);
+}
+
 .session-tab__close:hover {
-  background: var(--hairline);
+  /* --hairline over the tab's own --canvas-soft hover wash is 2.5% apart, i.e.
+     no feedback at all; this is the step meant for a chip on a soft surface. */
+  background: var(--canvas-soft-2);
   color: var(--ink);
 }
 
