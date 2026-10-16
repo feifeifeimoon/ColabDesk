@@ -221,7 +221,11 @@ test("@gallery 十套终端配色", async ({ page }) => {
   for (const palette of palettes) {
     await page.getByRole("button", { name: palette, exact: true }).click();
     await page.waitForTimeout(500);
-    await capture(page, `05-terminal-${palette.split(" ")[0].toLowerCase()}`);
+    // The whole name: "Catppuccin Latte" and "Catppuccin Mocha" would otherwise
+    // land on one file, and a shot that silently overwrites another is worse
+    // than no shot.
+    const slug = palette.toLowerCase().replace(/\s+/g, "-");
+    await capture(page, `05-terminal-${slug}`);
   }
 
   // And the combination the feature exists for: a light app with the light
