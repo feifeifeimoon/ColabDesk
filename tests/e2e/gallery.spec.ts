@@ -11,7 +11,7 @@
  * Run: npm run gallery   → screenshots/
  */
 
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
 import { expect, openSession, reloadWorkbench, test } from "./app-launch";
@@ -239,4 +239,61 @@ test("@gallery 十套终端配色", async ({ page }) => {
   await page.locator(".settings__nav-item").filter({ hasText: "终端" }).click();
   await page.waitForTimeout(500);
   await capture(page, "06-terminal-light-following");
+});
+
+/**
+ * The README's hero picture — the one image that is *tracked*
+ * (`docs/assets/hero.png`), because it is part of the front page rather than
+ * review evidence.
+ *
+ * Written from here so it cannot go stale silently: running the gallery
+ * refreshes it, and a refresh shows up as a diff in the next review. The
+ * sessions are renamed demo entries in the sandbox's own store — the rail is
+ * staged, the screen is not painted over.
+ */
+test("@gallery README hero", async ({ app, page, sandbox }) => {
+  const store = join(sandbox, ".config", "colab-cli", "sessions.json");
+  const seeded = JSON.parse(readFileSync(store, "utf8")) as Record<string, Record<string, unknown>>;
+  const entries = Object.values(seeded);
+
+  /*
+    Two plausible sessions. One takes the endpoint the double always reports as
+    untracked, so that row (whose endpoint is obviously a fixture) stays out of
+    the picture; the rest of each entry — token, url, kernel — is the stub's own,
+    so nothing here invents runtime behaviour.
+  */
+  writeFileSync(
+    store,
+    JSON.stringify(
+      {
+        "llama-finetune": { ...entries[0], endpoint: "m-s-kkb-usc1c1-1ysqo4pb8zt5n", accelerator: "A100" },
+        "data-prep": { ...entries[1], endpoint: "m-s-kkb-e2e0c1-untracked", accelerator: "T4" },
+      },
+      null,
+      2,
+    ),
+  );
+
+  await page.evaluate(() => {
+    localStorage.setItem("colabdesk.language", "en");
+    localStorage.setItem("colabdesk.theme", "light");
+  });
+  await reloadWorkbench(app, page);
+
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0].setSize(1440, 940);
+  });
+  await page.waitForTimeout(700);
+
+  // It is the start screen with the staged rail — checked, not assumed.
+  await expect(page.locator(".startpage")).toBeVisible();
+  await expect(page.locator('[data-testid="session-row"]')).toHaveCount(2);
+  await expect(page.locator('[data-testid="sidebar-list"]')).toContainText("llama-finetune");
+  await expect(page.locator('[data-testid="sidebar-list"]')).toContainText("data-prep");
+  await expect(page.locator('[data-testid="untracked-row"]')).toHaveCount(0);
+
+  const hero = join(process.cwd(), "docs", "assets");
+  mkdirSync(hero, { recursive: true });
+  await page.screenshot({ path: join(hero, "hero.png") });
+  console.log(join(hero, "hero.png"));
 });
