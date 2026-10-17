@@ -149,6 +149,16 @@ export interface SessionsSlice {
   untrackedSessions: Session[];
   /** Set when that read failed — the rail may be missing runtimes, and says so. */
   untrackedError: string | null;
+  /**
+   * Every endpoint the server still has allocated, from the same read. A row
+   * whose endpoint is in here is still costing compute units; one that is
+   * absent is a record pointing at nothing.
+   *
+   * `null` means the read did not answer, and a row must then say nothing at
+   * all: "gone" is a claim about somebody's machine, and a network blip must
+   * not be able to make it.
+   */
+  runtimeEndpoints: string[] | null;
   /** `${session}:${action}` while a row action is in flight. */
   busyAction: string | null;
 

@@ -31,6 +31,7 @@ const baseStore = {
   sessionsSyncing: false,
   untrackedSessions: [] as unknown[],
   untrackedError: null as string | null,
+  runtimeEndpoints: null as string[] | null,
   selectedSession: null,
   tabs: [],
   connections: {},
@@ -45,6 +46,19 @@ const baseStore = {
 /** The rail's own markup for the untracked-runtime rows, up to the footer. */
 function untrackedMarkup(html: string): string {
   return html.slice(html.indexOf('data-testid="untracked-row"'), html.indexOf("sidebar__footer"));
+}
+
+/** Every session row's markup: from the first row to whatever follows the last. */
+function rowsMarkup(html: string): string {
+  const start = html.indexOf('data-testid="session-row"');
+  const untracked = html.indexOf('data-testid="untracked-row"');
+  const end = untracked === -1 ? html.indexOf("sidebar__footer") : untracked;
+  return html.slice(start, end);
+}
+
+/** How many status dots a piece of markup draws. */
+function dots(html: string): number {
+  return (html.match(/class="status\b/g) ?? []).length;
 }
 
 describe("Sidebar", () => {
@@ -89,6 +103,60 @@ describe("Sidebar", () => {
     expect(html).toContain("未在本地记录");
     expect(html).toContain("status--warn");
     expect(html).toContain("CPU");
+  });
+
+  it("名字独占第一行：事实行与动作条都不跟它抢宽度", () => {
+    const html = renderToStaticMarkup(createElement(Sidebar));
+    const row = rowsMarkup(html);
+
+    // 第一行里只有状态点、名字和事实行（事实行自己在第二行）。动作条是另一栏，
+    // 宽度由 CSS 常驻占位：改宽度会让悬停时名字重排，那是把要读的东西挪走。
+    const buttonEnd = row.indexOf("</button>");
+    expect(buttonEnd).toBeGreaterThan(-1);
+    expect(row.indexOf("session-row__facts")).toBeLessThan(buttonEnd);
+    expect(row.indexOf("session-row__actions")).toBeGreaterThan(buttonEnd);
+  });
+
+  it("一台机器只有一个状态：行里不再出现两个点", () => {
+    store.current = { ...baseStore, connections: { "session-1": { status: "ready" } } };
+    const html = renderToStaticMarkup(createElement(Sidebar));
+
+    expect(dots(rowsMarkup(html))).toBe(1);
+    // 而状态仍然写出来——颜色不单独承载语义。
+    expect(html).toContain("已连接");
+  });
+
+  it("加速器是第二行的第一条事实", () => {
+    const row = rowsMarkup(renderToStaticMarkup(createElement(Sidebar)));
+    const facts = row.slice(row.indexOf("session-row__facts"));
+
+    expect(facts).toContain("session-row__fact");
+    expect(facts).toContain("CPU");
+  });
+
+  it("云端还在的运行时，第二行说「云端运行中」", () => {
+    store.current = { ...baseStore, runtimeEndpoints: ["127.0.0.1"] };
+    const html = renderToStaticMarkup(createElement(Sidebar));
+
+    expect(html).toContain("云端运行中");
+    expect(html).not.toContain("云端已无");
+  });
+
+  it("云端已经没有的运行时，第二行说出来，并说清它的后果", () => {
+    store.current = { ...baseStore, runtimeEndpoints: [] };
+    const html = renderToStaticMarkup(createElement(Sidebar));
+
+    expect(html).toContain("云端已无");
+    expect(html).toContain("同步会清掉这条本地记录");
+    expect(html).not.toContain("云端运行中");
+  });
+
+  it("服务器那一半没读到时不说话：网络抖动不是一台没了的机器", () => {
+    store.current = { ...baseStore, runtimeEndpoints: null, untrackedError: "assignments request failed" };
+    const html = renderToStaticMarkup(createElement(Sidebar));
+
+    expect(html).not.toContain("云端运行中");
+    expect(html).not.toContain("云端已无");
   });
 
   it("未在本地记录的那一行不是控件：没有菜单、没有按钮、指针不是手型", () => {

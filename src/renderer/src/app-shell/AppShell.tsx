@@ -16,7 +16,6 @@ import {
   TerminalIcon,
 } from "../components/ui/icons";
 import { closeWindow, minimizeWindow, onWindowMaximized, toggleMaximizeWindow } from "../lib/api";
-import { translate } from "../i18n/i18n";
 import { useAppStore } from "../store";
 import { useHasWorkSurface } from "../store/selectors";
 import { BrandMark } from "./BrandMark";
@@ -350,20 +349,6 @@ const CONNECTION_TONE: Record<string, "good" | "warn" | "danger" | "neutral"> = 
   closed: "neutral",
 };
 
-export function formatSessionExpiry(iso: string | null | undefined): string | null {
-  if (!iso) return null;
-  const target = new Date(iso).getTime();
-  if (Number.isNaN(target)) return null;
-  const diffMs = target - Date.now();
-  if (diffMs <= 0) return translate("statusbar.expired", "已过期");
-  const totalMinutes = Math.floor(diffMs / 60000);
-  const hours = Math.floor(totalMinutes / 60);
-  const mins = totalMinutes % 60;
-  // The units read the same in both languages; only the sentence around them does not.
-  const time = hours > 0 ? `${hours}h${mins > 0 ? ` ${mins}m` : ""}` : `${mins}m`;
-  return translate("statusbar.remainingTime", `剩余 ~${time}`, { time });
-}
-
 /**
  * The bottom bar: cockpit for quota assets, active tasks, and open terminals.
  * Left: Mini progress bar + CU balance + spend rate + active sessions,
@@ -522,9 +507,18 @@ export function StatusBar() {
                     session.machine_shape && session.machine_shape !== "STANDARD"
                       ? ` · ${session.machine_shape.replace("_", "-")}`
                       : "";
-                  const expiry = formatSessionExpiry(session.token_expires_at);
+                  /*
+                    No countdown here, and that is the point of this column.
+                    The only expiry a local record carries is the runtime proxy
+                    token's own — an hour, renewed in passing whenever the CLI
+                    runs a command — and this app deliberately does not run one,
+                    so the value freezes on whatever it was and then reads as
+                    "expired" for a session that is perfectly alive. Whether the
+                    runtime is still there at all is asked of the server, and
+                    answered on the rail's own rows.
+                  */
                   const durationLabel =
-                    expiry ?? (state === "ready" ? t("statusbar.connected", "已连接") : t("statusbar.standby", "待命"));
+                    state === "ready" ? t("statusbar.connected", "已连接") : t("statusbar.standby", "待命");
                   const cost = ACCELERATOR_RATES[accelerator] ?? "0.00/h";
 
                   return (

@@ -10,9 +10,20 @@
 
 import { expect, test } from "./app-launch";
 
+/**
+ * Opens the first row's menu. The actions are revealed by pointing at the row
+ * (and take no clicks until then — nothing invisible should swallow one), so
+ * the pointer goes there first, which is also what a person does.
+ */
+async function openSessionMenu(page: import("@playwright/test").Page): Promise<void> {
+  const row = page.locator('[data-testid="session-row"]').first();
+  await row.hover();
+  await row.locator(".menu__trigger").click();
+}
+
 /** The menu item that only copies: no side effects for the fake CLI to answer. */
 async function copySshCommand(page: import("@playwright/test").Page): Promise<void> {
-  await page.locator(".session-row .menu__trigger").first().click();
+  await openSessionMenu(page);
   await page.getByRole("menuitem", { name: "复制 ssh 命令" }).click();
 }
 

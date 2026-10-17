@@ -29,6 +29,22 @@ export interface SessionList {
   error: string | null;
 }
 
+/**
+ * The server's half of the rail. It answers a second question the local file
+ * cannot — which runtimes are still allocated, and therefore still being
+ * billed — so it carries the endpoint list on top of the rows:
+ *
+ * - `live_endpoints` is every runtime the account has right now, by endpoint.
+ *   A local session whose endpoint is in it is still there; one whose endpoint
+ *   is absent has been reclaimed, and its record is a credential for nothing.
+ * - `null` is the third answer, and the reason this is not just an array: "the
+ *   list could not be read" is not "the runtime is gone", and a row that
+ *   conflated them would call every network blip a dead session.
+ */
+export interface RuntimeList extends SessionList {
+  live_endpoints: string[] | null;
+}
+
 export interface TerminalHandle {
   channelId: number;
   session: string;
@@ -46,11 +62,12 @@ export interface ColabDeskApi {
   envStatus(): Promise<EnvStatus>;
   listSessions(): Promise<SessionList>;
   /**
-   * Runtimes the server has that no local record mentions. `error` is set and
-   * `sessions` empty when the answer could not be had — the rail then says so
-   * instead of claiming there is nothing.
+   * Runtimes the server has that no local record mentions, plus the server's
+   * own list of what is still allocated. `error` is set and `sessions` empty
+   * when the answer could not be had — the rail then says so instead of
+   * claiming there is nothing.
    */
-  listUntracked(): Promise<SessionList>;
+  listUntracked(): Promise<RuntimeList>;
   usage(): Promise<UsageReport>;
   /** Compute-unit spend per day/week/month, from the readings this app recorded. */
   usageTrend(): Promise<UsageTrend>;

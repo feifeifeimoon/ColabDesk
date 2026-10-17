@@ -48,6 +48,22 @@ async function waitForPrompts(page: Page, times: number): Promise<void> {
     .toBeGreaterThanOrEqual(times);
 }
 
+/**
+ * How far the grid hangs out of its own box, in pixels. It should never be
+ * positive: xterm sizes the grid in whole rows of a fixed height, from a box it
+ * measures itself, and a row that does not fit is drawn *outside* the pane —
+ * which is where the status bar is (see the workbench spec, which asserts the
+ * same thing from the other side).
+ */
+async function gridOverhang(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const xterm = document.querySelector(".terminal-area:not([hidden]) .xterm");
+    const screen = document.querySelector(".terminal-area:not([hidden]) .xterm-screen");
+    if (!xterm || !screen) throw new Error("这个面板里没有终端网格");
+    return Math.round(screen.getBoundingClientRect().bottom - xterm.getBoundingClientRect().bottom);
+  });
+}
+
 test("换配色当场生效：沙箱与工作台一起换，shell 不受影响", async ({ page }) => {
   await openSession(page, "e2e-alpha");
   await expect(terminalRows(page)).toContainText("shell #1");
@@ -76,6 +92,12 @@ test("换配色当场生效：沙箱与工作台一起换，shell 不受影响",
   await expect.poll(() => painted(page, ".terminal-area")).toBe("rgb(26, 27, 38)");
   await expect.poll(() => painted(page, ".terminal-preview")).toBe("rgb(26, 27, 38)");
   expect(before).not.toBe("rgb(26, 27, 38)");
+
+  // And the frame's own boxes inside the pane, not just the pane: the grid is a
+  // whole number of rows in a box that is not, so a sliver of what xterm paints
+  // underneath is always exposed somewhere along an edge — and its own default
+  // for that is black, which no palette here uses.
+  await expect.poll(() => painted(page, ".terminal-area .xterm-viewport")).toBe("rgb(26, 27, 38)");
 
   await page.keyboard.press("Escape");
   await expect(page.locator('[data-testid="terminal-status"]')).toContainText("已连接");
@@ -114,6 +136,26 @@ test("改字号与行高会重排网格，但不动连接、也不抢走设置�
   await page.keyboard.press("Escape");
   await expect(page.locator('[data-testid="terminal-status"]')).toContainText("已连接");
   await expect(terminalRows(page)).toContainText("shell #1");
+});
+
+/*
+  The ring around the terminal is a preference; the grid staying inside its own
+  pane is not. It has been a real bug: the fit sized the grid from a box that
+  included the ring while the CSS sized the pane without it, so every terminal
+  drew one row more than it had room for — and that row landed on the status
+  bar, because nothing clipped it. Measured at all three paddings, since the
+  ring is what the two measurements disagreed about.
+*/
+test("三种内边距下，网格都装在自己的面板里", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await expect(terminalRows(page)).toContainText("shell #1");
+
+  await openTerminalSection(page);
+
+  for (const padding of ["紧凑", "舒适", "宽松"]) {
+    await page.getByRole("button", { name: padding, exact: true }).click();
+    await expect.poll(() => gridOverhang(page)).toBeLessThanOrEqual(0);
+  }
 });
 
 test("十套调色板各自解析出颜色，且互不相同", async ({ page }) => {

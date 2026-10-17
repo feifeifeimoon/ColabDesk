@@ -69,6 +69,36 @@ test("分隔条可用键盘调整，并把范围报给辅助技术", async ({ pa
   expect(await widthOf(page, ".sidebar")).toBeGreaterThan(before);
 });
 
+/*
+  The rail is draggable precisely so it can be pushed out of the terminal's way,
+  which makes its narrowest state the one that has to hold up: the name is the
+  reason somebody opens this list, and a name cut to three characters is not a
+  name. Measured, because "it looks fine at 260" is the state this replaced.
+*/
+test("会话栏收到最窄时，名字仍然完整、事实行仍然在", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+
+  await dragDivider(page, "会话栏宽度", -600);
+  expect(await widthOf(page, ".sidebar")).toBeCloseTo(180, 0);
+
+  const rows = page.locator('[data-testid="session-row"]');
+  await expect(rows).toHaveCount(2);
+
+  const name = rows.filter({ hasText: "e2e-alpha" }).locator(".session-row__name");
+  await expect(name).toHaveText("e2e-alpha");
+  // 完整：没有被省略号截断（截断时 scrollWidth 会超过 clientWidth）。
+  expect(
+    await name.evaluate((element) => element.scrollWidth - element.clientWidth),
+  ).toBeLessThanOrEqual(1);
+
+  // 事实行在最窄处也在，而且第一行仍是「点 + 名字」，没有把状态词塞回来。
+  const row = page.locator('[data-testid="session-row"]').first();
+  await expect(row.locator(".session-row__facts")).toBeVisible();
+  await expect(row.locator(".session-row__facts")).toContainText("T4");
+  await expect(row.locator(".session-row__facts")).toContainText("云端运行中");
+  await expect(row.locator(".session-row__facts")).toContainText("已连接");
+});
+
 test("分隔条静息时不画线，指向它才亮起来", async ({ page }) => {
   const handle = divider(page, "会话栏宽度");
   const lineColour = (): Promise<string> =>
