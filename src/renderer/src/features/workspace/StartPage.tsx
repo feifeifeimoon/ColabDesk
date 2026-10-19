@@ -18,6 +18,7 @@ import { BrandLockup } from "../../app-shell/BrandLockup";
 import { Button } from "../../components/ui/Button";
 import { ChartIcon, ChipIcon, FolderIcon, StarIcon, TerminalIcon } from "../../components/ui/icons";
 import { openExternal } from "../../lib/api";
+import { LoginPanel } from "../login/LoginPanel";
 import {
   REPOSITORY,
   REPOSITORY_URL,
@@ -34,6 +35,15 @@ export function StartPage() {
   const openTab = useAppStore((state) => state.openTab);
   const openNewSession = useAppStore((state) => state.openNewSession);
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
+  const refreshEnvironment = useAppStore((state) => state.refreshEnvironment);
+  // `false` is "read, and nobody is signed in"; `null` is "not read yet" — the
+  // front door must not guess between them, so only a known `false` changes it.
+  const authenticated = useAppStore((state) => state.env?.authenticated ?? null);
+  const signedOut = authenticated === false;
+  // While the flow is waiting for a code, the page keeps the brand and the step:
+  // the claim, the capability lines and the star are for somebody deciding
+  // whether to use the app, not for somebody in the middle of signing in.
+  const signingIn = useAppStore((state) => state.loginRunning);
 
   if (selectedSession !== null) {
     return (
@@ -64,24 +74,40 @@ export function StartPage() {
         <h1 className="startpage__lockup">
           <BrandLockup />
         </h1>
-        <p className="startpage__tagline">
-          {t("home.tagline", "Google Colab 运行时的桌面 SSH 控制台")}
-        </p>
-        <p className="startpage__next">
-          {hasSessions
-            ? t("workbench.emptyChooseSession", "选一个会话，或新建一个运行时。")
-            : t("workbench.emptyGetStarted", "新建一个运行时开始使用。")}
-        </p>
+        {!signingIn && (
+          <>
+            <p className="startpage__tagline">
+              {t("home.tagline", "Google Colab 运行时的桌面 SSH 控制台")}
+            </p>
+            <p className="startpage__next">
+              {signedOut
+                ? t("workbench.signInPrompt", "先登录 Google 账号，才能创建运行时。")
+                : hasSessions
+                  ? t("workbench.emptyChooseSession", "选一个会话，或新建一个运行时。")
+                  : t("workbench.emptyGetStarted", "新建一个运行时开始使用。")}
+            </p>
+          </>
+        )}
 
         <div className="startpage__actions">
-          <Button
-            variant="primary"
-            onClick={openNewSession}
-            title={t("home.newSessionTitle", "新建会话（Ctrl+Shift+N）")}
-          >
-            {t("workbench.newSession", "新建会话")}
-          </Button>
-          {!sidebarOpen && hasSessions && (
+          {signedOut ? (
+            /* The same panel the settings page mounts, in its signed-out form:
+               the front door's one action *is* signing in. One implementation,
+               two places it is needed. */
+            <div className="startpage__signin">
+              <LoginPanel onFinished={refreshEnvironment} authenticated={false} cancelWithEscape />
+            </div>
+          ) : (
+            <Button
+              variant="primary"
+              onClick={openNewSession}
+              title={t("home.newSessionTitle", "新建会话（Ctrl+Shift+N）")}
+            >
+              {t("workbench.newSession", "新建会话")}
+            </Button>
+          )}
+          {/* With nobody signed in the rail is not drawn, so the way back to it is not offered either. */}
+          {!signedOut && !sidebarOpen && hasSessions && (
             <Button
               onClick={toggleSidebar}
               title={t("home.expandSidebarTitle", "展开会话栏（Ctrl+Shift+E）")}
@@ -91,34 +117,38 @@ export function StartPage() {
           )}
         </div>
 
-        <ul className="startpage__features">
-          <Feature
-            icon={<ChipIcon />}
-            title={t("home.featureShellsTitle", "申请 GPU 运行时")}
-            line={t("home.featureShellsLine", "选择算力规格，直接接入交互式终端。")}
-          />
-          {/* The terminal, not a play button: nothing here launches a job — the
-              shell does, on the machine the first line just handed over. */}
-          <Feature
-            icon={<TerminalIcon />}
-            title={t("home.featureRunTitle", "训练与推理工作流")}
-            line={t("home.featureRunLine", "保持原生终端操作习惯，无缝运行脚本。")}
-          />
-          <Feature
-            icon={<FolderIcon />}
-            title={t("home.featureFilesTitle", "双向文件传输")}
-            line={t("home.featureFilesLine", "基于 SFTP 协议，直接浏览、上传与下载远程文件。")}
-          />
-          <Feature
-            icon={<ChartIcon />}
-            title={t("home.featureQuotaTitle", "算力与用量监控")}
-            line={t("home.featureQuotaLine", "实时跟踪计算单元（CU）余额与消耗速率。")}
-          />
-        </ul>
+        {!signingIn && (
+          <>
+            <ul className="startpage__features">
+              <Feature
+                icon={<ChipIcon />}
+                title={t("home.featureShellsTitle", "申请 GPU 运行时")}
+                line={t("home.featureShellsLine", "选择算力规格，直接接入交互式终端。")}
+              />
+              {/* The terminal, not a play button: nothing here launches a job — the
+                  shell does, on the machine the first line just handed over. */}
+              <Feature
+                icon={<TerminalIcon />}
+                title={t("home.featureRunTitle", "训练与推理工作流")}
+                line={t("home.featureRunLine", "保持原生终端操作习惯，无缝运行脚本。")}
+              />
+              <Feature
+                icon={<FolderIcon />}
+                title={t("home.featureFilesTitle", "双向文件传输")}
+                line={t("home.featureFilesLine", "基于 SFTP 协议，直接浏览、上传与下载远程文件。")}
+              />
+              <Feature
+                icon={<ChartIcon />}
+                title={t("home.featureQuotaTitle", "算力与用量监控")}
+                line={t("home.featureQuotaLine", "实时跟踪计算单元（CU）余额与消耗速率。")}
+              />
+            </ul>
 
-        <footer className="startpage__footer">
-          <StarAsk />
-        </footer>
+            <footer className="startpage__footer">
+              <StarAsk />
+            </footer>
+          </>
+        )}
       </div>
     </div>
   );

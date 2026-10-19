@@ -10,6 +10,7 @@ import {
   MinimizeIcon,
   PanelLeftIcon,
   PanelRightIcon,
+  SettingsIcon,
   PlusIcon,
   RestoreIcon,
   SyncIcon,
@@ -44,6 +45,8 @@ export function TopBar() {
   const activeTabId = useAppStore((state) => state.activeTabId);
   const hasWorkSurface = useHasWorkSurface();
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
+  const openSettings = useAppStore((state) => state.openSettings);
+  const signedOut = useAppStore((state) => state.env?.authenticated === false);
   const toggleFiles = useAppStore((state) => state.toggleFiles);
   const openTab = useAppStore((state) => state.openTab);
   // Closing a tab is a request, not an action: a file tab with unsaved edits
@@ -102,27 +105,42 @@ export function TopBar() {
           terminal and the seam on the column below. */}
       <div
         className="topbar__side"
-        data-rail={sidebarOpen || settingsOpen ? "open" : "closed"}
+        data-rail={!signedOut && (sidebarOpen || settingsOpen) ? "open" : "closed"}
         style={IS_MAC ? { paddingLeft: MAC_INSET } : undefined}
       >
         <span className="topbar__brand" title={t("topbar.brand", "ColabDesk")}>
           <BrandMark />
         </span>
-        {!settingsOpen && (
-          <Button
-            variant="ghost"
-            icon
-            data-testid="toggle-sidebar"
-            aria-pressed={sidebarOpen}
-            aria-label={sidebarOpen ? t("topbar.sidebarCollapse", "收起会话栏") : t("topbar.sidebarExpand", "展开会话栏")}
-            title={t("topbar.sidebarTooltip", "{{action}}会话栏（Ctrl+Shift+E）", {
-              action: sidebarOpen ? t("topbar.actionCollapse", "收起") : t("topbar.actionExpand", "展开"),
-            })}
-            onClick={toggleSidebar}
-          >
-            <PanelLeftIcon />
-          </Button>
-        )}
+        {/* Exactly one control lives beside the brand: the rail toggle while
+            there is a rail, and the way into settings while there is not (its
+            usual home is the rail's foot, which is not on screen). They never
+            appear together, so this is a seat, not a second entry point. */}
+        {!settingsOpen &&
+          (signedOut ? (
+            <IconButton
+              variant="ghost"
+              data-testid="open-settings"
+              label={t("topbar.settings", "设置")}
+              title={t("topbar.settingsTooltip", "设置（Ctrl+,）")}
+              onClick={() => openSettings()}
+            >
+              <SettingsIcon size={15} />
+            </IconButton>
+          ) : (
+            <Button
+              variant="ghost"
+              icon
+              data-testid="toggle-sidebar"
+              aria-pressed={sidebarOpen}
+              aria-label={sidebarOpen ? t("topbar.sidebarCollapse", "收起会话栏") : t("topbar.sidebarExpand", "展开会话栏")}
+              title={t("topbar.sidebarTooltip", "{{action}}会话栏（Ctrl+Shift+E）", {
+                action: sidebarOpen ? t("topbar.actionCollapse", "收起") : t("topbar.actionExpand", "展开"),
+              })}
+              onClick={toggleSidebar}
+            >
+              <PanelLeftIcon />
+            </Button>
+          ))}
       </div>
 
       <div className="topbar__tabs" role="tablist">
@@ -358,6 +376,7 @@ const CONNECTION_TONE: Record<string, "good" | "warn" | "danger" | "neutral"> = 
 export function StatusBar() {
   const { t } = useTranslation();
   const usage = useAppStore((state) => state.usage);
+  const usagePending = useAppStore((state) => state.usagePending);
   const tabs = useAppStore((state) => state.tabs);
   const sessions = useAppStore((state) => state.sessions);
   const connections = useAppStore((state) => state.connections);
@@ -374,8 +393,9 @@ export function StatusBar() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const balance = usage?.usage.balance ?? null;
-  const rate = usage?.usage.rate ?? 0;
-  const assignments = usage?.usage.assignments ?? 0;
+  // `null`, not `0`: an unread rate must not print as "no spend".
+  const rate = usage?.usage.rate ?? null;
+  const assignments = usage?.usage.assignments ?? null;
   // Shells only: a file tab is a tab, but it is not a terminal, and this
   // readout has always meant "how many shells are open".
   const terminalCount = tabs.filter((tab) => tab.kind === "shell").length;
@@ -384,13 +404,15 @@ export function StatusBar() {
   const meterTone = balanceMeterTone(ratio);
 
   const projectedHours =
-    balance !== null && balance > 0 && rate > 0
+    balance !== null && balance > 0 && rate !== null && rate > 0
       ? (balance / rate).toFixed(1)
       : null;
 
   const projectedText = projectedHours
     ? t("statusbar.projectedHours", "预计可用约 {{hours}} 小时", { hours: projectedHours })
-    : t("statusbar.noOngoingRate", "无持续扣费");
+    : balance === null
+      ? "—"
+      : t("statusbar.noOngoingRate", "无持续扣费");
 
   const openPopover = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -413,13 +435,15 @@ export function StatusBar() {
     <footer className="statusbar">
       <div
         className="statusbar__group statusbar__group--interactive"
+        aria-busy={usagePending || undefined}
         onMouseEnter={openPopover}
         onMouseLeave={closePopover}
       >
         <div
           className="statusbar__meter"
           role="progressbar"
-          aria-valuenow={Math.round(ratio * 100)}
+          // Unknown is not zero: a bar that reported 0% would say the account is empty.
+          aria-valuenow={balance === null ? undefined : Math.round(ratio * 100)}
           aria-valuemin={0}
           aria-valuemax={100}
         >
@@ -430,17 +454,27 @@ export function StatusBar() {
         </div>
 
         <span className="statusbar__item" data-testid="statusbar-balance">
-          {balance !== null
-            ? t("statusbar.balanceUnit", "{{balance}} CU", { balance: balance.toFixed(2) })
-            : "— CU"}
+          {usagePending ? (
+            <span className="skeleton skeleton--balance" aria-hidden="true" />
+          ) : balance !== null ? (
+            t("statusbar.balanceUnit", "{{balance}} CU", { balance: balance.toFixed(2) })
+          ) : (
+            "— CU"
+          )}
         </span>
 
         <span className="statusbar__sep" aria-hidden="true">·</span>
 
         <span className="statusbar__item" data-testid="statusbar-rate">
-          {rate > 0
-            ? t("statusbar.rateUnit", "~{{rate}}/h", { rate: rate.toFixed(2) })
-            : t("statusbar.rateUnit", "0.00/h", { rate: "0.00" })}
+          {usagePending ? (
+            <span className="skeleton skeleton--rate" aria-hidden="true" />
+          ) : rate === null ? (
+            "—/h"
+          ) : rate > 0 ? (
+            t("statusbar.rateUnit", "~{{rate}}/h", { rate: rate.toFixed(2) })
+          ) : (
+            t("statusbar.rateUnit", "0.00/h", { rate: "0.00" })
+          )}
         </span>
 
         <span className="statusbar__sep" aria-hidden="true">·</span>
@@ -448,10 +482,18 @@ export function StatusBar() {
         <span
           className="statusbar__item"
           data-testid="statusbar-assignments"
-          title={t("statusbar.activeSessionsTitle", "活跃会话：{{count}}", { count: assignments })}
+          title={
+            assignments === null
+              ? undefined
+              : t("statusbar.activeSessionsTitle", "活跃会话：{{count}}", { count: assignments })
+          }
         >
           <ActivityIcon size={13} />
-          <span>{assignments}</span>
+          {usagePending ? (
+            <span className="skeleton skeleton--count" aria-hidden="true" />
+          ) : (
+            <span>{assignments ?? "—"}</span>
+          )}
         </span>
 
         {popoverOpen && (
@@ -466,7 +508,7 @@ export function StatusBar() {
               <div
                 className="statusbar__meter"
                 role="progressbar"
-                aria-valuenow={Math.round(ratio * 100)}
+                aria-valuenow={balance === null ? undefined : Math.round(ratio * 100)}
               >
                 <div
                   className={`statusbar__meter-bar statusbar__meter-bar--${meterTone}`}
@@ -480,9 +522,11 @@ export function StatusBar() {
               </span>
               <span className="statusbar__sep" aria-hidden="true">·</span>
               <span>
-                {rate > 0
-                  ? t("statusbar.rateUnit", "-{{rate}}/h", { rate: rate.toFixed(2) })
-                  : "0.00/h"}
+                {rate === null
+                  ? "—/h"
+                  : rate > 0
+                    ? t("statusbar.rateUnit", "-{{rate}}/h", { rate: rate.toFixed(2) })
+                    : "0.00/h"}
               </span>
               <span className="statusbar__sep" aria-hidden="true">·</span>
               <span>{projectedText}</span>

@@ -2,35 +2,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { CLI_PATH_ENV, combined, needsLogin, parseUsage, parseVersion, readManifestVersion, resolveCli } from "./cli";
-
-describe("parseUsage", () => {
-  it("parses the three labelled lines", () => {
-    const usage = parseUsage(
-      "Current balance: 123.45 compute units\nUsage rate: 1.20/hr\nActive assignments: 2\n",
-    );
-    expect(usage).toEqual({ balance: 123.45, rate: 1.2, assignments: 2 });
-  });
-
-  it("parses real Windows CRLF output", () => {
-    const usage = parseUsage(
-      "Current balance: 400.00 compute units\r\nUsage rate: 0.00/hr\r\nActive assignments: 0\r\n",
-    );
-    expect(usage).toEqual({ balance: 400, rate: 0, assignments: 0 });
-  });
-
-  it("leaves fields empty on an unknown format", () => {
-    expect(parseUsage("some other output\n")).toEqual({ balance: null, rate: null, assignments: null });
-  });
-});
-
-describe("needsLogin", () => {
-  it("detects the OAuth prompt", () => {
-    expect(needsLogin("To authorize colab-cli, visit this URL")).toBe(true);
-    expect(needsLogin("https://accounts.google.com/o/oauth2/auth?x=1")).toBe(true);
-    expect(needsLogin("Current balance: 0.00 compute units")).toBe(false);
-  });
-});
+import { CLI_PATH_ENV, combined, parseVersion, readManifestVersion, resolveCli } from "./cli";
 
 describe("parseVersion", () => {
   it("reads the labelled version", () => {

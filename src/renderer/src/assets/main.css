@@ -386,6 +386,23 @@ kbd {
   the facts line keeps the card's whole width — at 180px that difference is a
   fact printed or a fact lost.
 */
+/*
+  Records that belong to the account signed in before. A box rather than a hint:
+  it carries an action (the sync that prunes them). Nothing is deleted on its
+  own — the rows are the only copy, and switching back is legitimate.
+*/
+.sidebar__previous-account {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--canvas-soft);
+}
+
 .session-row {
   --session-row-band: 28px;
   --session-row-reserve: 64px;
@@ -1080,6 +1097,25 @@ kbd {
   font-weight: 600;
 }
 
+/* The sign-in block gets a column of its own: the width of an input, with its
+   contents centred, so it reads as a step on this screen rather than a form
+   jammed into a marketing line. */
+.startpage__signin {
+  width: min(440px, 100%);
+  display: flex;
+  justify-content: center;
+}
+
+.startpage__signin .login {
+  width: 100%;
+  align-items: center;
+}
+
+.startpage__signin .login .row,
+.startpage__signin .login__secondary {
+  justify-content: center;
+}
+
 .startpage__actions {
   display: flex;
   flex-wrap: wrap;
@@ -1201,6 +1237,46 @@ kbd {
 }
 
 /* ---- bottom status bar: machine state, always visible ---- */
+
+/*
+  A value that is still being read. Shape, not data: the block is the width of
+  the number it will become, so nothing jumps when the reading lands, and there
+  is no digit in it — an unread rate printed as `0.00/h` would claim "no spend",
+  which is a reading, not an absence. (DESIGN: a loading state may not claim a
+  value, the empty-state rule from the other side.)
+*/
+.skeleton {
+  display: inline-block;
+  height: 8px;
+  border-radius: var(--radius-xs);
+  background: var(--canvas-soft-2);
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.skeleton--balance {
+  width: 46px;
+}
+
+.skeleton--rate {
+  width: 36px;
+}
+
+.skeleton--count {
+  width: 8px;
+}
+
+@keyframes skeleton-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    opacity: 0.7;
+  }
+}
 
 .statusbar {
   display: flex;
@@ -2710,6 +2786,30 @@ textarea.input {
   align-items: flex-start;
 }
 
+/* The flow's secondary actions are one quiet line under the field: the field
+   and its primary are the job, these are the ways around it. */
+.login__secondary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  color: var(--mute);
+}
+
+.login__dot {
+  color: var(--hairline-strong);
+}
+
+/* The code is an opaque machine value: mono, like every other one. The
+   placeholder is a sentence written for a person, so it stays sans. */
+.login__code {
+  font-family: var(--font-mono);
+}
+
+.login__code::placeholder {
+  font-family: var(--font-sans);
+}
+
 .login .row,
 .login form {
   width: 100%;
@@ -2717,19 +2817,6 @@ textarea.input {
 
 .login form .input {
   flex: 1;
-}
-
-.auth-url {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.auth-url textarea {
-  font-family: var(--font-mono);
-  font-size: var(--text-caption);
-  word-break: break-all;
 }
 
 .snippet {

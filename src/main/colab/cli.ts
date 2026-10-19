@@ -19,7 +19,6 @@ import { delimiter, join } from "node:path";
 import { mockCliOutput, mockResolvedCli } from "../e2e/cli-stub";
 import { e2eMockEnabled } from "../e2e/mode";
 import type { CliOutput } from "./cli-types";
-import type { Usage } from "@shared/types";
 
 /** Overrides discovery entirely (a venv, a conda env, a dev checkout). */
 export const CLI_PATH_ENV = "COLABDESK_CLI_PATH";
@@ -191,41 +190,6 @@ export function combined(output: CliOutput): string {
   if (output.stdout.trim()) parts.push(output.stdout.trimEnd());
   if (output.stderr.trim()) parts.push(output.stderr.trimEnd());
   return parts.join("\n");
-}
-
-/**
- * `colab usage` prints three labelled lines (the CLI's
- * `format_consumption_status`); parsed tolerantly so a format change degrades
- * to the raw-text fallback in the UI instead of a wrong number.
- */
-export function parseUsage(text: string): Usage {
-  const usage: Usage = { balance: null, rate: null, assignments: null };
-  for (const line of text.split(/\r?\n/)) {
-    const colon = line.indexOf(":");
-    if (colon < 0) continue;
-    const label = line.slice(0, colon).trim();
-    const first = line
-      .slice(colon + 1)
-      .trim()
-      .split(/\s+/)[0];
-    if (!first) continue;
-    if (label === "Current balance") {
-      const value = Number.parseFloat(first);
-      if (!Number.isNaN(value)) usage.balance = value;
-    } else if (label === "Usage rate") {
-      const value = Number.parseFloat(first.replace(/\/hr$/, ""));
-      if (!Number.isNaN(value)) usage.rate = value;
-    } else if (label === "Active assignments") {
-      const value = Number.parseInt(first, 10);
-      if (!Number.isNaN(value)) usage.assignments = value;
-    }
-  }
-  return usage;
-}
-
-/** The CLI's output is an interactive OAuth prompt, not a result. */
-export function needsLogin(text: string): boolean {
-  return text.includes("accounts.google.com") || text.includes("To authorize");
 }
 
 /** `colab version` prints `Version: 0.7.4`. */

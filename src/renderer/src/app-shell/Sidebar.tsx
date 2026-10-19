@@ -33,6 +33,7 @@ const CONNECTION_TONE: Record<string, StatusTone> = {
 export function Sidebar() {
   const { t } = useTranslation();
   const open = useAppStore((state) => state.sidebarOpen);
+  const signedOut = useAppStore((state) => state.env?.authenticated === false);
   const railRef = useRef<HTMLElement | null>(null);
 
   /**
@@ -46,7 +47,7 @@ export function Sidebar() {
    */
   useEffect(() => {
     const rail = railRef.current;
-    if (!open || !rail) return;
+    if (!open || signedOut || !rail) return;
     const publish = (): void => {
       const { width } = rail.getBoundingClientRect();
       document.documentElement.style.setProperty("--rail-width", `${width}px`);
@@ -59,7 +60,7 @@ export function Sidebar() {
       // Collapsed: the section falls back to its own two controls.
       document.documentElement.style.removeProperty("--rail-width");
     };
-  }, [open]);
+  }, [open, signedOut]);
 
   const width = useAppStore((state) => state.panelWidths.sidebar);
   const setPanelWidth = useAppStore((state) => state.setPanelWidth);
@@ -68,6 +69,7 @@ export function Sidebar() {
   const untrackedSessions = useAppStore((state) => state.untrackedSessions);
   const untrackedError = useAppStore((state) => state.untrackedError);
   const runtimeEndpoints = useAppStore((state) => state.runtimeEndpoints);
+  const previousAccount = useAppStore((state) => state.previousAccount);
   const selectedSession = useAppStore((state) => state.selectedSession);
   const tabs = useAppStore((state) => state.tabs);
   const connections = useAppStore((state) => state.connections);
@@ -79,8 +81,10 @@ export function Sidebar() {
   const openSettings = useAppStore((state) => state.openSettings);
 
   // Collapsing unmounts the rail; that is the one panel whose contents nobody
-  // expects to survive a collapse.
-  if (!open) return null;
+  // expects to survive a collapse. Signed out, the whole rail goes with it: its
+  // rows belong to another account and every action in it would fail, so drawing
+  // it would only offer things that cannot be done.
+  if (!open || signedOut) return null;
 
   const connectionLabels: Record<string, string> = {
     connecting: t("statusbar.statusConnecting", "连接中"),
@@ -117,9 +121,13 @@ export function Sidebar() {
             variant="ghost"
             size="sm"
             icon
+            // Nothing to create until somebody is signed in; the front door is
+            // where the way in lives, and a create that can only fail is worse
+            // than a control that says why it is unavailable.
+            disabled={signedOut}
             onClick={openNewSession}
-            aria-label={t("sidebar.newSessionTitle", "新建会话")}
-            title={t("sidebar.newSessionTitle", "新建会话")}
+            aria-label={signedOut ? t("sidebar.signInFirst", "先登录 Google 账号") : t("sidebar.newSessionTitle", "新建会话")}
+            title={signedOut ? t("sidebar.signInFirst", "先登录 Google 账号") : t("sidebar.newSessionTitle", "新建会话")}
           >
             <PlusIcon size={14} />
           </Button>
@@ -159,6 +167,27 @@ export function Sidebar() {
           <p className="hint" style={{ padding: "var(--space-2)" }} title={untrackedError}>
             {t("sidebar.untrackedUnavailable", "读不到云端运行时列表（令牌过期或网络不通），点上面的同步重试。")}
           </p>
+        )}
+
+        {/*
+          A different account signed in since these records were made. Nothing is
+          deleted on its own: these rows are the only copy, and switching back is
+          a legitimate thing to do. The way out is the sync that already exists —
+          it is what prunes the list against the server.
+        */}
+        {previousAccount && sessions.length > 0 && (
+          <div className="sidebar__previous-account" data-testid="previous-account">
+            <p className="hint">
+              {t(
+                "sidebar.previousAccount",
+                "这些记录属于之前登录的账号（{{email}}）。同步会按当前账号清理它们。",
+                { email: previousAccount },
+              )}
+            </p>
+            <Button variant="outline" size="sm" disabled={syncing} onClick={() => void syncSessions()}>
+              {t("sidebar.previousAccountSync", "同步并清理")}
+            </Button>
+          </div>
         )}
 
         {sessions.map((session) => {

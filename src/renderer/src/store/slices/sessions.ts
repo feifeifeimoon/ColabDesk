@@ -77,6 +77,9 @@ export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> 
       // Both reads wait for that call — it is what prunes the store and mints a
       // fresh token — but they do not wait for each other.
       await Promise.all([loadRail(get), get().refreshEnvironment()]);
+      // The sync pruned every record the current account does not have, so the
+      // rail no longer needs to explain whose they were.
+      if (report.ok) get().clearPreviousAccount();
     } catch (cause) {
       set({ error: api.messageOf(cause) });
     } finally {

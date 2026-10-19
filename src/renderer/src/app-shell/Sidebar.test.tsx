@@ -32,6 +32,8 @@ const baseStore = {
   untrackedSessions: [] as unknown[],
   untrackedError: null as string | null,
   runtimeEndpoints: null as string[] | null,
+  previousAccount: null as string | null,
+  env: null as { authenticated: boolean } | null,
   selectedSession: null,
   tabs: [],
   connections: {},
@@ -166,6 +168,25 @@ describe("Sidebar", () => {
     expect(untrackedMarkup(html)).not.toContain("<button");
     expect(untrackedMarkup(html)).not.toContain("menu__trigger");
     expect(html).toContain("session-row--untracked");
+  });
+
+  it("切换账号后，说清这些记录属于上一个账号，并给出同步", () => {
+    store.current = { ...baseStore, previousAccount: "old@example.com" };
+    const html = renderToStaticMarkup(createElement(Sidebar));
+
+    expect(html).toContain('data-testid="previous-account"');
+    expect(html).toContain("old@example.com");
+    expect(html).toContain("同步并清理");
+  });
+
+  it("没有切换账号时不出现那条提示", () => {
+    const html = renderToStaticMarkup(createElement(Sidebar));
+    expect(html).not.toContain('data-testid="previous-account"');
+  });
+
+  it("没登录时整条会话栏都不画：里面没有一件事能做", () => {
+    store.current = { ...baseStore, env: { authenticated: false } };
+    expect(renderToStaticMarkup(createElement(Sidebar))).toBe("");
   });
 
   it("空态说的是「本地」没有，而不是「没有」", () => {

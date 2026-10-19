@@ -20,7 +20,9 @@
     "windowMinimize": "最小化",
     "windowMaximize": "最大化",
     "windowRestore": "还原",
-    "windowClose": "关闭"
+    "windowClose": "关闭",
+    "settings": "设置",
+    "settingsTooltip": "设置（Ctrl+,）"
   },
   "statusbar": {
     "statusConnecting": "连接中…",
@@ -70,7 +72,10 @@
     "menuStoppingSession": "停止中…",
     "menuActionLabel": "{{name}} 的操作",
     "settings": "设置",
-    "settingsTitle": "设置（Ctrl+,）"
+    "settingsTitle": "设置（Ctrl+,）",
+    "signInFirst": "先登录 Google 账号",
+    "previousAccount": "这些记录属于之前登录的账号（{{email}}）。同步会按当前账号清理它们。",
+    "previousAccountSync": "同步并清理"
   },
   "toasts": {
     "dismiss": "关闭提示"
@@ -105,7 +110,8 @@
     "emptyGetStarted": "新建一个运行时开始使用。",
     "newTerminal": "新建终端",
     "newSession": "新建会话",
-    "expandSidebar": "展开会话栏"
+    "expandSidebar": "展开会话栏",
+    "signInPrompt": "先登录 Google 账号，才能创建运行时。"
   },
   "terminal": {
     "connecting": "正在连接 {{session}} …",
@@ -228,7 +234,6 @@
     "switchAccount": "切换账号 / 重新授权",
     "signOut": "退出登录",
     "signedOut": "已退出登录，凭证已清除。",
-    "cancelLogin": "取消登录",
     "requestingUrl": "正在向 Google 申请授权链接…",
     "urlOpened": "浏览器已打开授权页面，完成登录后请将授权码粘贴至下方。",
     "submittingCode": "已提交授权码，正在等待验证结果…",
