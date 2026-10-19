@@ -89,7 +89,7 @@ describe("the setup screen", () => {
     expect(option(markup, "H100")).toContain("disabled");
     expect(option(markup, "H100")).toContain("当前账号不可用");
     // The keys are the interface, so they are on screen.
-    expect(markup).toContain("Enter 创建");
+    expect(markup).toContain("Enter 下一步");
   });
 
   it("names what the account can use, so the list is not the only signal", () => {

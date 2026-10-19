@@ -226,7 +226,7 @@
     "highMemShort": "高内存机型",
     "highMemSingleShape": "这台加速器只有一种机型",
     "highMemNote": "需 Colab Pro/Pro+",
-    "setupKeys": "↑/↓ 或数字选择 · Enter 创建 · Esc 返回",
+    "setupKeys": "↑/↓ 或数字选择 · Enter 下一步 · Esc 返回",
     "setupWorking": "正在申请 {{machine}} 运行时…",
     "setupElapsed": "已等待 {{time}}",
     "setupMayTake": "申请可能需要几分钟，完成后会自动打开终端。",

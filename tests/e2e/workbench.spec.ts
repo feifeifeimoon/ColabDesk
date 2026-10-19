@@ -355,6 +355,63 @@ test("运行时设置：Esc 回到工作台", async ({ page }) => {
   await expect(page.locator(".startpage")).toBeVisible();
 });
 
+// Enter 是安装器的"下一步"，不是网页表单的"提交"：选机器 → 高内存 → 名称 → 创建。
+test("运行时设置：Enter 一步一步走完，最后才创建", async ({ page }) => {
+  await page.locator('[aria-label="新建会话"]').click();
+  const setup = page.locator('[data-testid="runtime-setup"]');
+  await expect(setup).toBeVisible();
+
+  // 打开时键盘落在默认的机器上，第一次回车先去高内存。
+  await expect(setup.locator('input[value="T4"]')).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(setup.locator('input[type="checkbox"]')).toBeFocused();
+
+  // 第二次回车去名称；到这里还什么都没有提交。
+  await page.keyboard.press("Enter");
+  const name = setup.locator("input[type=text]");
+  await expect(name).toBeFocused();
+  await expect(setup.locator('[data-testid="setup-error"]')).toHaveCount(0);
+
+  // 名称里回车才是创建；名字用已存在的那个，桩据此回「已存在」。
+  await name.fill("e2e-alpha");
+  await page.keyboard.press("Enter");
+  await expect(setup.locator('[data-testid="setup-error"]')).toBeVisible();
+});
+
+// 键盘属于这一屏，不属于某个控件：点过名称框或点过空白，上下键仍然选机器。
+test("运行时设置：点过名称或空白之后，上下键照样选机器", async ({ page }) => {
+  await page.locator('[aria-label="新建会话"]').click();
+  const setup = page.locator('[data-testid="runtime-setup"]');
+  await expect(setup).toBeVisible();
+
+  await expect(setup.locator('input[value="T4"]')).toBeChecked();
+
+  // 名称框里按上下：单行输入没有别的用途，仍然走列表。
+  await setup.locator("input[type=text]").click();
+  await page.keyboard.press("ArrowDown");
+  await expect(setup.locator('input[value="L4"]')).toBeChecked();
+
+  // 点空白会把焦点丢给 body；处理器挂在 window 上，所以键还在。
+  await page.locator(".setup").click({ position: { x: 900, y: 620 } });
+  await page.keyboard.press("ArrowDown");
+  await expect(setup.locator('input[value="G4"]')).toBeChecked();
+});
+
+// 单机型的加速器没有高内存这一步：回车要跳过禁用的控件，而不是停在上面。
+test("运行时设置：单机型加速器上，回车直接到名称", async ({ page }) => {
+  await page.locator('[aria-label="新建会话"]').click();
+  const setup = page.locator('[data-testid="runtime-setup"]');
+  await expect(setup).toBeVisible();
+
+  // 3 是 L4，它的高内存选项被禁用。
+  await page.keyboard.press("3");
+  await expect(setup.locator('input[value="L4"]')).toBeChecked();
+  await expect(setup.locator('input[type="checkbox"]')).toBeDisabled();
+
+  await page.keyboard.press("Enter");
+  await expect(setup.locator("input[type=text]")).toBeFocused();
+});
+
 test("同步会话按钮触发刷新遮罩并防重复点击，完成后遮罩消失", async ({ page }) => {
   const syncBtn = page.locator('[data-testid="sync-sessions"]');
   await expect(syncBtn).toBeVisible();

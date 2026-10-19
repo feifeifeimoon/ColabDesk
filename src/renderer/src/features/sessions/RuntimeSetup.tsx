@@ -63,6 +63,9 @@ export function RuntimeSetup() {
   const [now, setNow] = useState(() => Date.now());
   const [copied, setCopied] = useState(false);
   const formRef = useRef<HTMLFormElement | null>(null);
+  const listRef = useRef<HTMLFieldSetElement | null>(null);
+  const highMemRef = useRef<HTMLInputElement | null>(null);
+  const nameRef = useRef<HTMLInputElement | null>(null);
 
   const chosen = ACCELERATORS.find((option) => option.id === accelerator) ?? ACCELERATORS[0];
   const available = ACCELERATORS.filter((option) => !isUnavailable(unavailable, option.id));
@@ -74,6 +77,75 @@ export function RuntimeSetup() {
     setNow(Date.now());
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
+  }, [phase]);
+
+  function move(step: 1 | -1): void {
+    const index = available.findIndex((option) => option.id === accelerator);
+    const next = available[(index + step + available.length) % available.length];
+    if (next) setAccelerator(next.id);
+  }
+
+  /*
+    Enter walks the form like an installer: the list, then the high-memory
+    option, then the name, and only then the create. "Enter submits" from the
+    first field is a web form's habit, not this screen's: the person is being
+    walked through three answers.
+
+    The handler sits on the window because the surface owns the keyboard while
+    it is open (the workbench behind it is inert): a click on the empty part of
+    the panel lands on `body`, and a form-level listener would go quiet there.
+  */
+  useEffect(() => {
+    if (phase !== "setup") return;
+    const onKeyDown = (event: KeyboardEvent): void => {
+      const target = event.target as HTMLElement | null;
+      const inName = Boolean(target?.closest(".setup__name-row"));
+
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        // A single-line input has nothing to do with these keys, so they keep
+        // meaning "the next machine" even while a name is being typed.
+        event.preventDefault();
+        move(event.key === "ArrowDown" ? 1 : -1);
+        return;
+      }
+      if (/^[1-9]$/.test(event.key)) {
+        if (inName) return; // a digit is a character there
+        const option = ACCELERATORS[Number(event.key) - 1];
+        if (option && !isUnavailable(unavailable, option.id)) {
+          event.preventDefault();
+          setAccelerator(option.id);
+        }
+        return;
+      }
+      if (event.key !== "Enter") return;
+      // A focused button does its own Enter.
+      if (target instanceof HTMLButtonElement) return;
+      event.preventDefault();
+      if (inName) {
+        formRef.current?.requestSubmit();
+        return;
+      }
+      const highMemInput = highMemRef.current;
+      // A machine with a single shape has no high-memory question to answer,
+      // so its step is skipped rather than swallowing the Enter.
+      if (target?.closest(".setup__high-mem") || highMemInput?.disabled) {
+        nameRef.current?.focus();
+        return;
+      }
+      highMemInput?.focus();
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  });
+
+  // Entering the step puts the keyboard on the chosen machine — including when
+  // "Edit and retry" brings the form back.
+  useEffect(() => {
+    if (phase !== "setup") return;
+    const selected =
+      listRef.current?.querySelector<HTMLInputElement>("input:checked:not(:disabled)") ??
+      listRef.current?.querySelector<HTMLInputElement>("input:not(:disabled)");
+    selected?.focus();
   }, [phase]);
 
   // Escape leaves the surface; during a request it leaves the request running
@@ -90,35 +162,6 @@ export function RuntimeSetup() {
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [closeNewSession, editCreation, phase]);
-
-  function move(step: 1 | -1): void {
-    const index = available.findIndex((option) => option.id === accelerator);
-    const next = available[(index + step + available.length) % available.length];
-    if (next) setAccelerator(next.id);
-  }
-
-  function onKeyDown(event: React.KeyboardEvent<HTMLFormElement>): void {
-    // The name field owns its keys: arrows move a caret there, and a digit is
-    // a character.
-    if ((event.target as HTMLElement).closest(".setup__name")) return;
-    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-      event.preventDefault();
-      move(event.key === "ArrowDown" ? 1 : -1);
-      return;
-    }
-    if (/^[1-9]$/.test(event.key)) {
-      const option = ACCELERATORS[Number(event.key) - 1];
-      if (option && !isUnavailable(unavailable, option.id)) {
-        event.preventDefault();
-        setAccelerator(option.id);
-      }
-      return;
-    }
-    if (event.key === "Enter") {
-      event.preventDefault();
-      formRef.current?.requestSubmit();
-    }
-  }
 
   function submit(event: React.FormEvent): void {
     event.preventDefault();
@@ -145,7 +188,7 @@ export function RuntimeSetup() {
       </header>
 
       {phase === "setup" ? (
-        <form ref={formRef} className="setup__form" onSubmit={submit} onKeyDown={onKeyDown}>
+        <form ref={formRef} className="setup__form" onSubmit={submit}>
           <p className="setup__note">
             {eligibility
               ? t("sessions.acceleratorAvailable", "当前账号可用：{{list}}", {
@@ -154,7 +197,7 @@ export function RuntimeSetup() {
               : t("sessions.setupEligibilityUnknown", "账号可用的加速器尚未读到 —— 都可以试，最终由 colab new 决定。")}
           </p>
 
-          <fieldset className="setup__group">
+          <fieldset className="setup__group" ref={listRef}>
             <legend className="setup__question">? {t("sessions.acceleratorLabel", "加速器")}</legend>
             <ul className="setup__options">
               {ACCELERATORS.map((option, index) => {
@@ -172,7 +215,6 @@ export function RuntimeSetup() {
                         value={option.id}
                         checked={selected}
                         disabled={off}
-                        autoFocus={selected}
                         onChange={() => setAccelerator(option.id)}
                       />
                       <span className="setup__marker" aria-hidden="true">
@@ -196,9 +238,10 @@ export function RuntimeSetup() {
             </ul>
           </fieldset>
 
-          <label className="setup__row">
+          <label className="setup__row setup__high-mem">
             <span className="setup__question">? {t("sessions.highMemShort", "高内存机型")}</span>
             <input
+              ref={highMemRef}
               type="checkbox"
               className="visually-hidden"
               checked={highMem && !SINGLE_SHAPE.has(accelerator)}
@@ -215,9 +258,10 @@ export function RuntimeSetup() {
             </span>
           </label>
 
-          <label className="setup__row setup__name">
+          <label className="setup__row setup__name-row">
             <span className="setup__question">? {t("sessions.nameLabel", "会话名称")}</span>
             <input
+              ref={nameRef}
               type="text"
               className="setup__input"
               value={name}
@@ -234,7 +278,7 @@ export function RuntimeSetup() {
           </div>
 
           <p className="setup__hint">
-            {t("sessions.setupKeys", "↑/↓ 或数字选择 · Enter 创建 · Esc 返回")}
+            {t("sessions.setupKeys", "↑/↓ 或数字选择 · Enter 下一步 · Esc 返回")}
           </p>
         </form>
       ) : (

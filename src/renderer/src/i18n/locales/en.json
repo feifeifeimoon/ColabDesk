@@ -226,7 +226,7 @@
     "highMemShort": "High-RAM",
     "highMemSingleShape": "This accelerator has one machine shape",
     "highMemNote": "Requires Colab Pro/Pro+",
-    "setupKeys": "↑/↓ or a number · Enter to create · Esc to go back",
+    "setupKeys": "↑/↓ or a number · Enter for the next step · Esc to go back",
     "setupWorking": "Requesting a {{machine}} runtime…",
     "setupElapsed": "waiting {{time}}",
     "setupMayTake": "This can take a few minutes; the terminal opens when it is ready.",
