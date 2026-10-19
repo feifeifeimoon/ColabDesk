@@ -391,8 +391,9 @@ test("运行时设置：点过名称或空白之后，上下键照样选机器",
   await page.keyboard.press("ArrowDown");
   await expect(setup.locator('input[value="L4"]')).toBeChecked();
 
-  // 点空白会把焦点丢给 body；处理器挂在 window 上，所以键还在。
-  await page.locator(".setup").click({ position: { x: 900, y: 620 } });
+  // 点面板里非交互的地方（提示行）就像点空白：焦点离开输入框落到 body。
+  // 处理器挂在 window 上，所以键还在。
+  await setup.locator(".setup__hint").click();
   await page.keyboard.press("ArrowDown");
   await expect(setup.locator('input[value="G4"]')).toBeChecked();
 });
