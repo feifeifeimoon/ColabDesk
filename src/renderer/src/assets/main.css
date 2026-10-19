@@ -878,6 +878,12 @@ kbd {
   gap: var(--space-3);
 }
 
+/* The log grows below the answers; when the column has room to spare, it sits
+   at the bottom of it rather than replacing what was asked for. */
+.setup__console {
+  margin-top: auto;
+}
+
 .setup__note {
   margin: 0;
   color: var(--setup-mute);
@@ -932,6 +938,18 @@ kbd {
 }
 
 .setup__option--off:hover {
+  background: none;
+}
+
+/* A request in flight locks the answers: they stay legible, but must not
+   invite a click that would change what is already running. */
+.setup__form[aria-busy="true"] .setup__option,
+.setup__form[aria-busy="true"] .setup__row,
+.setup__form[aria-busy="true"] .setup__action {
+  cursor: default;
+}
+
+.setup__form[aria-busy="true"] .setup__option:not(.setup__option--selected):hover {
   background: none;
 }
 
@@ -1050,6 +1068,20 @@ kbd {
   background: var(--terminal-cursor);
 }
 
+/* While the request runs the action is a record of what was pressed, not a
+   control. */
+.setup__action--primary:disabled {
+  border-color: transparent;
+  background: var(--setup-wash);
+  color: var(--setup-faint);
+  cursor: default;
+}
+
+.setup__action--primary:disabled:hover {
+  opacity: 1;
+  background: var(--setup-wash);
+}
+
 .setup__hint {
   margin: 0;
   color: var(--setup-faint);
@@ -1069,6 +1101,10 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* The log is the part that grows without bound; it scrolls inside itself so
+     the answers above stay on the same screen. */
+  max-height: 40vh;
+  overflow-y: auto;
 }
 
 .setup__line {

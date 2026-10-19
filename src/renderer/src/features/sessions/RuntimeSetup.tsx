@@ -5,7 +5,7 @@
  * its own progress, the machine is the thing this column holds, and a modal
  * would dim the workbench to say "wait". So the console covers the work surface
  * (the terminals under it stay mounted), asks its three questions on one
- * screen, and then keeps printing what `colab new` actually says.
+ * screen, and keeps printing what `colab new` says below them on that screen.
  *
  * The palette is the terminal's own (`--terminal-*`), which follows the theme
  * the reader picked for terminals: this column is a machine from beginning to
@@ -43,7 +43,6 @@ export function RuntimeSetup() {
   const eligibility = useAppStore((state) => state.env?.accelerator_eligibility ?? null);
   const startCreation = useAppStore((state) => state.startCreation);
   const closeNewSession = useAppStore((state) => state.closeNewSession);
-  const editCreation = useAppStore((state) => state.editCreation);
 
   // Memoised: a Set built during render is a new reference every time.
   const unavailable = useMemo(() => unavailableAccelerators(eligibility), [eligibility]);
@@ -66,9 +65,11 @@ export function RuntimeSetup() {
   const listRef = useRef<HTMLFieldSetElement | null>(null);
   const highMemRef = useRef<HTMLInputElement | null>(null);
   const nameRef = useRef<HTMLInputElement | null>(null);
+  const logRef = useRef<HTMLDivElement | null>(null);
 
   const chosen = ACCELERATORS.find((option) => option.id === accelerator) ?? ACCELERATORS[0];
   const available = ACCELERATORS.filter((option) => !isUnavailable(unavailable, option.id));
+  const busy = phase === "provisioning";
 
   // The wait, counted from the store's timestamp so it survives a re-render —
   // and so reopening the surface mid-request shows the true elapsed time.
@@ -89,14 +90,15 @@ export function RuntimeSetup() {
     Enter walks the form like an installer: the list, then the high-memory
     option, then the name, and only then the create. "Enter submits" from the
     first field is a web form's habit, not this screen's: the person is being
-    walked through three answers.
+    walked through three answers. The walk stays live after a failure, because
+    the form is still on screen to be edited.
 
     The handler sits on the window because the surface owns the keyboard while
     it is open (the workbench behind it is inert): a click on the empty part of
     the panel lands on `body`, and a form-level listener would go quiet there.
   */
   useEffect(() => {
-    if (phase !== "setup") return;
+    if (phase === "provisioning") return;
     const onKeyDown = (event: KeyboardEvent): void => {
       const target = event.target as HTMLElement | null;
       const inName = Boolean(target?.closest(".setup__name-row"));
@@ -138,15 +140,32 @@ export function RuntimeSetup() {
     return () => window.removeEventListener("keydown", onKeyDown, true);
   });
 
-  // Entering the step puts the keyboard on the chosen machine — including when
-  // "Edit and retry" brings the form back.
+  // Entering the form puts the keyboard on the chosen machine; a failure puts
+  // it back in the name, which is where the next edit and the retry happen.
   useEffect(() => {
-    if (phase !== "setup") return;
-    const selected =
-      listRef.current?.querySelector<HTMLInputElement>("input:checked:not(:disabled)") ??
-      listRef.current?.querySelector<HTMLInputElement>("input:not(:disabled)");
-    selected?.focus();
+    if (phase === "setup") {
+      const selected =
+        listRef.current?.querySelector<HTMLInputElement>("input:checked:not(:disabled)") ??
+        listRef.current?.querySelector<HTMLInputElement>("input:not(:disabled)");
+      selected?.focus();
+      return;
+    }
+    if (phase === "failed") nameRef.current?.focus();
   }, [phase]);
+
+  // The log follows its own newest line; the page itself does not move, so the
+  // answers above stay where the person left them.
+  useEffect(() => {
+    const log = logRef.current;
+    if (log) log.scrollTop = log.scrollHeight;
+  }, [lines]);
+
+  // A request that just went out is brought into view once — the answers stay
+  // above, but the thing the person started has to be visible.
+  useEffect(() => {
+    if (phase !== "provisioning") return;
+    logRef.current?.scrollIntoView({ block: "nearest" });
+  }, [phase, startedAt]);
 
   // Escape leaves the surface; during a request it leaves the request running
   // (the CLI cannot be cancelled safely), and closing the view is the honest
@@ -156,16 +175,15 @@ export function RuntimeSetup() {
       if (event.key !== "Escape") return;
       event.preventDefault();
       event.stopPropagation();
-      if (phase === "failed") editCreation();
-      else closeNewSession();
+      closeNewSession();
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [closeNewSession, editCreation, phase]);
+  }, [closeNewSession]);
 
   function submit(event: React.FormEvent): void {
     event.preventDefault();
-    if (isUnavailable(unavailable, accelerator)) return;
+    if (busy || isUnavailable(unavailable, accelerator)) return;
     const isTpu = accelerator.startsWith("tpu:");
     const options: CreateSessionOptions = {
       gpu: isTpu || accelerator === "cpu" ? null : accelerator,
@@ -187,101 +205,104 @@ export function RuntimeSetup() {
         <span>{t("sessions.setupTitle", "新建运行时")}</span>
       </header>
 
-      {phase === "setup" ? (
-        <form ref={formRef} className="setup__form" onSubmit={submit}>
-          <p className="setup__note">
-            {eligibility
-              ? t("sessions.acceleratorAvailable", "当前账号可用：{{list}}", {
-                  list: [...eligibility.gpus, ...eligibility.tpus].join(" / "),
-                })
-              : t("sessions.setupEligibilityUnknown", "账号可用的加速器尚未读到 —— 都可以试，最终由 colab new 决定。")}
-          </p>
+      <form ref={formRef} className="setup__form" onSubmit={submit} aria-busy={busy}>
+        <p className="setup__note">
+          {eligibility
+            ? t("sessions.acceleratorAvailable", "当前账号可用：{{list}}", {
+                list: [...eligibility.gpus, ...eligibility.tpus].join(" / "),
+              })
+            : t("sessions.setupEligibilityUnknown", "账号可用的加速器尚未读到 —— 都可以试，最终由 colab new 决定。")}
+        </p>
 
-          <fieldset className="setup__group" ref={listRef}>
-            <legend className="setup__question">? {t("sessions.acceleratorLabel", "加速器")}</legend>
-            <ul className="setup__options">
-              {ACCELERATORS.map((option, index) => {
-                const off = isUnavailable(unavailable, option.id);
-                const selected = accelerator === option.id;
-                return (
-                  <li key={option.id}>
-                    <label
-                      className={`setup__option${selected ? " setup__option--selected" : ""}${off ? " setup__option--off" : ""}`}
-                    >
-                      <input
-                        type="radio"
-                        className="visually-hidden"
-                        name="accelerator"
-                        value={option.id}
-                        checked={selected}
-                        disabled={off}
-                        onChange={() => setAccelerator(option.id)}
-                      />
-                      <span className="setup__marker" aria-hidden="true">
-                        {selected ? "▸" : ""}
-                      </span>
-                      <span className="setup__index" aria-hidden="true">
-                        {index + 1}
-                      </span>
-                      <span className="setup__name">
-                        {option.id === "cpu"
-                          ? t("sessions.acceleratorCpu", "CPU（无加速器）")
-                          : option.label}
-                      </span>
-                      {off && (
-                        <span className="setup__off-note">{t("sessions.acceleratorUnavailable", "当前账号不可用")}</span>
-                      )}
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
-          </fieldset>
+        <fieldset className="setup__group" ref={listRef}>
+          <legend className="setup__question">? {t("sessions.acceleratorLabel", "加速器")}</legend>
+          <ul className="setup__options">
+            {ACCELERATORS.map((option, index) => {
+              const off = isUnavailable(unavailable, option.id);
+              const selected = accelerator === option.id;
+              return (
+                <li key={option.id}>
+                  <label
+                    className={`setup__option${selected ? " setup__option--selected" : ""}${off ? " setup__option--off" : ""}`}
+                  >
+                    <input
+                      type="radio"
+                      className="visually-hidden"
+                      name="accelerator"
+                      value={option.id}
+                      checked={selected}
+                      disabled={off || busy}
+                      onChange={() => setAccelerator(option.id)}
+                    />
+                    <span className="setup__marker" aria-hidden="true">
+                      {selected ? "▸" : ""}
+                    </span>
+                    <span className="setup__index" aria-hidden="true">
+                      {index + 1}
+                    </span>
+                    <span className="setup__name">
+                      {option.id === "cpu"
+                        ? t("sessions.acceleratorCpu", "CPU（无加速器）")
+                        : option.label}
+                    </span>
+                    {off && (
+                      <span className="setup__off-note">{t("sessions.acceleratorUnavailable", "当前账号不可用")}</span>
+                    )}
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        </fieldset>
 
-          <label className="setup__row setup__high-mem">
-            <span className="setup__question">? {t("sessions.highMemShort", "高内存机型")}</span>
-            <input
-              ref={highMemRef}
-              type="checkbox"
-              className="visually-hidden"
-              checked={highMem && !SINGLE_SHAPE.has(accelerator)}
-              disabled={SINGLE_SHAPE.has(accelerator)}
-              onChange={(event) => setHighMem(event.target.checked)}
-            />
-            <span className="setup__check" aria-hidden="true">
-              {highMem && !SINGLE_SHAPE.has(accelerator) ? "[x]" : "[ ]"}
-            </span>
-            <span className="setup__row-note">
-              {SINGLE_SHAPE.has(accelerator)
-                ? t("sessions.highMemSingleShape", "这台加速器只有一种机型")
-                : t("sessions.highMemNote", "需 Colab Pro/Pro+")}
-            </span>
-          </label>
+        <label className="setup__row setup__high-mem">
+          <span className="setup__question">? {t("sessions.highMemShort", "高内存机型")}</span>
+          <input
+            ref={highMemRef}
+            type="checkbox"
+            className="visually-hidden"
+            checked={highMem && !SINGLE_SHAPE.has(accelerator)}
+            disabled={SINGLE_SHAPE.has(accelerator) || busy}
+            onChange={(event) => setHighMem(event.target.checked)}
+          />
+          <span className="setup__check" aria-hidden="true">
+            {highMem && !SINGLE_SHAPE.has(accelerator) ? "[x]" : "[ ]"}
+          </span>
+          <span className="setup__row-note">
+            {SINGLE_SHAPE.has(accelerator)
+              ? t("sessions.highMemSingleShape", "这台加速器只有一种机型")
+              : t("sessions.highMemNote", "需 Colab Pro/Pro+")}
+          </span>
+        </label>
 
-          <label className="setup__row setup__name-row">
-            <span className="setup__question">? {t("sessions.nameLabel", "会话名称")}</span>
-            <input
-              ref={nameRef}
-              type="text"
-              className="setup__input"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder={t("sessions.nameHint", "留空将自动生成")}
-              spellCheck={false}
-            />
-          </label>
+        <label className="setup__row setup__name-row">
+          <span className="setup__question">? {t("sessions.nameLabel", "会话名称")}</span>
+          <input
+            ref={nameRef}
+            type="text"
+            className="setup__input"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder={t("sessions.nameHint", "留空将自动生成")}
+            spellCheck={false}
+            disabled={busy}
+          />
+        </label>
 
-          <div className="setup__actions">
-            <button type="submit" className="setup__action setup__action--primary">
-              {t("sessions.createButton", "创建")}
-            </button>
-          </div>
+        <div className="setup__actions">
+          <button type="submit" className="setup__action setup__action--primary" disabled={busy}>
+            {t("sessions.createButton", "创建")}
+          </button>
+        </div>
 
+        {phase === "setup" && (
           <p className="setup__hint">
             {t("sessions.setupKeys", "↑/↓ 或数字选择 · Enter 下一步 · Esc 返回")}
           </p>
-        </form>
-      ) : (
+        )}
+      </form>
+
+      {phase !== "setup" && (
         <div className="setup__console">
           <p className="setup__command" data-testid="setup-command">
             <span className="setup__prompt" aria-hidden="true">$ </span>
@@ -290,7 +311,7 @@ export function RuntimeSetup() {
 
           {/* The CLI's own lines, as they arrive. `role="log"` so a screen
               reader hears them rather than discovering them later. */}
-          <div className="setup__log" role="log" aria-live="polite">
+          <div className="setup__log" role="log" aria-live="polite" ref={logRef}>
             {lines.map((line, index) => (
               <p key={`${index}:${line}`} className="setup__line">
                 {line}
@@ -321,9 +342,6 @@ export function RuntimeSetup() {
                 {error}
               </p>
               <div className="setup__actions">
-                <button type="button" className="setup__action" onClick={() => editCreation()}>
-                  {t("sessions.setupEdit", "返回修改")}
-                </button>
                 {/* The evidence travels to wherever the person is already
                     talking about it; the log is for whoever reads it after. */}
                 <button
@@ -338,7 +356,7 @@ export function RuntimeSetup() {
                   {copied ? t("sessions.copiedDetails", "已复制") : t("sessions.copyDetails", "复制详情")}
                 </button>
               </div>
-              <p className="setup__hint">{t("sessions.setupFailedKeys", "Esc 返回修改")}</p>
+              <p className="setup__hint">{t("sessions.setupFailedKeys", "修改后 Enter 重试 · Esc 返回")}</p>
             </>
           )}
         </div>

@@ -3,9 +3,8 @@
  *
  * The interesting failure is "the picker offered H100 to an account without it",
  * and that failure is visible in the attributes. The other rules here are the
- * screen's shape: the setup form asks its three questions on one screen, the
- * provisioning state prints the command that is actually running and no form at
- * all, and a failure keeps its reason next to the way back.
+ * screen's shape: the form asks its three questions on one screen and stays
+ * there while the command runs, with the log and a failure appended below it.
  */
 
 import { createElement } from "react";
@@ -43,7 +42,6 @@ function base(creation: Record<string, unknown>, eligibility: AcceleratorEligibi
     env: { accelerator_eligibility: eligibility },
     startCreation: async () => {},
     closeNewSession: () => {},
-    editCreation: () => {},
   };
 }
 
@@ -117,13 +115,17 @@ describe("while the request is running", () => {
     });
   });
 
-  it("prints the command it is actually running, and the CLI's own line", () => {
+  it("prints the command it is actually running while the answers stay put", () => {
     const markup = renderToStaticMarkup(createElement(RuntimeSetup));
 
     expect(markup).toContain("colab new -s llama --gpu A100");
     expect(markup).toContain("[colab] Creating session &#x27;llama&#x27;...");
-    // The form is gone: a request that has been sent cannot be edited.
-    expect(markup).not.toContain("setup__options");
+    // The form is still on the page: the log is appended below it.
+    expect(markup).toContain("setup__options");
+    expect(markup).toContain('aria-busy="true"');
+    // But a request that has been sent cannot be edited.
+    expect(option(markup, "A100")).toContain("disabled");
+    expect(markup).toMatch(/class="setup__input"[^>]*disabled/);
     // The wait is counted from a real clock, and there is a way to leave it.
     expect(markup).toContain("已等待");
     expect(markup).toContain("在后台继续");
@@ -141,12 +143,19 @@ describe("when the request failed", () => {
     });
   });
 
-  it("keeps the reason and offers the way back to the form", () => {
+  it("keeps the form editable and the reason below the log", () => {
     const markup = renderToStaticMarkup(createElement(RuntimeSetup));
 
     expect(markup).toContain("后端拒绝了 A100");
-    expect(markup).toContain("返回修改");
-    expect(markup).not.toContain("setup__options");
+    // A failure is a log entry, not a different screen: the answers stay, and
+    // the next move is an edit and a retry.
+    expect(markup).toContain("setup__options");
+    expect(markup).not.toContain('aria-busy="true"');
+    expect(option(markup, "A100")).not.toContain("disabled");
+    expect(markup).not.toMatch(/setup__action--primary"[^>]*disabled/);
+    expect(markup).toContain("复制详情");
+    expect(markup).not.toContain("返回修改");
+    expect(markup).toContain("修改后 Enter 重试");
   });
 });
 
@@ -168,6 +177,18 @@ describe("in English", () => {
       request: { gpu: "A100", tpu: null, name: "llama", highMem: false },
       startedAt: Date.now(),
       lines: ["[colab] Creating session 'llama'..."],
+    });
+    await setRendererUiLanguage("en");
+    expect(renderToStaticMarkup(createElement(RuntimeSetup))).not.toMatch(/[一-鿿]/);
+  });
+
+  it("失败那一屏不出现中文", async () => {
+    store.current = base({
+      phase: "failed",
+      request: { gpu: "A100", tpu: null, name: "llama", highMem: false },
+      startedAt: Date.now(),
+      lines: ["[colab] Creating session 'llama'..."],
+      error: "The backend refused A100: no quota.",
     });
     await setRendererUiLanguage("en");
     expect(renderToStaticMarkup(createElement(RuntimeSetup))).not.toMatch(/[一-鿿]/);

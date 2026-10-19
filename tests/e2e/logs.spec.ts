@@ -20,7 +20,6 @@ test("设置页给出日志路径，而且那个文件里确实有刚才发生�
   await setup.getByRole("button", { name: "创建" }).click();
   await expect(setup.locator('[data-testid="setup-error"]')).toBeVisible();
   await page.keyboard.press("Escape");
-  await page.keyboard.press("Escape");
 
   // Settings → About is where a user is told where to look.
   await page.locator('[data-testid="open-settings"]').click();

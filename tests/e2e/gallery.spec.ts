@@ -114,14 +114,13 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
   // The failure state: the app has to say what went wrong in the window, not in
   // a file — the reason is the CLI's own last turn of phrase, and 「复制详情」
   // hands the whole output over. The name is one that already exists, so it
-  // fails. The surface stays on screen with the log and the way back.
+  // fails. The answers stay on screen and the log is appended below them.
   await setup.locator("input[type=text]").fill("e2e-alpha");
   await setup.getByRole("button", { name: "创建" }).click();
   await expect(setup.locator('[data-testid="setup-error"]')).toBeVisible();
   await page.waitForTimeout(400);
   await capture(page, "04-runtime-setup-failed");
 
-  await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");
 
   // The tree, with a folder open and a row's menu out: the row is the whole

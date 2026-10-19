@@ -231,8 +231,7 @@
     "setupElapsed": "已等待 {{time}}",
     "setupMayTake": "申请可能需要几分钟，完成后会自动打开终端。",
     "setupBackground": "在后台继续",
-    "setupEdit": "返回修改",
-    "setupFailedKeys": "Esc 返回修改"
+    "setupFailedKeys": "修改后 Enter 重试 · Esc 返回"
   },
   "login": {
     "signInGoogle": "授权登录 Google 账号",

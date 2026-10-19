@@ -231,8 +231,7 @@
     "setupElapsed": "waiting {{time}}",
     "setupMayTake": "This can take a few minutes; the terminal opens when it is ready.",
     "setupBackground": "Keep it in the background",
-    "setupEdit": "Edit and retry",
-    "setupFailedKeys": "Esc to edit"
+    "setupFailedKeys": "Edit, then Enter to retry · Esc to go back"
   },
   "login": {
     "signInGoogle": "Sign in with Google Account",

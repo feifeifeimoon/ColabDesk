@@ -287,8 +287,6 @@ export interface CreationSlice {
   creation: CreationState;
   openNewSession(): void;
   closeNewSession(): void;
-  /** Back to the form after a failure, with the request kept for editing. */
-  editCreation(): void;
   startCreation(request: CreationRequest): Promise<void>;
   appendCreationLine(line: string): void;
 }

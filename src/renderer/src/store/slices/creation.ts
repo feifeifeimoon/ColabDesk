@@ -47,12 +47,6 @@ export const createCreationSlice: StateCreator<AppState, [], [], CreationSlice> 
   closeNewSession: () => set({ creation: { ...get().creation, open: false } }),
 
   /**
-   * Back to the form after a failure, with the request kept: the usual next move
-   * is the same machine with one thing changed.
-   */
-  editCreation: () => set({ creation: { ...get().creation, phase: "setup", error: null } }),
-
-  /**
    * The CLI prints a handful of lines, not a stream of bytes — nothing like the
    * terminal's output path, which stays out of the store for exactly that reason.
    */

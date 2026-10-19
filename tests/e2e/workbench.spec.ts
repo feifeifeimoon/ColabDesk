@@ -304,9 +304,10 @@ test("新建运行时不提供本账号拿不到的加速器", async ({ page }) 
 });
 
 // 设置面只该在打开那一刻初始化自己：名字打进去要留下、选好的加速器不弹回默认、勾上的高内存
-// 不自己弹开、失败的原因不闪一帧就没。四个症状同一个不变量，所以钉在同一个用例里；而它只能
-// 钉在这里——渲染断言（renderToStaticMarkup）不跑 effect 与提交，看不见这一层。
-test("运行时设置：申请失败后返回修改，填过的东西还在", async ({ page }) => {
+// 不自己弹开、失败的原因不闪一帧就没，失败后表单也不该被换掉。五个症状同一个不变量，所以钉在
+// 同一个用例里；而它只能钉在这里——渲染断言（renderToStaticMarkup）不跑 effect 与提交，
+// 看不见这一层。
+test("运行时设置：申请失败后表单还在，填过的东西还在", async ({ page }) => {
   await page.locator('[aria-label="新建会话"]').click();
   const setup = page.locator('[data-testid="runtime-setup"]');
   await expect(setup).toBeVisible();
@@ -337,11 +338,19 @@ test("运行时设置：申请失败后返回修改，填过的东西还在", as
   await page.waitForTimeout(300);
   await expect(failure).toBeVisible();
 
-  // 返回修改把填过的值带回来：下一步通常是同一台机器只改一样。
-  await setup.getByRole("button", { name: "返回修改" }).click();
+  // 失败只往页面底部加日志，不换屏：填过的值原样留在上面，还能直接改。
+  await expect(setup.locator(".setup__options")).toBeVisible();
   await expect(setup.locator("input[type=text]")).toHaveValue("e2e-alpha");
   await expect(setup.locator('input[value="A100"]')).toBeChecked();
   await expect(setup.locator('input[type="checkbox"]')).toBeChecked();
+  await expect(setup.getByRole("button", { name: "创建" })).toBeEnabled();
+
+  // 日志和错误在表单下面，而不是代替它。
+  const formBox = await setup.locator(".setup__form").boundingBox();
+  const consoleBox = await setup.locator(".setup__console").boundingBox();
+  expect(formBox).not.toBeNull();
+  expect(consoleBox).not.toBeNull();
+  expect(consoleBox!.y).toBeGreaterThanOrEqual(formBox!.y + formBox!.height - 1);
 });
 
 // 设置面占的是中间那一列，不是一个对话框：Esc 回工作台，没有 × 也没有「关闭」。
