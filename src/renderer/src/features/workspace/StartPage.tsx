@@ -65,7 +65,7 @@ export function StartPage() {
           <BrandLockup />
         </h1>
         <p className="startpage__tagline">
-          {t("home.tagline", "把远程 GPU 运行时当本地机器用")}
+          {t("home.tagline", "Google Colab 运行时的桌面 SSH 控制台")}
         </p>
         <p className="startpage__next">
           {hasSessions

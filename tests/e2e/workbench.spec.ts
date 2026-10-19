@@ -31,7 +31,7 @@ test("没有会话时，工作台已给出全部机器状态", async ({ page }) 
 
   // 中间是起始页：有名字、有主张，也有下一步该做什么。
   const home = page.locator(".startpage");
-  await expect(home).toContainText("把远程 GPU 运行时当本地机器用");
+  await expect(home).toContainText("Google Colab 运行时的桌面 SSH 控制台");
   await expect(home).toContainText("选一个会话，或新建一个运行时。");
   await expect(home.getByRole("button", { name: "新建会话" })).toBeVisible();
   await expect(page.locator('[data-testid="star-on-github"]')).toBeVisible();
@@ -201,12 +201,12 @@ test("语言切换写下偏好并在重载后生效，且动态更新界面文�
 
   // 返回工作台
   await page.locator('[data-testid="close-settings"]').click();
-  await expect(page.locator(".startpage")).toContainText("Run a remote GPU runtime like a local machine");
+  await expect(page.locator(".startpage")).toContainText("A desktop SSH console for Google Colab runtimes");
   await expect(page.locator(".startpage")).toContainText("New session");
 
   // 跨重载保留
   await reloadWorkbench(app, page);
-  await expect(page.locator(".startpage")).toContainText("Run a remote GPU runtime like a local machine");
+  await expect(page.locator(".startpage")).toContainText("A desktop SSH console for Google Colab runtimes");
 
   // 重新打开设置切回中文（简体）
   await page.locator('[data-testid="open-settings"]').click();
