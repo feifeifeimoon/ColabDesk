@@ -33,6 +33,7 @@ const CONNECTION_TONE: Record<string, StatusTone> = {
 export function Sidebar() {
   const { t } = useTranslation();
   const open = useAppStore((state) => state.sidebarOpen);
+  const signedOut = useAppStore((state) => state.env?.authenticated === false);
   const railRef = useRef<HTMLElement | null>(null);
 
   /**
@@ -46,7 +47,7 @@ export function Sidebar() {
    */
   useEffect(() => {
     const rail = railRef.current;
-    if (!open || !rail) return;
+    if (!open || signedOut || !rail) return;
     const publish = (): void => {
       const { width } = rail.getBoundingClientRect();
       document.documentElement.style.setProperty("--rail-width", `${width}px`);
@@ -59,7 +60,7 @@ export function Sidebar() {
       // Collapsed: the section falls back to its own two controls.
       document.documentElement.style.removeProperty("--rail-width");
     };
-  }, [open]);
+  }, [open, signedOut]);
 
   const width = useAppStore((state) => state.panelWidths.sidebar);
   const setPanelWidth = useAppStore((state) => state.setPanelWidth);
@@ -69,7 +70,6 @@ export function Sidebar() {
   const untrackedError = useAppStore((state) => state.untrackedError);
   const runtimeEndpoints = useAppStore((state) => state.runtimeEndpoints);
   const previousAccount = useAppStore((state) => state.previousAccount);
-  const signedOut = useAppStore((state) => state.env?.authenticated === false);
   const selectedSession = useAppStore((state) => state.selectedSession);
   const tabs = useAppStore((state) => state.tabs);
   const connections = useAppStore((state) => state.connections);
@@ -81,8 +81,10 @@ export function Sidebar() {
   const openSettings = useAppStore((state) => state.openSettings);
 
   // Collapsing unmounts the rail; that is the one panel whose contents nobody
-  // expects to survive a collapse.
-  if (!open) return null;
+  // expects to survive a collapse. Signed out, the whole rail goes with it: its
+  // rows belong to another account and every action in it would fail, so drawing
+  // it would only offer things that cannot be done.
+  if (!open || signedOut) return null;
 
   const connectionLabels: Record<string, string> = {
     connecting: t("statusbar.statusConnecting", "连接中"),

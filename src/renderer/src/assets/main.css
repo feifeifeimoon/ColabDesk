@@ -1097,6 +1097,24 @@ kbd {
   font-weight: 600;
 }
 
+/* The sign-in block gets a column of its own: the width of an input, with its
+   contents centred, so it reads as a step on this screen rather than a form
+   jammed into a marketing line. */
+.startpage__signin {
+  width: min(440px, 100%);
+  display: flex;
+  justify-content: center;
+}
+
+.startpage__signin .login {
+  width: 100%;
+  align-items: center;
+}
+
+.startpage__signin .login .row {
+  justify-content: center;
+}
+
 .startpage__actions {
   display: flex;
   flex-wrap: wrap;
@@ -2774,19 +2792,6 @@ textarea.input {
 
 .login form .input {
   flex: 1;
-}
-
-.auth-url {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.auth-url textarea {
-  font-family: var(--font-mono);
-  font-size: var(--text-caption);
-  word-break: break-all;
 }
 
 .snippet {

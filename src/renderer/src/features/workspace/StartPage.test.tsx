@@ -97,6 +97,14 @@ describe("nobody is signed in yet", () => {
     expect(markup).toContain("授权登录 Google 账号");
     expect(markup).not.toContain("新建会话");
     expect(markup.match(/btn--primary/g)).toHaveLength(1);
+    // A column of its own, so the button is centred with the page and not at
+    // the left edge of a form that inherited the column's width.
+    expect(markup).toContain("startpage__signin");
+  });
+
+  it("没登录时不提供「展开会话栏」——那条栏根本不在", () => {
+    store.current = { ...base, env: { authenticated: false }, sidebarOpen: false, sessions: [{}] };
+    expect(render()).not.toContain("展开会话栏");
   });
 
   it("says why, instead of offering a create that can only fail", () => {

@@ -17,6 +17,11 @@ import { Input } from "../../components/ui/Field";
  * Drives the CLI's copy-paste OAuth flow for the user: the authorization URL
  * arrives as an event, the pasted code goes back through the child's stdin,
  * and the done event fires when that child exits.
+ *
+ * The URL itself is never printed. It is a few hundred characters of query
+ * string, and the two things anybody does with it — open it again, or hand it
+ * to another browser — are the two buttons beside it; a wall of it in a
+ * textarea made the middle of an authorization flow read like raw output.
  */
 export function LoginPanel({
   onFinished,
@@ -103,8 +108,47 @@ export function LoginPanel({
 
   return (
     <div className="login">
-      {!running ? (
-        authenticated ? (
+      {running ? (
+        <>
+          {/* 1. where to look, 2. the fallbacks, 3. the one thing to do,
+                 4. the way out. */}
+          {message && <p className="hint">{message}</p>}
+          {url && (
+            <div className="row">
+              <Button variant="outline" size="sm" onClick={() => openExternal(url)}>
+                {t("login.openInBrowser", "在浏览器打开")}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(url);
+                  setMessage(t("login.urlCopied", "授权链接已复制。"));
+                }}
+              >
+                {t("login.copyLink", "复制链接")}
+              </Button>
+            </div>
+          )}
+          {url && (
+            <form className="row" onSubmit={submit}>
+              <Input
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder={t("login.codePlaceholder", "粘贴 Google 显示的授权码")}
+                autoFocus
+              />
+              <Button variant="primary" type="submit" disabled={!code.trim()}>
+                {t("login.submitCode", "提交")}
+              </Button>
+            </form>
+          )}
+          <Button variant="ghost" size="sm" onClick={cancel}>
+            {t("login.cancelLogin", "取消登录")}
+          </Button>
+        </>
+      ) : authenticated ? (
+        <>
           <div className="row" style={{ gap: "var(--space-2)" }}>
             <Button variant="primary" onClick={begin}>
               {t("login.switchAccount", "切换账号 / 重新授权")}
@@ -113,54 +157,18 @@ export function LoginPanel({
               {t("login.signOut", "退出登录")}
             </Button>
           </div>
-        ) : (
+          {message && <p className="hint">{message}</p>}
+        </>
+      ) : (
+        <>
           <Button variant="primary" onClick={begin}>
             {t("login.signInGoogle", "授权登录 Google 账号")}
           </Button>
-        )
-      ) : (
-        <Button variant="outline" onClick={cancel}>
-          {t("login.cancelLogin", "取消登录")}
-        </Button>
+          {message && <p className="hint">{message}</p>}
+        </>
       )}
 
-      {message && <p className="hint">{message}</p>}
       {error && <p className="error">{error}</p>}
-
-      {url && (
-        <div className="auth-url">
-          <textarea className="input" readOnly value={url} rows={3} onFocus={(e) => e.target.select()} />
-          <div className="row">
-            <Button variant="outline" size="sm" onClick={() => openExternal(url)}>
-              {t("login.openInBrowser", "在浏览器打开")}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                void navigator.clipboard?.writeText(url);
-                setMessage(t("login.urlCopied", "授权链接已复制。"));
-              }}
-            >
-              {t("login.copyLink", "复制链接")}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {running && url && (
-        <form className="row" onSubmit={submit}>
-          <Input
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder={t("login.codePlaceholder", "粘贴 Google 显示的授权码")}
-            autoFocus
-          />
-          <Button variant="primary" type="submit" disabled={!code.trim()}>
-            {t("login.submitCode", "提交")}
-          </Button>
-        </form>
-      )}
     </div>
   );
 }

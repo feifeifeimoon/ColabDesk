@@ -44,6 +44,7 @@ export function TopBar() {
   const activeTabId = useAppStore((state) => state.activeTabId);
   const hasWorkSurface = useHasWorkSurface();
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
+  const signedOut = useAppStore((state) => state.env?.authenticated === false);
   const toggleFiles = useAppStore((state) => state.toggleFiles);
   const openTab = useAppStore((state) => state.openTab);
   // Closing a tab is a request, not an action: a file tab with unsaved edits
@@ -108,7 +109,7 @@ export function TopBar() {
         <span className="topbar__brand" title={t("topbar.brand", "ColabDesk")}>
           <BrandMark />
         </span>
-        {!settingsOpen && (
+        {!settingsOpen && !signedOut && (
           <Button
             variant="ghost"
             icon

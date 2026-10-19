@@ -184,12 +184,9 @@ describe("Sidebar", () => {
     expect(html).not.toContain('data-testid="previous-account"');
   });
 
-  it("没登录时，新建会话的入口让路并说明原因", () => {
+  it("没登录时整条会话栏都不画：里面没有一件事能做", () => {
     store.current = { ...baseStore, env: { authenticated: false } };
-    const html = renderToStaticMarkup(createElement(Sidebar));
-
-    expect(html).toContain('aria-label="先登录 Google 账号"');
-    expect(html).toContain("disabled");
+    expect(renderToStaticMarkup(createElement(Sidebar))).toBe("");
   });
 
   it("空态说的是「本地」没有，而不是「没有」", () => {

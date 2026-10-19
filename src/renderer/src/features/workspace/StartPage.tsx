@@ -86,7 +86,9 @@ export function StartPage() {
             /* The same panel the settings page mounts, in its signed-out form:
                the front door's one action *is* signing in. One implementation,
                two places it is needed. */
-            <LoginPanel onFinished={refreshEnvironment} authenticated={false} />
+            <div className="startpage__signin">
+              <LoginPanel onFinished={refreshEnvironment} authenticated={false} />
+            </div>
           ) : (
             <Button
               variant="primary"
@@ -96,7 +98,8 @@ export function StartPage() {
               {t("workbench.newSession", "新建会话")}
             </Button>
           )}
-          {!sidebarOpen && hasSessions && (
+          {/* With nobody signed in the rail is not drawn, so the way back to it is not offered either. */}
+          {!signedOut && !sidebarOpen && hasSessions && (
             <Button
               onClick={toggleSidebar}
               title={t("home.expandSidebarTitle", "展开会话栏（Ctrl+Shift+E）")}

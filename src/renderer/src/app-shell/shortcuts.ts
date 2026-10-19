@@ -59,7 +59,8 @@ export function useAppShortcuts(): void {
       } else if (event.code === "KeyE") {
         event.preventDefault();
         event.stopPropagation();
-        store.toggleSidebar();
+        // Nothing to toggle while signed out: the rail is not on screen.
+        if (store.env?.authenticated !== false) store.toggleSidebar();
       } else if (/^Digit[1-9]$/.test(event.code)) {
         event.preventDefault();
         event.stopPropagation();
