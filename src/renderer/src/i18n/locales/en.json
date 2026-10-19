@@ -20,7 +20,9 @@
     "windowMinimize": "Minimize",
     "windowMaximize": "Maximize",
     "windowRestore": "Restore",
-    "windowClose": "Close"
+    "windowClose": "Close",
+    "settings": "Settings",
+    "settingsTooltip": "Settings (Ctrl+,)"
   },
   "statusbar": {
     "statusConnecting": "Connecting…",

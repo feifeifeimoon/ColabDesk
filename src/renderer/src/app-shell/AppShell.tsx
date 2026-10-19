@@ -10,6 +10,7 @@ import {
   MinimizeIcon,
   PanelLeftIcon,
   PanelRightIcon,
+  SettingsIcon,
   PlusIcon,
   RestoreIcon,
   SyncIcon,
@@ -44,6 +45,7 @@ export function TopBar() {
   const activeTabId = useAppStore((state) => state.activeTabId);
   const hasWorkSurface = useHasWorkSurface();
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
+  const openSettings = useAppStore((state) => state.openSettings);
   const signedOut = useAppStore((state) => state.env?.authenticated === false);
   const toggleFiles = useAppStore((state) => state.toggleFiles);
   const openTab = useAppStore((state) => state.openTab);
@@ -103,27 +105,42 @@ export function TopBar() {
           terminal and the seam on the column below. */}
       <div
         className="topbar__side"
-        data-rail={sidebarOpen || settingsOpen ? "open" : "closed"}
+        data-rail={!signedOut && (sidebarOpen || settingsOpen) ? "open" : "closed"}
         style={IS_MAC ? { paddingLeft: MAC_INSET } : undefined}
       >
         <span className="topbar__brand" title={t("topbar.brand", "ColabDesk")}>
           <BrandMark />
         </span>
-        {!settingsOpen && !signedOut && (
-          <Button
-            variant="ghost"
-            icon
-            data-testid="toggle-sidebar"
-            aria-pressed={sidebarOpen}
-            aria-label={sidebarOpen ? t("topbar.sidebarCollapse", "收起会话栏") : t("topbar.sidebarExpand", "展开会话栏")}
-            title={t("topbar.sidebarTooltip", "{{action}}会话栏（Ctrl+Shift+E）", {
-              action: sidebarOpen ? t("topbar.actionCollapse", "收起") : t("topbar.actionExpand", "展开"),
-            })}
-            onClick={toggleSidebar}
-          >
-            <PanelLeftIcon />
-          </Button>
-        )}
+        {/* Exactly one control lives beside the brand: the rail toggle while
+            there is a rail, and the way into settings while there is not (its
+            usual home is the rail's foot, which is not on screen). They never
+            appear together, so this is a seat, not a second entry point. */}
+        {!settingsOpen &&
+          (signedOut ? (
+            <IconButton
+              variant="ghost"
+              data-testid="open-settings"
+              label={t("topbar.settings", "设置")}
+              title={t("topbar.settingsTooltip", "设置（Ctrl+,）")}
+              onClick={() => openSettings()}
+            >
+              <SettingsIcon size={15} />
+            </IconButton>
+          ) : (
+            <Button
+              variant="ghost"
+              icon
+              data-testid="toggle-sidebar"
+              aria-pressed={sidebarOpen}
+              aria-label={sidebarOpen ? t("topbar.sidebarCollapse", "收起会话栏") : t("topbar.sidebarExpand", "展开会话栏")}
+              title={t("topbar.sidebarTooltip", "{{action}}会话栏（Ctrl+Shift+E）", {
+                action: sidebarOpen ? t("topbar.actionCollapse", "收起") : t("topbar.actionExpand", "展开"),
+              })}
+              onClick={toggleSidebar}
+            >
+              <PanelLeftIcon />
+            </Button>
+          ))}
       </div>
 
       <div className="topbar__tabs" role="tablist">

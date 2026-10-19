@@ -42,11 +42,12 @@ const file: FileTab = {
   name: "train.log",
 };
 
-function render(tabs: WorkspaceTab[]): string {
+function render(tabs: WorkspaceTab[], extra: Record<string, unknown> = {}): string {
   store.current = {
     sidebarOpen: true,
     filesOpen: true,
     settingsOpen: false,
+    env: null,
     tabs,
     selectedSession: "alpha",
     activeTabId: tabs[0]?.id ?? null,
@@ -57,8 +58,15 @@ function render(tabs: WorkspaceTab[]): string {
     requestCloseTab: noop,
     focusTab: noop,
     renameTab: noop,
+    openSettings: noop,
+    ...extra,
   };
   return renderToStaticMarkup(createElement(TopBar));
+}
+
+/** The bar's left section, where the rail toggle and its stand-ins live. */
+function leftSection(markup: string): string {
+  return markup.slice(markup.indexOf('class="topbar__side"'), markup.indexOf('class="topbar__tabs"'));
 }
 
 beforeEach(async () => {
@@ -100,5 +108,32 @@ describe("the tab strip", () => {
     expect(markup).toContain("train.log");
     expect(markup).toContain('title="/content/train.log"');
     expect(markup).toContain('aria-label="关闭 train.log"');
+  });
+});
+
+describe("the bar's left section", () => {
+  it("signed in: the rail toggle, and no settings entry (the rail's foot has it)", () => {
+    const side = leftSection(render([shell(null)]));
+    expect(side).toContain('data-testid="toggle-sidebar"');
+    expect(side).not.toContain('data-testid="open-settings"');
+  });
+
+  it("signed out: the way into settings, because the rail's foot is not on screen", () => {
+    // Settings is where the language is chosen, and the rail that used to carry
+    // the gear is not drawn while nobody is signed in.
+    const side = leftSection(render([], { env: { authenticated: false } }));
+    expect(side).toContain('data-testid="open-settings"');
+    expect(side).toContain('aria-label="设置"');
+    expect(side).not.toContain('data-testid="toggle-sidebar"');
+    // No seam is drawn either: there is no rail column for it to land on.
+    expect(side).toContain('data-rail="closed"');
+  });
+
+  it("两处入口从不同时出现", () => {
+    for (const authenticated of [true, false]) {
+      const side = leftSection(render([shell(null)], { env: { authenticated } }));
+      const count = (side.match(/data-testid="(toggle-sidebar|open-settings)"/g) ?? []).length;
+      expect(count).toBe(1);
+    }
   });
 });
