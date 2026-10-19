@@ -174,10 +174,24 @@ export interface SessionsSlice {
 export interface EnvironmentSlice {
   env: EnvStatus | null;
   usage: UsageReport | null;
+  /**
+   * A reading is on its way and there is nothing to show yet — the state the
+   * status bar draws a skeleton for. Distinct from `usage.balance === null`,
+   * which means "read, and the answer has no number".
+   */
+  usagePending: boolean;
+  /**
+   * The address that was signed in before the current one — set when a refresh
+   * sees a different account, cleared once the list has been reconciled.
+   * The session records have no owner, so this is how the rail can say whose
+   * they are.
+   */
+  previousAccount: string | null;
   /** The banner: the CLI or the runtime failed to answer. */
   error: string | null;
 
   loadUsage(): Promise<void>;
+  clearPreviousAccount(): void;
   /**
    * Environment and quota are always read together; they answer as a pair.
    * Resolves to the fresh `authenticated` flag, which the login flow reports on.

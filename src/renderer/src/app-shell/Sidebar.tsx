@@ -68,6 +68,8 @@ export function Sidebar() {
   const untrackedSessions = useAppStore((state) => state.untrackedSessions);
   const untrackedError = useAppStore((state) => state.untrackedError);
   const runtimeEndpoints = useAppStore((state) => state.runtimeEndpoints);
+  const previousAccount = useAppStore((state) => state.previousAccount);
+  const signedOut = useAppStore((state) => state.env?.authenticated === false);
   const selectedSession = useAppStore((state) => state.selectedSession);
   const tabs = useAppStore((state) => state.tabs);
   const connections = useAppStore((state) => state.connections);
@@ -117,9 +119,13 @@ export function Sidebar() {
             variant="ghost"
             size="sm"
             icon
+            // Nothing to create until somebody is signed in; the front door is
+            // where the way in lives, and a create that can only fail is worse
+            // than a control that says why it is unavailable.
+            disabled={signedOut}
             onClick={openNewSession}
-            aria-label={t("sidebar.newSessionTitle", "新建会话")}
-            title={t("sidebar.newSessionTitle", "新建会话")}
+            aria-label={signedOut ? t("sidebar.signInFirst", "先登录 Google 账号") : t("sidebar.newSessionTitle", "新建会话")}
+            title={signedOut ? t("sidebar.signInFirst", "先登录 Google 账号") : t("sidebar.newSessionTitle", "新建会话")}
           >
             <PlusIcon size={14} />
           </Button>
@@ -159,6 +165,27 @@ export function Sidebar() {
           <p className="hint" style={{ padding: "var(--space-2)" }} title={untrackedError}>
             {t("sidebar.untrackedUnavailable", "读不到云端运行时列表（令牌过期或网络不通），点上面的同步重试。")}
           </p>
+        )}
+
+        {/*
+          A different account signed in since these records were made. Nothing is
+          deleted on its own: these rows are the only copy, and switching back is
+          a legitimate thing to do. The way out is the sync that already exists —
+          it is what prunes the list against the server.
+        */}
+        {previousAccount && sessions.length > 0 && (
+          <div className="sidebar__previous-account" data-testid="previous-account">
+            <p className="hint">
+              {t(
+                "sidebar.previousAccount",
+                "这些记录属于之前登录的账号（{{email}}）。同步会按当前账号清理它们。",
+                { email: previousAccount },
+              )}
+            </p>
+            <Button variant="outline" size="sm" disabled={syncing} onClick={() => void syncSessions()}>
+              {t("sidebar.previousAccountSync", "同步并清理")}
+            </Button>
+          </div>
         )}
 
         {sessions.map((session) => {

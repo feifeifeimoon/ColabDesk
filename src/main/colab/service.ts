@@ -7,12 +7,13 @@
  */
 
 import { existsSync } from "node:fs";
+import { fetchUsage } from "./usage";
 import type { RuntimeList } from "@shared/api";
 import type { ColabEnvironment, CommandReport, EnvStatus, Session, SshSetup, UsageReport } from "@shared/types";
 import type { LogSink } from "../log-file";
 import { accountStatus } from "./account";
 import { fetchAssignments, type Assignment } from "./assignments";
-import { combined, needsLogin, parseUsage, parseVersion, readManifestVersion, resolveCli, runCli, type ResolvedCli } from "./cli";
+import { combined, parseVersion, readManifestVersion, resolveCli, runCli, type ResolvedCli } from "./cli";
 import { isTransientNetworkFailure } from "./network-retry";
 import { authState, configDir, findRawSession, loadRawSessions, loadSessions, sessionsFile } from "./sessions";
 import { removeEntry, writeEntry } from "./ssh-config";
@@ -59,6 +60,32 @@ export class Service {
     private readonly bundledDir?: string,
     private readonly log?: LogSink,
   ) {}
+
+  /**
+   * The CLI's version, asked at most once per process.
+   *
+   * The bundled runtime carries it in `manifest.json`, so the common case is a
+   * file read. Otherwise it costs an interpreter start — 3.4s measured, offline
+   * — and a running process cannot change the CLI it resolved, so the first
+   * answer is the answer.
+   */
+  private cliVersionCache: { known: boolean; value: string | null } = { known: false, value: null };
+
+  private async cliVersion(cli: ResolvedCli | null): Promise<string | null> {
+    if (!cli) return null;
+    if (cli.source === "bundled" && this.bundledDir) {
+      const fromManifest = readManifestVersion(this.bundledDir);
+      if (fromManifest) return fromManifest;
+    }
+    if (this.cliVersionCache.known) return this.cliVersionCache.value;
+    try {
+      const output = await runCli(cli, ["version"], { timeoutMs: QUICK_TIMEOUT_MS });
+      this.cliVersionCache = { known: true, value: parseVersion(combined(output)) };
+    } catch {
+      this.cliVersionCache = { known: true, value: null };
+    }
+    return this.cliVersionCache.value;
+  }
 
   private cli(): ResolvedCli {
     const cli = resolveCli(this.bundledDir);
@@ -118,16 +145,7 @@ export class Service {
     const account_ = await accountStatus(this.log).catch(() => ({ account: null, eligibility: null }));
 
     const cli = resolveCli(this.bundledDir);
-    let cliVersion: string | null = null;
-    if (cli) {
-      try {
-        const output = await runCli(cli, ["version"], { timeoutMs: QUICK_TIMEOUT_MS });
-        cliVersion = parseVersion(combined(output));
-        if (!cliVersion && this.bundledDir) cliVersion = readManifestVersion(this.bundledDir);
-      } catch {
-        if (this.bundledDir) cliVersion = readManifestVersion(this.bundledDir);
-      }
-    }
+    const cliVersion = await this.cliVersion(cli);
 
     const auth = authState();
     const dir = configDir();
@@ -184,24 +202,7 @@ export class Service {
   }
 
   async usage(): Promise<UsageReport> {
-    try {
-      const report = await this.runRetrying(["usage"], QUICK_TIMEOUT_MS);
-      return {
-        ok: report.ok,
-        needs_login: needsLogin(report.output),
-        usage: parseUsage(report.output),
-        error: report.error,
-        attempts: report.attempts,
-      };
-    } catch (error) {
-      return {
-        ok: false,
-        needs_login: false,
-        usage: { balance: null, rate: null, assignments: null },
-        error: (error as Error).message,
-        attempts: 1,
-      };
-    }
+    return fetchUsage(this.log);
   }
 
   async createSession(options: {

@@ -1,10 +1,78 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
+const store = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
+
 vi.mock("../store", () => ({
-  useAppStore: (select: (state: unknown) => unknown) => select({}),
+  useAppStore: (select: (state: unknown) => unknown) => select(store.current),
 }));
 
-import { balanceMeterTone, computeBalanceRatio } from "./AppShell";
+import type { UsageReport } from "@shared/types";
+import { setRendererUiLanguage } from "../i18n/i18n";
+import { balanceMeterTone, computeBalanceRatio, StatusBar } from "./AppShell";
+
+const baseState = {
+  usage: null as UsageReport | null,
+  usagePending: true,
+  tabs: [] as unknown[],
+  sessions: [] as unknown[],
+  connections: {},
+  update: { state: "idle", version: null },
+  openSettings: vi.fn(),
+};
+
+/* i18next answers verbatim templates until it has a language. */
+async function render(): Promise<string> {
+  await setRendererUiLanguage("zh");
+  return renderToStaticMarkup(createElement(StatusBar));
+}
+
+function reading(balance: number, rate: number, assignments: number): UsageReport {
+  return {
+    ok: true,
+    needs_login: false,
+    usage: { balance, rate, assignments },
+    error: null,
+    attempts: 1,
+  };
+}
+
+describe("the status bar before the first reading", () => {
+  it("draws skeletons, and never a zero", async () => {
+    store.current = { ...baseState, usage: null, usagePending: true };
+    const html = await render();
+
+    expect(html).toContain('aria-busy="true"');
+    expect(html).toContain("skeleton--balance");
+    expect(html).toContain("skeleton--rate");
+    // `0.00/h` is a reading. Unread is not "no spend".
+    expect(html).not.toContain("0.00/h");
+    expect(html).not.toContain("— CU");
+    // An unknown balance is not 0%.
+    expect(html).not.toContain("aria-valuenow");
+  });
+
+  it("stops pulsing once the read has settled without a number", async () => {
+    store.current = { ...baseState, usage: null, usagePending: false };
+    const html = await render();
+
+    expect(html).toContain("— CU");
+    expect(html).toContain("—/h");
+    expect(html).not.toContain("skeleton");
+    expect(html).not.toContain('aria-busy="true"');
+  });
+
+  it("shows the numbers that arrived", async () => {
+    store.current = { ...baseState, usage: reading(395.59, 1.25, 2), usagePending: false };
+    const html = await render();
+
+    expect(html).toContain("395.59 CU");
+    expect(html).toContain("1.25/h");
+    expect(html).not.toContain("skeleton");
+    expect(html).toContain('aria-valuenow="79"');
+  });
+});
 
 describe("computeBalanceRatio", () => {
   it("returns 0 for zero, negative, or invalid balance", () => {

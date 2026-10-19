@@ -19,10 +19,14 @@ export function registerColabHandlers({ service, usageHistory, bundledDir, log }
 
   // `app.getVersion()` is an Electron concern, so it is merged in here rather
   // than pushed down into the Colab domain service.
-  ipcMain.handle(IPC.envStatus, async (): Promise<EnvStatus> => ({
-    ...(await service.envStatus()),
-    app_version: app.getVersion(),
-  }));
+  ipcMain.handle(IPC.envStatus, async (): Promise<EnvStatus> => {
+    const status = await service.envStatus();
+    // The account behind the quota also owns the usage history. A *different*
+    // account starts a new curve instead of joining two balances — see
+    // `UsageHistory.rotate`.
+    if (usageHistory.noteAccount(status.account?.subject ?? null)) usageHistory.rotate();
+    return { ...status, app_version: app.getVersion() };
+  });
   ipcMain.handle(IPC.listSessions, () => service.listSessions());
   ipcMain.handle(IPC.listUntracked, () => service.listUntracked());
   // Every reading the renderer asks for is also a point on the usage curve, so

@@ -70,7 +70,10 @@
     "menuStoppingSession": "Stopping…",
     "menuActionLabel": "Actions for {{name}}",
     "settings": "Settings",
-    "settingsTitle": "Settings (Ctrl+,)"
+    "settingsTitle": "Settings (Ctrl+,)",
+    "signInFirst": "Sign in with Google first",
+    "previousAccount": "These records belong to the account that was signed in before ({{email}}). Sync cleans them up for the current account.",
+    "previousAccountSync": "Sync and clean up"
   },
   "toasts": {
     "dismiss": "Dismiss"
@@ -105,7 +108,8 @@
     "emptyGetStarted": "Create a runtime to get started.",
     "newTerminal": "New terminal",
     "newSession": "New session",
-    "expandSidebar": "Expand sidebar"
+    "expandSidebar": "Expand sidebar",
+    "signInPrompt": "Sign in with your Google account to create a runtime."
   },
   "terminal": {
     "connecting": "Connecting to {{session}} …",
@@ -316,7 +320,7 @@
     "terminalThemeDarkDesc": "The terminal's ANSI palette while the app is dark.",
     "terminalThemeLightLabel": "While light",
     "terminalThemeLightDesc": "The terminal's ANSI palette while the app is light.",
-    "terminalThemeLightNeedsFollow": "Turn on \u201cFollow the app's light/dark\u201d first.",
+    "terminalThemeLightNeedsFollow": "Turn on “Follow the app's light/dark” first.",
     "terminalPanelType": "Type",
     "terminalFontLabel": "Font",
     "terminalFontDesc": "Missing fonts fall back automatically to bundled Geist Mono.",

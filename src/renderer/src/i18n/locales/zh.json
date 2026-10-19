@@ -70,7 +70,10 @@
     "menuStoppingSession": "停止中…",
     "menuActionLabel": "{{name}} 的操作",
     "settings": "设置",
-    "settingsTitle": "设置（Ctrl+,）"
+    "settingsTitle": "设置（Ctrl+,）",
+    "signInFirst": "先登录 Google 账号",
+    "previousAccount": "这些记录属于之前登录的账号（{{email}}）。同步会按当前账号清理它们。",
+    "previousAccountSync": "同步并清理"
   },
   "toasts": {
     "dismiss": "关闭提示"
@@ -105,7 +108,8 @@
     "emptyGetStarted": "新建一个运行时开始使用。",
     "newTerminal": "新建终端",
     "newSession": "新建会话",
-    "expandSidebar": "展开会话栏"
+    "expandSidebar": "展开会话栏",
+    "signInPrompt": "先登录 Google 账号，才能创建运行时。"
   },
   "terminal": {
     "connecting": "正在连接 {{session}} …",

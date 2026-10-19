@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import {
+  UsageHistory,
   bucketKey,
   bucketize,
   mergeSamples,
@@ -150,5 +154,61 @@ describe("mergeSamples", () => {
   it("keeps one reading per instant, oldest first", () => {
     const merged = mergeSamples([sample(2026, 10, 9, 12, 2)], [sample(2026, 10, 9, 10, 1), sample(2026, 10, 9, 12, 3)]);
     expect(merged.map((entry) => entry.balance)).toEqual([1, 3]);
+  });
+});
+
+describe("UsageHistory and the account behind it", () => {
+  let directory = "";
+
+  afterEach(() => {
+    if (directory) rmSync(directory, { recursive: true, force: true, maxRetries: 5 });
+    directory = "";
+  });
+
+  const history = (): { history: UsageHistory; file: string; log: string } => {
+    directory = mkdtempSync(join(tmpdir(), "colabdesk-history-"));
+    const file = join(directory, "usage.jsonl");
+    const log = join(directory, "colab.log");
+    return { history: new UsageHistory(file, log), file, log };
+  };
+
+  it("第一次看到账号不算切换，换一个才算", () => {
+    const { history: store } = history();
+
+    expect(store.noteAccount("subject-a")).toBe(false);
+    expect(store.noteAccount("subject-a")).toBe(false);
+    expect(store.noteAccount("subject-b")).toBe(true);
+    expect(store.noteAccount(null)).toBe(false);
+  });
+
+  it("切换账号后曲线从零开始：旧样本挪到一边，CLI 日志也不再回填", () => {
+    const { history: store, file, log } = history();
+    // The backfill alone would give the curve a reading.
+    writeFileSync(
+      log,
+      [
+        "2026-09-01 10:00:00,000 - colab_cli.client - DEBUG - Response Body: )]}'",
+        '{"currentBalance":500,"consumptionRateHourly":0,"assignmentsCount":0}',
+      ].join("\n"),
+    );
+    expect(store.trend().first_sample).not.toBeNull();
+
+    store.rotate(new Date("2026-10-19T12:00:00.000Z"));
+
+    expect(existsSync(file)).toBe(false);
+    expect(readdirSync(directory).some((name) => name.startsWith("usage.jsonl."))).toBe(true);
+    // Another account's spend must not sit on this account's curve.
+    expect(store.trend().first_sample).toBeNull();
+  });
+
+  it("转动时把已有样本原样保留在旁边的文件里", () => {
+    const { history: store, file } = history();
+    const sample = { at: "2026-10-18T10:00:00.000Z", balance: 400, rate: 1, assignments: 1 };
+    writeFileSync(file, `${JSON.stringify(sample)}\n`);
+    store.rotate(new Date("2026-10-19T12:00:00.000Z"));
+
+    const kept = readdirSync(directory).find((name) => name.startsWith("usage.jsonl."));
+    expect(kept, "旧样本应当留在磁盘上").toBeDefined();
+    expect(readFileSync(join(directory, kept as string), "utf8")).toContain("400");
   });
 });

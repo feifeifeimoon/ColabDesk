@@ -18,6 +18,7 @@ import { BrandLockup } from "../../app-shell/BrandLockup";
 import { Button } from "../../components/ui/Button";
 import { ChartIcon, ChipIcon, FolderIcon, StarIcon, TerminalIcon } from "../../components/ui/icons";
 import { openExternal } from "../../lib/api";
+import { LoginPanel } from "../login/LoginPanel";
 import {
   REPOSITORY,
   REPOSITORY_URL,
@@ -34,6 +35,11 @@ export function StartPage() {
   const openTab = useAppStore((state) => state.openTab);
   const openNewSession = useAppStore((state) => state.openNewSession);
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
+  const refreshEnvironment = useAppStore((state) => state.refreshEnvironment);
+  // `false` is "read, and nobody is signed in"; `null` is "not read yet" — the
+  // front door must not guess between them, so only a known `false` changes it.
+  const authenticated = useAppStore((state) => state.env?.authenticated ?? null);
+  const signedOut = authenticated === false;
 
   if (selectedSession !== null) {
     return (
@@ -68,19 +74,28 @@ export function StartPage() {
           {t("home.tagline", "Google Colab 运行时的桌面 SSH 控制台")}
         </p>
         <p className="startpage__next">
-          {hasSessions
-            ? t("workbench.emptyChooseSession", "选一个会话，或新建一个运行时。")
-            : t("workbench.emptyGetStarted", "新建一个运行时开始使用。")}
+          {signedOut
+            ? t("workbench.signInPrompt", "先登录 Google 账号，才能创建运行时。")
+            : hasSessions
+              ? t("workbench.emptyChooseSession", "选一个会话，或新建一个运行时。")
+              : t("workbench.emptyGetStarted", "新建一个运行时开始使用。")}
         </p>
 
         <div className="startpage__actions">
-          <Button
-            variant="primary"
-            onClick={openNewSession}
-            title={t("home.newSessionTitle", "新建会话（Ctrl+Shift+N）")}
-          >
-            {t("workbench.newSession", "新建会话")}
-          </Button>
+          {signedOut ? (
+            /* The same panel the settings page mounts, in its signed-out form:
+               the front door's one action *is* signing in. One implementation,
+               two places it is needed. */
+            <LoginPanel onFinished={refreshEnvironment} authenticated={false} />
+          ) : (
+            <Button
+              variant="primary"
+              onClick={openNewSession}
+              title={t("home.newSessionTitle", "新建会话（Ctrl+Shift+N）")}
+            >
+              {t("workbench.newSession", "新建会话")}
+            </Button>
+          )}
           {!sidebarOpen && hasSessions && (
             <Button
               onClick={toggleSidebar}

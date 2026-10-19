@@ -358,6 +358,7 @@ const CONNECTION_TONE: Record<string, "good" | "warn" | "danger" | "neutral"> = 
 export function StatusBar() {
   const { t } = useTranslation();
   const usage = useAppStore((state) => state.usage);
+  const usagePending = useAppStore((state) => state.usagePending);
   const tabs = useAppStore((state) => state.tabs);
   const sessions = useAppStore((state) => state.sessions);
   const connections = useAppStore((state) => state.connections);
@@ -374,8 +375,9 @@ export function StatusBar() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const balance = usage?.usage.balance ?? null;
-  const rate = usage?.usage.rate ?? 0;
-  const assignments = usage?.usage.assignments ?? 0;
+  // `null`, not `0`: an unread rate must not print as "no spend".
+  const rate = usage?.usage.rate ?? null;
+  const assignments = usage?.usage.assignments ?? null;
   // Shells only: a file tab is a tab, but it is not a terminal, and this
   // readout has always meant "how many shells are open".
   const terminalCount = tabs.filter((tab) => tab.kind === "shell").length;
@@ -384,13 +386,15 @@ export function StatusBar() {
   const meterTone = balanceMeterTone(ratio);
 
   const projectedHours =
-    balance !== null && balance > 0 && rate > 0
+    balance !== null && balance > 0 && rate !== null && rate > 0
       ? (balance / rate).toFixed(1)
       : null;
 
   const projectedText = projectedHours
     ? t("statusbar.projectedHours", "预计可用约 {{hours}} 小时", { hours: projectedHours })
-    : t("statusbar.noOngoingRate", "无持续扣费");
+    : balance === null
+      ? "—"
+      : t("statusbar.noOngoingRate", "无持续扣费");
 
   const openPopover = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -413,13 +417,15 @@ export function StatusBar() {
     <footer className="statusbar">
       <div
         className="statusbar__group statusbar__group--interactive"
+        aria-busy={usagePending || undefined}
         onMouseEnter={openPopover}
         onMouseLeave={closePopover}
       >
         <div
           className="statusbar__meter"
           role="progressbar"
-          aria-valuenow={Math.round(ratio * 100)}
+          // Unknown is not zero: a bar that reported 0% would say the account is empty.
+          aria-valuenow={balance === null ? undefined : Math.round(ratio * 100)}
           aria-valuemin={0}
           aria-valuemax={100}
         >
@@ -430,17 +436,27 @@ export function StatusBar() {
         </div>
 
         <span className="statusbar__item" data-testid="statusbar-balance">
-          {balance !== null
-            ? t("statusbar.balanceUnit", "{{balance}} CU", { balance: balance.toFixed(2) })
-            : "— CU"}
+          {usagePending ? (
+            <span className="skeleton skeleton--balance" aria-hidden="true" />
+          ) : balance !== null ? (
+            t("statusbar.balanceUnit", "{{balance}} CU", { balance: balance.toFixed(2) })
+          ) : (
+            "— CU"
+          )}
         </span>
 
         <span className="statusbar__sep" aria-hidden="true">·</span>
 
         <span className="statusbar__item" data-testid="statusbar-rate">
-          {rate > 0
-            ? t("statusbar.rateUnit", "~{{rate}}/h", { rate: rate.toFixed(2) })
-            : t("statusbar.rateUnit", "0.00/h", { rate: "0.00" })}
+          {usagePending ? (
+            <span className="skeleton skeleton--rate" aria-hidden="true" />
+          ) : rate === null ? (
+            "—/h"
+          ) : rate > 0 ? (
+            t("statusbar.rateUnit", "~{{rate}}/h", { rate: rate.toFixed(2) })
+          ) : (
+            t("statusbar.rateUnit", "0.00/h", { rate: "0.00" })
+          )}
         </span>
 
         <span className="statusbar__sep" aria-hidden="true">·</span>
@@ -448,10 +464,18 @@ export function StatusBar() {
         <span
           className="statusbar__item"
           data-testid="statusbar-assignments"
-          title={t("statusbar.activeSessionsTitle", "活跃会话：{{count}}", { count: assignments })}
+          title={
+            assignments === null
+              ? undefined
+              : t("statusbar.activeSessionsTitle", "活跃会话：{{count}}", { count: assignments })
+          }
         >
           <ActivityIcon size={13} />
-          <span>{assignments}</span>
+          {usagePending ? (
+            <span className="skeleton skeleton--count" aria-hidden="true" />
+          ) : (
+            <span>{assignments ?? "—"}</span>
+          )}
         </span>
 
         {popoverOpen && (
@@ -466,7 +490,7 @@ export function StatusBar() {
               <div
                 className="statusbar__meter"
                 role="progressbar"
-                aria-valuenow={Math.round(ratio * 100)}
+                aria-valuenow={balance === null ? undefined : Math.round(ratio * 100)}
               >
                 <div
                   className={`statusbar__meter-bar statusbar__meter-bar--${meterTone}`}
@@ -480,9 +504,11 @@ export function StatusBar() {
               </span>
               <span className="statusbar__sep" aria-hidden="true">·</span>
               <span>
-                {rate > 0
-                  ? t("statusbar.rateUnit", "-{{rate}}/h", { rate: rate.toFixed(2) })
-                  : "0.00/h"}
+                {rate === null
+                  ? "—/h"
+                  : rate > 0
+                    ? t("statusbar.rateUnit", "-{{rate}}/h", { rate: rate.toFixed(2) })
+                    : "0.00/h"}
               </span>
               <span className="statusbar__sep" aria-hidden="true">·</span>
               <span>{projectedText}</span>

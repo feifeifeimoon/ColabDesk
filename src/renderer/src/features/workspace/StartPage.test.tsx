@@ -26,9 +26,11 @@ const base = {
   selectedSession: null as string | null,
   sessions: [] as unknown[],
   sidebarOpen: true,
+  env: null as { authenticated: boolean } | null,
   openTab: noop,
   openNewSession: noop,
   toggleSidebar: noop,
+  refreshEnvironment: async () => true,
 };
 
 beforeEach(() => {
@@ -82,6 +84,33 @@ describe("a session that has no shell yet", () => {
   });
 });
 
+describe("nobody is signed in yet", () => {
+  beforeEach(() => {
+    store.current = { ...base, env: { authenticated: false } };
+  });
+
+  it("the front door's one action is signing in", () => {
+    const markup = render();
+
+    // The panel's own button, in the slot the new-session button would occupy —
+    // and still exactly one affirmative action on the screen.
+    expect(markup).toContain("授权登录 Google 账号");
+    expect(markup).not.toContain("新建会话");
+    expect(markup.match(/btn--primary/g)).toHaveLength(1);
+  });
+
+  it("says why, instead of offering a create that can only fail", () => {
+    expect(text(render())).toContain("先登录 Google 账号，才能创建运行时。");
+  });
+
+  it("未知登录状态不冒充未登录", () => {
+    // `null` is "not read yet"; guessing either way would flash the wrong action.
+    store.current = { ...base, env: null };
+    expect(render()).toContain("新建会话");
+    expect(text(render())).not.toContain("先登录 Google 账号");
+  });
+});
+
 describe("in English", () => {
   afterEach(async () => {
     await setRendererUiLanguage("zh");
@@ -100,6 +129,12 @@ describe("in English", () => {
 
   it("中途停顿的那一屏也不出现中文", async () => {
     store.current = { ...base, selectedSession: "alpha", sessions: [{}] };
+    await setRendererUiLanguage("en");
+    noChinese(render());
+  });
+
+  it("还没登录的那一屏也不出现中文", async () => {
+    store.current = { ...base, env: { authenticated: false } };
     await setRendererUiLanguage("en");
     noChinese(render());
   });

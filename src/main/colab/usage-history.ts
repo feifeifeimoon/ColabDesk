@@ -12,7 +12,7 @@
  * root) so the arithmetic below stays unit-testable.
  */
 
-import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import type { UsageBucket, UsageGranularity, UsageReport, UsageTrend } from "@shared/types";
 
 /** One balance reading. `at` is ISO-8601 UTC. */
@@ -208,12 +208,63 @@ export function totalSpend(samples: UsageSample[]): number {
  */
 export class UsageHistory {
   private imported: UsageSample[] | null = null;
+  /** Which account the samples belong to, and whether a switch ever happened. */
+  private readonly subjectFile: string;
+  private readonly rotatedFile: string;
 
   constructor(
     private readonly file: string,
     /** The CLI's debug log, read once as a backfill for the past. */
     private readonly logFile: string,
-  ) {}
+  ) {
+    this.subjectFile = `${file}.account`;
+    this.rotatedFile = `${file}.rotated`;
+  }
+
+  /**
+   * Notes which account the stored samples belong to; true when it changed.
+   *
+   * The samples themselves carry no account, because the balance they record
+   * has no owner in the endpoint that returns it — so the owner is remembered
+   * beside them. First sight is not a change: there was nothing to contradict.
+   */
+  noteAccount(subject: string | null): boolean {
+    if (!subject) return false;
+    let previous: string | null = null;
+    try {
+      previous = readFileSync(this.subjectFile, "utf8").trim() || null;
+    } catch {
+      previous = null;
+    }
+    if (previous === subject) return false;
+    try {
+      writeFileSync(this.subjectFile, subject);
+    } catch {
+      // A read-only disk costs the detection, never the app.
+    }
+    return previous !== null;
+  }
+
+  /**
+   * Starts a new series after an account switch.
+   *
+   * Spending is not comparable across accounts — the first reading of the new
+   * one makes a delta against the last of the old one, which reads as a huge
+   * spend or a top-up that never happened — so the old samples are moved aside
+   * (they are the other account's history, still readable) and the curve starts
+   * from the first reading of the new account. The CLI's log stops being
+   * backfilled for the same reason.
+   */
+  rotate(now = new Date()): void {
+    const stamp = now.toISOString().replace(/[:.]/g, "-");
+    try {
+      if (existsSync(this.file)) renameSync(this.file, `${this.file}.${stamp}`);
+      writeFileSync(this.rotatedFile, stamp);
+    } catch {
+      // Nothing was lost: the series simply restarts around the old samples.
+    }
+    this.imported = [];
+  }
 
   /** Records a reading. Never throws: history must not break the status bar. */
   record(report: UsageReport): void {
@@ -238,6 +289,9 @@ export class UsageHistory {
    */
   private backfill(): UsageSample[] {
     if (this.imported) return this.imported;
+    // After a switch the CLI's log belongs to another account; importing it
+    // would put two accounts on one curve.
+    if (existsSync(this.rotatedFile)) return (this.imported = []);
     const stored = readSamples(this.file);
     const earliest = stored[0]?.at;
     let imported: UsageSample[] = [];
