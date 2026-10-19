@@ -120,29 +120,11 @@ export function LoginPanel({
     <div className="login">
       {running ? (
         <>
-          {/* 1. where to look, 2. the fallbacks, 3. the one thing to do,
-                 4. the way out. */}
           {message && <p className="hint">{message}</p>}
-          {url && (
-            <div className="row">
-              <Button variant="outline" size="sm" onClick={() => openExternal(url)}>
-                {t("login.openInBrowser", "在浏览器打开")}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  void navigator.clipboard?.writeText(url);
-                  setMessage(t("login.urlCopied", "授权链接已复制。"));
-                }}
-              >
-                {t("login.copyLink", "复制链接")}
-              </Button>
-            </div>
-          )}
           {url && (
             <form className="row" onSubmit={submit}>
               <Input
+                className="login__code"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 placeholder={t("login.codePlaceholder", "粘贴 Google 显示的授权码")}
@@ -153,9 +135,33 @@ export function LoginPanel({
               </Button>
             </form>
           )}
-          <Button variant="ghost" size="sm" onClick={cancel}>
-            {t("login.cancelLogin", "取消登录")}
-          </Button>
+          {/* The ways around the field are one quiet line of text links: the
+              field and its primary are the job, and a row of bordered buttons
+              above them competed with the thing being asked for. */}
+          <div className="login__secondary">
+            {url && (
+              <>
+                <Button variant="link" size="sm" onClick={() => openExternal(url)}>
+                  {t("login.openInBrowser", "在浏览器打开")}
+                </Button>
+                <span className="login__dot" aria-hidden="true">·</span>
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(url);
+                    setMessage(t("login.urlCopied", "授权链接已复制。"));
+                  }}
+                >
+                  {t("login.copyLink", "复制链接")}
+                </Button>
+                <span className="login__dot" aria-hidden="true">·</span>
+              </>
+            )}
+            <Button variant="link" size="sm" onClick={cancel}>
+              {t("login.cancelLogin", "取消登录")}
+            </Button>
+          </div>
         </>
       ) : authenticated ? (
         <>

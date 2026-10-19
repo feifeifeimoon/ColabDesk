@@ -1111,7 +1111,8 @@ kbd {
   align-items: center;
 }
 
-.startpage__signin .login .row {
+.startpage__signin .login .row,
+.startpage__signin .login__secondary {
   justify-content: center;
 }
 
@@ -2783,6 +2784,30 @@ textarea.input {
   flex-direction: column;
   gap: var(--space-3);
   align-items: flex-start;
+}
+
+/* The flow's secondary actions are one quiet line under the field: the field
+   and its primary are the job, these are the ways around it. */
+.login__secondary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  color: var(--mute);
+}
+
+.login__dot {
+  color: var(--hairline-strong);
+}
+
+/* The code is an opaque machine value: mono, like every other one. The
+   placeholder is a sentence written for a person, so it stays sans. */
+.login__code {
+  font-family: var(--font-mono);
+}
+
+.login__code::placeholder {
+  font-family: var(--font-sans);
 }
 
 .login .row,
