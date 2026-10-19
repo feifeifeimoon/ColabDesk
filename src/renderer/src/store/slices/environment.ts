@@ -11,6 +11,7 @@ export const createEnvironmentSlice: StateCreator<AppState, [], [], EnvironmentS
   usagePending: true,
   /** The address that signed in before the current one, until the list is cleaned. */
   previousAccount: null,
+  loginRunning: false,
   error: null,
 
   loadUsage: async () => {
@@ -66,6 +67,8 @@ export const createEnvironmentSlice: StateCreator<AppState, [], [], EnvironmentS
       return false;
     }
   },
+
+  setLoginRunning: (running) => set({ loginRunning: running }),
 
   clearPreviousAccount: () => {
     const remembered = readRememberedAccount();

@@ -31,6 +31,7 @@ const base = {
   openNewSession: noop,
   toggleSidebar: noop,
   refreshEnvironment: async () => true,
+  loginRunning: false,
 };
 
 beforeEach(() => {
@@ -145,5 +146,31 @@ describe("in English", () => {
     store.current = { ...base, env: { authenticated: false } };
     await setRendererUiLanguage("en");
     noChinese(render());
+  });
+});
+
+describe("while the sign-in flow is running", () => {
+  beforeEach(() => {
+    store.current = { ...base, env: { authenticated: false }, loginRunning: true };
+  });
+
+  it("keeps the brand and the step, and nothing that is selling", () => {
+    const markup = render();
+    const body = text(markup);
+
+    // The lockup is the anchor of the screen, not an argument on it.
+    expect(markup).toContain('aria-label="ColabDesk"');
+    expect(markup).toContain("startpage__signin");
+    // The claim, the capability lines and the ask belong to somebody deciding
+    // whether to use the app, not to somebody in the middle of signing in.
+    expect(body).not.toContain("Google Colab 运行时的桌面 SSH 控制台");
+    expect(body).not.toContain("申请 GPU 运行时");
+    expect(body).not.toContain("在 GitHub 上点个 Star");
+  });
+
+  it("流程结束后那一屏恢复", () => {
+    store.current = { ...base, env: { authenticated: false }, loginRunning: false };
+    expect(text(render())).toContain("申请 GPU 运行时");
+    expect(text(render())).toContain("在 GitHub 上点个 Star");
   });
 });

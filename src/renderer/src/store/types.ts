@@ -192,6 +192,9 @@ export interface EnvironmentSlice {
 
   loadUsage(): Promise<void>;
   clearPreviousAccount(): void;
+  /** True while the OAuth flow is waiting for a pasted code. */
+  loginRunning: boolean;
+  setLoginRunning(running: boolean): void;
   /**
    * Environment and quota are always read together; they answer as a pair.
    * Resolves to the fresh `authenticated` flag, which the login flow reports on.

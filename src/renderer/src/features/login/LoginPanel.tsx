@@ -11,6 +11,7 @@ import {
   submitLoginCode,
 } from "../../lib/api";
 import { Button } from "../../components/ui/Button";
+import { useAppStore } from "../../store";
 import { Input } from "../../components/ui/Field";
 
 /**
@@ -32,11 +33,16 @@ export function LoginPanel({
   authenticated?: boolean;
 }) {
   const { t } = useTranslation();
+  const setLoginRunning = useAppStore((state) => state.setLoginRunning);
   const [url, setUrl] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // A panel that goes away mid-flow (settings closed) leaves the screen focused
+  // on a step nobody is on any more.
+  useEffect(() => () => setLoginRunning(false), [setLoginRunning]);
 
   useEffect(() => {
     const unsubscribeUrl = onAuthUrl((payload) => {
@@ -47,6 +53,7 @@ export function LoginPanel({
     });
     const unsubscribeDone = onAuthDone(() => {
       setRunning(false);
+      setLoginRunning(false);
       setUrl(null);
       setCode("");
       void onFinished().then((authenticated) => {
@@ -61,16 +68,18 @@ export function LoginPanel({
       unsubscribeUrl();
       unsubscribeDone();
     };
-  }, [onFinished, t]);
+  }, [onFinished, setLoginRunning, t]);
 
   async function begin() {
     setRunning(true);
+    setLoginRunning(true);
     setError(null);
     setMessage(t("login.requestingUrl", "正在向 Google 申请授权链接…"));
     try {
       await startLogin();
     } catch (cause) {
       setRunning(false);
+      setLoginRunning(false);
       setMessage(null);
       setError(messageOf(cause));
     }
@@ -91,6 +100,7 @@ export function LoginPanel({
   async function cancel() {
     await cancelLogin();
     setRunning(false);
+    setLoginRunning(false);
     setUrl(null);
     setMessage(t("login.cancelled", "已取消登录。"));
   }
