@@ -227,7 +227,8 @@
     "restartTimeout": "Restart command timed out. Please try again later.",
     "restartedSuccess": "Restarted kernel for \"{{name}}\".",
     "syncFailed": "Sync failed.",
-    "sshConfigWritten": "Written to {{path}}: alias {{alias}} ({{command}})"
+    "sshConfigWritten": "Written to {{path}}: alias {{alias}} ({{command}})",
+    "summaryHighMem": "High-RAM"
   },
   "login": {
     "signInGoogle": "Sign in with Google Account",

@@ -227,7 +227,8 @@
     "restartTimeout": "重启命令超时，请稍后重试。",
     "restartedSuccess": "已重启「{{name}}」的内核。",
     "syncFailed": "同步失败。",
-    "sshConfigWritten": "已写入 {{path}}：别名 {{alias}}（{{command}}）"
+    "sshConfigWritten": "已写入 {{path}}：别名 {{alias}}（{{command}}）",
+    "summaryHighMem": "高内存"
   },
   "login": {
     "signInGoogle": "授权登录 Google 账号",

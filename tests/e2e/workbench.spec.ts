@@ -290,13 +290,18 @@ test("新建会话不提供本账号拿不到的加速器", async ({ page }) => 
   // 提示先说清楚能用什么，选项本身再逐个标注。
   await expect(dialog).toContainText("当前账号可用：G4 / A100 / L4 / T4 / V6E1 / V5E1");
 
-  const h100 = dialog.locator('option[value="H100"]');
-  expect(await h100.evaluate((option: HTMLOptionElement) => option.disabled)).toBe(true);
+  // Each option is a card with a native radio under it; the card is what a
+  // person sees and clicks, the radio is what carries the state.
+  const card = (value: string) => dialog.locator(`label:has(input[value="${value}"])`);
+  const h100 = card("H100");
+  expect(await h100.locator("input").evaluate((input: HTMLInputElement) => input.disabled)).toBe(true);
   await expect(h100).toContainText("当前账号不可用");
+  await expect(h100).toHaveClass(/accelerator-option--off/);
 
-  const t4 = dialog.locator('option[value="T4"]');
-  expect(await t4.evaluate((option: HTMLOptionElement) => option.disabled)).toBe(false);
+  const t4 = card("T4");
+  expect(await t4.locator("input").evaluate((input: HTMLInputElement) => input.disabled)).toBe(false);
   await expect(t4).not.toContainText("不可用");
+  await expect(t4).toHaveClass(/accelerator-option--chosen/);
 });
 
 // 对话框只该在打开那一刻重置自己：名字打进去要留下、选好的加速器不弹回默认、勾上的高内存
@@ -313,9 +318,12 @@ test("新建会话：填进去的东西不会被自己擦掉", async ({ page }) 
   await expect(name).toHaveValue("e2e-alpha");
 
   // 加速器：本账号的默认是 T4，选了 A100 之后不该弹回去。
-  const accelerator = dialog.locator("select");
-  await accelerator.selectOption("A100");
-  await expect(accelerator).toHaveValue("A100");
+  const a100 = dialog.locator('label:has(input[value="A100"])');
+  await a100.click();
+  await expect(dialog.locator('input[value="A100"]')).toBeChecked();
+  await expect(a100).toHaveClass(/accelerator-option--chosen/);
+  // The footer says what the button is about to create.
+  await expect(dialog.locator('[data-testid="session-summary"]')).toHaveText("A100");
 
   // 高内存：勾上就保持勾着。
   const highMem = dialog.getByRole("checkbox");

@@ -29,11 +29,11 @@ const ELIGIBILITY: AcceleratorEligibility = {
   fetched_at: "2026-10-12T00:00:00.000Z",
 };
 
-/** An option element, as the browser and the markup both spell it. */
+/** One picker card, from its `<label>` to the end of that card. */
 function option(markup: string, id: string): string {
-  const match = markup.match(new RegExp(`<option[^>]*value="${id}"[^>]*>[^<]*`));
-  if (!match) throw new Error(`option ${id} not found`);
-  return match[0];
+  const value = markup.indexOf(`value="${id}"`);
+  if (value < 0) throw new Error(`option ${id} not found`);
+  return markup.slice(markup.lastIndexOf("<label", value), markup.indexOf("</label>", value));
 }
 
 describe("accelerator availability", () => {
@@ -71,8 +71,21 @@ describe("accelerator availability", () => {
 
     expect(option(markup, "H100")).toContain("disabled");
     expect(option(markup, "H100")).toContain("当前账号不可用");
+    expect(option(markup, "H100")).toContain("accelerator-option--off");
     expect(option(markup, "T4")).not.toContain("disabled");
     expect(option(markup, "tpu:v6e1")).not.toContain("disabled");
+    // The picker is cards, not a dropdown: the options are all on screen.
+    expect(markup).not.toContain("<select");
+  });
+
+  it("shows the chosen machine in the footer, beside the one primary", () => {
+    const markup = renderToStaticMarkup(createElement(NewSessionDialog));
+
+    expect(option(markup, "T4")).toContain("accelerator-option--chosen");
+    expect(markup).toContain('data-testid="session-summary"');
+    expect(markup).toContain(">T4<");
+    // One affirmative action for the dialog, and it lives in the footer.
+    expect(markup.match(/btn--primary/g)).toHaveLength(1);
   });
 
   it("names what the account can use, so the list is not the only signal", () => {

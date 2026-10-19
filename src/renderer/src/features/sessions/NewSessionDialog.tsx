@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { AcceleratorEligibility, CommandReport } from "@shared/types";
 import { Button } from "../../components/ui/Button";
 import { CopyButton } from "../../components/ui/CopyButton";
-import { Checkbox, Field, Input, Select } from "../../components/ui/Field";
+import { Checkbox, Field, Input } from "../../components/ui/Field";
 import { Callout } from "../../components/ui/Notice";
 import { createSession, messageOf } from "../../lib/api";
 import { failureHint, failureLabel, failureReason } from "../../lib/failure";
@@ -120,9 +120,107 @@ function NewSessionForm() {
     }
   }
 
+  const chosenName =
+    accelerator === "cpu"
+      ? t("sessions.acceleratorCpu", "CPU（无加速器）")
+      : (ACCELERATORS.find((option) => option.id === accelerator)?.label ?? accelerator);
+  // The footer's left half: what the button is about to create, in the
+  // machine's voice. High memory is left out for the accelerators that only
+  // have one machine shape, because the checkbox is disabled for them too.
+  const summary = [
+    chosenName,
+    highMem && !SINGLE_SHAPE.has(accelerator) ? t("sessions.summaryHighMem", "高内存") : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
-    <Dialog title={t("sessions.newTitle", "新建会话")} onClose={closeNewSession}>
-      <form className="stack" onSubmit={submit}>
+    <Dialog
+      title={t("sessions.newTitle", "新建会话")}
+      onClose={closeNewSession}
+      footer={
+        <>
+          <span className="dialog__summary" data-testid="session-summary">
+            {summary}
+          </span>
+          <span className="row">
+            <Button variant="ghost" onClick={closeNewSession} disabled={pending}>
+              {t("sessions.cancelButton", "取消")}
+            </Button>
+            <Button variant="primary" type="submit" form="new-session-form" disabled={pending}>
+              {pending ? t("sessions.creatingButton", "正在申请运行时…") : t("sessions.createButton", "创建")}
+            </Button>
+          </span>
+        </>
+      }
+    >
+      <form id="new-session-form" className="stack" onSubmit={submit}>
+        {/*
+          The one decision this dialog exists for is a surface of choices, not a
+          dropdown: an accelerator is what the runtime will be, and the options
+          this account cannot get say so in place instead of being one keystroke
+          away (DESIGN: the strikethrough carries the meaning). Native radios sit
+          underneath, hidden, so the keyboard and the screen reader keep their
+          usual behaviour; the label is the card.
+        */}
+        <fieldset className="accelerator-picker" data-testid="accelerator-picker">
+          <legend className="accelerator-picker__legend">
+            {t("sessions.acceleratorLabel", "加速器")}
+          </legend>
+          {eligibility ? (
+            <p className="accelerator-picker__hint">
+              {t("sessions.acceleratorAvailable", "当前账号可用：{{list}}", {
+                list: [...eligibility.gpus, ...eligibility.tpus].join(" / "),
+              })}
+            </p>
+          ) : null}
+          <div className="accelerator-picker__grid">
+            {ACCELERATORS.map((option) => {
+              const off = isUnavailable(unavailable, option.id);
+              const chosen = accelerator === option.id;
+              return (
+                <label
+                  key={option.id}
+                  className={[
+                    "accelerator-option",
+                    chosen ? "accelerator-option--chosen" : "",
+                    off ? "accelerator-option--off" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  <input
+                    type="radio"
+                    className="visually-hidden"
+                    name="accelerator"
+                    value={option.id}
+                    checked={chosen}
+                    disabled={off}
+                    onChange={() => setAccelerator(option.id)}
+                  />
+                  <span className="accelerator-option__name">
+                    {option.id === "cpu"
+                      ? t("sessions.acceleratorCpu", "CPU（无加速器）")
+                      : option.label}
+                  </span>
+                  {off && (
+                    <span className="accelerator-option__note">
+                      {t("sessions.acceleratorUnavailable", "当前账号不可用")}
+                    </span>
+                  )}
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+
+        <Checkbox
+          label={t("sessions.highMemLabel", "高内存机型（需 Colab Pro/Pro+）")}
+          checked={highMem && !SINGLE_SHAPE.has(accelerator)}
+          disabled={SINGLE_SHAPE.has(accelerator)}
+          onChange={(e) => setHighMem(e.target.checked)}
+        />
+
         <Field label={t("sessions.nameLabel", "会话名称")} hint={t("sessions.nameHint", "留空将自动生成")}>
           <Input
             value={name}
@@ -132,43 +230,7 @@ function NewSessionForm() {
           />
         </Field>
 
-        <Field
-          label={t("sessions.acceleratorLabel", "加速器")}
-          hint={
-            eligibility
-              ? t("sessions.acceleratorAvailable", "当前账号可用：{{list}}", {
-                  list: [...eligibility.gpus, ...eligibility.tpus].join(" / "),
-                })
-              : undefined
-          }
-        >
-          <Select value={accelerator} onChange={(e) => setAccelerator(e.target.value)}>
-            {ACCELERATORS.map((option) => (
-              <option key={option.id} value={option.id} disabled={isUnavailable(unavailable, option.id)}>
-                {option.id === "cpu" ? t("sessions.acceleratorCpu", "CPU（无加速器）") : option.label}
-                {isUnavailable(unavailable, option.id) ? t("sessions.acceleratorUnavailable", "（当前账号不可用）") : ""}
-              </option>
-            ))}
-          </Select>
-        </Field>
-
-        <Checkbox
-          label={t("sessions.highMemLabel", "高内存机型（需 Colab Pro/Pro+）")}
-          checked={highMem && !SINGLE_SHAPE.has(accelerator)}
-          disabled={SINGLE_SHAPE.has(accelerator)}
-          onChange={(e) => setHighMem(e.target.checked)}
-        />
-
         <p className="hint">{t("sessions.waitingHint", "申请云端运行时可能需要数分钟，请耐心等待。")}</p>
-
-        <div className="row">
-          <Button variant="primary" type="submit" disabled={pending}>
-            {pending ? t("sessions.creatingButton", "正在申请运行时…") : t("sessions.createButton", "创建")}
-          </Button>
-          <Button variant="ghost" onClick={closeNewSession} disabled={pending}>
-            {t("sessions.cancelButton", "取消")}
-          </Button>
-        </div>
 
         {report?.error && <Callout tone="danger">{report.error}</Callout>}
         {report?.timed_out && (
