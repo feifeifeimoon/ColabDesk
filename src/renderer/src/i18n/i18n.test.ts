@@ -70,13 +70,13 @@ describe("i18n resolution and translation", () => {
     await setRendererUiLanguage("zh");
     expect(i18n.language).toBe("zh");
     expect(translate("topbar.brand")).toBe("ColabDesk");
-    expect(translate("home.tagline")).toBe("把远程 GPU 运行时当本地机器用");
+    expect(translate("home.tagline")).toBe("Google Colab 运行时的桌面 SSH 控制台");
     expect(translate("workbench.emptyNoShells", undefined, { name: "test-runtime" })).toBe("「test-runtime」还没有终端。");
 
     await setRendererUiLanguage("en");
     expect(i18n.language).toBe("en");
     expect(translate("topbar.brand")).toBe("ColabDesk");
-    expect(translate("home.tagline")).toBe("Run a remote GPU runtime like a local machine");
+    expect(translate("home.tagline")).toBe("A desktop SSH console for Google Colab runtimes");
     expect(translate("workbench.emptyNoShells", undefined, { name: "test-runtime" })).toBe('"test-runtime" has no active terminals.');
 
     // Reset back to zh

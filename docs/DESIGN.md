@@ -101,7 +101,7 @@ components:
 
 ## Overview
 
-ColabDesk is a **desktop console that treats a remote GPU runtime like a local machine**: an interactive terminal on the left, that runtime's filesystem on the right, session management and compute-unit quota behind both. Most of its screen time is spent hosting somebody else's interface (xterm, a file listing), so its own shell should **step back and frame the content** rather than compete with it.
+ColabDesk is a **desktop SSH console for Google Colab runtimes** — a client for a remote host, not an emulation of a local one: an interactive terminal on the left, that runtime's filesystem on the right, session management and compute-unit quota behind both. Most of its screen time is spent hosting somebody else's interface (xterm, a file listing), so its own shell should **step back and frame the content** rather than compete with it.
 
 The language exists to solve one problem: **carrying a large amount of machine state on restrained greys**. It gives that problem a small set of answers — one ink primary for every affirmative action; a five-step surface ladder so cards *sit on* the page rather than *float above* it; and an unambiguous typographic split so that a glance tells "the product is talking" from "the machine is talking".
 
@@ -297,7 +297,7 @@ With no terminal in the middle, the area is not blank — it is this app's **fro
 
 ```
               brand lockup: symbol + name (graphic, 200px)
-                 Run a remote GPU runtime like a local machine
+        A desktop SSH console for Google Colab runtimes
                  Pick a session, or create a runtime.      ← the next step
                     [ New session ]   [ Expand sidebar ]
    GPU Runtimes   Training & Inference   File Management   Usage Monitoring

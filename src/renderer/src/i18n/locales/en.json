@@ -83,7 +83,7 @@
     "updateRestart": "Restart to update"
   },
   "home": {
-    "tagline": "Run a remote GPU runtime like a local machine",
+    "tagline": "A desktop SSH console for Google Colab runtimes",
     "featureShellsTitle": "GPU Runtimes",
     "featureShellsLine": "Choose hardware specs and connect directly to an interactive shell.",
     "featureRunTitle": "Training & Inference",

@@ -11,8 +11,8 @@
 </p>
 
 <p align="center">
-  <strong>Run a Colab GPU runtime like a local machine.</strong><br/>
-  A real terminal, the runtime's files, and your compute units — in one window.
+  <strong>A desktop SSH console for Google Colab runtimes.</strong><br/>
+  SSH in, work in a real terminal, browse the runtime's files over SFTP, and watch the compute units it is spending — in one window.
 </p>
 
 <h3 align="center"><a href="https://github.com/feifeifeimoon/ColabDesk/releases"><ins>Download</ins></a></h3>

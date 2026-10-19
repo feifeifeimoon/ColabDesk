@@ -83,7 +83,7 @@
     "updateRestart": "重启以更新"
   },
   "home": {
-    "tagline": "把远程 GPU 运行时当本地机器用",
+    "tagline": "Google Colab 运行时的桌面 SSH 控制台",
     "featureShellsTitle": "申请 GPU 运行时",
     "featureShellsLine": "选择算力规格，直接接入交互式终端。",
     "featureRunTitle": "训练与推理工作流",
