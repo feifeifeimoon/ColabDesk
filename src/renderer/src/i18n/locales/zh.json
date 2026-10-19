@@ -234,7 +234,6 @@
     "switchAccount": "切换账号 / 重新授权",
     "signOut": "退出登录",
     "signedOut": "已退出登录，凭证已清除。",
-    "cancelLogin": "取消登录",
     "requestingUrl": "正在向 Google 申请授权链接…",
     "urlOpened": "浏览器已打开授权页面，完成登录后请将授权码粘贴至下方。",
     "submittingCode": "已提交授权码，正在等待验证结果…",

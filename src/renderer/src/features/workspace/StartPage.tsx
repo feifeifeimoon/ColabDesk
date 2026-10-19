@@ -95,7 +95,7 @@ export function StartPage() {
                the front door's one action *is* signing in. One implementation,
                two places it is needed. */
             <div className="startpage__signin">
-              <LoginPanel onFinished={refreshEnvironment} authenticated={false} />
+              <LoginPanel onFinished={refreshEnvironment} authenticated={false} cancelWithEscape />
             </div>
           ) : (
             <Button

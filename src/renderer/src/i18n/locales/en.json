@@ -234,7 +234,6 @@
     "switchAccount": "Switch account / Re-authorize",
     "signOut": "Sign out",
     "signedOut": "Signed out. Credentials removed.",
-    "cancelLogin": "Cancel Login",
     "requestingUrl": "Requesting authorization URL from Google…",
     "urlOpened": "Authorization page opened in browser. Complete login and paste the code below.",
     "submittingCode": "Submitting authorization code, waiting for verification…",

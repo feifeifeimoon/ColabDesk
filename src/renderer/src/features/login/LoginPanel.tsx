@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   cancelLogin,
@@ -27,10 +27,19 @@ import { Input } from "../../components/ui/Field";
 export function LoginPanel({
   onFinished,
   authenticated = false,
+  cancelWithEscape = false,
 }: {
   /** Reloads environment status; resolves to the fresh authenticated flag. */
   onFinished: () => Promise<boolean>;
   authenticated?: boolean;
+  /**
+   * Whether Escape leaves the flow — the invisible way out, so that the screen
+   * can be three things instead of four. The front door says yes (the key has
+   * nothing else to do there); Settings says no, where Escape already means
+   * "close settings", and one key with two meanings would cancel a login that
+   * was being filled in.
+   */
+  cancelWithEscape?: boolean;
 }) {
   const { t } = useTranslation();
   const setLoginRunning = useAppStore((state) => state.setLoginRunning);
@@ -40,9 +49,33 @@ export function LoginPanel({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Memoised because the Escape handler below depends on it; everything it
+  // touches is stable or a setter.
+  const cancel = useCallback(async () => {
+    await cancelLogin();
+    setRunning(false);
+    setLoginRunning(false);
+    setUrl(null);
+    setMessage(t("login.cancelled", "已取消登录。"));
+  }, [setLoginRunning, t]);
+
   // A panel that goes away mid-flow (settings closed) leaves the screen focused
   // on a step nobody is on any more.
   useEffect(() => () => setLoginRunning(false), [setLoginRunning]);
+
+  // Escape, for the front door only: the way out of a flow that has no visible
+  // exit. Capture, so nothing under it swallows the key first.
+  useEffect(() => {
+    if (!running || !cancelWithEscape) return;
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      void cancel();
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [cancel, cancelWithEscape, running]);
 
   useEffect(() => {
     const unsubscribeUrl = onAuthUrl((payload) => {
@@ -97,14 +130,6 @@ export function LoginPanel({
     }
   }
 
-  async function cancel() {
-    await cancelLogin();
-    setRunning(false);
-    setLoginRunning(false);
-    setUrl(null);
-    setMessage(t("login.cancelled", "已取消登录。"));
-  }
-
   async function handleLogout() {
     setError(null);
     try {
@@ -137,31 +162,27 @@ export function LoginPanel({
           )}
           {/* The ways around the field are one quiet line of text links: the
               field and its primary are the job, and a row of bordered buttons
-              above them competed with the thing being asked for. */}
-          <div className="login__secondary">
-            {url && (
-              <>
-                <Button variant="link" size="sm" onClick={() => openExternal(url)}>
-                  {t("login.openInBrowser", "在浏览器打开")}
-                </Button>
-                <span className="login__dot" aria-hidden="true">·</span>
-                <Button
-                  variant="link"
-                  size="sm"
-                  onClick={() => {
-                    void navigator.clipboard?.writeText(url);
-                    setMessage(t("login.urlCopied", "授权链接已复制。"));
-                  }}
-                >
-                  {t("login.copyLink", "复制链接")}
-                </Button>
-                <span className="login__dot" aria-hidden="true">·</span>
-              </>
-            )}
-            <Button variant="link" size="sm" onClick={cancel}>
-              {t("login.cancelLogin", "取消登录")}
-            </Button>
-          </div>
+              above them competed with the thing being asked for. Leaving is not
+              one of them — three links in a row read as three equal choices —
+              so it is Escape, and nothing is drawn for it. */}
+          {url && (
+            <div className="login__secondary">
+              <Button variant="link" size="sm" onClick={() => openExternal(url)}>
+                {t("login.openInBrowser", "在浏览器打开")}
+              </Button>
+              <span className="login__dot" aria-hidden="true">·</span>
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(url);
+                  setMessage(t("login.urlCopied", "授权链接已复制。"));
+                }}
+              >
+                {t("login.copyLink", "复制链接")}
+              </Button>
+            </div>
+          )}
         </>
       ) : authenticated ? (
         <>
