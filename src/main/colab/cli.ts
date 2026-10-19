@@ -192,6 +192,107 @@ export function combined(output: CliOutput): string {
   return parts.join("\n");
 }
 
+/**
+ * ESC[... — enough to drop rich/typer's colouring, because the surface that
+ * shows these lines is a log, not a terminal. Built from a char code so the
+ * source holds no control character.
+ */
+const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*[A-Za-z]`, "g");
+
+/**
+ * Split a chunk stream into lines, calling back for each complete one.
+ *
+ * A pipe can split anywhere — including between two characters — so the tail
+ * of every chunk is kept until its newline arrives.
+ */
+function lines(onLine: (line: string) => void): (chunk: string) => void {
+  let pending = "";
+  return (chunk: string) => {
+    pending += chunk;
+    const parts = pending.split("\n");
+    pending = parts.pop() ?? "";
+    for (const part of parts) {
+      const line = part.replace(/\r$/, "").replace(ANSI, "").trimEnd();
+      if (line) onLine(line);
+    }
+  };
+}
+
+/**
+ * The same spawn as `runCli`, with each line reported as it arrives.
+ *
+ * For a command whose progress is worth watching — creating a runtime prints
+ * `Creating session…` and then `Session READY.`, and a refusal prints its
+ * reason — the surface that started it should show those sentences as the CLI
+ * says them, not a spinner that guesses. Never retried: this one has side
+ * effects, and the rule that keeps it from running twice keeps it from running
+ * under a second implementation.
+ */
+export function runCliStreaming(
+  cli: ResolvedCli,
+  args: string[],
+  options: RunOptions,
+  onLine: (line: string) => void,
+): Promise<CliOutput> {
+  if (e2eMockEnabled()) {
+    const output = mockCliOutput(args);
+    for (const line of combined(output).split(/\r?\n/)) if (line.trim()) onLine(line);
+    return Promise.resolve(output);
+  }
+
+  return new Promise((resolve, reject) => {
+    let child;
+    try {
+      child = spawn(cli.exe, [...cli.prefix, ...args], {
+        cwd: options.cwd,
+        env: { ...process.env, ...cli.env },
+        windowsHide: true,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    } catch (error) {
+      reject(new Error(`启动 ${cli.label} 失败: ${(error as Error).message}`));
+      return;
+    }
+
+    let stdout = "";
+    let stderr = "";
+    let timedOut = false;
+    let settled = false;
+
+    child.stdout?.setEncoding("utf8");
+    child.stderr?.setEncoding("utf8");
+    const takeOut = lines(onLine);
+    const takeErr = lines(onLine);
+    child.stdout?.on("data", (chunk: string) => {
+      stdout += chunk;
+      takeOut(chunk);
+    });
+    child.stderr?.on("data", (chunk: string) => {
+      stderr += chunk;
+      takeErr(chunk);
+    });
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill();
+    }, options.timeoutMs);
+
+    child.on("error", (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(new Error(`启动 ${cli.label} 失败: ${error.message}`));
+    });
+
+    child.on("close", (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ code, stdout, stderr, timedOut });
+    });
+  });
+}
+
 /** `colab version` prints `Version: 0.7.4`. */
 export function parseVersion(text: string): string | null {
   for (const line of text.split(/\r?\n/)) {

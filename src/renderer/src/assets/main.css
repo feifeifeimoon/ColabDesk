@@ -819,6 +819,296 @@ kbd {
   flex: 1;
   min-height: 0;
   background: var(--canvas);
+  /* The runtime-setup console is drawn over this surface, so it needs the
+     surface as its containing block to cover exactly this column. */
+  position: relative;
+}
+
+/* ---- runtime setup: the middle column while a machine is commissioned ---- */
+
+/*
+  This surface *is* a machine, so it wears the terminal's palette — the one the
+  reader picked for terminals, which follows the app's polarity. The workbench
+  stays mounted underneath (its terminals are live SSH sessions) and the console
+  covers it; handing off to the terminal at the end changes no colour at all.
+
+  Every muted tone here is a mix of the palette's own foreground rather than a
+  grey from the app's ladder: the ground is the palette's, so the ink has to be
+  too.
+*/
+.setup {
+  --setup-mute: color-mix(in srgb, var(--terminal-fg) 58%, transparent);
+  --setup-faint: color-mix(in srgb, var(--terminal-fg) 34%, transparent);
+  --setup-wash: color-mix(in srgb, var(--terminal-fg) 9%, transparent);
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  overflow-y: auto;
+  background: var(--terminal-bg);
+  color: var(--terminal-fg);
+  font-family: var(--font-mono);
+  font-size: var(--text-copy);
+  line-height: 1.55;
+}
+
+.setup__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  color: var(--setup-mute);
+  font-size: var(--text-caption);
+}
+
+.setup__brand {
+  color: var(--terminal-fg);
+}
+
+.setup__sep {
+  color: var(--setup-faint);
+}
+
+.setup__form,
+.setup__console {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.setup__note {
+  margin: 0;
+  color: var(--setup-mute);
+  font-size: var(--text-caption);
+}
+
+.setup__group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.setup__question {
+  padding: 0;
+  color: var(--terminal-fg);
+  font-size: var(--text-caption);
+  font-weight: 600;
+}
+
+.setup__options {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.setup__option {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: 2px var(--space-1);
+  border-radius: var(--radius-xs);
+  color: var(--setup-mute);
+  cursor: pointer;
+}
+
+.setup__option:hover {
+  background: var(--setup-wash);
+}
+
+/* Chosen is marked, not filled: a terminal says "this one" with a cursor. */
+.setup__option--selected {
+  background: var(--setup-wash);
+  color: var(--terminal-fg);
+}
+
+.setup__option--off {
+  color: var(--setup-faint);
+  cursor: default;
+}
+
+.setup__option--off:hover {
+  background: none;
+}
+
+/* What the account cannot get: the strikethrough carries the meaning. */
+.setup__option--off .setup__name {
+  text-decoration: line-through;
+}
+
+.setup__option:has(.visually-hidden:focus-visible) {
+  outline: 1px solid var(--terminal-cursor);
+  outline-offset: 1px;
+}
+
+.setup__marker {
+  width: 1ch;
+  color: var(--terminal-cursor);
+}
+
+.setup__index {
+  width: 2ch;
+  color: var(--setup-faint);
+}
+
+.setup__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setup__off-note {
+  margin-left: var(--space-2);
+  color: var(--setup-faint);
+  font-size: var(--text-micro);
+}
+
+.setup__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.setup__row-note {
+  color: var(--setup-faint);
+  font-size: var(--text-micro);
+}
+
+.setup__row:has(.visually-hidden:focus-visible) .setup__check {
+  outline: 1px solid var(--terminal-cursor);
+  outline-offset: 1px;
+}
+
+/* A terminal has no checkbox widget: `[x]` is what it has. */
+.setup__check {
+  color: var(--terminal-fg);
+}
+
+.setup__input {
+  flex: 1;
+  min-width: 0;
+  /* A prompt line, not a form field: the underline stops where a name would. */
+  max-width: 44ch;
+  padding: 2px var(--space-1);
+  border: none;
+  border-bottom: 1px solid var(--setup-faint);
+  background: transparent;
+  color: var(--terminal-fg);
+  font: inherit;
+}
+
+.setup__input::placeholder {
+  color: var(--setup-faint);
+}
+
+.setup__input:focus-visible {
+  outline: none;
+  border-bottom-color: var(--terminal-cursor);
+}
+
+.setup__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.setup__action {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--setup-faint);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--terminal-fg);
+  font: inherit;
+  font-size: var(--text-label);
+  cursor: pointer;
+}
+
+.setup__action:hover {
+  background: var(--setup-wash);
+}
+
+.setup__action:focus-visible {
+  outline: 2px solid var(--terminal-cursor);
+  outline-offset: 1px;
+}
+
+/* The cursor colour is this palette's affirmative action — the block the
+   terminal puts where you are. */
+.setup__action--primary {
+  border-color: transparent;
+  background: var(--terminal-cursor);
+  color: var(--terminal-cursor-accent);
+}
+
+.setup__action--primary:hover {
+  opacity: 0.88;
+  background: var(--terminal-cursor);
+}
+
+.setup__hint {
+  margin: 0;
+  color: var(--setup-faint);
+  font-size: var(--text-micro);
+}
+
+.setup__command {
+  margin: 0;
+  color: var(--terminal-fg);
+}
+
+.setup__prompt {
+  color: var(--terminal-cursor);
+}
+
+.setup__log {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.setup__line {
+  margin: 0;
+  color: var(--setup-mute);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.setup__wait {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--terminal-fg);
+}
+
+.setup__spinner {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  border: 2px solid color-mix(in srgb, var(--terminal-fg) 25%, transparent);
+  border-top-color: var(--terminal-fg);
+  border-radius: var(--radius-full);
+  animation: spin 600ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .setup__spinner {
+    animation-duration: 1.5s;
+  }
+}
+
+/* A failure keeps the app's own error colour in both polarities: it is the same
+   semantic as everywhere else, and a palette's ANSI red is free to be unreadable
+   on its own background. */
+.setup__failed {
+  margin: 0;
+  color: var(--error);
+  white-space: pre-wrap;
 }
 
 /* One tab's surface. Parked slots stay in the DOM because their terminals are

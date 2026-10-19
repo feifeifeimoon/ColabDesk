@@ -88,12 +88,12 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       if (siblings.length === 0) addTab(session);
       else set({ selectedSession: session, activeTabId: siblings[siblings.length - 1]!.id });
       // Asking for a terminal is asking for the workbench, wherever you asked from.
-      set({ settingsOpen: false });
+      set({ settingsOpen: false, creation: { ...get().creation, open: false } });
     },
 
     openTab: (session) => {
       addTab(session);
-      set({ settingsOpen: false });
+      set({ settingsOpen: false, creation: { ...get().creation, open: false } });
     },
 
     /** Blank means "no name of mine", not "a tab with no name". */
@@ -146,7 +146,7 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       const target = tabs.find((tab) => tab.id === tabId);
       // A tab of another session would be a selection change, not a focus.
       if (!target || target.session !== selectedSession) return;
-      set({ activeTabId: tabId });
+      set({ activeTabId: tabId, creation: { ...get().creation, open: false } });
     },
 
     closeSessionTabs: (session) => {

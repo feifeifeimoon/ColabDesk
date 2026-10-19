@@ -93,6 +93,8 @@ const base = {
   openTab: noop,
   openNewSession: noop,
   toggleSidebar: noop,
+  // The setup console is a middle-column state; closed unless a test opens it.
+  creation: { open: false, phase: "setup", request: null, startedAt: null, lines: [], error: null },
 };
 
 beforeEach(() => {

@@ -33,6 +33,8 @@ export const sshSetup = (name: string) => bridge().sshSetup(name);
 export const sshRemove = (name: string) => bridge().sshRemove(name);
 export const sshDisconnect = (name: string) => bridge().sshDisconnect(name);
 export const onSshStatus = (listener: Parameters<ColabDeskApi["onSshStatus"]>[0]) => bridge().onSshStatus(listener);
+export const onSessionCreateOutput = (listener: Parameters<ColabDeskApi["onSessionCreateOutput"]>[0]) =>
+  bridge().onSessionCreateOutput(listener);
 
 export const openTerminal = (session: string, cols: number, rows: number) =>
   bridge().openTerminal(session, cols, rows);

@@ -9,11 +9,12 @@
 import { existsSync } from "node:fs";
 import { fetchUsage } from "./usage";
 import type { RuntimeList } from "@shared/api";
+import { createSessionArgs } from "@shared/create-session";
 import type { ColabEnvironment, CommandReport, EnvStatus, Session, SshSetup, UsageReport } from "@shared/types";
 import type { LogSink } from "../log-file";
 import { accountStatus } from "./account";
 import { fetchAssignments, type Assignment } from "./assignments";
-import { combined, parseVersion, readManifestVersion, resolveCli, runCli, type ResolvedCli } from "./cli";
+import { combined, parseVersion, readManifestVersion, resolveCli, runCli, runCliStreaming, type ResolvedCli } from "./cli";
 import { isTransientNetworkFailure } from "./network-retry";
 import { authState, configDir, findRawSession, loadRawSessions, loadSessions, sessionsFile } from "./sessions";
 import { removeEntry, writeEntry } from "./ssh-config";
@@ -126,6 +127,32 @@ export class Service {
     };
   }
 
+  /**
+   * The same call as `run`, reporting each line while it is still running.
+   * Only for commands whose progress a person is watching; the collected
+   * report is identical either way.
+   */
+  private async runStreaming(
+    args: string[],
+    timeoutMs: number,
+    onLine: (line: string) => void,
+  ): Promise<CommandReport> {
+    const cli = this.cli();
+    const started = Date.now();
+    const output = await runCliStreaming(cli, args, { timeoutMs }, onLine);
+    const text = combined(output);
+    const outcome = output.timedOut ? `超时（${timeoutMs}ms）` : `exit ${output.code}`;
+    this.log?.write("cli", `colab ${args.join(" ")} → ${outcome} · ${Date.now() - started}ms\n${text}`.trimEnd());
+    return {
+      ok: !output.timedOut && output.code === 0,
+      code: output.code,
+      timed_out: output.timedOut,
+      output: text,
+      error: null,
+      attempts: 1,
+    };
+  }
+
   /** Read-only commands retry once; commands with side effects never do. */
   private async runRetrying(args: string[], timeoutMs: number): Promise<CommandReport> {
     let report = await this.run(args, timeoutMs);
@@ -205,21 +232,19 @@ export class Service {
     return fetchUsage(this.log);
   }
 
-  async createSession(options: {
-    gpu: string | null;
-    tpu: string | null;
-    name: string | null;
-    highMem: boolean;
-  }): Promise<CommandReport> {
-    const args = ["new"];
-    const name = options.name?.trim();
-    if (name) args.push("-s", name);
-    // `--gpu` and `--tpu` are mutually exclusive; a GPU wins because that is
-    // what the picker defaults to.
-    if (options.gpu) args.push("--gpu", options.gpu);
-    else if (options.tpu) args.push("--tpu", options.tpu);
-    if (options.highMem) args.push("--high-mem");
-    return this.run(args, NEW_TIMEOUT_MS);
+  async createSession(
+    options: {
+      gpu: string | null;
+      tpu: string | null;
+      name: string | null;
+      highMem: boolean;
+    },
+    onLine?: (line: string) => void,
+  ): Promise<CommandReport> {
+    const args = createSessionArgs(options);
+    // Allocation is the one command somebody watches: it prints its progress,
+    // and the surface that asked for it shows those lines as they arrive.
+    return onLine ? this.runStreaming(args, NEW_TIMEOUT_MS, onLine) : this.run(args, NEW_TIMEOUT_MS);
   }
 
   stopSession(name: string): Promise<CommandReport> {

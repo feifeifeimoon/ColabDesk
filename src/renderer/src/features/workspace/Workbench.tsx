@@ -17,6 +17,7 @@ import { useMemo } from "react";
 import { useAppStore } from "../../store";
 import { FilePane } from "./FilePane";
 import { FileView } from "./FileView";
+import { RuntimeSetup } from "../sessions/RuntimeSetup";
 import { StartPage } from "./StartPage";
 import { TerminalPane } from "./TerminalPane";
 
@@ -26,6 +27,7 @@ export function Workbench() {
   const activeTabId = useAppStore((state) => state.activeTabId);
   const filesOpen = useAppStore((state) => state.filesOpen);
   const setTransferCount = useAppStore((state) => state.setTransferCount);
+  const setupOpen = useAppStore((state) => state.creation.open);
 
   // Grouped here rather than in a selector: a selector that built this would
   // hand back a new reference on every store write.
@@ -39,12 +41,12 @@ export function Workbench() {
 
   return (
     <>
-      {!onScreen && <StartPage />}
+      {!onScreen && !setupOpen && <StartPage />}
 
       {[...tabsBySession].map(([session, sessionTabs]) => {
         const shown = session === selectedSession;
         return (
-          <div key={session} className="work-slot" hidden={!shown} inert={!shown}>
+          <div key={session} className="work-slot" hidden={!shown} inert={!shown || setupOpen}>
             <div className="terminal-stack">
               {sessionTabs.map((tab) => {
                 const active = shown && tab.id === activeTabId;
@@ -74,6 +76,10 @@ export function Workbench() {
           </div>
         );
       })}
+
+      {/* The setup console covers this column rather than replacing it: the
+          terminals under it are live SSH sessions. */}
+      {setupOpen && <RuntimeSetup />}
     </>
   );
 }

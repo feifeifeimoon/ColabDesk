@@ -103,24 +103,26 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
   await capture(page, "03-toast");
   await page.locator('[data-testid="toast-dismiss"]').click();
 
-  // The dialog is the one surface whose exit is a bare icon, so it is the shot
-  // that answers whether an × with no word beside it still reads as "close".
+  // The runtime-setup console: the one screen that wears the terminal's own
+  // palette, so the picture is where "a console, not a form" is judged.
   await page.locator('[aria-label="新建会话"]').click();
-  const dialog = page.getByRole("dialog", { name: "新建会话" });
-  await expect(dialog).toBeVisible();
+  const setup = page.locator('[data-testid="runtime-setup"]');
+  await expect(setup).toBeVisible();
   await page.waitForTimeout(400);
-  await capture(page, "04-new-session");
+  await capture(page, "04-runtime-setup");
 
   // The failure state: the app has to say what went wrong in the window, not in
-  // a file — the reason is the CLI's own last line, and 「复制详情」 hands the
-  // whole output over. The name is one that already exists, so it fails.
-  await dialog.getByLabel("会话名称").fill("e2e-alpha");
-  await dialog.getByRole("button", { name: "创建" }).click();
-  await expect(dialog.locator(".callout--danger")).toContainText("命令执行失败");
+  // a file — the reason is the CLI's own last turn of phrase, and 「复制详情」
+  // hands the whole output over. The name is one that already exists, so it
+  // fails. The surface stays on screen with the log and the way back.
+  await setup.locator("input[type=text]").fill("e2e-alpha");
+  await setup.getByRole("button", { name: "创建" }).click();
+  await expect(setup.locator('[data-testid="setup-error"]')).toBeVisible();
   await page.waitForTimeout(400);
-  await capture(page, "04-new-session-failed");
+  await capture(page, "04-runtime-setup-failed");
 
-  await dialog.getByRole("button", { name: "关闭" }).click();
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
 
   // The tree, with a folder open and a row's menu out: the row is the whole
   // click target, its actions are one trigger, and the indent is what says

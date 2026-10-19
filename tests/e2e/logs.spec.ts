@@ -15,11 +15,12 @@ test("设置页给出日志路径，而且那个文件里确实有刚才发生�
   // A create that fails, because the name is already taken: the failure has to
   // end up in the log with the command that caused it.
   await page.locator('[aria-label="新建会话"]').click();
-  const dialog = page.getByRole("dialog", { name: "新建会话" });
-  await dialog.getByLabel("会话名称").fill("e2e-alpha");
-  await dialog.getByRole("button", { name: "创建" }).click();
-  await expect(dialog.locator(".callout--danger")).toContainText("命令执行失败");
-  await dialog.getByRole("button", { name: "关闭" }).click();
+  const setup = page.locator('[data-testid="runtime-setup"]');
+  await setup.locator("input[type=text]").fill("e2e-alpha");
+  await setup.getByRole("button", { name: "创建" }).click();
+  await expect(setup.locator('[data-testid="setup-error"]')).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
 
   // Settings → About is where a user is told where to look.
   await page.locator('[data-testid="open-settings"]').click();
