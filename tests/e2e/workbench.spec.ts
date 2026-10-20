@@ -18,7 +18,7 @@ function dragRegion(page: Page, selector: string): Promise<string> {
  * A settings row, found by its label. The label gets its own element because
  * matching the whole row on text breaks as soon as one row's description
  * repeats a word from another row's label — which is exactly what happened when
- * the accelerator copy became "当前账号有权限申请的硬件加速规格。".
+ * the machine-type copy became "当前账号有权限申请的机型。".
  */
 function settingsRow(page: Page, label: string) {
   return page.locator(".panel-row", {
@@ -269,26 +269,26 @@ test("设置页面导航栏宽度与会话栏一致，支持拖拽拉伸且双�
 });
 
 // 账号邮箱不在 token.json 里（CLI 写的永远是空串），只能拿访问令牌换回来；
-// 加速器资格同理，来自 CLI 只取三个数字就丢掉的 ccu-info 响应。
-test("设置页显示账号与可用加速器，不可用的加速器被划掉", async ({ page }) => {
+// 机型资格同理，来自 CLI 只取三个数字就丢掉的 ccu-info 响应。
+test("设置页显示账号与可用机型，不可用的机型被划掉", async ({ page }) => {
   await page.locator('[data-testid="open-settings"]').click();
 
   const account = settingsRow(page, "当前账号");
   await expect(account).toContainText("e2e@example.com");
 
-  const accelerators = settingsRow(page, "可用加速器");
-  await expect(accelerators).toContainText("A100");
-  await expect(accelerators.locator(".badge--off")).toHaveText("H100");
-  await expect(accelerators.locator(".badge", { hasText: "T4" })).not.toHaveClass(/badge--off/);
+  const machineTypes = settingsRow(page, "可用机型");
+  await expect(machineTypes).toContainText("A100");
+  await expect(machineTypes.locator(".badge--off")).toHaveText("H100");
+  await expect(machineTypes.locator(".badge", { hasText: "T4" })).not.toHaveClass(/badge--off/);
 });
 
-test("新建运行时不提供本账号拿不到的加速器", async ({ page }) => {
+test("新建运行时不提供本账号拿不到的机型", async ({ page }) => {
   await page.locator('[aria-label="新建会话"]').click();
   const setup = page.locator('[data-testid="runtime-setup"]');
   await expect(setup).toBeVisible();
 
   // 提示先说清楚能用什么，选项本身再逐个标注。
-  await expect(setup).toContainText("当前账号可用：G4 / A100 / L4 / T4 / V6E1 / V5E1");
+  await expect(setup).toContainText("当前账号可用机型：G4 / A100 / L4 / T4 / V6E1 / V5E1");
 
   // 每一项是一行，下面藏着原生 radio：人点的是那一行，状态在 radio 上。
   const card = (value: string) => setup.locator(`label:has(input[value="${value}"])`);
@@ -303,7 +303,7 @@ test("新建运行时不提供本账号拿不到的加速器", async ({ page }) 
   await expect(t4).toHaveClass(/setup__option--selected/);
 });
 
-// 设置面只该在打开那一刻初始化自己：名字打进去要留下、选好的加速器不弹回默认、勾上的高内存
+// 设置面只该在打开那一刻初始化自己：名字打进去要留下、选好的机型不弹回默认、勾上的高内存
 // 不自己弹开、失败的原因不闪一帧就没，失败后表单也不该被换掉。五个症状同一个不变量，所以钉在
 // 同一个用例里；而它只能钉在这里——渲染断言（renderToStaticMarkup）不跑 effect 与提交，
 // 看不见这一层。
@@ -317,7 +317,7 @@ test("运行时设置：申请失败后表单还在，填过的东西还在", as
   await name.fill("e2e-alpha");
   await expect(name).toHaveValue("e2e-alpha");
 
-  // 加速器：本账号的默认是 T4，选了 A100 之后不该弹回去。
+  // 机型：本账号的默认是 T4，选了 A100 之后不该弹回去。
   const a100 = setup.locator('label:has(input[value="A100"])');
   await a100.click();
   await expect(setup.locator('input[value="A100"]')).toBeChecked();
@@ -407,8 +407,8 @@ test("运行时设置：点过名称或空白之后，上下键照样选机器",
   await expect(setup.locator('input[value="G4"]')).toBeChecked();
 });
 
-// 单机型的加速器没有高内存这一步：回车要跳过禁用的控件，而不是停在上面。
-test("运行时设置：单机型加速器上，回车直接到名称", async ({ page }) => {
+// 单机型没有高内存这一步：回车要跳过禁用的控件，而不是停在上面。
+test("运行时设置：单机型上，回车直接到名称", async ({ page }) => {
   await page.locator('[aria-label="新建会话"]').click();
   const setup = page.locator('[data-testid="runtime-setup"]');
   await expect(setup).toBeVisible();

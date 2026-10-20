@@ -27,7 +27,7 @@ export function failureHint(output: string): string | null {
     );
   }
   if (ACCELERATOR_REFUSED.test(output)) {
-    return translate("failure.acceleratorRefused", "这个账号当前拿不到所选加速器，换一个再试。");
+    return translate("failure.acceleratorRefused", "这个账号当前拿不到所选机型，换一个再试。");
   }
   if (TRACEBACK.test(output)) {
     return translate("failure.traceback", "colab 命令抛出了异常。可以重试；反复出现时用「复制详情」交给维护者。");

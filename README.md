@@ -34,7 +34,7 @@
 
 1. **Download** the installer from [Releases](https://github.com/feifeifeimoon/ColabDesk/releases) and open it.
 2. **Sign in** with your Google account — the app opens the browser; paste the code back.
-3. **New session** — pick an accelerator. The terminal opens at `/content`, and the files panel shows the same directory.
+3. **New session** — pick a machine type. The terminal opens at `/content`, and the files panel shows the same directory.
 
 The app bundles its own Python and `google-colab-cli`, so there is nothing else to install.
 

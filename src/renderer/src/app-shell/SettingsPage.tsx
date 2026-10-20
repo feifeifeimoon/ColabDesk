@@ -250,7 +250,7 @@ export function SettingsPage() {
   };
 
   /**
-   * The accelerator row: what may be allocated, and — just as useful — what may
+   * The machine-type row: what may be allocated, and — just as useful — what may
    * not. The unavailable ones stay visible instead of disappearing, because
    * "H100 is not available to this account" is the answer people come here for.
    */
@@ -314,8 +314,8 @@ export function SettingsPage() {
             title={env?.account?.subject ?? undefined}
           />
           <PanelRow
-            label={t("settings.accountAccelerators", "可用加速器")}
-            description={t("settings.accountAcceleratorsDesc", "当前账号有权限申请的硬件加速规格。")}
+            label={t("settings.accountAccelerators", "可用机型")}
+            description={t("settings.accountAcceleratorsDesc", "当前账号有权限申请的机型。")}
             value={eligibilityValue()}
           />
         </Panel>

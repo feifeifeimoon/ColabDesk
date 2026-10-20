@@ -24,7 +24,7 @@ const CONNECTION_TONE: Record<string, StatusTone> = {
  * settings.
  *
  * A row is two lines because the name and the machine's facts used to share
- * one. They were never equal: the accelerator is as long as it likes
+ * one. They were never equal: the machine type is as long as it likes
  * (`A100-SXM4-40GB`) and it was the name that paid, down to an ellipsis three
  * characters wide. The name now owns the first line outright, and the facts
  * sit under it — which is also what lets the rail be narrowed, the one thing a

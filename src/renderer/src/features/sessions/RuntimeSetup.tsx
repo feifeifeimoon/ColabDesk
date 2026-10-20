@@ -208,14 +208,14 @@ export function RuntimeSetup() {
       <form ref={formRef} className="setup__form" onSubmit={submit} aria-busy={busy}>
         <p className="setup__note">
           {eligibility
-            ? t("sessions.acceleratorAvailable", "当前账号可用：{{list}}", {
+            ? t("sessions.acceleratorAvailable", "当前账号可用机型：{{list}}", {
                 list: [...eligibility.gpus, ...eligibility.tpus].join(" / "),
               })
-            : t("sessions.setupEligibilityUnknown", "账号可用的加速器尚未读到 —— 都可以试，最终由 colab new 决定。")}
+            : t("sessions.setupEligibilityUnknown", "账号可用的机型尚未读到 —— 都可以试，最终由 colab new 决定。")}
         </p>
 
         <fieldset className="setup__group" ref={listRef}>
-          <legend className="setup__question">? {t("sessions.acceleratorLabel", "加速器")}</legend>
+          <legend className="setup__question">? {t("sessions.acceleratorLabel", "机型")}</legend>
           <ul className="setup__options">
             {ACCELERATORS.map((option, index) => {
               const off = isUnavailable(unavailable, option.id);
@@ -242,7 +242,7 @@ export function RuntimeSetup() {
                     </span>
                     <span className="setup__name">
                       {option.id === "cpu"
-                        ? t("sessions.acceleratorCpu", "CPU（无加速器）")
+                        ? t("sessions.acceleratorCpu", "CPU（无 GPU/TPU）")
                         : option.label}
                     </span>
                     {off && (
@@ -256,7 +256,7 @@ export function RuntimeSetup() {
         </fieldset>
 
         <label className="setup__row setup__high-mem">
-          <span className="setup__question">? {t("sessions.highMemShort", "高内存机型")}</span>
+          <span className="setup__question">? {t("sessions.highMemShort", "高内存")}</span>
           <input
             ref={highMemRef}
             type="checkbox"
@@ -270,7 +270,7 @@ export function RuntimeSetup() {
           </span>
           <span className="setup__row-note">
             {SINGLE_SHAPE.has(accelerator)
-              ? t("sessions.highMemSingleShape", "这台加速器只有一种机型")
+              ? t("sessions.highMemSingleShape", "该机型没有高内存版本")
               : t("sessions.highMemNote", "需 Colab Pro/Pro+")}
           </span>
         </label>

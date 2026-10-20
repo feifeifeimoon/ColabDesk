@@ -2,7 +2,7 @@ import type { AcceleratorEligibility } from "@shared/types";
 
 /** `colab new` accepts exactly these (see its `--gpu` / `--tpu` help). */
 export const ACCELERATORS = [
-  { id: "cpu", label: "CPU（无加速器）" },
+  { id: "cpu", label: "CPU" },
   { id: "T4", label: "T4" },
   { id: "L4", label: "L4" },
   { id: "G4", label: "G4" },

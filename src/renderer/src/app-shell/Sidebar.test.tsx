@@ -128,7 +128,7 @@ describe("Sidebar", () => {
     expect(html).toContain("已连接");
   });
 
-  it("加速器是第二行的第一条事实", () => {
+  it("机型是第二行的第一条事实", () => {
     const row = rowsMarkup(renderToStaticMarkup(createElement(Sidebar)));
     const facts = row.slice(row.indexOf("session-row__facts"));
 
