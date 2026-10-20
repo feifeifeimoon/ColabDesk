@@ -1,10 +1,10 @@
 // The page's one script. It has three jobs: swap the language, point the
 // download buttons at the visitor's platform, and fill in the GitHub numbers.
-// Every job degrades to the static HTML when it cannot run — the buttons keep
-// their releases-page links and the star badge stays hidden.
+// Where a job cannot run, the markup's own fallback is what is left: the primary
+// button is a plain link to the releases page, and the badge is still a link.
 
-import { I18N, initialLanguage } from "./i18n.js";
-import { detectPlatform, pickReleaseAsset } from "./platform.js";
+import { I18N, initialLanguage, readStoredLanguage, saveLanguage } from "./i18n.js";
+import { detectPlatform, downloadPlan, pickReleaseAsset } from "./platform.js";
 import { GITHUB, formatStars } from "./github.js";
 
 const $ = (selector) => document.querySelector(selector);
@@ -19,11 +19,19 @@ const platformList = $("#platform-list");
 const platformItems = Array.from(document.querySelectorAll("[data-platform]"));
 const assetLinks = Array.from(document.querySelectorAll("[data-asset]"));
 
-const STORAGE_KEY = "colabdesk-lang";
 let target = "other";
 let releaseAssets = [];
 
-let lang = initialLanguage(navigator.language, localStorage.getItem(STORAGE_KEY));
+/** Even touching storage can throw in a sandboxed frame; a missing store is fine. */
+function languageStore() {
+  try {
+    return localStorage;
+  } catch {
+    return null;
+  }
+}
+
+let lang = initialLanguage(navigator.language, readStoredLanguage(languageStore()));
 
 // Same polarity rule as the app: the OS decides, and the brand's white lockup
 // is swapped in by CSS rather than filtered.
@@ -59,25 +67,16 @@ function applyLanguage() {
 
 function renderDownloadCopy() {
   const dict = I18N[lang];
-  const onMac = target.startsWith("mac");
-  // "mac" means a Mac whose architecture could not be read; it gets Apple silicon.
-  const primaryAsset = onMac ? (target === "mac" ? "mac-arm" : target) : "win";
+  const plan = downloadPlan(target);
 
-  if (target === "other") {
-    // A platform we do not ship to gets the releases page, not somebody else's
-    // installer.
-    primary.textContent = dict["hero.download.any"];
-    primary.href = GITHUB.releasesPage;
-  } else {
-    primary.textContent = dict[onMac ? "hero.download.mac" : "hero.download.win"];
-    primary.href = urlFor(primaryAsset);
-  }
+  primary.textContent = dict[plan.labelKey];
+  primary.href = plan.asset === null ? GITHUB.releasesPage : urlFor(plan.asset);
+  platformLabel.textContent = dict[plan.menuLabelKey];
 
-  platformLabel.textContent = dict[onMac ? "alt.label.win" : target === "win" ? "alt.label.mac" : "alt.label.all"];
-
-  // The menu lists what the primary button does not already offer.
+  // The menu lists what the primary button does not already offer; a guess
+  // (unknown Mac architecture) hides nothing, so both builds stay reachable.
   for (const item of platformItems) {
-    item.hidden = item.dataset.platform === primaryAsset;
+    item.hidden = plan.hiddenAssets.includes(item.dataset.platform);
   }
 
   for (const link of assetLinks) {
@@ -98,17 +97,22 @@ async function resolvePlatform() {
     // Browsers that gate the high-entropy hints: fall through to the UA.
   }
   if (!platform) platform = navigator.platform ?? "";
-  target = detectPlatform({ userAgent: navigator.userAgent, platform, architecture });
+  target = detectPlatform({
+    userAgent: navigator.userAgent,
+    platform,
+    architecture,
+    maxTouchPoints: navigator.maxTouchPoints ?? 0,
+  });
 }
 
 async function loadRelease() {
   try {
     const response = await fetch(`${GITHUB.api}/repos/${GITHUB.repo}/releases/latest`, {
-      headers: { Accept: "application/vnd.github+json" },
+      headers: { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
     });
     if (!response.ok) return;
     const release = await response.json();
-    releaseAssets = release.assets ?? [];
+    releaseAssets = Array.isArray(release.assets) ? release.assets : [];
   } catch {
     // Offline or rate-limited: the placeholder links already point somewhere useful.
   }
@@ -118,7 +122,7 @@ async function loadRelease() {
 async function loadStars() {
   try {
     const response = await fetch(`${GITHUB.api}/repos/${GITHUB.repo}`, {
-      headers: { Accept: "application/vnd.github+json" },
+      headers: { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
     });
     if (!response.ok) return;
     const repo = await response.json();
@@ -134,7 +138,7 @@ async function loadStars() {
 for (const option of langOptions) {
   option.addEventListener("click", () => {
     lang = option.dataset.lang;
-    localStorage.setItem(STORAGE_KEY, lang);
+    saveLanguage(languageStore(), lang);
     applyLanguage();
   });
 }
@@ -158,17 +162,20 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") {
-    setMenuOpen(false);
-    platformToggle.focus();
-  }
+  if (event.key !== "Escape" || platformList.hidden) return;
+  setMenuOpen(false);
+  platformToggle.focus();
 });
 
 applyLanguage();
 applyTheme();
 darkQuery.addEventListener("change", applyTheme);
-resolvePlatform().then(() => {
-  renderDownloadCopy();
-  loadRelease();
-});
+resolvePlatform()
+  .catch(() => {
+    // Detection is a courtesy; the neutral fallback in the markup is enough.
+  })
+  .then(() => {
+    renderDownloadCopy();
+    loadRelease();
+  });
 loadStars();

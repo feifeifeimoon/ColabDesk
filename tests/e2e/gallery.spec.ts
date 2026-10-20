@@ -200,6 +200,11 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
  * host locale; the site's pictures are for an English-reading audience, so this
  * run flips the language the way a user does and shoots the same states. Both
  * galleries come out of the one command.
+ *
+ * The page does not read `screenshots/`, so after a run copy the four files it
+ * uses: `01-workbench-en-dark` → `site/assets/hero.png`,
+ * `02-focus-en-light` → `terminal.png`, `07-file-tree-en-light` → `files.png`,
+ * `06-settings-usage-en-light` → `quota.png`.
  */
 test("@gallery English shots for the landing page", async ({ app, page, sandbox }) => {
   test.slow();

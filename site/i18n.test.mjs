@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { I18N, FALLBACK_LANG, initialLanguage } from "./i18n.js";
+import { I18N, FALLBACK_LANG, initialLanguage, readStoredLanguage, saveLanguage } from "./i18n.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const html = readFileSync(join(here, "index.html"), "utf8");
@@ -19,6 +19,7 @@ const USED_BY_SCRIPT = new Set([
   "alt.label.mac",
   "alt.label.win",
   "alt.label.all",
+  "alt.label.other",
 ]);
 
 function keysIn(attribute) {
@@ -81,5 +82,37 @@ describe("initialLanguage", () => {
 
   it("ignores a stored value it does not know", () => {
     expect(initialLanguage("en-US", "fr")).toBe("en");
+  });
+});
+
+describe("language storage", () => {
+  it("reads and writes the saved choice", () => {
+    const values = new Map();
+    const storage = { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
+    expect(readStoredLanguage(storage)).toBeNull();
+    saveLanguage(storage, "zh");
+    expect(readStoredLanguage(storage)).toBe("zh");
+  });
+
+  it("survives storage that throws, which must not cost the page", () => {
+    const blocked = {
+      getItem() {
+        throw new Error("blocked");
+      },
+      setItem() {
+        throw new Error("blocked");
+      },
+    };
+    expect(readStoredLanguage(blocked)).toBeNull();
+    expect(() => saveLanguage(blocked, "zh")).not.toThrow();
+    expect(readStoredLanguage(null)).toBeNull();
+    expect(() => saveLanguage(null, "en")).not.toThrow();
+  });
+});
+
+describe("the static fallback", () => {
+  it("offers a neutral download and menu label before the script runs", () => {
+    expect(html).toMatch(/id="download-primary"[\s\S]*?>\s*Download\s*</);
+    expect(html).toMatch(/id="platform-label">All platforms</);
   });
 });

@@ -1,6 +1,8 @@
-// The landing page's two languages. Everything user-facing lives here —
-// the page itself only carries data-i18n keys, so a missing key is a bug
-// the parity test in i18n.test.ts catches, not a half-translated page.
+// The landing page's two languages. It is deliberately not the app's catalog:
+// this page has no build step, and its copy is written for someone who has not
+// installed anything yet. The page itself only carries data-i18n keys, so a
+// missing key is a bug the parity test in i18n.test.mjs catches, not a
+// half-translated page.
 export const I18N = {
   en: {
     "meta.title": "ColabDesk — a desktop SSH console for Google Colab runtimes",
@@ -17,8 +19,9 @@ export const I18N = {
     "alt.label.mac": "Also for macOS",
     "alt.label.win": "Also for Windows",
     "alt.label.all": "All platforms",
+    "alt.label.other": "Other downloads",
     "alt.win.title": "Windows x64",
-    "alt.win.meta": "installer (.exe)",
+    "alt.win.meta": "Installer (.exe)",
     "alt.mac.arm.title": "macOS Apple silicon",
     "alt.mac.arm.meta": "M-series Macs (.dmg)",
     "alt.mac.x64.title": "macOS Intel",
@@ -32,7 +35,7 @@ export const I18N = {
     "features.terminal.alt": "ColabDesk in focus mode: a full-window terminal on one runtime",
     "features.files.title": "Files",
     "features.files.body":
-      "The runtime's filesystem as a tree: drag to upload files or whole folders, download, delete, with progress and cancel.",
+      "The runtime's filesystem as a tree: drag to upload files or whole folders, download, delete, with progress, and you can cancel.",
     "features.files.alt": "ColabDesk's files panel: the runtime's filesystem as a tree",
     "features.quota.title": "Quota",
     "features.quota.body":
@@ -44,19 +47,20 @@ export const I18N = {
   },
   zh: {
     "meta.title": "ColabDesk — Google Colab 运行时的桌面 SSH 控制台",
-    "nav.star": "在 GitHub 上给 ColabDesk 点星",
+    "nav.star": "在 GitHub 上为 ColabDesk 加星",
     "nav.github": "GitHub",
     "lang.group": "语言",
     "hero.title": "Google Colab 运行时的\n桌面 SSH 控制台",
     "hero.sub":
-      "SSH 登录，在真正的终端里工作，用 SFTP 浏览运行时文件，并盯着它花掉的计算单元——全在一个窗口里。",
+      "SSH 登录，在真正的终端里工作，用 SFTP 浏览运行时文件，并查看它消耗的计算单元——全在一个窗口里。",
     "hero.download.win": "下载 Windows 版",
     "hero.download.mac": "下载 macOS 版",
     "hero.download.any": "下载",
-    "hero.github": "在 GitHub 查看",
+    "hero.github": "在 GitHub 上查看",
     "alt.label.mac": "另可下载 macOS 版",
     "alt.label.win": "另可下载 Windows 版",
     "alt.label.all": "全部平台",
+    "alt.label.other": "其他下载",
     "alt.win.title": "Windows x64",
     "alt.win.meta": "安装包（.exe）",
     "alt.mac.arm.title": "macOS Apple 芯片",
@@ -64,14 +68,14 @@ export const I18N = {
     "alt.mac.x64.title": "macOS Intel",
     "alt.mac.x64.meta": "Intel 芯片（.dmg）",
     "hero.alt": "ColabDesk 工作台：左侧会话栏，中间终端，右侧文件面板，底部是计算单元状态栏",
-    "features.title": "它做什么",
+    "features.title": "功能",
     "features.terminal.title": "终端",
     "features.terminal.body":
-      "每个运行时通过一条 SSH 连接开多个标签——搜索、可点击链接、跟随明暗主题的十套配色。",
+      "每个运行时通过一条 SSH 连接打开多个标签页——搜索、可点击链接、跟随明暗主题的十套配色。",
     "features.terminal.alt": "ColabDesk 专注模式：占满窗口的运行时终端",
     "features.files.title": "文件",
     "features.files.body":
-      "运行时的文件系统是一棵树：拖拽上传文件或整个文件夹，下载、删除，带进度与取消。",
+      "运行时的文件系统是一棵树：拖拽上传文件或整个文件夹，下载、删除，全程有进度、可取消。",
     "features.files.alt": "ColabDesk 的文件面板：运行时的文件树",
     "features.quota.title": "额度",
     "features.quota.body":
@@ -85,9 +89,31 @@ export const I18N = {
 
 export const FALLBACK_LANG = "en";
 
+export const LANGUAGE_STORAGE_KEY = "colabdesk-lang";
+
 /** A saved choice wins; otherwise a Chinese browser gets Chinese, everyone else English. */
 export function initialLanguage(navigatorLanguage, stored) {
   if (stored === "en" || stored === "zh") return stored;
   const browser = typeof navigatorLanguage === "string" ? navigatorLanguage.toLowerCase() : "";
   return browser.startsWith("zh") ? "zh" : FALLBACK_LANG;
+}
+
+/**
+ * Storage is not always there: sandboxed frames and blocked cookies make even
+ * reading throw. A missing store costs the memory of the choice, never the page.
+ */
+export function readStoredLanguage(storage) {
+  try {
+    return storage?.getItem(LANGUAGE_STORAGE_KEY) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveLanguage(storage, lang) {
+  try {
+    storage?.setItem(LANGUAGE_STORAGE_KEY, lang);
+  } catch {
+    // The switch still applies for this visit.
+  }
 }

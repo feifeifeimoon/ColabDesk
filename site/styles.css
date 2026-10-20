@@ -2,12 +2,12 @@
  * The landing page. It is plain static HTML with no build step, so it carries
  * its own copy of `tokens.css` (copied verbatim from
  * `src/renderer/src/assets/tokens.css`; `site/tokens.test.mjs` fails when the
- * two drift). Values below are read from those tokens — the only numbers
- * invented here are the marketing page's own type ramp, recorded in DESIGN.md.
+ * two drift). Values below are read from those tokens — the page's own type
+ * ramp and the 40px call-to-action are recorded in DESIGN.md.
  */
 
 /* The app bundles Geist through electron-vite; the page has no bundler, so it
-   carries the same two latin subsets (56 KB) and gets the typography back. */
+   carries the same two latin subsets (52 KB) and gets the typography back. */
 @font-face {
   font-family: "Geist Variable";
   font-style: normal;
@@ -39,7 +39,7 @@ body {
   background: var(--page);
   color: var(--ink);
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -83,7 +83,7 @@ a {
 }
 
 .nav__lockup {
-  height: 22px;
+  height: 24px;
   width: auto;
   display: block;
 }
@@ -137,32 +137,38 @@ a {
 
 /* A segmented language choice, not a toggle with one label: both languages are
    visible and the current one is the ink segment, so switching needs no guess
-   about what the button will do. */
+   about what the button will do. The ring is drawn with an inset shadow rather
+   than a border so each segment keeps the full 28px of the control's height. */
 .lang-switch {
-  display: inline-flex;
+  display: none;
   align-items: center;
   gap: 2px;
   height: 28px;
-  padding: 2px 3px 2px var(--space-2);
-  border: 1px solid var(--hairline);
+  padding: 0 2px 0 var(--space-2);
+  border: 0;
   border-radius: var(--radius-sm);
   background: var(--canvas);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+:root.js .lang-switch {
+  display: inline-flex;
 }
 
 .lang-switch__globe {
   width: 13px;
   height: 13px;
   margin-right: 3px;
-  color: var(--mute);
+  color: var(--body);
 }
 
 .lang-switch__option {
-  height: 22px;
-  padding: 0 7px;
+  height: 100%;
+  padding: 0 8px;
   border: 0;
   border-radius: var(--radius-xs);
   background: none;
-  color: var(--mute);
+  color: var(--body);
   font: inherit;
   font-size: var(--text-caption);
   font-weight: 500;
@@ -251,6 +257,12 @@ a {
   margin-top: var(--space-2);
 }
 
+.noscript-note {
+  margin: var(--space-3) 0 0;
+  color: var(--body);
+  font-size: var(--text-caption);
+}
+
 /* ---- buttons: the app's own primary / outline, at one marketing size ----- */
 
 .btn {
@@ -276,10 +288,26 @@ a {
 .btn:focus-visible,
 .github-badge:focus-visible,
 .lang-switch__option:focus-visible,
-.inline-link:focus-visible {
+.inline-link:focus-visible,
+.platform-menu__toggle:focus-visible,
+.platform-menu__item:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
   border-radius: var(--radius-sm);
+}
+
+/* `--focus-ring` uses color-mix, which Safari 15.4–16.1 cannot parse; those
+   readers still need to see where the keyboard is. */
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .btn:focus-visible,
+  .github-badge:focus-visible,
+  .lang-switch__option:focus-visible,
+  .inline-link:focus-visible,
+  .platform-menu__toggle:focus-visible,
+  .platform-menu__item:focus-visible {
+    outline: 2px solid var(--link);
+    outline-offset: 2px;
+  }
 }
 
 .btn--primary {
@@ -310,8 +338,15 @@ a {
 /* One decisive download plus an "also for" menu, the way Orca's page does it:
    the alternative platforms stay one click away without competing with the
    primary action. */
+/* Hidden until theme.js marks the document as scripted: without JavaScript the
+   disclosure cannot open, so it is not offered. */
 .platform-menu {
   position: relative;
+  display: none;
+}
+
+:root.js .platform-menu {
+  display: block;
 }
 
 .platform-menu__toggle {
@@ -399,7 +434,7 @@ a {
 
 .platform-menu__meta {
   display: block;
-  color: var(--mute);
+  color: var(--body);
   font-size: var(--text-micro);
 }
 
@@ -420,20 +455,20 @@ a {
   align-items: center;
   gap: 6px;
   padding: var(--space-2) var(--space-3);
-  background: #171717;
-  border-bottom: 1px solid #262626;
+  background: var(--canvas);
+  border-bottom: 1px solid var(--canvas-soft-2);
 }
 
 .shot__dot {
   width: 8px;
   height: 8px;
   border-radius: var(--radius-full);
-  background: #3a3a3a;
+  background: var(--hairline-strong);
 }
 
 .shot__title {
   margin-left: var(--space-2);
-  color: #888888;
+  color: var(--mute);
   font-family: var(--font-mono);
   font-size: var(--text-micro);
 }
@@ -493,14 +528,14 @@ a {
   margin: 0 0 var(--space-2);
   font-size: var(--text-title-sm);
   font-weight: 600;
-  letter-spacing: var(--tracking-title);
+  letter-spacing: -0.4px;
 }
 
 .feature__body {
   max-width: 40ch;
   margin: 0;
   color: var(--body);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.65;
   text-wrap: pretty;
 }
@@ -516,12 +551,13 @@ a {
   margin: var(--space-8) auto 0;
   padding: var(--space-5) var(--space-6) var(--space-7);
   border-top: 1px solid var(--hairline);
-  color: var(--mute);
+  color: var(--body);
   font-size: var(--text-caption);
 }
 
 .footer .inline-link {
   margin-left: var(--space-2);
+  color: var(--link-deep);
 }
 
 /* ---- polarity ----------------------------------------------------------- */
@@ -534,6 +570,17 @@ a {
 }
 
 /* ---- narrow ------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .platform-menu__chevron {
+    transition: none;
+  }
+
+  .btn:active {
+    transform: none;
+  }
+}
 
 @media (max-width: 860px) {
   .feature,

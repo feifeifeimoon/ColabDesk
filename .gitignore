@@ -34,6 +34,7 @@ npm.ps1
 # ZCode's file-search ignore rules: written by the editor for this machine (and
 # rewritten by its own sync), so they are configuration, not code
 .zcodeignore
+.zcode/
 
 # OS noise
 .DS_Store
