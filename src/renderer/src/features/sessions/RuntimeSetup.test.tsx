@@ -50,8 +50,8 @@ beforeEach(async () => {
   store.current = base({ phase: "setup" });
 });
 
-describe("accelerator availability", () => {
-  it("refuses the accelerators the account was told it cannot have", () => {
+describe("machine-type availability", () => {
+  it("refuses the machine types the account was told it cannot have", () => {
     expect(unavailableAccelerators(ELIGIBILITY)).toEqual(new Set(["H100"]));
     expect(unavailableAccelerators(null)).toEqual(new Set());
   });
@@ -63,8 +63,8 @@ describe("accelerator availability", () => {
   });
 
   // The picker has to open on something the account can get: a refused
-  // accelerator as the pre-selected default would fail at submit, silently.
-  it("opens on the first accelerator the account can actually get", () => {
+  // machine type as the pre-selected default would fail at submit, silently.
+  it("opens on the first machine type the account can actually get", () => {
     expect(defaultAccelerator(unavailableAccelerators(ELIGIBILITY))).toBe("T4");
     expect(defaultAccelerator(unavailableAccelerators(null))).toBe("T4");
     expect(defaultAccelerator(new Set(["T4", "L4"]))).toBe("G4");
@@ -75,8 +75,8 @@ describe("the setup screen", () => {
   it("asks its three questions on one screen, with the choices in place", () => {
     const markup = renderToStaticMarkup(createElement(RuntimeSetup));
 
-    expect(markup).toContain("? 加速器");
-    expect(markup).toContain("高内存机型");
+    expect(markup).toContain("? 机型");
+    expect(markup).toContain("高内存");
     expect(markup).toContain("会话名称");
     // Nothing is hidden behind a widget: every option is on screen.
     expect(markup).not.toContain("<select");
@@ -192,5 +192,20 @@ describe("in English", () => {
     });
     await setRendererUiLanguage("en");
     expect(renderToStaticMarkup(createElement(RuntimeSetup))).not.toMatch(/[一-鿿]/);
+  });
+
+  // CPU is the one machine whose label is translated in the picker; the wait
+  // line reads the raw option label, which must stay language-neutral.
+  it("CPU 的等待文案也不出现中文", async () => {
+    store.current = base({
+      phase: "provisioning",
+      request: { gpu: null, tpu: null, name: "cpu-box", highMem: false },
+      startedAt: Date.now(),
+      lines: [],
+    });
+    await setRendererUiLanguage("en");
+    const markup = renderToStaticMarkup(createElement(RuntimeSetup));
+    expect(markup).toContain("Requesting a CPU runtime");
+    expect(markup).not.toMatch(/[一-鿿]/);
   });
 });

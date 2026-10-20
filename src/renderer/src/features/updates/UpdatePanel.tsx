@@ -23,12 +23,12 @@ function failureText(reason: UpdateFailureReason, detail: string, t: (key: strin
     case "network":
       return t(
         "settings.updateFailedNetwork",
-        "连不上更新服务器。检查网络或代理后重试；这不影响应用继续使用。",
+        "无法连接更新服务器。请检查网络或代理后重试；不影响应用使用。",
       );
     case "missing-release":
-      return t("settings.updateFailedMissing", "这次发布还没有可用的更新包，稍后再试。");
+      return t("settings.updateFailedMissing", "该版本暂无可用更新包，请稍后重试。");
     case "unavailable":
-      return t("settings.updateFailedUnavailable", "当前安装包不带更新信息，请到发布页面手动下载。");
+      return t("settings.updateFailedUnavailable", "当前安装包不含更新信息，请前往发布页面手动下载。");
     default:
       return detail;
   }
@@ -46,7 +46,7 @@ export function UpdatePanel() {
       case "unavailable":
         return t("settings.updateUnavailable", "当前平台暂不支持自动更新，请到发布页面手动下载。");
       case "idle":
-        return t("settings.updateIdle", "还没检查过。");
+        return t("settings.updateIdle", "尚未检查。");
       case "checking":
         return t("settings.updateChecking", "正在检查…");
       case "available":
@@ -63,7 +63,7 @@ export function UpdatePanel() {
       case "error":
         return current.userInitiated
           ? failureText(current.reason, current.detail, t)
-          : t("settings.updateFailedQuiet", "上次后台检查没有成功，稍后会自动重试。");
+          : t("settings.updateFailedQuiet", "上次后台检查失败，将自动重试。");
     }
   }
 
@@ -109,7 +109,7 @@ export function UpdatePanel() {
     <Panel>
       <PanelRow
         label={t("settings.updateLabel", "自动更新")}
-        description={t("settings.updateDesc", "后台每天检查一次；下载和重启都由你决定。")}
+        description={t("settings.updateDesc", "每天在后台检查一次；下载与重启需手动确认。")}
         value={<span data-testid="update-status">{describe(status)}</span>}
         actions={action()}
       />

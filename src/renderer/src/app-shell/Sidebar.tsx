@@ -24,7 +24,7 @@ const CONNECTION_TONE: Record<string, StatusTone> = {
  * settings.
  *
  * A row is two lines because the name and the machine's facts used to share
- * one. They were never equal: the accelerator is as long as it likes
+ * one. They were never equal: the machine type is as long as it likes
  * (`A100-SXM4-40GB`) and it was the name that paid, down to an ellipsis three
  * characters wide. The name now owns the first line outright, and the facts
  * sit under it — which is also what lets the rail be narrowed, the one thing a
@@ -150,7 +150,7 @@ export function Sidebar() {
 
         {!loading && sessions.length === 0 && (
           <p className="hint" style={{ padding: "var(--space-2)" }}>
-            {t("sidebar.empty", "本地还没有会话。点击上方「+」新建运行时。")}
+            {t("sidebar.empty", "本地暂无会话。使用上方「+」新建运行时。")}
           </p>
         )}
 
@@ -165,7 +165,7 @@ export function Sidebar() {
         */}
         {untrackedError && sessions.length === 0 && (
           <p className="hint" style={{ padding: "var(--space-2)" }} title={untrackedError}>
-            {t("sidebar.untrackedUnavailable", "读不到云端运行时列表（令牌过期或网络不通），点上面的同步重试。")}
+            {t("sidebar.untrackedUnavailable", "无法读取云端运行时列表（令牌过期或网络不通），请使用上方「同步」重试。")}
           </p>
         )}
 
@@ -180,7 +180,7 @@ export function Sidebar() {
             <p className="hint">
               {t(
                 "sidebar.previousAccount",
-                "这些记录属于之前登录的账号（{{email}}）。同步会按当前账号清理它们。",
+                "以下记录属于此前登录的账号（{{email}}）。同步将按当前账号移除这些记录。",
                 { email: previousAccount },
               )}
             </p>
@@ -248,7 +248,7 @@ export function Sidebar() {
                       <span
                         className="session-row__fact"
                         {...(cloud === "gone"
-                          ? { title: t("sidebar.cloudGoneTitle", "云端已查不到这台运行时；同步会清掉这条本地记录。") }
+                          ? { title: t("sidebar.cloudGoneTitle", "云端已无此运行时；同步将移除该本地记录。") }
                           : {})}
                       >
                         {cloud === "running"

@@ -286,7 +286,7 @@ function PreviewBody({
   if (read.kind === "binary") {
     return (
       <Callout tone="warn">
-        {t("editor.binary", "二进制文件无法预览，下载到本地后用它自己的程序打开。")}
+        {t("editor.binary", "二进制文件无法预览，请下载后使用相应程序打开。")}
       </Callout>
     );
   }
@@ -294,7 +294,7 @@ function PreviewBody({
   if (read.kind === "invalidUtf8") {
     return (
       <>
-        <Callout tone="warn">{t("editor.invalidUtf8", "不是有效的 UTF-8 文本，只能查看。")}</Callout>
+        <Callout tone="warn">{t("editor.invalidUtf8", "不是有效的 UTF-8 文本，仅可查看。")}</Callout>
         <TextSurface text={read.text} />
       </>
     );
@@ -307,7 +307,7 @@ function PreviewBody({
     return (
       <>
         <Callout tone="warn">
-          {t("editor.truncated", "文件较大（{{size}}），只显示了开头与结尾。", {
+          {t("editor.truncated", "文件较大（{{size}}），仅显示开头与结尾。", {
             size: formatSize(read.size),
           })}
         </Callout>
@@ -528,7 +528,7 @@ export function FileViewPanel({
           </Callout>
         )}
         {read?.kind === "text" && !writable && (
-          <Callout tone="warn">{t("editor.notWritable", "这个文件不可写，只能查看。")}</Callout>
+          <Callout tone="warn">{t("editor.notWritable", "文件不可写，仅可查看。")}</Callout>
         )}
         {/* The questions and the failure that follows a save attempt are one
             live region: they appear from an action taken elsewhere (the strip,
@@ -540,8 +540,8 @@ export function FileViewPanel({
             {conflict && (
               <Callout tone="danger">
                 {conflict.reason === "missing"
-                  ? t("editor.conflictMissing", "文件在服务器上已不存在，保存会重新创建它。")
-                  : t("editor.conflictBody", "文件在服务器上已改变，保存会覆盖那边的版本。")}
+                  ? t("editor.conflictMissing", "文件在服务器上已不存在，保存将重新创建。")
+                  : t("editor.conflictBody", "文件已在服务器上更改，保存将覆盖服务器版本。")}
               </Callout>
             )}
             {pending?.kind === "confirmReload" && (

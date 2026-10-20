@@ -66,7 +66,7 @@ describe("the launch screen", () => {
     // Where the button goes is `lib/star-prompt`'s to say; what it may not do is
     // dress as the affirmative action, which is the new-session button's.
     expect(star, "请求支持不是这一屏的肯定动作").not.toContain("btn--primary");
-    expect(text(markup)).toContain("在 GitHub 上点个 Star");
+    expect(text(markup)).toContain("在 GitHub 上 Star 项目");
   });
 });
 
@@ -164,13 +164,13 @@ describe("while the sign-in flow is running", () => {
     // The claim, the capability lines and the ask belong to somebody deciding
     // whether to use the app, not to somebody in the middle of signing in.
     expect(body).not.toContain("Google Colab 运行时的桌面 SSH 控制台");
-    expect(body).not.toContain("申请 GPU 运行时");
-    expect(body).not.toContain("在 GitHub 上点个 Star");
+    expect(body).not.toContain("申请 Colab 运行时");
+    expect(body).not.toContain("在 GitHub 上 Star 项目");
   });
 
   it("流程结束后那一屏恢复", () => {
     store.current = { ...base, env: { authenticated: false }, loginRunning: false };
-    expect(text(render())).toContain("申请 GPU 运行时");
-    expect(text(render())).toContain("在 GitHub 上点个 Star");
+    expect(text(render())).toContain("申请 Colab 运行时");
+    expect(text(render())).toContain("在 GitHub 上 Star 项目");
   });
 });

@@ -75,7 +75,7 @@ export function Banners() {
                       data-testid="update-banner-dismiss"
                       onClick={() => updateVersion !== null && dismissUpdate(updateVersion)}
                     >
-                      {t("banners.dismiss", "知道了")}
+                      {t("banners.dismiss", "关闭")}
                     </Button>
                   </>
                 )}

@@ -132,7 +132,7 @@ const GROUPS_DEF: { id: string; titleKey: string; defaultTitle: string; sections
         titleKey: "settings.sectionAboutTitle",
         defaultTitle: "关于",
         descKey: "settings.sectionAboutDesc",
-        defaultDesc: "这一份应用自身的版本，以及它是怎么更新的。",
+        defaultDesc: "应用版本、更新方式与日志位置。",
         icon: SyncIcon,
       },
     ],
@@ -250,7 +250,7 @@ export function SettingsPage() {
   };
 
   /**
-   * The accelerator row: what may be allocated, and — just as useful — what may
+   * The machine-type row: what may be allocated, and — just as useful — what may
    * not. The unavailable ones stay visible instead of disappearing, because
    * "H100 is not available to this account" is the answer people come here for.
    */
@@ -314,8 +314,8 @@ export function SettingsPage() {
             title={env?.account?.subject ?? undefined}
           />
           <PanelRow
-            label={t("settings.accountAccelerators", "可用加速器")}
-            description={t("settings.accountAcceleratorsDesc", "当前账号有权限申请的硬件加速规格。")}
+            label={t("settings.accountAccelerators", "可用机型")}
+            description={t("settings.accountAcceleratorsDesc", "当前账号有权限申请的机型。")}
             value={eligibilityValue()}
           />
         </Panel>
@@ -400,7 +400,7 @@ export function SettingsPage() {
         />
         <PanelRow
           label={t("settings.runtimeAuth", "授权")}
-          description={env?.has_refresh_token ? t("settings.runtimeAuthDesc", "令牌过期后会自动刷新") : undefined}
+          description={env?.has_refresh_token ? t("settings.runtimeAuthDesc", "令牌过期后自动刷新。") : undefined}
           value={env?.authenticated ? t("settings.runtimeAuthorized", "已授权") : t("settings.runtimeUnauthorized", "未授权")}
         />
         <PanelRow
@@ -420,10 +420,10 @@ export function SettingsPage() {
             label={t("settings.externalSshLabel", "SSH 主机配置")}
             description={
               activeSession
-                ? t("settings.externalSshDescActive", "为当前会话「{{session}}」生成并写入 SSH 别名配置，供外部终端或 VS Code 使用", {
+                ? t("settings.externalSshDescActive", "为当前会话「{{session}}」生成并写入 SSH 别名配置，供外部终端或 VS Code 使用。", {
                     session: activeSession,
                   })
-                : t("settings.externalSshDescInactive", "请先选择或连接一个会话，再写入对应的 SSH 配置")
+                : t("settings.externalSshDescInactive", "请先选择或连接一个会话，再写入对应的 SSH 配置。")
             }
             actions={
               <div className="row">

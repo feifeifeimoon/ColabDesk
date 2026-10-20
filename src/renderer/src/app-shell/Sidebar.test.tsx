@@ -128,7 +128,7 @@ describe("Sidebar", () => {
     expect(html).toContain("已连接");
   });
 
-  it("加速器是第二行的第一条事实", () => {
+  it("机型是第二行的第一条事实", () => {
     const row = rowsMarkup(renderToStaticMarkup(createElement(Sidebar)));
     const facts = row.slice(row.indexOf("session-row__facts"));
 
@@ -149,7 +149,7 @@ describe("Sidebar", () => {
     const html = renderToStaticMarkup(createElement(Sidebar));
 
     expect(html).toContain("云端已无");
-    expect(html).toContain("同步会清掉这条本地记录");
+    expect(html).toContain("同步将移除该本地记录");
     expect(html).not.toContain("云端运行中");
   });
 
@@ -192,7 +192,7 @@ describe("Sidebar", () => {
   it("空态说的是「本地」没有，而不是「没有」", () => {
     store.current = { ...baseStore, sessions: [], untrackedSessions: [] };
     const html = renderToStaticMarkup(createElement(Sidebar));
-    expect(html).toContain("本地还没有会话");
+    expect(html).toContain("本地暂无会话");
   });
 
   it("服务器那一半没读到时空态必须说出来，并给出下一步", () => {
@@ -204,8 +204,8 @@ describe("Sidebar", () => {
       untrackedError: "assignments request failed",
     };
     const html = renderToStaticMarkup(createElement(Sidebar));
-    expect(html).toContain("读不到云端运行时列表");
-    expect(html).toContain("点上面的同步重试");
+    expect(html).toContain("无法读取云端运行时列表");
+    expect(html).toContain("请使用上方「同步」重试");
   });
 
   it("本地有会话时不报服务器那一半的失败——列表本身是诚实的", () => {
@@ -214,7 +214,7 @@ describe("Sidebar", () => {
       untrackedError: "assignments request failed",
     };
     const html = renderToStaticMarkup(createElement(Sidebar));
-    expect(html).not.toContain("读不到云端运行时列表");
+    expect(html).not.toContain("无法读取云端运行时列表");
   });
 });
 

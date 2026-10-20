@@ -409,7 +409,7 @@ export function StatusBar() {
       : null;
 
   const projectedText = projectedHours
-    ? t("statusbar.projectedHours", "预计可用约 {{hours}} 小时", { hours: projectedHours })
+    ? t("statusbar.projectedHours", "预计可用 {{hours}} 小时", { hours: projectedHours })
     : balance === null
       ? "—"
       : t("statusbar.noOngoingRate", "无持续扣费");

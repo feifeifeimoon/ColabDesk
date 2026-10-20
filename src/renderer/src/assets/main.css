@@ -375,7 +375,7 @@ kbd {
 
 /*
   Two lines: the name owns the first one outright, the machine's facts sit under
-  it. Splitting them is what makes the rail narrowable — an accelerator as long
+  it. Splitting them is what makes the rail narrowable — a machine type as long
   as `A100-SXM4-40GB` used to take its width out of the name, and the name lost.
 
   The first line is a band exactly as tall as a `sm` control so the dot, the
@@ -477,7 +477,7 @@ kbd {
   font-size: var(--text-micro);
 }
 
-/* Identifiers are the machine's voice: the accelerator is mono, and the words
+/* Identifiers are the machine's voice: the machine type is mono, and the words
    around it are not. */
 .session-row__fact:first-child {
   font-family: var(--font-mono);
@@ -1860,92 +1860,6 @@ kbd {
   font-weight: 600;
 }
 
-/* The accelerator picker: the one decision this dialog exists for, so it is a
-   surface of choices rather than a dropdown. Native radios sit underneath,
-   hidden, and the label is the card. */
-.accelerator-picker {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.accelerator-picker__legend {
-  padding: 0;
-  color: var(--ink);
-  font-size: var(--text-label);
-  font-weight: 500;
-}
-
-.accelerator-picker__hint {
-  margin: 0;
-  color: var(--mute);
-  font-size: var(--text-caption);
-}
-
-.accelerator-picker__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: var(--space-2);
-  margin-top: var(--space-1);
-}
-
-.accelerator-option {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-sm);
-  background: var(--canvas);
-  color: var(--body);
-  font-size: var(--text-label);
-  cursor: pointer;
-  transition: border-color 120ms ease;
-}
-
-.accelerator-option:hover {
-  border-color: var(--hairline-strong);
-}
-
-.accelerator-option:has(.visually-hidden:focus-visible) {
-  box-shadow: var(--focus-ring);
-}
-
-.accelerator-option__name {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Chosen: the border and the ink carry it, and the fill stays quiet. */
-.accelerator-option--chosen {
-  border-color: var(--ink);
-  color: var(--ink);
-}
-
-/* What the account cannot get: the strikethrough carries the meaning and the
-   colour merely agrees (the badge-off rule). */
-.accelerator-option--off {
-  color: var(--mute);
-  cursor: default;
-}
-
-.accelerator-option--off:hover {
-  border-color: var(--hairline);
-}
-
-.accelerator-option--off .accelerator-option__name {
-  text-decoration: line-through;
-}
-
-.accelerator-option__note {
-  color: var(--mute);
-  font-size: var(--text-micro);
-}
-
 /* The footer's left half: what the button is about to create. */
 .dialog__summary {
   min-width: 0;
@@ -2600,7 +2514,7 @@ textarea.input {
   color: var(--error);
 }
 
-/* Not offered to this account — an accelerator it cannot allocate. The strike
+/* Not offered to this account — a machine type it cannot allocate. The strike
    carries the meaning; the muted colour only agrees with it. */
 .badge--off {
   color: var(--mute);

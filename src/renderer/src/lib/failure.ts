@@ -23,14 +23,14 @@ export function failureHint(output: string): string | null {
   if (NETWORK.test(output)) {
     return translate(
       "failure.networkInterrupted",
-      "网络请求被中断：与 colab.research.google.com 的 TLS 连接被重置。偶发时重试即可；若持续失败，请检查代理/VPN 是否正常路由 Google 域名。",
+      "网络请求中断：与 colab.research.google.com 的 TLS 连接被重置。偶发时可重试；若持续失败，请检查代理或 VPN 是否正确路由 Google 域名。",
     );
   }
   if (ACCELERATOR_REFUSED.test(output)) {
-    return translate("failure.acceleratorRefused", "这个账号当前拿不到所选加速器，换一个再试。");
+    return translate("failure.acceleratorRefused", "当前账号无法使用所选机型，请更换后重试。");
   }
   if (TRACEBACK.test(output)) {
-    return translate("failure.traceback", "colab 命令抛出了异常。可以重试；反复出现时用「复制详情」交给维护者。");
+    return translate("failure.traceback", "colab 命令抛出异常。请重试；若反复出现，请使用「复制详情」提交给维护者。");
   }
   return null;
 }

@@ -122,20 +122,20 @@ export function StartPage() {
             <ul className="startpage__features">
               <Feature
                 icon={<ChipIcon />}
-                title={t("home.featureShellsTitle", "申请 GPU 运行时")}
-                line={t("home.featureShellsLine", "选择算力规格，直接接入交互式终端。")}
+                title={t("home.featureShellsTitle", "申请 Colab 运行时")}
+                line={t("home.featureShellsLine", "选择机型，接入交互式终端。")}
               />
               {/* The terminal, not a play button: nothing here launches a job — the
                   shell does, on the machine the first line just handed over. */}
               <Feature
                 icon={<TerminalIcon />}
                 title={t("home.featureRunTitle", "训练与推理工作流")}
-                line={t("home.featureRunLine", "保持原生终端操作习惯，无缝运行脚本。")}
+                line={t("home.featureRunLine", "在原生终端中运行训练与推理脚本。")}
               />
               <Feature
                 icon={<FolderIcon />}
                 title={t("home.featureFilesTitle", "双向文件传输")}
-                line={t("home.featureFilesLine", "基于 SFTP 协议，直接浏览、上传与下载远程文件。")}
+                line={t("home.featureFilesLine", "通过 SFTP 浏览、上传与下载远程文件。")}
               />
               <Feature
                 icon={<ChartIcon />}
@@ -180,7 +180,7 @@ function StarAsk() {
           ? t("home.repositoryTitle", "打开源码仓库：github.com/{{repository}}", {
               repository: REPOSITORY,
             })
-          : t("home.starAskTitle", "喜欢 ColabDesk？在 GitHub 上点个 Star 支持一下。")
+          : t("home.starAskTitle", "在 GitHub 上查看源码仓库")
       }
       onClick={() => {
         openExternal(REPOSITORY_URL);
@@ -189,7 +189,7 @@ function StarAsk() {
       }}
     >
       <StarIcon size={14} />
-      {opened ? REPOSITORY : t("home.starAsk", "在 GitHub 上点个 Star")}
+      {opened ? REPOSITORY : t("home.starAsk", "在 GitHub 上 Star 项目")}
     </Button>
   );
 }

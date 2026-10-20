@@ -128,7 +128,7 @@ export async function fetchAcceleratorEligibility(log?: LogSink): Promise<Accele
   } catch (cause) {
     // Fail-soft by design: the picker then offers everything the backend never
     // ruled out. Why it came back empty is what the log is for.
-    log?.write("api", `加速器资格读取失败（ccu-info）：${errorMessage(cause)}`);
+    log?.write("api", `读取账号可用机型失败（ccu-info）：${errorMessage(cause)}`);
     return null;
   }
 }
