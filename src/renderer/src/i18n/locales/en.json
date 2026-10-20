@@ -231,7 +231,14 @@
     "setupElapsed": "waiting {{time}}",
     "setupMayTake": "This can take a few minutes; the terminal opens when it is ready.",
     "setupBackground": "Keep it in the background",
-    "setupFailedKeys": "Edit, then Enter to retry · Esc to go back"
+    "setupFailedKeys": "Edit, then Enter to retry · Esc to go back",
+    "sshKeyMissingTitle": "Ed25519 / ECDSA SSH key required",
+    "sshKeyMissingBody": "No id_ed25519 or id_ecdsa private key was found in ~/.ssh. Google Colab's SSH gateway only accepts Ed25519 and ECDSA keys (it rejects id_rsa server-side). Set up a key before requesting a runtime so compute units are not spent on a machine you cannot connect to.",
+    "sshKeyGenerate": "Generate Ed25519 key",
+    "sshKeyGenerating": "Generating…",
+    "sshKeyGenerated": "Generated {{path}}",
+    "sshKeyCopyCommand": "Copy ssh-keygen command",
+    "sshKeyRecheck": "Re-check"
   },
   "login": {
     "signInGoogle": "Sign in with Google Account",
@@ -395,6 +402,10 @@
     "runtimeAuthorized": "Authorized",
     "runtimeUnauthorized": "Unauthorized",
     "runtimeTokenExpiry": "Token Expiry",
+    "runtimeSshKey": "SSH Key",
+    "runtimeSshKeyDesc": "Colab only accepts id_ed25519 or id_ecdsa (id_rsa is rejected).",
+    "runtimeSshKeyMissing": "Not found (requires id_ed25519 / id_ecdsa)",
+    "runtimeSshKeyGenerate": "Generate key",
     "externalSshLabel": "SSH Host Configuration",
     "externalSshDescActive": "Write an SSH host alias for \"{{session}}\" for use in external terminals or VS Code.",
     "externalSshDescInactive": "Select or connect to a session before writing its SSH configuration.",

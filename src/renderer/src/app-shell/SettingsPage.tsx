@@ -36,7 +36,7 @@ import { UsageTrendPanel } from "../features/usage/UsageTrendPanel";
 import { ShortcutsSettings } from "./ShortcutsSettings";
 import { TerminalSettings } from "./TerminalSettings";
 import { UI_LANGUAGE_CHOICES } from "../i18n/supported-languages";
-import { messageOf, sshRemove, sshSetup } from "../lib/api";
+import { messageOf, sshGenerateKey, sshRemove, sshSetup } from "../lib/api";
 import { formatExpiry } from "../lib/format";
 import type { ThemePreference } from "../lib/theme";
 import { useAppStore } from "../store";
@@ -353,6 +353,33 @@ export function SettingsPage() {
             label={t("settings.runtimeTokenExpiry", "令牌到期")}
             value={formatExpiry(env?.token_expiry ?? null)}
             title={env?.token_expiry ?? undefined}
+          />
+          <PanelRow
+            label={t("settings.runtimeSshKey", "SSH 密钥")}
+            description={t("settings.runtimeSshKeyDesc", "Colab 仅支持 id_ed25519 或 id_ecdsa（不支持 id_rsa）。")}
+            value={
+              env === null
+                ? t("settings.runtimeDetecting", "检测中…")
+                : (env.ssh_identity ?? t("settings.runtimeSshKeyMissing", "未检测到（仅支持 id_ed25519 / id_ecdsa）"))
+            }
+            title={env?.ssh_identity ?? undefined}
+            actions={
+              env !== null && !env.ssh_identity ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={pending}
+                  onClick={() => {
+                    setPending(true);
+                    void sshGenerateKey()
+                      .then(() => refreshEnvironment())
+                      .finally(() => setPending(false));
+                  }}
+                >
+                  {t("settings.runtimeSshKeyGenerate", "生成密钥")}
+                </Button>
+              ) : undefined
+            }
           />
         </Panel>
         <Callout>

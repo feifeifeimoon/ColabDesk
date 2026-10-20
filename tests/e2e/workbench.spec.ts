@@ -4,6 +4,8 @@
  * frameless title bar's drag regions, our own window controls, and the panels.
  */
 
+import { rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import type { Page } from "@playwright/test";
 import { expect, openSession, reloadWorkbench, test } from "./app-launch";
 
@@ -459,4 +461,29 @@ test("会话没了之后，工作台回到前门，不会停在「还没有终�
   await expect(page.locator(".startpage")).toContainText("选一个会话，或新建一个运行时。");
   await expect(page.locator(".startpage")).not.toContainText("还没有终端");
 });
+
+test("新建运行时：缺少 Ed25519/ECDSA 密钥时先拦住说明 Colab 限制，一键生成后解锁创建", async ({
+  page,
+  sandbox,
+}) => {
+  // 模拟本机只有 id_rsa、没有 Colab 支持的 id_ed25519 / id_ecdsa 的场景。
+  rmSync(join(sandbox, ".ssh", "id_ed25519"), { force: true });
+  rmSync(join(sandbox, ".ssh", "id_ed25519.pub"), { force: true });
+  writeFileSync(join(sandbox, ".ssh", "id_rsa"), "fake-rsa-key");
+
+  await page.locator('[aria-label="新建会话"]').click();
+  const setup = page.locator('[data-testid="runtime-setup"]');
+  await expect(setup).toBeVisible();
+
+  const gate = setup.locator('[data-testid="setup-ssh-missing"]');
+  await expect(gate).toBeVisible();
+  await expect(gate).toContainText("id_rsa");
+  await expect(gate).toContainText("ssh-keygen -t ed25519");
+  await expect(setup.getByRole("button", { name: "创建" })).toBeDisabled();
+
+  await setup.locator('[data-testid="setup-generate-ssh-key"]').click();
+  await expect(gate).toHaveCount(0);
+  await expect(setup.getByRole("button", { name: "创建" })).toBeEnabled();
+});
+
 

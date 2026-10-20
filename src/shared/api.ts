@@ -88,6 +88,7 @@ export interface ColabDeskApi {
 
   sshSetup(name: string): Promise<SshSetup>;
   sshRemove(name: string): Promise<SshSetup>;
+  sshGenerateKey(): Promise<string>;
   sshDisconnect(name: string): Promise<void>;
   onSshStatus(listener: (payload: SshState) => void): () => void;
 

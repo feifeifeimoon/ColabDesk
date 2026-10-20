@@ -44,6 +44,7 @@ function baseState(update: UpdateStatus) {
       accelerator_eligibility: null,
       token_expiry: null,
       has_refresh_token: false,
+      ssh_identity: "C:\\Users\\dev\\.ssh\\id_ed25519",
       hint: null,
     },
     usage: null,

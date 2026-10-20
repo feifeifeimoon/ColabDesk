@@ -8,6 +8,7 @@ import { resetAccountCache } from "../../colab/account";
 import { LoginFlow } from "../../colab/login";
 import { resolveCli } from "../../colab/cli";
 import { clearToken } from "../../colab/sessions";
+import { ensureIdentity } from "../../ssh/identity";
 import type { IpcContext } from "../register";
 
 export interface LoginHandle {
@@ -81,6 +82,11 @@ export function registerColabHandlers({ service, usageHistory, bundledDir, log }
 
   ipcMain.handle(IPC.sshSetup, (_event, name: string) => service.sshSetup(name));
   ipcMain.handle(IPC.sshRemove, (_event, name: string) => service.sshRemove(name));
+  ipcMain.handle(IPC.sshGenerateKey, () => {
+    const identity = ensureIdentity();
+    log?.write("ssh", `已确保 SSH 密钥就绪：${identity.privateKeyPath}`);
+    return identity.privateKeyPath;
+  });
 
   return {
     cancel() {

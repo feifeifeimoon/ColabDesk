@@ -36,12 +36,17 @@ function option(markup: string, id: string): string {
   return markup.slice(markup.lastIndexOf("<label", value), markup.indexOf("</label>", value));
 }
 
-function base(creation: Record<string, unknown>, eligibility: AcceleratorEligibility | null = ELIGIBILITY) {
+function base(
+  creation: Record<string, unknown>,
+  eligibility: AcceleratorEligibility | null = ELIGIBILITY,
+  sshIdentity: string | null = "/Users/dev/.ssh/id_ed25519",
+) {
   return {
     creation: { open: true, request: null, startedAt: null, lines: [], error: null, ...creation },
-    env: { accelerator_eligibility: eligibility },
+    env: { accelerator_eligibility: eligibility, ssh_identity: sshIdentity },
     startCreation: async () => {},
     closeNewSession: () => {},
+    refreshEnvironment: async () => true,
   };
 }
 
@@ -102,6 +107,18 @@ describe("the setup screen", () => {
 
     expect(option(markup, "H100")).not.toContain("disabled");
     expect(markup).not.toContain("当前账号可用");
+  });
+
+  it("blocks creation and offers Ed25519 key generation when ~/.ssh has no supported key", () => {
+    store.current = base({ phase: "setup" }, ELIGIBILITY, null);
+    const markup = renderToStaticMarkup(createElement(RuntimeSetup));
+
+    expect(markup).toContain('data-testid="setup-ssh-missing"');
+    expect(markup).toContain("id_ed25519");
+    expect(markup).toContain("id_rsa");
+    expect(markup).toContain('data-testid="setup-generate-ssh-key"');
+    expect(markup).toContain("ssh-keygen -t ed25519");
+    expect(markup).toMatch(/type="submit"[^>]*disabled/);
   });
 });
 
@@ -167,6 +184,12 @@ describe("in English", () => {
   /** Every string here is passed with a Chinese default: a key missing from
       en.json degrades to Chinese silently, and this is what notices. */
   it("设置那一屏不出现中文", async () => {
+    await setRendererUiLanguage("en");
+    expect(renderToStaticMarkup(createElement(RuntimeSetup))).not.toMatch(/[一-鿿]/);
+  });
+
+  it("缺少 SSH 密钥那一屏不出现中文", async () => {
+    store.current = base({ phase: "setup" }, ELIGIBILITY, null);
     await setRendererUiLanguage("en");
     expect(renderToStaticMarkup(createElement(RuntimeSetup))).not.toMatch(/[一-鿿]/);
   });
