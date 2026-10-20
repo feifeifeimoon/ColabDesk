@@ -12,7 +12,7 @@ import type { AppState, SurfacesSlice } from "../types";
 
 export const createSurfacesSlice: StateCreator<AppState, [], [], SurfacesSlice> = (set, get) => ({
   settingsOpen: false,
-  settingsSection: "account",
+  settingsSection: "appearance",
 
   openSettings: (section) =>
     set(section ? { settingsOpen: true, settingsSection: section } : { settingsOpen: true }),

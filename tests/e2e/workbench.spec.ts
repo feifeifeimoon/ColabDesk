@@ -272,6 +272,7 @@ test("设置页面导航栏宽度与会话栏一致，支持拖拽拉伸且双�
 // 机型资格同理，来自 CLI 只取三个数字就丢掉的 ccu-info 响应。
 test("设置页显示账号与可用机型，不可用的机型被划掉", async ({ page }) => {
   await page.locator('[data-testid="open-settings"]').click();
+  await page.getByRole("button", { name: "账号与环境" }).click();
 
   const account = settingsRow(page, "当前账号");
   await expect(account).toContainText("e2e@example.com");

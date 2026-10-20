@@ -2460,7 +2460,9 @@ textarea.input {
 
 .table td {
   font-size: var(--text-copy);
-  padding: var(--space-3) var(--space-4);
+  /* The table sits directly in a panel body, so its first column lines up with
+     the panel's title rather than with the panel's edge. */
+  padding: var(--space-3) var(--space-5);
   border-bottom: 1px solid var(--hairline);
   vertical-align: middle;
   white-space: nowrap;

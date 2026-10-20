@@ -17,7 +17,7 @@ import type { Page } from "@playwright/test";
 import { expect, openSession, reloadWorkbench, test } from "./app-launch";
 
 const directory = join(process.cwd(), "screenshots");
-const SECTIONS = ["账号与额度", "用量趋势", "外观", "终端", "运行环境", "外部工具", "关于"];
+const SECTIONS = ["外观", "终端", "快捷键", "外部连接", "账号与环境", "用量趋势", "关于"];
 
 /** Named by the theme actually on screen, never by what the harness meant. */
 async function capture(page: Page, name: string): Promise<void> {

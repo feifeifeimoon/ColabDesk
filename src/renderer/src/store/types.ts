@@ -236,12 +236,12 @@ export interface PreferencesSlice {
 
 /** Which section of the settings rail is showing. State, so it lives here. */
 export type SectionId =
-  | "account"
-  | "usage"
   | "appearance"
   | "terminal"
-  | "runtime"
+  | "shortcuts"
   | "external"
+  | "account"
+  | "usage"
   | "about";
 
 export interface SurfacesSlice {

@@ -1,5 +1,5 @@
 /**
- * The settings page's runtime and about sections, rendered as markup.
+ * The settings page's account and about sections, rendered as markup.
  *
  * Two rules live here. The application's own version must be on screen next to
  * the CLI's — a report that only carries the CLI version cannot be acted on,
@@ -29,7 +29,7 @@ const noop = () => {};
 function baseState(update: UpdateStatus) {
   return {
     settingsOpen: true,
-    settingsSection: "account",
+    settingsSection: "appearance",
     setSettingsSection: noop,
     closeSettings: noop,
     env: {
@@ -77,11 +77,18 @@ const render = (section: SectionId): string => {
 };
 const text = (html: string): string => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
 
-describe("the runtime section", () => {
+describe("the account section", () => {
   it("shows the application version and the CLI version, distinguishably", () => {
-    const rendered = text(render("about")) + text(render("runtime"));
+    const rendered = text(render("about")) + text(render("account"));
     expect(rendered).toContain("0.3.0");
     expect(rendered).toContain("0.7.4");
+  });
+
+  it("keeps the local CLI environment beside the account it authorizes", () => {
+    const rendered = text(render("account"));
+    expect(rendered).toContain("本地 Colab 环境");
+    expect(rendered).toContain("colab 命令");
+    expect(rendered).toContain("C:\\bundled\\python.exe");
   });
 });
 
