@@ -21,6 +21,9 @@ export default defineConfig({
       // these files run under bare `node` and must not need a TS build step.
       "config/**/*.test.mjs",
       "tools/**/*.test.mjs",
+      // The landing page is plain static HTML with no build step, so its pure
+      // modules (i18n, platform detection) and its copy are asserted here too.
+      "site/**/*.test.mjs",
     ],
     environment: "node",
     // One stylesheet is also a data file: the terminal's palettes are asserted

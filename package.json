@@ -15,7 +15,8 @@
     "gallery": "playwright test --config config/playwright.config.ts --project=gallery",
     "bundle:cli": "node tools/bundle-cli.mjs",
     "package:win": "npm run bundle:cli && npm run build && electron-builder --config config/electron-builder.config.cjs --win --publish never",
-    "package:mac": "npm run bundle:cli && npm run build && electron-builder --config config/electron-builder.config.cjs --mac --publish never"
+    "package:mac": "npm run bundle:cli && npm run build && electron-builder --config config/electron-builder.config.cjs --mac --publish never",
+    "site:tokens": "node tools/sync-site-tokens.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",

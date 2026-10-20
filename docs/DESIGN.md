@@ -205,6 +205,20 @@ Principles:
 - **Numbers use tabular-nums.** Quota values, file sizes, percentages — a figure that changes should not make the layout jump.
 - **Do not shrink type to express hierarchy.** Hierarchy is carried by size + colour + weight together, and two adjacent steps differ by at least two rungs.
 
+### The landing page has one extra rung
+
+The marketing page (`site/`) is read at a distance rather than worked in, so it adds exactly one rung above `display` — and no others:
+
+| Role | Size / weight | Use |
+| --- | --- | --- |
+| hero title | `clamp(30px, 4.2vw, 44px)` / 600 / -0.035em | The one sentence at the top of the page |
+| hero copy | 16px / 400 / 1.65 | The paragraph under it |
+| section title | 24px / 600 / -0.03em | "What it does" |
+
+Everything else on that page is `copy`, `caption` or `micro` from the table above. There is no third scale: a landing page that keeps inventing sizes stops looking like the product it is selling.
+
+**Downloads are one primary plus an "Also for…" menu.** The primary button names the visitor's own platform and points straight at that installer; beside it sits one secondary, `View on GitHub`, because the repository is the next thing a developer looks for; the alternative builds live behind a disclosure (`Also for macOS` → rows of platform, architecture and file format). Several equal download buttons make the visitor choose before they have read anything; a disclosure keeps one decision on screen and still lets the other builds be found. The same rule as the app's one-primary-per-flow applies to a page.
+
 ## Layout
 
 ### Spacing

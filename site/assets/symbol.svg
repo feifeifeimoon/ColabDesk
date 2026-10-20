@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title">
+  <title id="title">ColabDesk symbol</title>
+  <!-- The remote machine is a frame; the block reaches in through its wall. Frame 136x200
+       with a 32 wall and r=28 outer corners; the wall is interrupted over 80 units so the
+       64-tall block passes with 8 units of clearance, and the two posts this leaves are
+       exactly 32 — the wall's own thickness — so the cut belongs to the same construction.
+       The block ends 40 units inside a 72-wide room. Master is one colour; variants are
+       generated from it, never hand-coloured. -->
+  <path fill="#171717" fill-rule="evenodd" d="M 124 28 H 204 A 28 28 0 0 1 232 56 V 200 A 28 28 0 0 1 204 228 H 124 A 28 28 0 0 1 96 200 V 168 H 128 V 88 H 96 V 56 A 28 28 0 0 1 124 28 Z M 128 60 H 200 V 196 H 128 Z"/>
+  <path fill="#171717" d="M 24 96 H 168 V 160 H 24 Z"/>
+</svg>

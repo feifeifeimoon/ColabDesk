@@ -21,6 +21,9 @@ brand/
 # to go with the conversation, not committed
 docs/superpowers/
 
+# The visual companion's mockup screens (brainstorming), same reason
+.superpowers/
+
 # Python bytecode
 __pycache__/
 
