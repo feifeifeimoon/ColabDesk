@@ -34,6 +34,10 @@ sign the file has two jobs and should be split.
 - `src/shared/` — the **contract** between main and the renderer (`types.ts`, `ipc.ts`, `api.ts`).
 - `tests/e2e/` — Playwright end-to-end specs; fixtures, the sandbox and the readiness waits live in
   `app-launch.ts`.
+- `site/` — the landing page, plain static files with no build step. Its `tokens.css` is a copy of the
+  app's (`npm run site:tokens`); its i18n is a separate marketing catalog; its English screenshots come
+  from `npm run gallery`.
+- `tools/` — one-job scripts that run under bare `node`: the CLI bundle and the site token copy.
 - `config/` — tooling configuration (vitest, electron-builder, playwright). `docs/` — the design system and
   reference material.
 - Tests sit next to the source they test (`*.test.ts`); there is no `__tests__`. End-to-end specs are the

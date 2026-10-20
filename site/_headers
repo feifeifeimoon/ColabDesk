@@ -1,12 +1,19 @@
-# Cloudflare Pages reads this file; it is not served.
+# Workers static assets reads this file; it is not served.
 #
 # Nothing here is fingerprinted (the page has no build step), so documents,
 # scripts and styles revalidate on every visit; only the heavy binaries are
 # cached. A day for images and fonts is short enough that a replaced screenshot
 # does not linger, and long enough that a repeat visit costs almost nothing.
+#
+# The policy allows exactly what the page uses: its own files and the GitHub API
+# the star badge and release lookup call. There is no inline script or style, so
+# neither needs a hole.
 /*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self' https://api.github.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'
+  X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
   Cache-Control: public, max-age=0, must-revalidate
 
 /assets/*

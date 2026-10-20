@@ -10,25 +10,46 @@
     />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="icon" href="assets/favicon-16.png" sizes="16x16" type="image/png" />
     <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
-    <meta name="theme-color" content="#171717" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+    <link rel="canonical" href="https://colabdesk.dev/" />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ColabDesk" />
     <meta property="og:title" content="ColabDesk — a desktop SSH console for Google Colab runtimes" />
     <meta
       property="og:description"
       content="SSH in, work in a real terminal, browse the runtime's files over SFTP, and watch the compute units it is spending — in one window."
     />
     <meta property="og:image" content="https://colabdesk.dev/assets/hero.png" />
+    <meta property="og:image:width" content="1180" />
+    <meta property="og:image:height" content="780" />
+    <meta property="og:image:alt" content="ColabDesk's workbench with a live terminal and the files panel" />
     <meta property="og:url" content="https://colabdesk.dev/" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ColabDesk — a desktop SSH console for Google Colab runtimes" />
+    <meta
+      name="twitter:description"
+      content="SSH in, work in a real terminal, browse the runtime's files over SFTP, and watch the compute units it is spending — in one window."
+    />
+    <meta name="twitter:image" content="https://colabdesk.dev/assets/hero.png" />
+    <link
+      rel="preload"
+      href="assets/fonts/geist-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <script src="theme.js"></script>
     <link rel="stylesheet" href="tokens.css" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <header class="nav">
+    <nav class="nav">
       <a class="nav__brand" href="./" aria-label="ColabDesk">
-        <img class="nav__lockup only-light" src="assets/lockup.svg" alt="ColabDesk" />
-        <img class="nav__lockup only-dark" src="assets/lockup-white.svg" alt="ColabDesk" />
+        <img class="nav__lockup only-light" src="assets/lockup.svg" alt="ColabDesk" width="125" height="24" />
+        <img class="nav__lockup only-dark" src="assets/lockup-white.svg" alt="ColabDesk" width="125" height="24" />
       </a>
       <div class="nav__actions">
         <a
@@ -64,11 +85,11 @@
             <circle cx="8" cy="8" r="6.1" />
             <path d="M1.9 8h12.2M8 1.9c1.9 1.9 1.9 10.3 0 12.2M8 1.9c-1.9 1.9-1.9 10.3 0 12.2" />
           </svg>
-          <button type="button" class="lang-switch__option" data-lang="zh" aria-pressed="false" title="中文">中文</button>
-          <button type="button" class="lang-switch__option" data-lang="en" aria-pressed="false" title="English">EN</button>
+          <button type="button" class="lang-switch__option" data-lang="zh" lang="zh-Hans" aria-pressed="false" title="中文">中文</button>
+          <button type="button" class="lang-switch__option" data-lang="en" lang="en" aria-pressed="false" title="English">EN</button>
         </div>
       </div>
-    </header>
+    </nav>
 
     <main>
       <section class="hero">
@@ -85,7 +106,7 @@
             class="btn btn--primary"
             href="https://github.com/feifeifeimoon/ColabDesk/releases/latest"
           >
-            Download for Windows
+            Download
           </a>
           <a
             class="btn btn--outline"
@@ -110,7 +131,7 @@
               aria-expanded="false"
               aria-controls="platform-list"
             >
-              <span id="platform-label">Also for macOS</span>
+              <span id="platform-label">All platforms</span>
               <svg class="platform-menu__chevron" viewBox="0 0 12 12" aria-hidden="true">
                 <path
                   d="M2.5 4.5 6 8l3.5-3.5"
@@ -159,10 +180,17 @@
             </ul>
           </div>
         </div>
+        <noscript>
+          <p class="noscript-note">
+            All builds are on
+            <a class="inline-link" href="https://github.com/feifeifeimoon/ColabDesk/releases">GitHub Releases</a>.
+            全部版本见 GitHub Releases。
+          </p>
+        </noscript>
       </section>
 
       <div class="shot">
-        <div class="shot__bar" aria-hidden="true">
+        <div class="shot__bar dark" aria-hidden="true">
           <span class="shot__dot"></span><span class="shot__dot"></span><span class="shot__dot"></span>
           <span class="shot__title">colabdesk — GPU runtime</span>
         </div>
@@ -186,7 +214,7 @@
             </p>
           </div>
           <div class="shot shot--small">
-            <div class="shot__bar" aria-hidden="true">
+            <div class="shot__bar dark" aria-hidden="true">
               <span class="shot__dot"></span><span class="shot__dot"></span><span class="shot__dot"></span>
               <span class="shot__title">colabdesk — terminal</span>
             </div>
@@ -194,7 +222,10 @@
               src="assets/terminal.png"
               alt="ColabDesk in focus mode: a full-window terminal on one runtime"
               data-i18n-alt="features.terminal.alt"
+              width="1180"
+              height="780"
               loading="lazy"
+              decoding="async"
             />
           </div>
         </div>
@@ -202,12 +233,12 @@
           <div class="feature__copy">
             <h3 class="feature__title" data-i18n="features.files.title">Files</h3>
             <p class="feature__body" data-i18n="features.files.body">
-              The runtime's filesystem as a tree: drag to upload files or whole folders, download, delete, with progress
-              and cancel.
+              The runtime's filesystem as a tree: drag to upload files or whole folders, download, delete, with progress,
+              and you can cancel.
             </p>
           </div>
           <div class="shot shot--small">
-            <div class="shot__bar" aria-hidden="true">
+            <div class="shot__bar dark" aria-hidden="true">
               <span class="shot__dot"></span><span class="shot__dot"></span><span class="shot__dot"></span>
               <span class="shot__title">colabdesk — files</span>
             </div>
@@ -215,7 +246,10 @@
               src="assets/files.png"
               alt="ColabDesk's files panel: the runtime's filesystem as a tree"
               data-i18n-alt="features.files.alt"
+              width="1180"
+              height="780"
               loading="lazy"
+              decoding="async"
             />
           </div>
         </div>
@@ -227,7 +261,7 @@
             </p>
           </div>
           <div class="shot shot--small">
-            <div class="shot__bar" aria-hidden="true">
+            <div class="shot__bar dark" aria-hidden="true">
               <span class="shot__dot"></span><span class="shot__dot"></span><span class="shot__dot"></span>
               <span class="shot__title">colabdesk — quota</span>
             </div>
@@ -235,7 +269,10 @@
               src="assets/quota.png"
               alt="ColabDesk's quota trend: compute units spent per day, week or month"
               data-i18n-alt="features.quota.alt"
+              width="1180"
+              height="780"
               loading="lazy"
+              decoding="async"
             />
           </div>
         </div>

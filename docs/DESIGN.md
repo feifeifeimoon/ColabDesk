@@ -107,7 +107,7 @@ The language exists to solve one problem: **carrying a large amount of machine s
 
 Three choices belong to a desktop console in particular:
 
-1. **Regular Geist instead of a display face.** There is no marketing page here, so `display-xl` / `display-lg` are gone and the top of the ladder is the 26px `{typography.display}` — which appears only on quota figures. The start page (see "Start page") later brought back a little brand material, but **not as type**: the name is the lockup graphic from the mark, and the size ladder did not move a step.
+1. **Regular Geist instead of a display face.** The product itself has no display face: the top of its ladder is the 26px `{typography.display}`, which appears only on quota figures. The start page (see "Start page") later brought back a little brand material, but **not as type**: the name is the lockup graphic from the mark, and the size ladder did not move a step. The landing page adds one marketing rung of its own (see "The landing page has one extra rung"); the app's ladder does not move for it.
 2. **The terminal has an axis of its own.** A terminal is a picture of a *machine*, so it should not follow the reader's theme — the conclusion stands; the mechanism changed. A terminal's colours are **a palette the user picks** (`terminal-themes.css`, ten of them; `titanium` is the four old tokens, word for word), not a hard-coded dark. It does not inherit a **colour** from `data-theme`: what `ls`, `git` and `htop` put into the 16 ANSI slots is the far machine's decision, and flipping one set of values would mean having to make that one set readable in both polarities. **It does follow the polarity, by swapping in another palette** (one slot per polarity, following by default — see "Terminal palettes"): the answer to "readable in both" is a complete published palette per polarity.
 3. **State semantics, re-ordered for this product.** `{colors.success}` is still the link blue ("Connected"), `{colors.warning}` is "running / connecting", and `{colors.error}` is for failures and irreversible actions only.
 
@@ -124,6 +124,7 @@ Three choices belong to a desktop console in particular:
 | Settings page | `src/renderer/src/app-shell/SettingsPage.tsx` |
 | Theme preference | `src/renderer/src/lib/theme.ts` |
 | Feature pages | `src/renderer/src/features/*` |
+| Landing page (`site/`) | Static HTML, CSS and ES modules with no build step. `site/tokens.css` is a byte-for-byte copy of the app's tokens (`npm run site:tokens`, asserted by `site/tokens.test.mjs`); `site/i18n.js` is a separate marketing catalog; the English screenshots come from `npm run gallery` |
 | What the renderer looks like (for a person) | `npm run gallery`: runs the **real app** against the mock backend and writes pictures to `screenshots/`. **There is no image baseline** — pictures are evidence in a review, not tests |
 | The regression net for design rules | Render assertions: real components + `renderToStaticMarkup` (no DOM needed, runs under `npm test`). Examples: `components/ui/icons.test.tsx` (icons must be distinguishable from each other), `features/workspace/Workbench.test.tsx` (a parked panel must be `hidden` + `inert`) |
 
@@ -212,8 +213,10 @@ The marketing page (`site/`) is read at a distance rather than worked in, so it 
 | Role | Size / weight | Use |
 | --- | --- | --- |
 | hero title | `clamp(30px, 4.2vw, 44px)` / 600 / -0.035em | The one sentence at the top of the page |
-| hero copy | 16px / 400 / 1.65 | The paragraph under it |
+| page copy | 16px / 400 / 1.65 | The paragraph under the title and the three feature bodies |
 | section title | 24px / 600 / -0.03em | "What it does" |
+| feature title | 16px / 600 / -0.4px | Terminal / Files / Quota (`{typography.title-sm}`) |
+| call to action | 40px tall / 14px / 500 | The download and GitHub buttons — the one control taller than the app's 32px |
 
 Everything else on that page is `copy`, `caption` or `micro` from the table above. There is no third scale: a landing page that keeps inventing sizes stops looking like the product it is selling.
 
