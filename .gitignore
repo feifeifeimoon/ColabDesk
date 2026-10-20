@@ -5,6 +5,7 @@ node_modules/
 out/
 dist/
 resources/cli/
+.wrangler/
 
 # Playwright's traces, per-case artifacts and HTML report
 test-results/

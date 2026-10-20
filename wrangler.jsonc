@@ -1,0 +1,11 @@
+{
+  // The site is plain static files; there is no Worker script. Cloudflare's
+  // Workers Builds runs `npx wrangler deploy` and uploads this directory as the
+  // Worker's assets. `_headers` inside it is read by the platform, not served.
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "colabdesk",
+  "compatibility_date": "2026-10-20",
+  "assets": {
+    "directory": "./site"
+  }
+}
