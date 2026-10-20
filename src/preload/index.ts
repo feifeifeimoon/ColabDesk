@@ -21,6 +21,7 @@ const api: ColabDeskApi = {
   usageTrend: () => invoke(IPC.usageTrend),
 
   createSession: (options) => invoke(IPC.createSession, options),
+  onSessionCreateOutput: (listener) => subscribe(EVENTS.sessionCreateOutput, listener),
   stopSession: (name) => invoke(IPC.stopSession, name),
   restartKernel: (name) => invoke(IPC.restartKernel, name),
   syncSessions: () => invoke(IPC.syncSessions),

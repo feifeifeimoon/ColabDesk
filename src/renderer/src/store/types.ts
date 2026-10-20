@@ -8,6 +8,7 @@
  * `get()` while the type still says where each field came from.
  */
 
+import type { CreateSessionOptions } from "@shared/api";
 import type { EnvStatus, Session, SshState, UpdateStatus, UsageReport } from "@shared/types";
 import type { PanelSide } from "../lib/panel-width";
 import type { Theme, ThemePreference } from "../lib/theme";
@@ -247,15 +248,47 @@ export interface SurfacesSlice {
   settingsOpen: boolean;
   /** Survives closing and reopening, so settings comes back where you left it. */
   settingsSection: SectionId;
-  newSessionOpen: boolean;
 
   /** `section` is how a caller elsewhere in the app deep-links into settings. */
   openSettings(section?: SectionId): void;
   closeSettings(): void;
   toggleSettings(): void;
   setSettingsSection(section: SectionId): void;
+}
+
+/** What `colab new` is asked for — the same shape the IPC call takes. */
+export type CreationRequest = CreateSessionOptions;
+
+/**
+ * `setup` is the form, `provisioning` is a request in flight, `failed` keeps
+ * the log and the reason so they can still be read when the surface reopens.
+ */
+export type CreationPhase = "setup" | "provisioning" | "failed";
+
+/**
+ * The runtime-setup surface's state. It lives here rather than in the component
+ * because the surface is a *view*: leaving it (a tab, Escape) must not abandon
+ * a request that is already running, and a failure must still be somewhere when
+ * the person comes back.
+ */
+export interface CreationState {
+  open: boolean;
+  phase: CreationPhase;
+  /** The request that was sent, or the one a failed attempt was made with. */
+  request: CreationRequest | null;
+  /** Epoch ms the request went out; the surface counts the wait from here. */
+  startedAt: number | null;
+  /** The CLI's own lines, in the order it printed them. */
+  lines: string[];
+  error: string | null;
+}
+
+export interface CreationSlice {
+  creation: CreationState;
   openNewSession(): void;
   closeNewSession(): void;
+  startCreation(request: CreationRequest): Promise<void>;
+  appendCreationLine(line: string): void;
 }
 
 export interface UpdateSlice {
@@ -276,5 +309,6 @@ export type AppState = WorkspaceSlice &
   EnvironmentSlice &
   PreferencesSlice &
   SurfacesSlice &
+  CreationSlice &
   ToastsSlice &
   UpdateSlice;

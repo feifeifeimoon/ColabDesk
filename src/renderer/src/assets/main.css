@@ -819,6 +819,332 @@ kbd {
   flex: 1;
   min-height: 0;
   background: var(--canvas);
+  /* The runtime-setup console is drawn over this surface, so it needs the
+     surface as its containing block to cover exactly this column. */
+  position: relative;
+}
+
+/* ---- runtime setup: the middle column while a machine is commissioned ---- */
+
+/*
+  This surface *is* a machine, so it wears the terminal's palette — the one the
+  reader picked for terminals, which follows the app's polarity. The workbench
+  stays mounted underneath (its terminals are live SSH sessions) and the console
+  covers it; handing off to the terminal at the end changes no colour at all.
+
+  Every muted tone here is a mix of the palette's own foreground rather than a
+  grey from the app's ladder: the ground is the palette's, so the ink has to be
+  too.
+*/
+.setup {
+  --setup-mute: color-mix(in srgb, var(--terminal-fg) 58%, transparent);
+  --setup-faint: color-mix(in srgb, var(--terminal-fg) 34%, transparent);
+  --setup-wash: color-mix(in srgb, var(--terminal-fg) 9%, transparent);
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  overflow-y: auto;
+  background: var(--terminal-bg);
+  color: var(--terminal-fg);
+  font-family: var(--font-mono);
+  font-size: var(--text-copy);
+  line-height: 1.55;
+}
+
+.setup__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  color: var(--setup-mute);
+  font-size: var(--text-caption);
+}
+
+.setup__brand {
+  color: var(--terminal-fg);
+}
+
+.setup__sep {
+  color: var(--setup-faint);
+}
+
+.setup__form,
+.setup__console {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* The log grows below the answers; when the column has room to spare, it sits
+   at the bottom of it rather than replacing what was asked for. */
+.setup__console {
+  margin-top: auto;
+}
+
+.setup__note {
+  margin: 0;
+  color: var(--setup-mute);
+  font-size: var(--text-caption);
+}
+
+.setup__group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.setup__question {
+  padding: 0;
+  color: var(--terminal-fg);
+  font-size: var(--text-caption);
+  font-weight: 600;
+}
+
+.setup__options {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.setup__option {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: 2px var(--space-1);
+  border-radius: var(--radius-xs);
+  color: var(--setup-mute);
+  cursor: pointer;
+}
+
+.setup__option:hover {
+  background: var(--setup-wash);
+}
+
+/* Chosen is marked, not filled: a terminal says "this one" with a cursor. */
+.setup__option--selected {
+  background: var(--setup-wash);
+  color: var(--terminal-fg);
+}
+
+.setup__option--off {
+  color: var(--setup-faint);
+  cursor: default;
+}
+
+.setup__option--off:hover {
+  background: none;
+}
+
+/* A request in flight locks the answers: they stay legible, but must not
+   invite a click that would change what is already running. */
+.setup__form[aria-busy="true"] .setup__option,
+.setup__form[aria-busy="true"] .setup__row,
+.setup__form[aria-busy="true"] .setup__action {
+  cursor: default;
+}
+
+.setup__form[aria-busy="true"] .setup__option:not(.setup__option--selected):hover {
+  background: none;
+}
+
+/* What the account cannot get: the strikethrough carries the meaning. */
+.setup__option--off .setup__name {
+  text-decoration: line-through;
+}
+
+.setup__option:has(.visually-hidden:focus-visible) {
+  outline: 1px solid var(--terminal-cursor);
+  outline-offset: 1px;
+}
+
+.setup__marker {
+  width: 1ch;
+  color: var(--terminal-cursor);
+}
+
+.setup__index {
+  width: 2ch;
+  color: var(--setup-faint);
+}
+
+.setup__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setup__off-note {
+  margin-left: var(--space-2);
+  color: var(--setup-faint);
+  font-size: var(--text-micro);
+}
+
+.setup__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.setup__row-note {
+  color: var(--setup-faint);
+  font-size: var(--text-micro);
+}
+
+.setup__row:has(.visually-hidden:focus-visible) .setup__check {
+  outline: 1px solid var(--terminal-cursor);
+  outline-offset: 1px;
+}
+
+/* A terminal has no checkbox widget: `[x]` is what it has. */
+.setup__check {
+  color: var(--terminal-fg);
+}
+
+.setup__input {
+  flex: 1;
+  min-width: 0;
+  /* A prompt line, not a form field: the underline stops where a name would. */
+  max-width: 44ch;
+  padding: 2px var(--space-1);
+  border: none;
+  border-bottom: 1px solid var(--setup-faint);
+  background: transparent;
+  color: var(--terminal-fg);
+  font: inherit;
+}
+
+.setup__input::placeholder {
+  color: var(--setup-faint);
+}
+
+.setup__input:focus-visible {
+  outline: none;
+  border-bottom-color: var(--terminal-cursor);
+}
+
+.setup__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.setup__action {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--setup-faint);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--terminal-fg);
+  font: inherit;
+  font-size: var(--text-label);
+  cursor: pointer;
+}
+
+.setup__action:hover {
+  background: var(--setup-wash);
+}
+
+.setup__action:focus-visible {
+  outline: 2px solid var(--terminal-cursor);
+  outline-offset: 1px;
+}
+
+/* The cursor colour is this palette's affirmative action — the block the
+   terminal puts where you are. */
+.setup__action--primary {
+  border-color: transparent;
+  background: var(--terminal-cursor);
+  color: var(--terminal-cursor-accent);
+}
+
+.setup__action--primary:hover {
+  opacity: 0.88;
+  background: var(--terminal-cursor);
+}
+
+/* While the request runs the action is a record of what was pressed, not a
+   control. */
+.setup__action--primary:disabled {
+  border-color: transparent;
+  background: var(--setup-wash);
+  color: var(--setup-faint);
+  cursor: default;
+}
+
+.setup__action--primary:disabled:hover {
+  opacity: 1;
+  background: var(--setup-wash);
+}
+
+.setup__hint {
+  margin: 0;
+  color: var(--setup-faint);
+  font-size: var(--text-micro);
+}
+
+.setup__command {
+  margin: 0;
+  color: var(--terminal-fg);
+}
+
+.setup__prompt {
+  color: var(--terminal-cursor);
+}
+
+.setup__log {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* The log is the part that grows without bound; it scrolls inside itself so
+     the answers above stay on the same screen. */
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.setup__line {
+  margin: 0;
+  color: var(--setup-mute);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.setup__wait {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--terminal-fg);
+}
+
+.setup__spinner {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  border: 2px solid color-mix(in srgb, var(--terminal-fg) 25%, transparent);
+  border-top-color: var(--terminal-fg);
+  border-radius: var(--radius-full);
+  animation: spin 600ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .setup__spinner {
+    animation-duration: 1.5s;
+  }
+}
+
+/* A failure keeps the app's own error colour in both polarities: it is the same
+   semantic as everywhere else, and a palette's ANSI red is free to be unreadable
+   on its own background. */
+.setup__failed {
+  margin: 0;
+  color: var(--error);
+  white-space: pre-wrap;
 }
 
 /* One tab's surface. Parked slots stay in the DOM because their terminals are
@@ -1532,6 +1858,117 @@ kbd {
   margin: 0;
   font-size: var(--text-title-sm);
   font-weight: 600;
+}
+
+/* The accelerator picker: the one decision this dialog exists for, so it is a
+   surface of choices rather than a dropdown. Native radios sit underneath,
+   hidden, and the label is the card. */
+.accelerator-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.accelerator-picker__legend {
+  padding: 0;
+  color: var(--ink);
+  font-size: var(--text-label);
+  font-weight: 500;
+}
+
+.accelerator-picker__hint {
+  margin: 0;
+  color: var(--mute);
+  font-size: var(--text-caption);
+}
+
+.accelerator-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.accelerator-option {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--canvas);
+  color: var(--body);
+  font-size: var(--text-label);
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+
+.accelerator-option:hover {
+  border-color: var(--hairline-strong);
+}
+
+.accelerator-option:has(.visually-hidden:focus-visible) {
+  box-shadow: var(--focus-ring);
+}
+
+.accelerator-option__name {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Chosen: the border and the ink carry it, and the fill stays quiet. */
+.accelerator-option--chosen {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+/* What the account cannot get: the strikethrough carries the meaning and the
+   colour merely agrees (the badge-off rule). */
+.accelerator-option--off {
+  color: var(--mute);
+  cursor: default;
+}
+
+.accelerator-option--off:hover {
+  border-color: var(--hairline);
+}
+
+.accelerator-option--off .accelerator-option__name {
+  text-decoration: line-through;
+}
+
+.accelerator-option__note {
+  color: var(--mute);
+  font-size: var(--text-micro);
+}
+
+/* The footer's left half: what the button is about to create. */
+.dialog__summary {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--body);
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Visible to a screen reader, not to the eye: a native control keeps its
+   keyboard behaviour only while it is still in the tree. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 .dialog__body {

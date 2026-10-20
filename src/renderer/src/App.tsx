@@ -5,7 +5,6 @@ import { SettingsPage } from "./app-shell/SettingsPage";
 import { Toasts } from "./app-shell/Toasts";
 import { useAppShortcuts } from "./app-shell/shortcuts";
 import { Sidebar } from "./app-shell/Sidebar";
-import { NewSessionDialog } from "./features/sessions/NewSessionDialog";
 import { Workbench } from "./features/workspace/Workbench";
 import { startAppEvents } from "./store";
 import "./assets/main.css";
@@ -43,7 +42,6 @@ export default function App() {
       </div>
 
       <StatusBar />
-      <NewSessionDialog />
       <Toasts />
     </div>
   );

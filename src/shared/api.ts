@@ -73,6 +73,8 @@ export interface ColabDeskApi {
   usageTrend(): Promise<UsageTrend>;
 
   createSession(options: CreateSessionOptions): Promise<CommandReport>;
+  /** The CLI's own lines while that create runs (see ). */
+  onSessionCreateOutput(listener: (payload: { line: string }) => void): () => void;
   stopSession(name: string): Promise<CommandReport>;
   restartKernel(name: string): Promise<CommandReport>;
   syncSessions(): Promise<CommandReport>;

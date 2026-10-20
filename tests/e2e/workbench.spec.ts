@@ -282,73 +282,144 @@ test("设置页显示账号与可用加速器，不可用的加速器被划掉",
   await expect(accelerators.locator(".badge", { hasText: "T4" })).not.toHaveClass(/badge--off/);
 });
 
-test("新建会话不提供本账号拿不到的加速器", async ({ page }) => {
+test("新建运行时不提供本账号拿不到的加速器", async ({ page }) => {
   await page.locator('[aria-label="新建会话"]').click();
-  const dialog = page.getByRole("dialog", { name: "新建会话" });
-  await expect(dialog).toBeVisible();
+  const setup = page.locator('[data-testid="runtime-setup"]');
+  await expect(setup).toBeVisible();
 
   // 提示先说清楚能用什么，选项本身再逐个标注。
-  await expect(dialog).toContainText("当前账号可用：G4 / A100 / L4 / T4 / V6E1 / V5E1");
+  await expect(setup).toContainText("当前账号可用：G4 / A100 / L4 / T4 / V6E1 / V5E1");
 
-  const h100 = dialog.locator('option[value="H100"]');
-  expect(await h100.evaluate((option: HTMLOptionElement) => option.disabled)).toBe(true);
+  // 每一项是一行，下面藏着原生 radio：人点的是那一行，状态在 radio 上。
+  const card = (value: string) => setup.locator(`label:has(input[value="${value}"])`);
+  const h100 = card("H100");
+  expect(await h100.locator("input").evaluate((input: HTMLInputElement) => input.disabled)).toBe(true);
   await expect(h100).toContainText("当前账号不可用");
+  await expect(h100).toHaveClass(/setup__option--off/);
 
-  const t4 = dialog.locator('option[value="T4"]');
-  expect(await t4.evaluate((option: HTMLOptionElement) => option.disabled)).toBe(false);
+  const t4 = card("T4");
+  expect(await t4.locator("input").evaluate((input: HTMLInputElement) => input.disabled)).toBe(false);
   await expect(t4).not.toContainText("不可用");
+  await expect(t4).toHaveClass(/setup__option--selected/);
 });
 
-// 对话框只该在打开那一刻重置自己：名字打进去要留下、选好的加速器不弹回默认、勾上的高内存
-// 不自己弹开、创建失败的红字不闪一帧就没。四个症状同一个不变量，所以钉在同一个用例里；而
-// 它只能钉在这里——渲染断言（renderToStaticMarkup）不跑 effect 与提交，看不见这一层。
-test("新建会话：填进去的东西不会被自己擦掉", async ({ page }) => {
+// 设置面只该在打开那一刻初始化自己：名字打进去要留下、选好的加速器不弹回默认、勾上的高内存
+// 不自己弹开、失败的原因不闪一帧就没，失败后表单也不该被换掉。五个症状同一个不变量，所以钉在
+// 同一个用例里；而它只能钉在这里——渲染断言（renderToStaticMarkup）不跑 effect 与提交，
+// 看不见这一层。
+test("运行时设置：申请失败后表单还在，填过的东西还在", async ({ page }) => {
   await page.locator('[aria-label="新建会话"]').click();
-  const dialog = page.getByRole("dialog", { name: "新建会话" });
-  await expect(dialog).toBeVisible();
+  const setup = page.locator('[data-testid="runtime-setup"]');
+  await expect(setup).toBeVisible();
 
   // 名字：打进去就留在框里。
-  const name = dialog.getByLabel("会话名称");
+  const name = setup.locator("input[type=text]");
   await name.fill("e2e-alpha");
   await expect(name).toHaveValue("e2e-alpha");
 
   // 加速器：本账号的默认是 T4，选了 A100 之后不该弹回去。
-  const accelerator = dialog.locator("select");
-  await accelerator.selectOption("A100");
-  await expect(accelerator).toHaveValue("A100");
+  const a100 = setup.locator('label:has(input[value="A100"])');
+  await a100.click();
+  await expect(setup.locator('input[value="A100"]')).toBeChecked();
+  await expect(a100).toHaveClass(/setup__option--selected/);
 
   // 高内存：勾上就保持勾着。
-  const highMem = dialog.getByRole("checkbox");
-  await highMem.check();
+  const highMem = setup.locator('input[type="checkbox"]');
+  // The checkbox is a native input hidden under the row, like every control on
+  // this surface: a person clicks the row.
+  await setup.locator('label:has(input[type="checkbox"])').click();
   await expect(highMem).toBeChecked();
 
-  // 创建失败的红字要留在界面上。名字用已存在的那个，桩据此回「已存在」。
-  await dialog.getByRole("button", { name: "创建" }).click();
-  const failure = dialog.locator(".callout--danger");
-  await expect(failure).toContainText("命令执行失败");
+  // 失败的原因要留在界面上。名字用已存在的那个，桩据此回「已存在」。
+  await setup.getByRole("button", { name: "创建" }).click();
+  const failure = setup.locator('[data-testid="setup-error"]');
+  await expect(failure).toBeVisible();
   // 只闪一帧的话，上面那次断言会在那一帧上通过；隔一会儿再看一次才是这条的要点。
   await page.waitForTimeout(300);
-  await expect(failure).toContainText("命令执行失败");
+  await expect(failure).toBeVisible();
+
+  // 失败只往页面底部加日志，不换屏：填过的值原样留在上面，还能直接改。
+  await expect(setup.locator(".setup__options")).toBeVisible();
+  await expect(setup.locator("input[type=text]")).toHaveValue("e2e-alpha");
+  await expect(setup.locator('input[value="A100"]')).toBeChecked();
+  await expect(setup.locator('input[type="checkbox"]')).toBeChecked();
+  await expect(setup.getByRole("button", { name: "创建" })).toBeEnabled();
+
+  // 日志和错误在表单下面，而不是代替它。
+  const formBox = await setup.locator(".setup__form").boundingBox();
+  const consoleBox = await setup.locator(".setup__console").boundingBox();
+  expect(formBox).not.toBeNull();
+  expect(consoleBox).not.toBeNull();
+  expect(consoleBox!.y).toBeGreaterThanOrEqual(formBox!.y + formBox!.height - 1);
 });
 
-// 右上角是一个 ×，不是一行"关闭"文字：字形给不出这个名字，所以文案挂在 aria-label 上，
-// 按钮里就只剩一个 svg。
-test("新建会话右上角是一个有名字的 ×，点它会关掉对话框", async ({ page }) => {
+// 设置面占的是中间那一列，不是一个对话框：Esc 回工作台，没有 × 也没有「关闭」。
+test("运行时设置：Esc 回到工作台", async ({ page }) => {
   await page.locator('[aria-label="新建会话"]').click();
-  const dialog = page.getByRole("dialog", { name: "新建会话" });
-  await expect(dialog).toBeVisible();
+  const setup = page.locator('[data-testid="runtime-setup"]');
+  await expect(setup).toBeVisible();
 
-  const close = dialog.getByRole("button", { name: "关闭" });
-  expect(await close.textContent()).toBe("");
-  await expect(close.locator("svg")).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await expect(setup).toHaveCount(0);
+  await expect(page.locator(".startpage")).toBeVisible();
+});
 
-  // 图标按钮最容易出的事故是缩到点不着；低于 28px 高的可点区域在设计系统里算缺陷。
-  const box = await close.boundingBox();
-  expect(box!.width).toBeGreaterThanOrEqual(28);
-  expect(box!.height).toBeGreaterThanOrEqual(28);
+// Enter 是安装器的"下一步"，不是网页表单的"提交"：选机器 → 高内存 → 名称 → 创建。
+test("运行时设置：Enter 一步一步走完，最后才创建", async ({ page }) => {
+  await page.locator('[aria-label="新建会话"]').click();
+  const setup = page.locator('[data-testid="runtime-setup"]');
+  await expect(setup).toBeVisible();
 
-  await close.click();
-  await expect(dialog).toHaveCount(0);
+  // 打开时键盘落在默认的机器上，第一次回车先去高内存。
+  await expect(setup.locator('input[value="T4"]')).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(setup.locator('input[type="checkbox"]')).toBeFocused();
+
+  // 第二次回车去名称；到这里还什么都没有提交。
+  await page.keyboard.press("Enter");
+  const name = setup.locator("input[type=text]");
+  await expect(name).toBeFocused();
+  await expect(setup.locator('[data-testid="setup-error"]')).toHaveCount(0);
+
+  // 名称里回车才是创建；名字用已存在的那个，桩据此回「已存在」。
+  await name.fill("e2e-alpha");
+  await page.keyboard.press("Enter");
+  await expect(setup.locator('[data-testid="setup-error"]')).toBeVisible();
+});
+
+// 键盘属于这一屏，不属于某个控件：点过名称框或点过空白，上下键仍然选机器。
+test("运行时设置：点过名称或空白之后，上下键照样选机器", async ({ page }) => {
+  await page.locator('[aria-label="新建会话"]').click();
+  const setup = page.locator('[data-testid="runtime-setup"]');
+  await expect(setup).toBeVisible();
+
+  await expect(setup.locator('input[value="T4"]')).toBeChecked();
+
+  // 名称框里按上下：单行输入没有别的用途，仍然走列表。
+  await setup.locator("input[type=text]").click();
+  await page.keyboard.press("ArrowDown");
+  await expect(setup.locator('input[value="L4"]')).toBeChecked();
+
+  // 点面板里非交互的地方（提示行）就像点空白：焦点离开输入框落到 body。
+  // 处理器挂在 window 上，所以键还在。
+  await setup.locator(".setup__hint").click();
+  await page.keyboard.press("ArrowDown");
+  await expect(setup.locator('input[value="G4"]')).toBeChecked();
+});
+
+// 单机型的加速器没有高内存这一步：回车要跳过禁用的控件，而不是停在上面。
+test("运行时设置：单机型加速器上，回车直接到名称", async ({ page }) => {
+  await page.locator('[aria-label="新建会话"]').click();
+  const setup = page.locator('[data-testid="runtime-setup"]');
+  await expect(setup).toBeVisible();
+
+  // 3 是 L4，它的高内存选项被禁用。
+  await page.keyboard.press("3");
+  await expect(setup.locator('input[value="L4"]')).toBeChecked();
+  await expect(setup.locator('input[type="checkbox"]')).toBeDisabled();
+
+  await page.keyboard.press("Enter");
+  await expect(setup.locator("input[type=text]")).toBeFocused();
 });
 
 test("同步会话按钮触发刷新遮罩并防重复点击，完成后遮罩消失", async ({ page }) => {

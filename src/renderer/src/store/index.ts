@@ -9,8 +9,9 @@
  */
 
 import { create } from "zustand";
-import { onSshStatus, onUpdateStatus, updateStatus } from "../lib/api";
+import { onSessionCreateOutput, onSshStatus, onUpdateStatus, updateStatus } from "../lib/api";
 import { watchSystemTheme } from "../lib/theme";
+import { createCreationSlice } from "./slices/creation";
 import { createEnvironmentSlice } from "./slices/environment";
 import { createPreferencesSlice } from "./slices/preferences";
 import { createSessionsSlice } from "./slices/sessions";
@@ -29,6 +30,7 @@ export const useAppStore = create<AppState>()((...args) => ({
   ...createEnvironmentSlice(...args),
   ...createPreferencesSlice(...args),
   ...createSurfacesSlice(...args),
+  ...createCreationSlice(...args),
   ...createToastsSlice(...args),
   ...createUpdateSlice(...args),
 }));
@@ -49,6 +51,9 @@ export function startAppEvents(): () => void {
   // listener alone would leave the panel blank for up to a day.
   void updateStatus().then((status) => store.getState().setUpdateStatus(status));
   const stopUpdateStatus = onUpdateStatus((status) => store.getState().setUpdateStatus(status));
+  // The setup surface prints the CLI's own lines while a runtime is allocated;
+  // each one is a sentence, not a packet, so it may go through the store.
+  const stopCreateOutput = onSessionCreateOutput(({ line }) => store.getState().appendCreationLine(line));
 
   void store.getState().refreshEnvironment();
   void store.getState().loadSessions();
@@ -61,6 +66,7 @@ export function startAppEvents(): () => void {
     window.clearInterval(usageTimer);
     stopSshStatus();
     stopUpdateStatus();
+    stopCreateOutput();
   };
 }
 

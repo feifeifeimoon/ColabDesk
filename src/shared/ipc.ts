@@ -56,4 +56,5 @@ export const EVENTS = {
   transferProgress: "transfer:progress",
   windowMaximized: "window:maximized",
   updateStatus: "update:status-changed",
+  sessionCreateOutput: "session:create-output",
 } as const;

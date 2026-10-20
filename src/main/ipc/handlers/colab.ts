@@ -41,7 +41,9 @@ export function registerColabHandlers({ service, usageHistory, bundledDir, log }
   ipcMain.handle(
     IPC.createSession,
     (_event, options: { gpu: string | null; tpu: string | null; name: string | null; highMem: boolean }) =>
-      service.createSession(options),
+      // The setup surface prints the CLI's own progress; the report still comes
+      // back from the invoke, so a failure is handled in one place.
+      service.createSession(options, (line) => broadcast(EVENTS.sessionCreateOutput, { line })),
   );
   ipcMain.handle(IPC.stopSession, (_event, name: string) => service.stopSession(name));
   ipcMain.handle(IPC.restartKernel, (_event, name: string) => service.restartKernel(name));
