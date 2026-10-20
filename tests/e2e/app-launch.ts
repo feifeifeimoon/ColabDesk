@@ -10,7 +10,17 @@
  */
 
 import { _electron as electron, expect, test as base, type ElectronApplication, type Locator, type Page } from "@playwright/test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  closeSync,
+  mkdirSync,
+  mkdtempSync,
+  openSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -26,6 +36,51 @@ export const MOD = process.platform === "darwin" ? "Meta" : "Control";
 
 /** Electron needs these on a headless Linux container; they are inert elsewhere. */
 const LINUX_FLAGS = ["--no-sandbox", "--disable-gpu", "--disable-gpu-compositing", "--disable-dev-shm-usage"];
+
+/**
+ * The OS clipboard is shared by every app instance, while `fullyParallel` gives
+ * each test its own instance. A test that writes it and a test that pastes from
+ * it therefore have to take turns; without this lock one pastes what the other
+ * just copied. The lock is a file rather than a semaphore because the tests
+ * holding it live in different worker processes.
+ */
+export async function withClipboardLock<T>(run: () => Promise<T>): Promise<T> {
+  const directory = join(projectRoot, "test-results");
+  mkdirSync(directory, { recursive: true });
+  const path = join(directory, ".clipboard.lock");
+  const deadline = Date.now() + 60_000;
+  const token = `${process.pid}:${Date.now()}:${Math.random()}`;
+
+  let handle: number | null = null;
+  while (handle === null) {
+    try {
+      handle = openSync(path, "wx");
+    } catch (error) {
+      // A crashed worker can leave the file behind; only an old one is stale.
+      try {
+        if (Date.now() - statSync(path).mtimeMs > 60_000) unlinkSync(path);
+      } catch {
+        // The holder released it between the open and the stat.
+      }
+      if (Date.now() > deadline) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  }
+
+  try {
+    writeFileSync(handle, token);
+    return await run();
+  } finally {
+    closeSync(handle);
+    try {
+      // Only remove the lock this worker owns: a stale-lock cleanup may have
+      // replaced it in the meantime.
+      if (readFileSync(path, "utf8") === token) unlinkSync(path);
+    } catch {
+      // Already gone; nothing to release.
+    }
+  }
+}
 
 interface Workbench {
   app: ElectronApplication;

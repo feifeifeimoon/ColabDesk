@@ -190,6 +190,16 @@ export function TerminalIcon({ size }: IconProps) {
   );
 }
 
+/** The shortcut reference: a keyboard with a space bar. */
+export function KeyboardIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <rect x="1.75" y="4.25" width="12.5" height="7.5" rx="1.5" />
+      <path d="M4 6.75h.01M6 6.75h.01M8 6.75h.01M10 6.75h.01M12 6.75h.01M4.5 9.25h.01M11.5 9.25h.01M6.5 9.25h3" />
+    </Svg>
+  );
+}
+
 /** The runtime and its CLI. */
 export function ChipIcon({ size }: IconProps) {
   return (

@@ -110,9 +110,9 @@ describe("the terminal section", () => {
     expect(render()).toContain("Ctrl+Shift+= / -");
   });
 
-  it("names the four groups it splits into", () => {
+  it("names the three groups it splits into", () => {
     const markup = render();
-    for (const heading of ["配色", "排版", "光标与视口", "键盘与鼠标"]) {
+    for (const heading of ["配色", "排版", "光标与视口"]) {
       expect(markup, heading).toContain(heading);
     }
   });
@@ -124,9 +124,8 @@ describe("in English", () => {
   });
 
   /**
-   * The label tables hold `[key, Chinese fallback]` pairs and the shortcut table
-   * has a first column that is a word ("右键") rather than a key combo — neither
-   * sits inside a `t()` call in the source, so only the rendered markup can say
+   * The label tables hold `[key, Chinese fallback]` pairs; they do not sit
+   * inside a `t()` call in the source, so only the rendered markup can say
    * whether they came out translated.
    */
   it("终端设置不出现中文", async () => {

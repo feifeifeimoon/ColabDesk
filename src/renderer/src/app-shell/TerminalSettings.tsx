@@ -134,20 +134,6 @@ export function TerminalSettings() {
   const setTerminalAppearance = useAppStore((state) => state.setTerminalAppearance);
   const missingFonts = useMissingFonts();
 
-  const terminalKeys: [string, string][] = [
-    ["Ctrl+Shift+C / Cmd+C", t("settings.shortcutCopy", "复制选中内容")],
-    ["Ctrl+Shift+V / Cmd+V", t("settings.shortcutPaste", "粘贴")],
-    [t("settings.shortcutRightClickKey", "右键"), t("settings.shortcutRightClick", "有选中内容时复制，否则粘贴。")],
-    ["Ctrl+Shift+= / -", t("settings.shortcutFontSize", "终端字号增大 / 减小")],
-    ["Ctrl+Shift+T", t("settings.shortcutNewTerminal", "新建终端")],
-    ["Ctrl+Shift+N", t("settings.shortcutNewSession", "新建会话")],
-    ["Ctrl+Shift+W", t("settings.shortcutCloseTab", "关闭当前标签")],
-    ["Ctrl+Shift+1…9", t("settings.shortcutSwitchTab", "切换标签")],
-    ["Ctrl+Shift+E", t("settings.shortcutToggleSidebar", "显示 / 隐藏会话栏")],
-    ["Ctrl+Shift+B", t("settings.shortcutToggleFiles", "显示 / 隐藏文件面板")],
-    ["Ctrl+,", t("settings.shortcutOpenSettings", "设置（Esc 返回工作台）")],
-  ];
-
   const label = (value: number | string, table: Record<string, [string, string]>): string => {
     const [key, fallback] = table[value] ?? ["", String(value)];
     return t(key, fallback);
@@ -327,27 +313,6 @@ export function TerminalSettings() {
             </Select>
           }
         />
-      </Panel>
-
-      <Panel>
-        <PanelRow
-          stacked
-          label={t("settings.terminalShortcutsLabel", "键盘与鼠标")}
-          description={t("settings.terminalShortcutsDesc", "仅在终端面板内生效。")}
-        >
-          <table className="table" style={{ borderTop: "1px solid var(--hairline)" }}>
-            <tbody>
-              {terminalKeys.map(([keys, what]) => (
-                <tr key={keys}>
-                  <td style={{ width: 260 }}>
-                    <span className="kbd">{keys}</span>
-                  </td>
-                  <td>{what}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </PanelRow>
       </Panel>
     </>
   );

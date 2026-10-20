@@ -22,8 +22,8 @@ import {
   AccountIcon,
   ChartIcon,
   ChevronLeftIcon,
-  ChipIcon,
   ContrastIcon,
+  KeyboardIcon,
   PlugIcon,
   SyncIcon,
   TerminalIcon,
@@ -33,6 +33,7 @@ import { LoginPanel } from "../features/login/LoginPanel";
 import { LogPanel } from "../features/logs/LogPanel";
 import { UpdatePanel } from "../features/updates/UpdatePanel";
 import { UsageTrendPanel } from "../features/usage/UsageTrendPanel";
+import { ShortcutsSettings } from "./ShortcutsSettings";
 import { TerminalSettings } from "./TerminalSettings";
 import { UI_LANGUAGE_CHOICES } from "../i18n/supported-languages";
 import { messageOf, sshRemove, sshSetup } from "../lib/api";
@@ -54,32 +55,9 @@ interface Section {
 
 const GROUPS_DEF: { id: string; titleKey: string; defaultTitle: string; sections: Section[] }[] = [
   {
-    id: "account",
-    titleKey: "settings.groupAccount",
-    defaultTitle: "账号",
-    sections: [
-      {
-        id: "account",
-        titleKey: "settings.sectionAccountTitle",
-        defaultTitle: "账号与额度",
-        descKey: "settings.sectionAccountDesc",
-        defaultDesc: "查看 Google 账号授权状态、计算单元余额及消耗速率。",
-        icon: AccountIcon,
-      },
-      {
-        id: "usage",
-        titleKey: "settings.sectionUsageTitle",
-        defaultTitle: "用量趋势",
-        descKey: "settings.sectionUsageDesc",
-        defaultDesc: "基于历史余额采样推算用量走势。",
-        icon: ChartIcon,
-      },
-    ],
-  },
-  {
-    id: "workbench",
-    titleKey: "settings.groupWorkbench",
-    defaultTitle: "工作台",
+    id: "interface",
+    titleKey: "settings.groupInterface",
+    defaultTitle: "界面与交互",
     sections: [
       {
         id: "appearance",
@@ -94,31 +72,54 @@ const GROUPS_DEF: { id: string; titleKey: string; defaultTitle: string; sections
         titleKey: "settings.sectionTerminalTitle",
         defaultTitle: "终端",
         descKey: "settings.sectionTerminalDesc",
-        defaultDesc: "终端面板的配色、排版、光标及快捷键操作。",
+        defaultDesc: "终端面板的配色、排版与光标。",
         icon: TerminalIcon,
+      },
+      {
+        id: "shortcuts",
+        titleKey: "settings.sectionShortcutsTitle",
+        defaultTitle: "快捷键",
+        descKey: "settings.sectionShortcutsDesc",
+        defaultDesc: "应用内的键盘与鼠标操作，按生效场景分组。",
+        icon: KeyboardIcon,
       },
     ],
   },
   {
-    id: "runtime",
-    titleKey: "settings.groupRuntime",
-    defaultTitle: "运行时",
+    id: "workbench",
+    titleKey: "settings.groupWorkbench",
+    defaultTitle: "连接与工作台",
     sections: [
-      {
-        id: "runtime",
-        titleKey: "settings.sectionRuntimeTitle",
-        defaultTitle: "运行环境",
-        descKey: "settings.sectionRuntimeDesc",
-        defaultDesc: "查看本地 Colab CLI 环境、安装来源及授权状态。",
-        icon: ChipIcon,
-      },
       {
         id: "external",
         titleKey: "settings.sectionExternalTitle",
-        defaultTitle: "外部工具",
+        defaultTitle: "外部连接",
         descKey: "settings.sectionExternalDesc",
         defaultDesc: "配置本地 ~/.ssh/config，支持通过外部终端或 VS Code 远程连接。",
         icon: PlugIcon,
+      },
+    ],
+  },
+  {
+    id: "colab",
+    titleKey: "settings.groupColab",
+    defaultTitle: "Colab 引擎",
+    sections: [
+      {
+        id: "account",
+        titleKey: "settings.sectionAccountTitle",
+        defaultTitle: "账号与环境",
+        descKey: "settings.sectionAccountDesc",
+        defaultDesc: "Google 账号授权、计算单元余额与本地 Colab CLI 环境。",
+        icon: AccountIcon,
+      },
+      {
+        id: "usage",
+        titleKey: "settings.sectionUsageTitle",
+        defaultTitle: "用量趋势",
+        descKey: "settings.sectionUsageDesc",
+        defaultDesc: "基于历史余额采样推算用量走势。",
+        icon: ChartIcon,
       },
     ],
   },
@@ -306,7 +307,7 @@ export function SettingsPage() {
         {/* Which Google account, and what Colab allows it — answered by the API
             rather than by the CLI, which knows the email but never prints it
             anywhere a machine can read. */}
-        <Panel>
+        <Panel title={t("settings.accountPanel", "Google 账号")}>
           <PanelRow
             label={t("settings.accountEmail", "当前账号")}
             description={t("settings.accountEmailDesc", "当前登录的 Google 账号。")}
@@ -317,6 +318,41 @@ export function SettingsPage() {
             label={t("settings.accountAccelerators", "可用机型")}
             description={t("settings.accountAcceleratorsDesc", "当前账号有权限申请的机型。")}
             value={eligibilityValue()}
+          />
+        </Panel>
+        {/* The CLI is the other half of "what am I signed in as": the Google
+            account lives in the API, and the local binary that carries the
+            token lives here. One page answers both questions. */}
+        <Panel title={t("settings.runtimePanel", "本地 Colab 环境")}>
+          <PanelRow
+            label={t("settings.runtimeCliCmd", "colab 命令")}
+            description={t("settings.runtimeCliCmdDesc", "本地调用的 Colab CLI 路径。")}
+            value={
+              env === null
+                ? t("settings.runtimeDetecting", "检测中…")
+                : (env.cli_path ?? t("settings.runtimeNotFound", "未找到"))
+            }
+            title={env?.cli_path ?? undefined}
+          />
+          <PanelRow
+            label={t("settings.runtimeSource", "来源")}
+            value={env?.cli_source ? (sourceLabels[env.cli_source] ?? env.cli_source) : "—"}
+          />
+          <PanelRow label={t("settings.runtimeCliVersion", "CLI 版本")} value={env?.cli_version ?? "—"} />
+          <PanelRow
+            label={t("settings.runtimeConfigDir", "配置目录")}
+            value={env?.config_dir ?? "—"}
+            title={env?.config_dir ?? undefined}
+          />
+          <PanelRow
+            label={t("settings.runtimeAuth", "授权")}
+            description={env?.has_refresh_token ? t("settings.runtimeAuthDesc", "令牌过期后自动刷新。") : undefined}
+            value={env?.authenticated ? t("settings.runtimeAuthorized", "已授权") : t("settings.runtimeUnauthorized", "未授权")}
+          />
+          <PanelRow
+            label={t("settings.runtimeTokenExpiry", "令牌到期")}
+            value={formatExpiry(env?.token_expiry ?? null)}
+            title={env?.token_expiry ?? undefined}
           />
         </Panel>
         <Callout>
@@ -370,43 +406,6 @@ export function SettingsPage() {
               ))}
             </div>
           }
-        />
-      </Panel>
-    );
-  }
-
-  function runtimeBody() {
-    return (
-      <Panel>
-        <PanelRow
-          label={t("settings.runtimeCliCmd", "colab 命令")}
-          description={t("settings.runtimeCliCmdDesc", "本地调用的 Colab CLI 路径。")}
-          value={
-            env === null
-              ? t("settings.runtimeDetecting", "检测中…")
-              : (env.cli_path ?? t("settings.runtimeNotFound", "未找到"))
-          }
-          title={env?.cli_path ?? undefined}
-        />
-        <PanelRow
-          label={t("settings.runtimeSource", "来源")}
-          value={env?.cli_source ? (sourceLabels[env.cli_source] ?? env.cli_source) : "—"}
-        />
-        <PanelRow label={t("settings.runtimeCliVersion", "CLI 版本")} value={env?.cli_version ?? "—"} />
-        <PanelRow
-          label={t("settings.runtimeConfigDir", "配置目录")}
-          value={env?.config_dir ?? "—"}
-          title={env?.config_dir ?? undefined}
-        />
-        <PanelRow
-          label={t("settings.runtimeAuth", "授权")}
-          description={env?.has_refresh_token ? t("settings.runtimeAuthDesc", "令牌过期后自动刷新。") : undefined}
-          value={env?.authenticated ? t("settings.runtimeAuthorized", "已授权") : t("settings.runtimeUnauthorized", "未授权")}
-        />
-        <PanelRow
-          label={t("settings.runtimeTokenExpiry", "令牌到期")}
-          value={formatExpiry(env?.token_expiry ?? null)}
-          title={env?.token_expiry ?? undefined}
         />
       </Panel>
     );
@@ -489,12 +488,14 @@ export function SettingsPage() {
         return appearanceBody();
       case "terminal":
         return <TerminalSettings />;
-      case "runtime":
-        return runtimeBody();
+      case "shortcuts":
+        return <ShortcutsSettings />;
       case "external":
         return externalBody();
-      default:
+      case "account":
         return accountBody();
+      default:
+        return appearanceBody();
     }
   }
 

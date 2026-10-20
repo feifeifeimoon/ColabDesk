@@ -7,7 +7,15 @@
  */
 
 import type { Locator, Page } from "@playwright/test";
-import { expect, focusTerminal, openSession, terminalRows, terminalText, test } from "./app-launch";
+import {
+  expect,
+  focusTerminal,
+  openSession,
+  terminalRows,
+  terminalText,
+  test,
+  withClipboardLock,
+} from "./app-launch";
 
 const PROMPT = "root@e2e-runtime:";
 
@@ -193,33 +201,41 @@ test("关掉一个终端，会话的连接留着；关掉最后一个才断开",
   await expect(page.locator(".startpage")).toContainText("还没有终端");
 });
 
-test("粘贴走括号粘贴，多行文本的换行不会丢", async ({ app, page }) => {
-  await openSession(page, "e2e-alpha");
-  await waitForPrompts(page, 1);
+test.describe("剪贴板", () => {
+  test.describe.configure({ mode: "serial" });
 
-  // 剪贴板只有主进程有；写进去的是用户复制的那份文本。
-  await app.evaluate(({ clipboard }) => clipboard.writeText("echo FIRST-LINE\n echo SECOND-LINE"));
-  await focusTerminal(page);
-  await page.keyboard.press("Control+Shift+V");
+  test("粘贴走括号粘贴，多行文本的换行不会丢", async ({ app, page }) => {
+    await openSession(page, "e2e-alpha");
+    await waitForPrompts(page, 1);
 
-  // 一次粘贴被包在一对标记里，说明远端能分清"粘贴"和"逐字输入"。
-  await expect(terminalRows(page)).toContainText("[paste-start]");
-  await expect(terminalRows(page)).toContainText("[paste-end]");
-  // 换行被归一成回车：两行都真的跑起来了，而不是粘成一行。
-  await expect(terminalRows(page)).toContainText("FIRST-LINE");
-  await expect(terminalRows(page)).toContainText("SECOND-LINE");
-});
+    await withClipboardLock(async () => {
+      // 剪贴板只有主进程有；写进去的是用户复制的那份文本。
+      await app.evaluate(({ clipboard }) => clipboard.writeText("echo FIRST-LINE\n echo SECOND-LINE"));
+      await focusTerminal(page);
+      await page.keyboard.press("Control+Shift+V");
 
-test("粘贴里的转义字符显示成符号，不会当作控制码送出去", async ({ app, page }) => {
-  await openSession(page, "e2e-alpha");
-  await waitForPrompts(page, 1);
+      // 一次粘贴被包在一对标记里，说明远端能分清"粘贴"和"逐字输入"。
+      await expect(terminalRows(page)).toContainText("[paste-start]");
+      await expect(terminalRows(page)).toContainText("[paste-end]");
+      // 换行被归一成回车：两行都真的跑起来了，而不是粘成一行。
+      await expect(terminalRows(page)).toContainText("FIRST-LINE");
+      await expect(terminalRows(page)).toContainText("SECOND-LINE");
+    });
+  });
 
-  await app.evaluate(({ clipboard }) => clipboard.writeText("echo \u001bDANGER"));
-  await focusTerminal(page);
-  await page.keyboard.press("Control+Shift+V");
+  test("粘贴里的转义字符显示成符号，不会当作控制码送出去", async ({ app, page }) => {
+    await openSession(page, "e2e-alpha");
+    await waitForPrompts(page, 1);
 
-  // U+241B 是 ESC 的可见替身：它被当作普通字符打进命令行，而不是被解释。
-  await expect(terminalRows(page)).toContainText("␛DANGER");
+    await withClipboardLock(async () => {
+      await app.evaluate(({ clipboard }) => clipboard.writeText("echo \u001bDANGER"));
+      await focusTerminal(page);
+      await page.keyboard.press("Control+Shift+V");
+
+      // U+241B 是 ESC 的可见替身：它被当作普通字符打进命令行，而不是被解释。
+      await expect(terminalRows(page)).toContainText("␛DANGER");
+    });
+  });
 });
 
 test("Ctrl+Shift+F 打开查找，Esc 关上并把键盘还给终端", async ({ page }) => {
