@@ -62,7 +62,7 @@ test.describe("有新版本时", () => {
     await expect(page.locator('[data-testid="update-download"]')).toBeVisible();
   });
 
-  test("知道了之后当次会话不再打扰", async ({ app, page }) => {
+  test("关闭之后当次会话不再打扰", async ({ app, page }) => {
     await page.locator('[data-testid="update-banner-dismiss"]').click();
     await expect(page.locator('[data-testid="update-banner"]')).toHaveCount(0);
 

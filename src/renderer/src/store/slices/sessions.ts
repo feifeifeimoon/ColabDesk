@@ -138,7 +138,7 @@ export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> 
         const report = await api.stopSession(name);
         if (report.error) get().notify({ tone: "danger", text: report.error });
         else if (report.timed_out)
-          get().notify({ tone: "warn", text: translate("sessions.stopTimeout", "停止命令超时，请稍后同步查看。") });
+          get().notify({ tone: "warn", text: translate("sessions.stopTimeout", "停止命令超时；请稍后同步会话查看结果。") });
         else if (!report.ok)
           get().notify({ tone: "danger", text: `${failureLabel(report.code)}${failureHint(report.output) ?? ""}` });
         else {

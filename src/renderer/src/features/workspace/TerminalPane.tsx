@@ -378,7 +378,7 @@ export function TerminalPane({
     let disposed = false;
     setState("connecting");
     setError(null);
-    terminal.writeln(`\x1b[90m${t("terminal.connecting", "正在连接 {{session}} …", { session })}\x1b[0m`);
+    terminal.writeln(`\x1b[90m${t("terminal.connecting", "正在连接 {{session}}…", { session })}\x1b[0m`);
 
     openTerminal(session, terminal.cols, terminal.rows)
       .then((handle) => {

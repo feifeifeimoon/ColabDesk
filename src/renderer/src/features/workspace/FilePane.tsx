@@ -778,7 +778,7 @@ export function FilePane({
           }
         >
           <Callout tone="warn">
-            {t("files.conflictBody", "{{list}} 已经在这个目录里。", { list: conflict.names.join("、") })}
+            {t("files.conflictBody", "{{list}} 已存在于该目录。", { list: conflict.names.join("、") })}
           </Callout>
           <p className="hint">{t("files.conflictHint", "所选做法对本次全部文件生效。")}</p>
         </Dialog>

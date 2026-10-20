@@ -442,6 +442,17 @@ The table in Settings → Terminal is a `.table`: **no outer border**, hairlines
 - **Status**: `Status` is always "dot + words" (Connected / Connecting… / Running / Not authorized). **Colour never carries semantics alone.**
 - **Dialogs**: `Dialog` = `canvas` fill + a Level 5 shadow + a translucent backdrop; clicking the backdrop or the `×` in the top right leaves (`IconButton` + `CloseIcon`, the same glyph as closing a terminal tab). **Only for a genuine mid-way fork**: an upload meeting a file of the same name (a question only the user can answer, whose answer covers the whole batch — `Replace` / `Keep both` / `Skip`). **Creating a session is not one**: it is a console in the middle column (see "Runtime setup"), because it is a machine being commissioned and the CLI narrates it. **A file is not a fork**: it is a tab (see "File tab") — a dialog would put it on the other side of the terminal that produces it, and being read against that terminal is the point. Settings is not a dialog either; it is a page (see "Settings page"). **A hairline separates the footer from the body** (the top border of `.dialog__footer`): the footer does not reuse the header's class — that draws the line under the footer's bottom edge, adding one between the buttons and the dialog's edge while leaving the body and the footer unseparated. The account and its machine types live in Settings → "Account & Quota", one per row: the email on one row, the available machine types on another (the unavailable ones in `badge-off`).
 
+## Voice
+
+The interface speaks like a tool, not a host. Every string states what a thing is or does, and what happens next.
+
+- **State the fact, not the reasoning.** Settings descriptions are noun phrases: "应用版本、更新方式与日志位置。" — not "这一份应用自身的版本、它是怎么更新的…".
+- **No second person.** Say what happens, not what "you" decide: "下载与重启需手动确认。"
+- **One idea per sentence.** A row's description says what the row is; an error says what failed and what to do. Do not explain the design or reassure.
+- **Professional verbs.** 无法连接 / 移除 / 不含 / 提交, not 连不上 / 清掉 / 不带 / 交给.
+- **One word per concept.** 机型, 运行时, 会话, 终端, 同步, 发布页面 — never rotate synonyms such as 算力规格 or 刷新列表 for the same thing.
+- **English is written, not translated.** Same key, same register; no idioms such as "yours to decide" or "beats describing the symptom".
+
 ## Do's and Don'ts
 
 ### Do

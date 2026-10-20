@@ -137,7 +137,7 @@ export function TerminalSettings() {
   const terminalKeys: [string, string][] = [
     ["Ctrl+Shift+C / Cmd+C", t("settings.shortcutCopy", "复制选中内容")],
     ["Ctrl+Shift+V / Cmd+V", t("settings.shortcutPaste", "粘贴")],
-    [t("settings.shortcutRightClickKey", "右键"), t("settings.shortcutRightClick", "有选中就复制，否则粘贴")],
+    [t("settings.shortcutRightClickKey", "右键"), t("settings.shortcutRightClick", "有选中内容时复制，否则粘贴。")],
     ["Ctrl+Shift+= / -", t("settings.shortcutFontSize", "终端字号增大 / 减小")],
     ["Ctrl+Shift+T", t("settings.shortcutNewTerminal", "新建终端")],
     ["Ctrl+Shift+N", t("settings.shortcutNewSession", "新建会话")],
@@ -171,7 +171,7 @@ export function TerminalSettings() {
           label={t("settings.terminalThemeFollowLabel", "跟随界面深浅")}
           description={t(
             "settings.terminalThemeFollowDesc",
-            "界面切到浅色时，用下面那套浅色配色；关掉就一直用深色的那套。",
+            "开启后按界面深浅使用对应配色；关闭后始终使用深色配色。",
           )}
           actions={
             <Checkbox
@@ -333,7 +333,7 @@ export function TerminalSettings() {
         <PanelRow
           stacked
           label={t("settings.terminalShortcutsLabel", "键盘与鼠标")}
-          description={t("settings.terminalShortcutsDesc", "只在终端面板里生效")}
+          description={t("settings.terminalShortcutsDesc", "仅在终端面板内生效。")}
         >
           <table className="table" style={{ borderTop: "1px solid var(--hairline)" }}>
             <tbody>

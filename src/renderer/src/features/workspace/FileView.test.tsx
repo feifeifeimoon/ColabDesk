@@ -109,7 +109,7 @@ describe("file tab", () => {
     expect(render(TRUNCATED)).toContain("只读");
     expect(render(INVALID)).toContain("只读");
     expect(render(LOCKED_TEXT)).toContain("只读");
-    expect(render(LOCKED_TEXT)).toContain("这个文件不可写");
+    expect(render(LOCKED_TEXT)).toContain("文件不可写");
     // A binary file never offers reading to begin with, so it gets no label.
     expect(render(BINARY)).not.toContain("只读");
   });
@@ -159,7 +159,7 @@ describe("file tab", () => {
     });
     // A plain save would conflict again and the two questions would trade
     // places; the way out is to overwrite and close, or not to save at all.
-    expect(markup).toContain("文件在服务器上已改变");
+    expect(markup).toContain("文件已在服务器上更改");
     expect(markup).toContain("覆盖并关闭");
     expect(markup).not.toContain("保存并关闭");
   });
@@ -173,7 +173,7 @@ describe("file tab", () => {
 
   it("a file that moved on is a question with the buffer still on screen", () => {
     const changed = render(TEXT, { dirty: true, pending: { kind: "conflict", reason: "changed" } });
-    expect(changed).toContain("文件在服务器上已改变");
+    expect(changed).toContain("文件已在服务器上更改");
     expect(changed).toContain("覆盖");
     expect(changed).toContain("放弃修改并重新加载");
     expect(changed).toContain("未保存");

@@ -45,10 +45,10 @@ describe("the message corner", () => {
   it("carries the message and a way out of it", () => {
     store.current = {
       ...store.current,
-      toasts: [{ id: 7, tone: "danger", text: "停止命令超时，请稍后同步查看。" }],
+      toasts: [{ id: 7, tone: "danger", text: "停止命令超时；请稍后同步会话查看结果。" }],
     };
     const html = render();
-    expect(html).toContain("停止命令超时，请稍后同步查看。");
+    expect(html).toContain("停止命令超时；请稍后同步会话查看结果。");
     expect(html).toContain('data-testid="toast-dismiss"');
     // The glyph cannot name itself; the label has to.
     expect(html).toContain('aria-label="关闭提示"');

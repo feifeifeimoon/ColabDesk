@@ -127,7 +127,7 @@ describe("the about section", () => {
       version: "0.4.0",
     });
     const rendered = text(render("about"));
-    expect(rendered).toContain("连不上更新服务器");
+    expect(rendered).toContain("无法连接更新服务器");
     // The raw transport string is there for a bug report, below the sentence.
     expect(rendered).toContain("ERR_INTERNET_DISCONNECTED");
     expect(render("about")).toContain('data-testid="update-retry"');
@@ -142,8 +142,8 @@ describe("the about section", () => {
       version: null,
     });
     const rendered = text(render("about"));
-    expect(rendered).not.toContain("连不上更新服务器");
-    expect(rendered).toContain("稍后会自动重试");
+    expect(rendered).not.toContain("无法连接更新服务器");
+    expect(rendered).toContain("将自动重试");
   });
 
   it("does not offer a retry when the failure left no version to ask for", () => {

@@ -92,8 +92,8 @@ export function UsageTrend({
       />
 
       {trend.first_sample === null ? (
-        <EmptyState title={t("usage.emptyTitle", "还没有余额读数")}>
-          {t("usage.emptyBody", "每次查询额度时将自动记录采样点，产生使用历史后将在此展示消耗曲线。")}
+        <EmptyState title={t("usage.emptyTitle", "暂无余额读数")}>
+          {t("usage.emptyBody", "查询额度时会记录采样点；产生历史后，将在此显示消耗曲线。")}
         </EmptyState>
       ) : (
         <>
@@ -139,7 +139,7 @@ export function UsageTrend({
             })}
           </p>
           <p className="hint">
-            {t("usage.batchHint", "注：Colab 额度为分批结算，区间数据系根据相邻采样线性分摊，建议以天或更长周期查看。")}
+            {t("usage.batchHint", "Colab 额度按批次结算；区间数据由相邻采样线性分摊，建议按天或更长时间查看。")}
           </p>
         </>
       )}

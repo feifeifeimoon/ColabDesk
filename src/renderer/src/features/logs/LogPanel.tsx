@@ -37,7 +37,7 @@ export function LogPanel() {
         label={t("settings.logLabel", "运行日志")}
         description={t(
           "settings.logDescription",
-          "应用做了什么、命令行回了什么，都记在这一个文件里。反馈问题时附上它，比描述现象有用。",
+          "记录应用操作与命令行输出；反馈问题时请附上该文件。",
         )}
         value={path || "—"}
         title={path}

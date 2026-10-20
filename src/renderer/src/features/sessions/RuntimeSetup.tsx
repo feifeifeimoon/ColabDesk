@@ -211,7 +211,7 @@ export function RuntimeSetup() {
             ? t("sessions.acceleratorAvailable", "当前账号可用机型：{{list}}", {
                 list: [...eligibility.gpus, ...eligibility.tpus].join(" / "),
               })
-            : t("sessions.setupEligibilityUnknown", "账号可用的机型尚未读到 —— 都可以试，最终由 colab new 决定。")}
+            : t("sessions.setupEligibilityUnknown", "尚未读取账号可用的机型；可任选，最终以 colab new 的结果为准。")}
         </p>
 
         <fieldset className="setup__group" ref={listRef}>

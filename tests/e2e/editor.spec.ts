@@ -131,7 +131,7 @@ test("超限的日志：只给开头与结尾，省略处以文字交代，且�
   await rowButton(page, "train.log").dblclick();
 
   const filePane = pane(page, "train.log");
-  await expect(filePane).toContainText("文件较大（2.8 MB），只显示了开头与结尾。");
+  await expect(filePane).toContainText("文件较大（2.8 MB），仅显示开头与结尾。");
   await expect(filePane).toContainText("只读");
   await expect(filePane.getByRole("button", { name: "保存" })).toHaveCount(0);
   // Line numbers would be fiction after the gap, so the gutter is gone.
@@ -239,11 +239,11 @@ test("远端先变了：保存不静默覆盖，问到答案才写", async ({ ap
   await filePane.locator(".cm-content").click();
   await page.keyboard.press(`${MOD}+s`);
 
-  await expect(filePane).toContainText("文件在服务器上已改变");
+  await expect(filePane).toContainText("文件已在服务器上更改");
   await expect(filePane).toContainText("未保存");
   await filePane.getByRole("button", { name: "覆盖" }).click();
 
-  await expect(filePane).not.toContainText("文件在服务器上已改变");
+  await expect(filePane).not.toContainText("文件已在服务器上更改");
   await expect(filePane.locator('[data-testid="save-file"]')).toBeDisabled();
   // The copy that won is the one the person chose.
   await page.getByRole("button", { name: "关闭 README.txt" }).click();
@@ -312,7 +312,7 @@ test("不可写的文件：说明白，也不给保存", async ({ page }) => {
 
   const filePane = pane(page, "locked.cfg");
   await expect(filePane).toContainText("只读");
-  await expect(filePane).toContainText("这个文件不可写");
+  await expect(filePane).toContainText("文件不可写");
   await expect(filePane.locator('[data-testid="save-file"]')).toHaveCount(0);
   await expect(surface(page, "locked.cfg")).toContainText("seed=1");
 });

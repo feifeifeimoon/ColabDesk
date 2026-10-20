@@ -216,7 +216,7 @@ export class Service {
         // Not an empty list: the caller must be able to tell "nothing is
         // allocated" from "nobody answered", and only one of them is news.
         live_endpoints: null,
-        error: "读不到服务器上的运行时列表（令牌过期或网络不通）。点上面的同步重试。",
+        error: "无法读取服务器上的运行时列表（令牌过期或网络不通）。请使用上方「同步」重试。",
       };
     }
 
