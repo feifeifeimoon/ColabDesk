@@ -14,7 +14,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
-import { expect, openSession, reloadWorkbench, test } from "./app-launch";
+import { expect, focusTerminal, openSession, reloadWorkbench, terminalRows, test } from "./app-launch";
 
 const directory = join(process.cwd(), "screenshots");
 const SECTIONS = ["外观", "终端", "快捷键", "外部连接", "账号与环境", "用量趋势", "关于"];
@@ -191,6 +191,80 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
       await capture(page, `06-settings-${section}`);
     }
   }
+});
+
+/**
+ * The four states the landing page shows, in English.
+ *
+ * The gate's fixture pins the interface to Chinese so assertions never read the
+ * host locale; the site's pictures are for an English-reading audience, so this
+ * run flips the language the way a user does and shoots the same states. Both
+ * galleries come out of the one command.
+ */
+test("@gallery English shots for the landing page", async ({ app, page, sandbox }) => {
+  test.slow();
+  mkdirSync(directory, { recursive: true });
+
+  await page.evaluate(() => localStorage.setItem("colabdesk.language", "en"));
+  await reloadWorkbench(app, page);
+
+  // The chart's whole point is a curve, and a fresh sandbox has no readings.
+  // Daily samples give it one: each drop between two samples is what is drawn,
+  // and the pace varies so the bars read as real days rather than a ruler.
+  const spends = Array.from({ length: 31 }, (_, day) => 0.4 + (((day * 7) % 13) / 12) * 2.2);
+  let balance = 42.5 + spends.slice(1).reduce((sum, spend) => sum + spend, 0);
+  const firstDay = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const samples = spends.map((_, day) => {
+    if (day > 0) balance -= spends[day];
+    return JSON.stringify({
+      at: new Date(firstDay + day * 24 * 60 * 60 * 1000).toISOString(),
+      balance: Number(balance.toFixed(3)),
+      rate: 1.25,
+      assignments: day % 7 === 0 ? 2 : 1,
+    });
+  });
+  writeFileSync(join(sandbox, "user-data", "usage-history.jsonl"), `${samples.join("\n")}\n`);
+
+  await openSession(page, "e2e-alpha");
+  await expect(terminalRows(page).first()).toContainText("e2e-alpha");
+  await page.waitForTimeout(800);
+
+  // A prompt alone is a picture of nothing; a few real commands are what makes
+  // the terminal read as a terminal, and a second tab is what the feature is
+  // actually about.
+  await focusTerminal(page);
+  for (const command of ["ls", "uname", "pwd"]) {
+    await page.keyboard.type(command);
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(200);
+  }
+  await page.locator('[data-testid="new-terminal"]').click();
+  await page.waitForTimeout(800);
+  // Back to the tab with the commands in it: two tabs, one of them worked in.
+  await page.locator(".session-tab").filter({ hasText: "Terminal 1" }).click();
+  await page.waitForTimeout(500);
+
+  // The dark one is the site's hero; the light ones sit in the feature rows.
+  await toggleTheme(page);
+  await capture(page, "01-workbench-en");
+  await toggleTheme(page);
+  await capture(page, "01-workbench-en");
+
+  await page.locator('[data-testid="toggle-files"]').click();
+  await page.locator('[data-testid="toggle-sidebar"]').click();
+  await page.waitForTimeout(600);
+  await capture(page, "02-focus-en");
+  await page.locator('[data-testid="toggle-sidebar"]').click();
+  await page.locator('[data-testid="toggle-files"]').click();
+
+  await page.locator(".file-row").filter({ hasText: "data" }).locator(".file-row__row").click();
+  await page.waitForTimeout(400);
+  await capture(page, "07-file-tree-en");
+
+  await page.locator('[data-testid="open-settings"]').click();
+  await page.locator(".settings__nav-item").filter({ hasText: "Usage Trend" }).click();
+  await page.waitForTimeout(500);
+  await capture(page, "06-settings-usage-en");
 });
 
 /**

@@ -1,0 +1,570 @@
+/*
+ * The landing page. It is plain static HTML with no build step, so it carries
+ * its own copy of `tokens.css` (copied verbatim from
+ * `src/renderer/src/assets/tokens.css`; `site/tokens.test.mjs` fails when the
+ * two drift). Values below are read from those tokens — the only numbers
+ * invented here are the marketing page's own type ramp, recorded in DESIGN.md.
+ */
+
+/* The app bundles Geist through electron-vite; the page has no bundler, so it
+   carries the same two latin subsets (56 KB) and gets the typography back. */
+@font-face {
+  font-family: "Geist Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("assets/fonts/geist-latin.woff2") format("woff2-variations");
+}
+
+@font-face {
+  font-family: "Geist Mono Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("assets/fonts/geist-mono-latin.woff2") format("woff2-variations");
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img {
+  max-width: 100%;
+}
+
+a {
+  color: var(--link);
+  text-decoration: none;
+}
+
+.inline-link {
+  color: var(--link);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--link) 40%, transparent);
+  text-underline-offset: 2px;
+}
+
+.inline-link:hover {
+  text-decoration-color: var(--link);
+}
+
+/* ---- shell ------------------------------------------------------------- */
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-6);
+}
+
+.nav__brand {
+  display: inline-flex;
+  align-items: center;
+}
+
+.nav__lockup {
+  height: 22px;
+  width: auto;
+  display: block;
+}
+
+.nav__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.github-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: var(--text-caption);
+  font-weight: 500;
+}
+
+.github-badge:hover {
+  opacity: 0.86;
+}
+
+.github-badge > svg {
+  width: 13px;
+  height: 13px;
+}
+
+.github-badge__stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: var(--space-2);
+  padding-left: var(--space-2);
+  border-left: 1px solid color-mix(in srgb, var(--on-primary) 24%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+.github-badge__stars[hidden] {
+  display: none;
+}
+
+.github-badge__stars svg {
+  width: 11px;
+  height: 11px;
+}
+
+/* A segmented language choice, not a toggle with one label: both languages are
+   visible and the current one is the ink segment, so switching needs no guess
+   about what the button will do. */
+.lang-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 28px;
+  padding: 2px 3px 2px var(--space-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--canvas);
+}
+
+.lang-switch__globe {
+  width: 13px;
+  height: 13px;
+  margin-right: 3px;
+  color: var(--mute);
+}
+
+.lang-switch__option {
+  height: 22px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  color: var(--mute);
+  font: inherit;
+  font-size: var(--text-caption);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.lang-switch__option:hover {
+  color: var(--ink);
+}
+
+.lang-switch__option[aria-pressed="true"] {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.lang-switch__option[aria-pressed="true"]:hover {
+  color: var(--on-primary);
+  opacity: 0.86;
+}
+
+/* ---- hero -------------------------------------------------------------- */
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: clamp(56px, 7vw, 84px) var(--space-6) var(--space-6);
+  text-align: center;
+}
+
+/* One soft wash of ink behind the opening — reads as light on the page rather
+   than a second colour. */
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: -120px 0 0;
+  z-index: -1;
+  background: radial-gradient(
+    70% 70% at 50% 45%,
+    color-mix(in srgb, var(--ink) 5%, transparent),
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+.hero__symbol {
+  display: block;
+  width: 44px;
+  height: 44px;
+  margin: 0 auto var(--space-5);
+}
+
+.hero__title {
+  margin: 0;
+  font-size: clamp(30px, 4.2vw, 44px);
+  font-weight: 600;
+  line-height: 1.16;
+  letter-spacing: -0.035em;
+  white-space: pre-line;
+  text-wrap: balance;
+}
+
+.hero__sub {
+  max-width: 56ch;
+  margin: var(--space-4) auto 0;
+  color: var(--body);
+  font-size: 16px;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+/* The alternative builds sit under the two buttons, the way Orca puts
+   "Also for …" — one decision on screen, the rest one click away. */
+.hero__alts {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-2);
+}
+
+/* ---- buttons: the app's own primary / outline, at one marketing size ----- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 40px;
+  padding: 0 var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.1px;
+  white-space: nowrap;
+  transition: opacity 120ms ease, border-color 120ms ease, transform 60ms ease;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:focus-visible,
+.github-badge:focus-visible,
+.lang-switch__option:focus-visible,
+.inline-link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+.btn--primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
+.btn--primary:hover {
+  opacity: 0.86;
+}
+
+.btn--outline {
+  background: var(--canvas);
+  border-color: var(--border);
+  color: var(--ink);
+}
+
+.btn--outline:hover {
+  border-color: var(--hairline-strong);
+}
+
+.btn__mark {
+  width: 15px;
+  height: 15px;
+}
+
+/* One decisive download plus an "also for" menu, the way Orca's page does it:
+   the alternative platforms stay one click away without competing with the
+   primary action. */
+.platform-menu {
+  position: relative;
+}
+
+.platform-menu__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 28px;
+  padding: 0 var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--body);
+  font: inherit;
+  font-size: var(--text-label);
+  cursor: pointer;
+}
+
+.platform-menu__toggle:hover {
+  color: var(--ink);
+}
+
+.platform-menu__toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+.platform-menu__chevron {
+  width: 12px;
+  height: 12px;
+  transition: transform 120ms ease;
+}
+
+.platform-menu__toggle[aria-expanded="true"] .platform-menu__chevron {
+  transform: rotate(180deg);
+}
+
+.platform-menu__list {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  min-width: 248px;
+  margin: 0;
+  padding: var(--space-1);
+  list-style: none;
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-4);
+  text-align: left;
+}
+
+.platform-menu__item {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+}
+
+.platform-menu__item:hover {
+  background: var(--canvas-soft);
+}
+
+.platform-menu__item:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.platform-menu__item svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  color: var(--body);
+}
+
+.platform-menu__title {
+  display: block;
+  font-size: var(--text-label);
+  font-weight: 500;
+}
+
+.platform-menu__meta {
+  display: block;
+  color: var(--mute);
+  font-size: var(--text-micro);
+}
+
+/* ---- screenshots: the terminal is dark in both polarities ---------------- */
+
+.shot {
+  max-width: min(980px, calc(100% - var(--space-6)));
+  margin: 0 auto;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--canvas);
+  box-shadow: var(--shadow-4);
+}
+
+.shot__bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-2) var(--space-3);
+  background: #171717;
+  border-bottom: 1px solid #262626;
+}
+
+.shot__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: #3a3a3a;
+}
+
+.shot__title {
+  margin-left: var(--space-2);
+  color: #888888;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+}
+
+.shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.shot--small {
+  max-width: none;
+  margin: 0;
+  box-shadow: var(--shadow-3);
+}
+
+/* ---- sections ----------------------------------------------------------- */
+
+.section {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: clamp(64px, 8vw, 96px) var(--space-6) 0;
+}
+
+.section__title {
+  margin: 0 0 var(--space-6);
+  text-align: center;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+/* ---- features: three rows, image alternating ---------------------------- */
+
+.feature {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr;
+  align-items: center;
+  gap: var(--space-8);
+  margin-bottom: var(--space-8);
+}
+
+.feature:last-child {
+  margin-bottom: 0;
+}
+
+.feature--flip {
+  grid-template-columns: 1.25fr 1fr;
+}
+
+.feature--flip .shot {
+  order: -1;
+}
+
+.feature__title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-title-sm);
+  font-weight: 600;
+  letter-spacing: var(--tracking-title);
+}
+
+.feature__body {
+  max-width: 40ch;
+  margin: 0;
+  color: var(--body);
+  font-size: 15px;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+
+/* ---- footer ------------------------------------------------------------- */
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
+  max-width: 1080px;
+  margin: var(--space-8) auto 0;
+  padding: var(--space-5) var(--space-6) var(--space-7);
+  border-top: 1px solid var(--hairline);
+  color: var(--mute);
+  font-size: var(--text-caption);
+}
+
+.footer .inline-link {
+  margin-left: var(--space-2);
+}
+
+/* ---- polarity ----------------------------------------------------------- */
+
+/* The lockup and symbol are ink, so dark swaps in the brand's white variants
+   rather than filtering colour. JS sets the attribute from the OS. */
+:root[data-theme="dark"] .only-light,
+:root:not([data-theme="dark"]) .only-dark {
+  display: none;
+}
+
+/* ---- narrow ------------------------------------------------------------- */
+
+@media (max-width: 860px) {
+  .feature,
+  .feature--flip {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+
+  .feature--flip .shot {
+    order: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .nav {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .hero {
+    padding: var(--space-7) var(--space-4) var(--space-4);
+  }
+
+  .hero__actions .btn {
+    flex: 1 1 100%;
+  }
+
+  .section {
+    padding: var(--space-7) var(--space-4) 0;
+  }
+
+  .footer {
+    padding: var(--space-5) var(--space-4) var(--space-7);
+  }
+}

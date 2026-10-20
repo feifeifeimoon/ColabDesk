@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256"><title>ColabDesk</title><g transform="translate(-3.07 -3.07) scale(1.024)">
+  <title id="title">ColabDesk symbol — small-size cut</title>
+  <!-- Optical size, not a scaled-down master. Drawn tight to the box so the mark fills a
+       favicon instead of sitting at 81% of it, with every feature opened up: wall 32->36,
+       interior 72->96, clearance 8->20, frame square at 240. At 16 px that is a 2.3 px wall,
+       a 6 px room, a 1.3 px cut and a 4 px block — all still there. -->
+  <path fill="#171717" fill-rule="evenodd" d="M 112 8 H 216 A 32 32 0 0 1 248 40 V 216 A 32 32 0 0 1 216 248 H 112 A 32 32 0 0 1 80 216 V 180 H 116 V 76 H 80 V 40 A 32 32 0 0 1 112 8 Z M 116 44 H 212 V 212 H 116 Z"/>
+  <path fill="#171717" d="M 8 96 H 172 V 160 H 8 Z"/>
+</g></svg>
