@@ -43,7 +43,13 @@ export function creationFailure(report: CommandReport, streamed: string[]): stri
 export const createCreationSlice: StateCreator<AppState, [], [], CreationSlice> = (set, get) => ({
   creation: { ...BLANK },
 
-  openNewSession: () => set({ creation: { ...get().creation, open: true } }),
+  openNewSession: () => {
+    set({ creation: { ...get().creation, open: true } });
+    // Re-read the identity so a key generated in an external terminal since
+    // startup is picked up without a manual refresh. Local-only: a full
+    // environment refresh would put tokeninfo and quota reads on this path.
+    void get().refreshSshIdentity();
+  },
   closeNewSession: () => set({ creation: { ...get().creation, open: false } }),
 
   /**

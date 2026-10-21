@@ -31,6 +31,8 @@ export const onAuthDone = (listener: Parameters<ColabDeskApi["onAuthDone"]>[0]) 
 
 export const sshSetup = (name: string) => bridge().sshSetup(name);
 export const sshRemove = (name: string) => bridge().sshRemove(name);
+export const sshIdentity = () => bridge().sshIdentity();
+export const sshGenerateKey = () => bridge().sshGenerateKey();
 export const sshDisconnect = (name: string) => bridge().sshDisconnect(name);
 export const onSshStatus = (listener: Parameters<ColabDeskApi["onSshStatus"]>[0]) => bridge().onSshStatus(listener);
 export const onSessionCreateOutput = (listener: Parameters<ColabDeskApi["onSessionCreateOutput"]>[0]) =>

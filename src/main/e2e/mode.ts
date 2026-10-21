@@ -12,9 +12,9 @@
  */
 
 import { app } from "electron";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { utils } from "ssh2";
+import { ensureIdentity, generateEd25519Key } from "../ssh/identity";
 
 export function e2eMockEnabled(): boolean {
   return process.env.COLABDESK_E2E_MOCK === "1";
@@ -49,42 +49,7 @@ export function prepareE2EHost(): void {
   app.setPath("home", home);
   app.setPath("userData", userData);
 
-  writeIdentity(home);
-}
-
-/**
- * An ed25519 keypair that actually parses.
- *
- * ssh2's own generator hands back a key its own parser rejects roughly once in
- * 250 tries (measured over 3000), and both the identity and the fake sshd's
- * host key come from it — so a suite of fifteen app launches meets the bad one
- * often enough to matter. Retrying is cheaper than the flake, and the check is
- * the parser the client itself will use.
- */
-export function generateEd25519Key(): { private: string; public: string } {
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    const key = utils.generateKeyPairSync("ed25519");
-    if (!(utils.parseKey(key.private) instanceof Error)) return key;
-  }
-  throw new Error("无法生成可解析的 ed25519 密钥：ssh2 的生成器连续失败。");
-}
-
-/**
- * `findIdentity()` needs a private key under the sandbox HOME. Generated per
- * run rather than committed: a fixture key in the repository is a real
- * credential, and nothing verifies it against a host key.
- */
-function writeIdentity(home: string): void {
-  const sshDir = join(home, ".ssh");
-  mkdirSync(sshDir, { recursive: true });
-
-  const keyPath = join(sshDir, "id_ed25519");
-  // A relaunch into the same sandbox keeps the identity it already seeded.
-  if (existsSync(keyPath)) return;
-
-  const key = generateEd25519Key();
-  writeFileSync(keyPath, key.private, { mode: 0o600 });
-  writeFileSync(`${keyPath}.pub`, `${key.public}\n`);
+  ensureIdentity(home);
 }
 
 /** The fake sshd's host key. Per run, for the same reason as the identity. */

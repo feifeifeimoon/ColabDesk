@@ -27,6 +27,24 @@ export const createEnvironmentSlice: StateCreator<AppState, [], [], EnvironmentS
   },
 
   /**
+   * Re-reads only the on-disk identity.
+   *
+   * The setup surface asks this when it opens: a key generated in an external
+   * terminal must be seen without a full environment refresh, whose tokeninfo
+   * and quota calls would both delay the answer and belong to another question.
+   */
+  refreshSshIdentity: async () => {
+    if (get().env === null) return;
+    try {
+      const ssh_identity = await api.sshIdentity();
+      const current = get().env;
+      if (current) set({ env: { ...current, ssh_identity } });
+    } catch {
+      // Keep the last answer; the next full refresh can correct it.
+    }
+  },
+
+  /**
    * Authorisation state and the quota answer, in that order.
    *
    * The quota read goes first because it is what mints a fresh access token when

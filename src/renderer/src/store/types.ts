@@ -201,6 +201,8 @@ export interface EnvironmentSlice {
    * Resolves to the fresh `authenticated` flag, which the login flow reports on.
    */
   refreshEnvironment(): Promise<boolean>;
+  /** Re-reads the on-disk SSH identity without asking the network. */
+  refreshSshIdentity(): Promise<void>;
   setError(error: string | null): void;
 }
 

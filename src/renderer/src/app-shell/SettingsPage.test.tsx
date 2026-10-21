@@ -44,6 +44,7 @@ function baseState(update: UpdateStatus) {
       accelerator_eligibility: null,
       token_expiry: null,
       has_refresh_token: false,
+      ssh_identity: "C:\\Users\\dev\\.ssh\\id_ed25519",
       hint: null,
     },
     usage: null,
@@ -57,6 +58,7 @@ function baseState(update: UpdateStatus) {
     setLanguage: noop,
     setPanelWidth: noop,
     refreshEnvironment: noop,
+    refreshSshIdentity: noop,
     update,
     dismissedVersion: null,
     checkForUpdates: noop,
@@ -89,6 +91,17 @@ describe("the account section", () => {
     expect(rendered).toContain("本地 Colab 环境");
     expect(rendered).toContain("colab 命令");
     expect(rendered).toContain("C:\\bundled\\python.exe");
+  });
+
+  it("offers key generation only when no usable SSH key was found", () => {
+    expect(text(render("account"))).toContain("C:\\Users\\dev\\.ssh\\id_ed25519");
+    expect(text(render("account"))).not.toContain("生成密钥");
+
+    const state = baseState({ state: "idle" });
+    (state.env as { ssh_identity: string | null }).ssh_identity = null;
+    store.current = state;
+    expect(text(render("account"))).toContain("未检测到可用密钥");
+    expect(text(render("account"))).toContain("生成密钥");
   });
 });
 

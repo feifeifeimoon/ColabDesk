@@ -231,7 +231,14 @@
     "setupElapsed": "已等待 {{time}}",
     "setupMayTake": "申请可能需要几分钟，完成后会自动打开终端。",
     "setupBackground": "在后台继续",
-    "setupFailedKeys": "修改后 Enter 重试 · Esc 返回"
+    "setupFailedKeys": "修改后 Enter 重试 · Esc 返回",
+    "sshKeyMissingTitle": "需要 Ed25519 / ECDSA SSH 密钥",
+    "sshKeyMissingBody": "未在 ~/.ssh 下找到本应用可用的 id_ed25519 或 id_ecdsa 私钥（带 passphrase 或格式不受支持的密钥无法使用）。Google Colab 的 SSH 网关仅支持 Ed25519 与 ECDSA 密钥（服务端直接拒绝 id_rsa），请先准备密钥再申请运行时，以免空耗计算单元。",
+    "sshKeyGenerate": "生成 Ed25519 密钥",
+    "sshKeyGenerating": "正在生成…",
+    "sshKeyGenerated": "已生成 {{path}}",
+    "sshKeyCopyCommand": "复制 ssh-keygen 命令",
+    "sshKeyRecheck": "重新检测"
   },
   "login": {
     "signInGoogle": "授权登录 Google 账号",
@@ -395,6 +402,10 @@
     "runtimeAuthorized": "已授权",
     "runtimeUnauthorized": "未授权",
     "runtimeTokenExpiry": "令牌到期",
+    "runtimeSshKey": "SSH 密钥",
+    "runtimeSshKeyDesc": "Colab 仅支持 id_ed25519 或 id_ecdsa（不支持 id_rsa）；带 passphrase 的密钥本应用无法使用。",
+    "runtimeSshKeyMissing": "未检测到可用密钥（id_ed25519 / id_ecdsa）",
+    "runtimeSshKeyGenerate": "生成密钥",
     "externalSshLabel": "SSH 主机配置",
     "externalSshDescActive": "为当前会话「{{session}}」生成并写入 SSH 别名配置，供外部终端或 VS Code 使用。",
     "externalSshDescInactive": "请先选择或连接一个会话，再写入对应的 SSH 配置。",

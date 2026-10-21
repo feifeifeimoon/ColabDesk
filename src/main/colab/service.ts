@@ -19,6 +19,7 @@ import { isTransientNetworkFailure } from "./network-retry";
 import { authState, configDir, findRawSession, loadRawSessions, loadSessions, sessionsFile } from "./sessions";
 import { removeEntry, writeEntry } from "./ssh-config";
 import type { SshTarget } from "../ssh/connection";
+import { findIdentity } from "../ssh/identity";
 
 /** Allocating a runtime can legitimately take minutes on a busy accelerator. */
 const NEW_TIMEOUT_MS = 300_000;
@@ -188,6 +189,7 @@ export class Service {
       accelerator_eligibility: account_.eligibility,
       token_expiry: auth.expiry,
       has_refresh_token: auth.has_refresh_token,
+      ssh_identity: findIdentity()?.privateKeyPath ?? null,
     };
   }
 

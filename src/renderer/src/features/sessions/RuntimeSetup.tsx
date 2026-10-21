@@ -17,7 +17,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { createSessionArgs } from "@shared/create-session";
 import type { CreateSessionOptions } from "@shared/api";
-import { writeClipboard } from "../../lib/api";
+import { messageOf, sshGenerateKey, writeClipboard } from "../../lib/api";
 import { useAppStore } from "../../store";
 import {
   ACCELERATORS,
@@ -33,6 +33,8 @@ function clock(ms: number): string {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
 
+const SHORT_KEYGEN_CMD = 'ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N ""';
+
 export function RuntimeSetup() {
   const { t } = useTranslation();
   const phase = useAppStore((state) => state.creation.phase);
@@ -41,8 +43,13 @@ export function RuntimeSetup() {
   const lines = useAppStore((state) => state.creation.lines);
   const error = useAppStore((state) => state.creation.error);
   const eligibility = useAppStore((state) => state.env?.accelerator_eligibility ?? null);
+  const envKnown = useAppStore((state) => state.env !== null);
+  // Only a known `null` after `env` has been read counts as missing; while `env`
+  // itself is still null on first frame we do not flash a false warning.
+  const sshKeyMissing = useAppStore((state) => state.env !== null && state.env.ssh_identity === null);
   const startCreation = useAppStore((state) => state.startCreation);
   const closeNewSession = useAppStore((state) => state.closeNewSession);
+  const refreshSshIdentity = useAppStore((state) => state.refreshSshIdentity);
 
   // Memoised: a Set built during render is a new reference every time.
   const unavailable = useMemo(() => unavailableAccelerators(eligibility), [eligibility]);
@@ -61,6 +68,10 @@ export function RuntimeSetup() {
   const [name, setName] = useState(request?.name ?? "");
   const [now, setNow] = useState(() => Date.now());
   const [copied, setCopied] = useState(false);
+  const [copiedKeyCmd, setCopiedKeyCmd] = useState(false);
+  const [generatingKey, setGeneratingKey] = useState(false);
+  const [keyNotice, setKeyNotice] = useState<string | null>(null);
+  const [keyError, setKeyError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
   const listRef = useRef<HTMLFieldSetElement | null>(null);
   const highMemRef = useRef<HTMLInputElement | null>(null);
@@ -181,9 +192,24 @@ export function RuntimeSetup() {
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [closeNewSession]);
 
+  async function handleGenerateKey(): Promise<void> {
+    if (generatingKey) return;
+    setGeneratingKey(true);
+    setKeyError(null);
+    try {
+      const keyPath = await sshGenerateKey();
+      await refreshSshIdentity();
+      setKeyNotice(t("sessions.sshKeyGenerated", "已生成 {{path}}", { path: keyPath }));
+    } catch (cause) {
+      setKeyError(messageOf(cause));
+    } finally {
+      setGeneratingKey(false);
+    }
+  }
+
   function submit(event: React.FormEvent): void {
     event.preventDefault();
-    if (busy || isUnavailable(unavailable, accelerator)) return;
+    if (busy || !envKnown || sshKeyMissing || isUnavailable(unavailable, accelerator)) return;
     const isTpu = accelerator.startsWith("tpu:");
     const options: CreateSessionOptions = {
       gpu: isTpu || accelerator === "cpu" ? null : accelerator,
@@ -206,6 +232,63 @@ export function RuntimeSetup() {
       </header>
 
       <form ref={formRef} className="setup__form" onSubmit={submit} aria-busy={busy}>
+        {sshKeyMissing && (
+          <div
+            className="setup__ssh-gate"
+            data-testid="setup-ssh-missing"
+            role="region"
+            aria-labelledby="setup-ssh-missing-title"
+          >
+            <p className="setup__ssh-title" id="setup-ssh-missing-title">
+              {t("sessions.sshKeyMissingTitle", "需要 Ed25519 / ECDSA SSH 密钥")}
+            </p>
+            <p className="setup__ssh-body">
+              {t(
+                "sessions.sshKeyMissingBody",
+                "未在 ~/.ssh 下找到本应用可用的 id_ed25519 或 id_ecdsa 私钥（带 passphrase 或格式不受支持的密钥无法使用）。Google Colab 的 SSH 网关仅支持 Ed25519 与 ECDSA 密钥（服务端直接拒绝 id_rsa），请先准备密钥再申请运行时，以免空耗计算单元。",
+              )}
+            </p>
+            <p className="setup__command">
+              <span className="setup__prompt" aria-hidden="true">$ </span>
+              {SHORT_KEYGEN_CMD}
+            </p>
+            {keyError && <p className="setup__failed">{keyError}</p>}
+            <div className="setup__actions">
+              <button
+                type="button"
+                className="setup__action setup__action--primary"
+                data-testid="setup-generate-ssh-key"
+                disabled={generatingKey}
+                onClick={() => void handleGenerateKey()}
+              >
+                {generatingKey
+                  ? t("sessions.sshKeyGenerating", "正在生成…")
+                  : t("sessions.sshKeyGenerate", "生成 Ed25519 密钥")}
+              </button>
+              <button
+                type="button"
+                className="setup__action"
+                onClick={() => {
+                  void writeClipboard(SHORT_KEYGEN_CMD);
+                  setCopiedKeyCmd(true);
+                  window.setTimeout(() => setCopiedKeyCmd(false), 2000);
+                }}
+              >
+                {copiedKeyCmd
+                  ? t("sessions.copiedDetails", "已复制")
+                  : t("sessions.sshKeyCopyCommand", "复制 ssh-keygen 命令")}
+              </button>
+              <button
+                type="button"
+                className="setup__action"
+                onClick={() => void refreshSshIdentity()}
+              >
+                {t("sessions.sshKeyRecheck", "重新检测")}
+              </button>
+            </div>
+          </div>
+        )}
+        {!sshKeyMissing && keyNotice && <p className="setup__note">{keyNotice}</p>}
         <p className="setup__note">
           {eligibility
             ? t("sessions.acceleratorAvailable", "当前账号可用机型：{{list}}", {
@@ -290,7 +373,11 @@ export function RuntimeSetup() {
         </label>
 
         <div className="setup__actions">
-          <button type="submit" className="setup__action setup__action--primary" disabled={busy}>
+          <button
+            type="submit"
+            className={`setup__action${sshKeyMissing ? "" : " setup__action--primary"}`}
+            disabled={busy || !envKnown || sshKeyMissing}
+          >
             {t("sessions.createButton", "创建")}
           </button>
         </div>

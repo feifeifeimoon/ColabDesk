@@ -36,7 +36,7 @@ import { UsageTrendPanel } from "../features/usage/UsageTrendPanel";
 import { ShortcutsSettings } from "./ShortcutsSettings";
 import { TerminalSettings } from "./TerminalSettings";
 import { UI_LANGUAGE_CHOICES } from "../i18n/supported-languages";
-import { messageOf, sshRemove, sshSetup } from "../lib/api";
+import { messageOf, sshGenerateKey, sshRemove, sshSetup } from "../lib/api";
 import { formatExpiry } from "../lib/format";
 import type { ThemePreference } from "../lib/theme";
 import { useAppStore } from "../store";
@@ -166,9 +166,11 @@ export function SettingsPage() {
   const setLanguage = useAppStore((state) => state.setLanguage);
   const setPanelWidth = useAppStore((state) => state.setPanelWidth);
   const refreshEnvironment = useAppStore((state) => state.refreshEnvironment);
+  const refreshSshIdentity = useAppStore((state) => state.refreshSshIdentity);
 
   const [setup, setSetup] = useState<SshSetup | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [keyError, setKeyError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   // This page lies over panes that are still live — a focused terminal would
@@ -232,6 +234,19 @@ export function SettingsPage() {
       setError(null);
     } catch (cause) {
       setError(messageOf(cause));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function generateSshKey() {
+    setPending(true);
+    setKeyError(null);
+    try {
+      await sshGenerateKey();
+      await refreshSshIdentity();
+    } catch (cause) {
+      setKeyError(messageOf(cause));
     } finally {
       setPending(false);
     }
@@ -354,7 +369,33 @@ export function SettingsPage() {
             value={formatExpiry(env?.token_expiry ?? null)}
             title={env?.token_expiry ?? undefined}
           />
+          <PanelRow
+            label={t("settings.runtimeSshKey", "SSH 密钥")}
+            description={t(
+              "settings.runtimeSshKeyDesc",
+              "Colab 仅支持 id_ed25519 或 id_ecdsa（不支持 id_rsa）；带 passphrase 的密钥本应用无法使用。",
+            )}
+            value={
+              env === null
+                ? t("settings.runtimeDetecting", "检测中…")
+                : (env.ssh_identity ?? t("settings.runtimeSshKeyMissing", "未检测到可用密钥（id_ed25519 / id_ecdsa）"))
+            }
+            title={env?.ssh_identity ?? undefined}
+            actions={
+              env !== null && !env.ssh_identity ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={pending}
+                  onClick={() => void generateSshKey()}
+                >
+                  {t("settings.runtimeSshKeyGenerate", "生成密钥")}
+                </Button>
+              ) : undefined
+            }
+          />
         </Panel>
+        {keyError && <Callout tone="danger">{keyError}</Callout>}
         <Callout>
           <p>
             {t(
