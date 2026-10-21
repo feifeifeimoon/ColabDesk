@@ -24,7 +24,7 @@ import {
   type WindowChangeInfo,
 } from "ssh2";
 import { createWebSocketStream, WebSocketServer } from "ws";
-import { generateHostKey } from "./mode";
+import { generateHostKey } from "./host";
 import { RuntimeFilesystem, RUNTIME_HOME, normalizePath, type RuntimeNode } from "./runtime-filesystem";
 
 const { OPEN_MODE, STATUS_CODE } = utils.sftp;
