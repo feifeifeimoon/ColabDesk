@@ -16,8 +16,6 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { ensureIdentity, generateEd25519Key } from "../ssh/identity";
 
-export { generateEd25519Key };
-
 export function e2eMockEnabled(): boolean {
   return process.env.COLABDESK_E2E_MOCK === "1";
 }

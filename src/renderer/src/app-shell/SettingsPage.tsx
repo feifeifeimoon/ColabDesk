@@ -166,9 +166,11 @@ export function SettingsPage() {
   const setLanguage = useAppStore((state) => state.setLanguage);
   const setPanelWidth = useAppStore((state) => state.setPanelWidth);
   const refreshEnvironment = useAppStore((state) => state.refreshEnvironment);
+  const refreshSshIdentity = useAppStore((state) => state.refreshSshIdentity);
 
   const [setup, setSetup] = useState<SshSetup | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [keyError, setKeyError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   // This page lies over panes that are still live — a focused terminal would
@@ -232,6 +234,19 @@ export function SettingsPage() {
       setError(null);
     } catch (cause) {
       setError(messageOf(cause));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function generateSshKey() {
+    setPending(true);
+    setKeyError(null);
+    try {
+      await sshGenerateKey();
+      await refreshSshIdentity();
+    } catch (cause) {
+      setKeyError(messageOf(cause));
     } finally {
       setPending(false);
     }
@@ -356,11 +371,14 @@ export function SettingsPage() {
           />
           <PanelRow
             label={t("settings.runtimeSshKey", "SSH 密钥")}
-            description={t("settings.runtimeSshKeyDesc", "Colab 仅支持 id_ed25519 或 id_ecdsa（不支持 id_rsa）。")}
+            description={t(
+              "settings.runtimeSshKeyDesc",
+              "Colab 仅支持 id_ed25519 或 id_ecdsa（不支持 id_rsa）；带 passphrase 的密钥本应用无法使用。",
+            )}
             value={
               env === null
                 ? t("settings.runtimeDetecting", "检测中…")
-                : (env.ssh_identity ?? t("settings.runtimeSshKeyMissing", "未检测到（仅支持 id_ed25519 / id_ecdsa）"))
+                : (env.ssh_identity ?? t("settings.runtimeSshKeyMissing", "未检测到可用密钥（id_ed25519 / id_ecdsa）"))
             }
             title={env?.ssh_identity ?? undefined}
             actions={
@@ -369,12 +387,7 @@ export function SettingsPage() {
                   size="sm"
                   variant="outline"
                   disabled={pending}
-                  onClick={() => {
-                    setPending(true);
-                    void sshGenerateKey()
-                      .then(() => refreshEnvironment())
-                      .finally(() => setPending(false));
-                  }}
+                  onClick={() => void generateSshKey()}
                 >
                   {t("settings.runtimeSshKeyGenerate", "生成密钥")}
                 </Button>
@@ -382,6 +395,7 @@ export function SettingsPage() {
             }
           />
         </Panel>
+        {keyError && <Callout tone="danger">{keyError}</Callout>}
         <Callout>
           <p>
             {t(

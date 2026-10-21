@@ -4,7 +4,7 @@
  * frameless title bar's drag regions, our own window controls, and the panels.
  */
 
-import { rmSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
 import { expect, openSession, reloadWorkbench, test } from "./app-launch";
@@ -486,4 +486,24 @@ test("新建运行时：缺少 Ed25519/ECDSA 密钥时先拦住说明 Colab 限�
   await expect(setup.getByRole("button", { name: "创建" })).toBeEnabled();
 });
 
+test("新建运行时：已有无法解析的 id_ed25519 时不会覆盖私钥，并说明原因", async ({ page, sandbox }) => {
+  // An existing key this client cannot parse (a passphrase-protected one looks
+  // the same to ssh2) must block creation, and generate must refuse to replace
+  // it. A `.pub` beside it must not make it look usable.
+  const keyPath = join(sandbox, ".ssh", "id_ed25519");
+  rmSync(keyPath, { force: true });
+  writeFileSync(keyPath, "keep-this-private-key");
+  writeFileSync(`${keyPath}.pub`, "ssh-ed25519 AAAA-stale\n");
 
+  await page.locator('[aria-label="新建会话"]').click();
+  const setup = page.locator('[data-testid="runtime-setup"]');
+  await expect(setup).toBeVisible();
+
+  const gate = setup.locator('[data-testid="setup-ssh-missing"]');
+  await expect(gate).toBeVisible();
+  await expect(setup.getByRole("button", { name: "创建" })).toBeDisabled();
+
+  await gate.locator('[data-testid="setup-generate-ssh-key"]').click();
+  await expect(gate.locator(".setup__failed")).toContainText("不会覆盖现有私钥");
+  expect(readFileSync(keyPath, "utf8")).toBe("keep-this-private-key");
+});

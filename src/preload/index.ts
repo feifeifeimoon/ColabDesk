@@ -35,6 +35,7 @@ const api: ColabDeskApi = {
 
   sshSetup: (name) => invoke(IPC.sshSetup, name),
   sshRemove: (name) => invoke(IPC.sshRemove, name),
+  sshIdentity: () => invoke(IPC.sshIdentity),
   sshGenerateKey: () => invoke(IPC.sshGenerateKey),
   sshDisconnect: (name) => invoke(IPC.sshDisconnect, name),
   onSshStatus: (listener) => subscribe(EVENTS.sshStatus, listener),

@@ -56,7 +56,11 @@ export interface ColabEnvironment {
   accelerator_eligibility: AcceleratorEligibility | null;
   token_expiry: string | null;
   has_refresh_token: boolean;
-  /** Path to `~/.ssh/id_ed25519` or `~/.ssh/id_ecdsa`, or null when neither exists. */
+  /**
+   * Path to a usable `~/.ssh/id_ed25519` or `~/.ssh/id_ecdsa`, or null when
+   * neither exists or can be used (a passphrase-protected key cannot be used
+   * here, and Colab rejects anything but Ed25519/ECDSA).
+   */
   ssh_identity: string | null;
 }
 

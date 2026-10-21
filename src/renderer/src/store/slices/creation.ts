@@ -45,9 +45,10 @@ export const createCreationSlice: StateCreator<AppState, [], [], CreationSlice> 
 
   openNewSession: () => {
     set({ creation: { ...get().creation, open: true } });
-    // Re-read the environment so an SSH key generated in an external terminal
-    // since startup is picked up without a manual refresh.
-    void get().refreshEnvironment?.();
+    // Re-read the identity so a key generated in an external terminal since
+    // startup is picked up without a manual refresh. Local-only: a full
+    // environment refresh would put tokeninfo and quota reads on this path.
+    void get().refreshSshIdentity();
   },
   closeNewSession: () => set({ creation: { ...get().creation, open: false } }),
 

@@ -46,7 +46,7 @@ function base(
     env: { accelerator_eligibility: eligibility, ssh_identity: sshIdentity },
     startCreation: async () => {},
     closeNewSession: () => {},
-    refreshEnvironment: async () => true,
+    refreshSshIdentity: async () => {},
   };
 }
 
@@ -114,10 +114,19 @@ describe("the setup screen", () => {
     const markup = renderToStaticMarkup(createElement(RuntimeSetup));
 
     expect(markup).toContain('data-testid="setup-ssh-missing"');
+    expect(markup).toContain('aria-labelledby="setup-ssh-missing-title"');
     expect(markup).toContain("id_ed25519");
     expect(markup).toContain("id_rsa");
     expect(markup).toContain('data-testid="setup-generate-ssh-key"');
     expect(markup).toContain("ssh-keygen -t ed25519");
+    expect(markup).toMatch(/type="submit"[^>]*disabled/);
+  });
+
+  it("does not warn before the environment has answered, but does not arm Create either", () => {
+    store.current = { ...base({ phase: "setup" }), env: null };
+    const markup = renderToStaticMarkup(createElement(RuntimeSetup));
+
+    expect(markup).not.toContain('data-testid="setup-ssh-missing"');
     expect(markup).toMatch(/type="submit"[^>]*disabled/);
   });
 });

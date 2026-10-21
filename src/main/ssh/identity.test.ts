@@ -1,6 +1,7 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { utils } from "ssh2";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ensureIdentity, findIdentity, generateEd25519Key } from "./identity";
 
@@ -8,7 +9,7 @@ describe("SSH identity detection and generation", () => {
   let home: string;
 
   beforeEach(() => {
-    home = join(tmpdir(), `colabdesk-ssh-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    home = mkdtempSync(join(tmpdir(), "colabdesk-ssh-test-"));
     mkdirSync(join(home, ".ssh"), { recursive: true });
   });
 
@@ -47,5 +48,53 @@ describe("SSH identity detection and generation", () => {
     const second = ensureIdentity(home);
     expect(second.privateKey.toString("utf8")).toBe(first.private);
     expect(second.publicKey).toBe(first.public.trim());
+  });
+
+  it("reuses an existing id_ecdsa instead of creating an id_ed25519 beside it", () => {
+    const first = utils.generateKeyPairSync("ecdsa", { bits: 256 });
+    const keyPath = join(home, ".ssh", "id_ecdsa");
+    writeFileSync(keyPath, first.private, { mode: 0o600 });
+    writeFileSync(`${keyPath}.pub`, `${first.public}\n`);
+
+    const identity = ensureIdentity(home);
+    expect(identity.privateKeyPath).toBe(keyPath);
+    expect(existsSync(join(home, ".ssh", "id_ed25519"))).toBe(false);
+  });
+
+  it("derives the public key from the private key rather than trusting a stale .pub", () => {
+    const first = generateEd25519Key();
+    const keyPath = join(home, ".ssh", "id_ed25519");
+    writeFileSync(keyPath, first.private, { mode: 0o600 });
+    writeFileSync(`${keyPath}.pub`, "ssh-ed25519 AAAA-stale\n");
+
+    const found = findIdentity(home);
+    expect(found?.publicKey).toBe(first.public.trim());
+  });
+
+  it("treats a private key it cannot parse as unusable even when a .pub sits beside it", () => {
+    writeFileSync(join(home, ".ssh", "id_ed25519"), "not-a-private-key");
+    writeFileSync(join(home, ".ssh", "id_ed25519.pub"), "ssh-ed25519 AAAA-stale\n");
+
+    expect(findIdentity(home)).toBeNull();
+  });
+
+  it("does not accept an RSA key just because it sits at a supported path", () => {
+    const rsa = utils.generateKeyPairSync("rsa", { bits: 2048 });
+    const keyPath = join(home, ".ssh", "id_ed25519");
+    writeFileSync(keyPath, rsa.private, { mode: 0o600 });
+    writeFileSync(`${keyPath}.pub`, `${rsa.public}\n`);
+
+    expect(findIdentity(home)).toBeNull();
+    expect(() => ensureIdentity(home)).toThrow(/不会覆盖现有私钥/);
+  });
+
+  it("refuses to overwrite an existing id_ed25519 it cannot parse", () => {
+    const keyPath = join(home, ".ssh", "id_ed25519");
+    writeFileSync(keyPath, "keep-this-private-key");
+    writeFileSync(`${keyPath}.pub`, "ssh-ed25519 AAAA-keep\n");
+
+    expect(() => ensureIdentity(home)).toThrow(/不会覆盖现有私钥/);
+    expect(readFileSync(keyPath, "utf8")).toBe("keep-this-private-key");
+    expect(readFileSync(`${keyPath}.pub`, "utf8")).toBe("ssh-ed25519 AAAA-keep\n");
   });
 });

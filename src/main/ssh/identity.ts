@@ -4,7 +4,9 @@
  *
  * The Python CLI derives the public key with `ssh-keygen -y -f`. That would
  * make the app depend on an external binary again, so instead the public key
- * is derived in-process from the private key when no `.pub` file exists.
+ * is derived in-process from the private key. A `.pub` beside it is not
+ * trusted: it can be stale or belong to a different key, and Colab
+ * authenticates with the pair.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -44,6 +46,14 @@ export function generateEd25519Key(): { private: string; public: string } {
   throw new Error("无法生成可解析的 ed25519 密钥：ssh2 的生成器连续失败。");
 }
 
+/**
+ * The first supported identity that can actually be used, or null.
+ *
+ * Parsing the private key is the check that matters: a passphrase-protected
+ * key (or a format this client cannot read) passes an existence test and then
+ * fails only after a runtime has been allocated. This client has no passphrase
+ * prompt, so such a key is "not usable" here.
+ */
 export function findIdentity(home: string = homedir()): Identity | null {
   const sshDir = join(home, ".ssh");
   for (const name of CANDIDATES) {
@@ -52,11 +62,10 @@ export function findIdentity(home: string = homedir()): Identity | null {
 
     try {
       const privateKey = readFileSync(privateKeyPath);
-      const pubPath = `${privateKeyPath}.pub`;
-      const publicKey = existsSync(pubPath)
-        ? readFileSync(pubPath, "utf8").trim()
-        : publicKeyFromPrivate(privateKey);
-
+      const publicKey = publicKeyFromPrivate(privateKey);
+      // The file name is not the algorithm: Colab's gateway only accepts these
+      // two, so a key of another type in a supported-looking file is unusable.
+      if (!publicKey.startsWith("ssh-ed25519 ") && !publicKey.startsWith("ecdsa-sha2-")) continue;
       return { privateKeyPath, privateKey, publicKey };
     } catch {
       continue;
@@ -66,9 +75,10 @@ export function findIdentity(home: string = homedir()): Identity | null {
 }
 
 /**
- * Ensures a Colab-compatible SSH identity (`id_ed25519` or `id_ecdsa`) exists
- * in `~/.ssh`, generating `~/.ssh/id_ed25519` if neither is present. Existing
- * keys (such as `id_rsa`) are never touched.
+ * Ensures a Colab-compatible identity exists, generating `~/.ssh/id_ed25519`
+ * only when neither supported key is usable. An existing `id_ed25519` that
+ * cannot be parsed is left untouched and reported: overwriting a private key is
+ * never this function's decision to make.
  */
 export function ensureIdentity(home: string = homedir()): Identity {
   const existing = findIdentity(home);
@@ -79,7 +89,17 @@ export function ensureIdentity(home: string = homedir()): Identity {
 
   const privateKeyPath = join(sshDir, "id_ed25519");
   const key = generateEd25519Key();
-  writeFileSync(privateKeyPath, key.private, { mode: 0o600 });
+  try {
+    // `wx` refuses to replace a file that appeared after the check above.
+    writeFileSync(privateKeyPath, key.private, { mode: 0o600, flag: "wx" });
+  } catch (cause) {
+    if ((cause as NodeJS.ErrnoException).code === "EEXIST") {
+      throw new Error(
+        `${privateKeyPath} 已存在但无法使用（可能带 passphrase 或格式不受支持）。本应用不会覆盖现有私钥；请先备份并移走它，或用 ssh-keygen 重新生成。`,
+      );
+    }
+    throw cause;
+  }
   writeFileSync(`${privateKeyPath}.pub`, `${key.public.trim()}\n`);
 
   return {

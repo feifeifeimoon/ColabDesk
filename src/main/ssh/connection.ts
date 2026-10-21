@@ -130,7 +130,7 @@ export class ColabSshConnection extends EventEmitter {
     const identity = findIdentity();
     if (!identity) {
       throw new Error(
-        "~/.ssh 下没有可用的私钥（id_ed25519 / id_ecdsa；Colab 服务端拒绝 id_rsa）。请先运行：ssh-keygen -t ed25519",
+        "~/.ssh 下没有可用的私钥（id_ed25519 / id_ecdsa，且不能带 passphrase；Colab 服务端拒绝 id_rsa）。请先运行：ssh-keygen -t ed25519",
       );
     }
     this.identity = identity;

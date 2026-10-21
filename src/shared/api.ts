@@ -88,6 +88,8 @@ export interface ColabDeskApi {
 
   sshSetup(name: string): Promise<SshSetup>;
   sshRemove(name: string): Promise<SshSetup>;
+  /** The usable identity's private-key path, read locally (no network). */
+  sshIdentity(): Promise<string | null>;
   sshGenerateKey(): Promise<string>;
   sshDisconnect(name: string): Promise<void>;
   onSshStatus(listener: (payload: SshState) => void): () => void;
