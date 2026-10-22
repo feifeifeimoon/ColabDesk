@@ -178,6 +178,19 @@ describe("the about section", () => {
   });
 });
 
+describe("the appearance section", () => {
+  it("presents language and theme as one segmented control each", () => {
+    const html = render("appearance");
+
+    expect((html.match(/class="segmented"/g) ?? []).length).toBe(2);
+    expect((html.match(/segmented__item--active/g) ?? []).length).toBe(2);
+    expect(html).toMatch(/aria-pressed="true"[^>]*>中文</);
+    expect(html).toMatch(/aria-pressed="true"[^>]*data-testid="theme-choice-system"[^>]*>系统</);
+    expect(html).toContain('data-testid="theme-choice-light"');
+    expect(html).toContain('data-testid="theme-choice-dark"');
+  });
+});
+
 describe("in English", () => {
   afterEach(async () => {
     await i18n.changeLanguage("zh");
@@ -185,12 +198,12 @@ describe("in English", () => {
 
   /**
    * A language name is written in its own script in both catalogs — an English
-   * reader looking for Chinese has to recognize 「中文（简体）」, and the picker
-   * would be useless if it said "Chinese (Simplified)" in the one place they
+   * reader looking for Chinese has to recognize 「中文」, and the picker
+   * would be useless if it said "Chinese" in the one place they
    * would go looking. Everything else in this panel is copy and follows the
    * reader.
    */
-  const LANGUAGE_NAMES = ["中文（简体）"];
+  const LANGUAGE_NAMES = ["中文"];
 
   it("每个分节都不出现中文——漏 key 会拿到中文兜底，漏 t() 会漏出源码里的中文", async () => {
     // Every string in this panel is passed with a Chinese default, so a key

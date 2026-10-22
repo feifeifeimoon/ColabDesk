@@ -17,6 +17,7 @@ import { Button } from "../components/ui/Button";
 import { Card, Panel, PanelRow } from "../components/ui/Card";
 import { PanelDivider } from "../components/ui/PanelDivider";
 import { RawOutput } from "../components/ui/RawOutput";
+import { SegmentedControl } from "../components/ui/SegmentedControl";
 import { PANEL_WIDTH } from "../lib/panel-width";
 import {
   AccountIcon,
@@ -253,7 +254,7 @@ export function SettingsPage() {
   }
 
   const themes: [ThemePreference, string][] = [
-    ["system", t("settings.themeSystem", "跟随系统")],
+    ["system", t("settings.themeSystem", "系统")],
     ["light", t("settings.themeLight", "浅色")],
     ["dark", t("settings.themeDark", "深色")],
   ];
@@ -415,37 +416,31 @@ export function SettingsPage() {
           label={t("settings.appearanceLanguageLabel", "界面语言")}
           description={t("settings.appearanceLanguageDesc", "界面显示的语言，支持跟随系统、中文与英文。")}
           actions={
-            <div className="row" style={{ gap: "var(--space-1)" }}>
-              {UI_LANGUAGE_CHOICES.map((choice) => (
-                <Button
-                  key={choice.value}
-                  size="sm"
-                  variant={choice.value === language ? "primary" : "outline"}
-                  onClick={() => setLanguage(choice.value)}
-                >
-                  {t(choice.labelKey, choice.fallback)}
-                </Button>
-              ))}
-            </div>
+            <SegmentedControl
+              label={t("settings.appearanceLanguageLabel", "界面语言")}
+              value={language}
+              options={UI_LANGUAGE_CHOICES.map((choice) => ({
+                value: choice.value,
+                label: t(choice.labelKey, choice.fallback),
+              }))}
+              onChange={setLanguage}
+            />
           }
         />
         <PanelRow
           label={t("settings.appearanceThemeLabel", "主题")}
           description={t("settings.appearanceThemeDesc", "选择界面颜色模式，支持浅色、深色或跟随系统。")}
           actions={
-            <div className="row" style={{ gap: "var(--space-1)" }}>
-              {themes.map(([value, label]) => (
-                <Button
-                  key={value}
-                  size="sm"
-                  variant={value === theme ? "primary" : "outline"}
-                  data-testid={`theme-choice-${value}`}
-                  onClick={() => setTheme(value)}
-                >
-                  {label}
-                </Button>
-              ))}
-            </div>
+            <SegmentedControl
+              label={t("settings.appearanceThemeLabel", "主题")}
+              value={theme}
+              options={themes.map(([value, label]) => ({
+                value,
+                label,
+                testId: `theme-choice-${value}`,
+              }))}
+              onChange={setTheme}
+            />
           }
         />
       </Panel>

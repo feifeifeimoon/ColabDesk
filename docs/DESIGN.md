@@ -86,6 +86,7 @@ components:
   panel-row: { padding: "{spacing.3} {spacing.5}", structure: "left: label + description; right: a mono value or an action" }
   badge: { shape: "pill", backgroundColor: "{colors.canvas-soft-2}", borderColor: "{colors.hairline-strong}", textColor: "{colors.ink}", typography: "caption + mono", note: "the second inset step and the stronger hairline keep an identifier visible on chrome, on an active row, and in both polarities" }
   badge-off: { note: "what this account cannot get (a machine type it may not request): {colors.mute} + strikethrough. The strikethrough carries the meaning and the colour merely agrees — the same rule as status" }
+  segmented: { shape: "pill", track: "{colors.canvas} + {colors.hairline}", thumb: "{colors.canvas-soft-2}", note: "one control, one moving selection; the thumb is the second inset step, not the canvas" }
   status: { structure: "6px dot + a written label", rule: "state is never carried by colour alone" }
   callout: { backgroundColor: "{colors.link-bg-soft}", textColor: "{colors.link-deep}", rounded: "{rounded.md}" }
   metric: { backgroundColor: "{colors.canvas-soft}", rounded: "{rounded.lg}", value: "{typography.display}" }
@@ -118,7 +119,7 @@ Three choices belong to a desktop console in particular:
 | Design tokens (colour, type, spacing, radius, elevation) | `src/renderer/src/assets/tokens.css` |
 | Terminal palettes (ten × 21 channels) | `src/renderer/src/assets/terminal-themes.css`; the contract and clamping in `lib/terminal-appearance.ts`, the reading and resolution in `lib/terminal-theme.ts`, the OSC replies in `lib/terminal-color-reply.ts` |
 | Base styles and component classes | `src/renderer/src/assets/main.css` |
-| UI primitives | `src/renderer/src/components/ui/` (`Button` / `Card`·`Panel`·`PanelRow` / `Badge`·`Status` / `Field` / `Callout`·`EmptyState` / `Menu` / `PanelDivider` / `ProgressBar` / `RawOutput` / `icons`) |
+| UI primitives | `src/renderer/src/components/ui/` (`Button` / `Card`·`Panel`·`PanelRow` / `Badge`·`Status` / `SegmentedControl` / `Field` / `Callout`·`EmptyState` / `Menu` / `PanelDivider` / `ProgressBar` / `RawOutput` / `icons`) |
 | Application shell | `src/renderer/src/app-shell/AppShell.tsx` |
 | Start page and brand lockup | `src/renderer/src/features/workspace/StartPage.tsx`, `src/renderer/src/app-shell/BrandLockup.tsx` |
 | Settings page | `src/renderer/src/app-shell/SettingsPage.tsx` |
@@ -168,7 +169,7 @@ Dark is **a polarity flip of the same ladder**: `lib/theme.ts` writes the resolv
 ### Theme preference
 
 - **Three states**: `system` (the default, follow the OS) / `light` / `dark`, kept in localStorage (`lib/theme.ts`). An explicit choice **beats the system**.
-- **The one entry point is Settings → Appearance** ("Follow system / Light / Dark", a `segmented` control). The top bar's right end no longer carries that "the opposite of the current theme" icon button — an earlier version put it there, which made an app-wide preference a copy of itself inside the workbench, and gave one fact two entry points while settings was open.
+- **The one entry point is Settings → Appearance** ("System / Light / Dark", a `segmented` control). The top bar's right end no longer carries that "the opposite of the current theme" icon button — an earlier version put it there, which made an app-wide preference a copy of itself inside the workbench, and gave one fact two entry points while settings was open.
 - **How it lands**: `data-theme` is written to `<html>`, with one light and one dark block in `tokens.css`; `color-scheme` is written alongside it, so scrollbars and native controls do not stay light in the dark theme.
 
 ### Terminal palettes

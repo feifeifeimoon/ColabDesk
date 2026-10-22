@@ -2307,6 +2307,54 @@ kbd {
   padding: 0;
 }
 
+/*
+  A single-choice control that reads as one track with a moving selection.
+  The track is the canvas with a hairline edge; the selected segment is the
+  second inset step, so the thumb reads as a soft grey pill in light and as a
+  raised dark pill in dark. The outer height matches `btn--sm` (28px).
+*/
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-full);
+  background: var(--canvas);
+}
+
+.segmented__item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: var(--radius-full);
+  background: none;
+  color: var(--mute);
+  font: inherit;
+  font-size: var(--text-label);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.segmented__item:hover:not(.segmented__item--active) {
+  color: var(--ink);
+}
+
+.segmented__item--active {
+  background: var(--canvas-soft-2);
+  color: var(--ink);
+}
+
+/* The focus ring is the only shadow here; the thumb itself is a flat fill. */
+.segmented__item:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
 /* ---------- forms ---------- */
 
 .field {
