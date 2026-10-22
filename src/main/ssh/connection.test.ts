@@ -1,3 +1,5 @@
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { WebSocketServer, type WebSocket } from "ws";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ColabSshConnection } from "./connection";
@@ -87,6 +89,68 @@ describe("ColabSshConnection handshake settlement", () => {
       await server.stop();
     }
   }, 20_000);
+
+  it("retries without announcing closed, and end() interrupts the backoff", async () => {
+    const server = await startServer((socket) => {
+      socket.once("message", () => {
+        socket.send("SSH-2.0-OpenSSH_9.9\r\n");
+        setTimeout(() => socket.close(), 20);
+      });
+    });
+    try {
+      const connection = new ColabSshConnection({ name: "e2e", url: server.url, token: "token" });
+      const statuses: string[] = [];
+      const backoff = new Promise<void>((resolve) => {
+        connection.on("status", (status: string) => {
+          statuses.push(status);
+          if (status === "connecting") resolve();
+        });
+      });
+
+      const connecting = connection.connect();
+      await backoff;
+      // The retry is still connecting: a `closed` here would flicker the
+      // renderer's status for every failed attempt.
+      expect(statuses).not.toContain("closed");
+
+      // The retry delay is 1.2 s; waiting it out would mean end() did not
+      // interrupt the backoff.
+      const started = Date.now();
+      connection.end();
+      await expect(connecting).rejects.toThrow("SSH 连接已关闭。");
+      expect(Date.now() - started).toBeLessThan(500);
+    } finally {
+      await server.stop();
+    }
+  }, 20_000);
+
+  it("settles end() while an upgrade rejection is still streaming its body", async () => {
+    const server = createServer((_request, response) => {
+      response.writeHead(401, { "content-type": "text/plain" });
+      response.write("not authorized");
+      // Deliberately no end(): this body is what openSocket waits on.
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const address = server.address() as AddressInfo;
+    try {
+      const connection = new ColabSshConnection({
+        name: "e2e",
+        url: `http://127.0.0.1:${address.port}`,
+        token: "token",
+      });
+      const connecting = connection.connect();
+      // Let the upgrade reach `unexpected-response` and start buffering it.
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const started = Date.now();
+      connection.end();
+      await expect(connecting).rejects.toThrow("SSH 连接已关闭。");
+      expect(Date.now() - started).toBeLessThan(1_000);
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  }, 10_000);
 
   it("settles immediately when end() cancels a handshake in flight", async () => {
     const server = await startServer(() => {
