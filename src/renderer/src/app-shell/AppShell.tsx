@@ -1,3 +1,4 @@
+import type { Session } from "@shared/types";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -17,6 +18,7 @@ import {
   TerminalIcon,
 } from "../components/ui/icons";
 import { closeWindow, minimizeWindow, onWindowMaximized, toggleMaximizeWindow } from "../lib/api";
+import { acceleratorLabel, sessionRate, sessionRateText } from "../features/sessions/accelerators";
 import { useAppStore } from "../store";
 import { useHasWorkSurface } from "../store/selectors";
 import { BrandMark } from "./BrandMark";
@@ -349,15 +351,29 @@ export function balanceMeterTone(ratio: number): "good" | "warn" | "danger" {
   return "good";
 }
 
-const ACCELERATOR_RATES: Record<string, string> = {
-  A100: "~13.08/h",
-  V100: "~5.45/h",
-  L4: "~2.50/h",
-  T4: "~1.25/h",
-  "TPU v2": "~1.30/h",
-  CPU: "0.00/h",
-  NONE: "0.00/h",
-};
+/**
+ * The session whose own rate the account reading describes, or null.
+ *
+ * `consumptionRateHourly` is account-wide: with exactly one billed runtime it
+ * is that runtime's rate; with two it is a sum that cannot be split. The
+ * server's endpoint list is what makes the answer exact — it also counts
+ * runtimes this window has no record of — and a single ready connection is the
+ * fallback before that list has been read.
+ */
+export function soleBilledSession(
+  sessions: Pick<Session, "name" | "endpoint">[],
+  runtimeEndpoints: string[] | null,
+  connections: Record<string, { status: string } | undefined>,
+  assignments: number | null,
+): string | null {
+  if (assignments !== 1) return null;
+  if (runtimeEndpoints !== null) {
+    if (runtimeEndpoints.length !== 1) return null;
+    return sessions.find((session) => session.endpoint === runtimeEndpoints[0])?.name ?? null;
+  }
+  const ready = sessions.filter((session) => connections[session.name]?.status === "ready");
+  return ready.length === 1 ? ready[0].name : null;
+}
 
 const CONNECTION_TONE: Record<string, "good" | "warn" | "danger" | "neutral"> = {
   idle: "neutral",
@@ -380,6 +396,7 @@ export function StatusBar() {
   const tabs = useAppStore((state) => state.tabs);
   const sessions = useAppStore((state) => state.sessions);
   const connections = useAppStore((state) => state.connections);
+  const runtimeEndpoints = useAppStore((state) => state.runtimeEndpoints);
   // Primitives, not the status object — a download reports progress many times
   // a second, and this bar sits at the root of the tree.
   const updateState = useAppStore((state) => state.update.state);
@@ -396,6 +413,10 @@ export function StatusBar() {
   // `null`, not `0`: an unread rate must not print as "no spend".
   const rate = usage?.usage.rate ?? null;
   const assignments = usage?.usage.assignments ?? null;
+  // The account rate can only be pinned on a session when it is the only one
+  // billing; with two runtimes it is a sum, and the rows fall back to reference
+  // values.
+  const billedSession = soleBilledSession(sessions, runtimeEndpoints, connections, assignments);
   // Shells only: a file tab is a tab, but it is not a terminal, and this
   // readout has always meant "how many shells are open".
   const terminalCount = tabs.filter((tab) => tab.kind === "shell").length;
@@ -545,11 +566,12 @@ export function StatusBar() {
                   const connection = connections[session.name];
                   const state = connection?.status ?? "closed";
                   const tone = CONNECTION_TONE[state] ?? "neutral";
-                  const accelerator =
-                    session.accelerator === "NONE" || !session.accelerator ? "CPU" : session.accelerator;
+                  const highRam = session.machine_shape === "HIGH_RAM";
+                  const shapeLabel =
+                    session.machine_shape === "HIGH_RAM" ? "High-RAM" : session.machine_shape.replace("_", "-");
                   const shape =
                     session.machine_shape && session.machine_shape !== "STANDARD"
-                      ? ` · ${session.machine_shape.replace("_", "-")}`
+                      ? ` · ${shapeLabel}`
                       : "";
                   /*
                     No countdown here, and that is the point of this column.
@@ -563,7 +585,19 @@ export function StatusBar() {
                   */
                   const durationLabel =
                     state === "ready" ? t("statusbar.connected", "已连接") : t("statusbar.standby", "待命");
-                  const cost = ACCELERATOR_RATES[accelerator] ?? "0.00/h";
+                  const rateInfo = sessionRate(
+                    session.accelerator,
+                    highRam,
+                    billedSession === session.name ? rate : null,
+                  );
+                  const cost = sessionRateText(rateInfo);
+                  const costTitle = rateInfo.actual
+                    ? t("statusbar.rateActualTitle", "账户当前计费速率（仅有一个运行中的会话）")
+                    : rateInfo.rate === null
+                      ? t("statusbar.rateUnknownTitle", "Colab 未公布该机型的费率")
+                      : highRam
+                        ? t("statusbar.rateHighRamTitle", "参考费率；High-RAM 按标准机型的 1.5 倍估算")
+                        : t("statusbar.rateEstimatedTitle", "参考费率；实际以 Colab 计费为准");
 
                   return (
                     <div key={session.name} className="statusbar-popover__row">
@@ -572,12 +606,12 @@ export function StatusBar() {
                         <strong title={session.name}>{session.name}</strong>
                       </span>
                       <span className="statusbar-popover__model">
-                        {accelerator}{shape}
+                        {acceleratorLabel(session.accelerator)}{shape}
                       </span>
                       <span className="statusbar-popover__duration">
                         {durationLabel}
                       </span>
-                      <span className="statusbar-popover__cost">
+                      <span className="statusbar-popover__cost" title={costTitle}>
                         {cost}
                       </span>
                     </div>
