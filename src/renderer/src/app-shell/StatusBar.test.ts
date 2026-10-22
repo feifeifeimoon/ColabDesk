@@ -10,7 +10,8 @@ vi.mock("../store", () => ({
 
 import type { UsageReport } from "@shared/types";
 import { setRendererUiLanguage } from "../i18n/i18n";
-import { balanceMeterTone, computeBalanceRatio, soleBilledSession, StatusBar } from "./AppShell";
+import { balanceMeterTone, computeBalanceRatio, soleBilledSession } from "./status-bar";
+import { StatusBar } from "./AppShell";
 
 const baseState = {
   usage: null as UsageReport | null,
