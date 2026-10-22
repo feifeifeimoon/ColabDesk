@@ -62,8 +62,11 @@ test("服务器上有、本地没有的运行时也会列出来，但不可操�
   const untrackedRow = page.locator('[data-testid="untracked-row"]');
   await expect(untrackedRow).toHaveCount(1);
   await expect(untrackedRow).toContainText("m-s-kkb-e2e0c1-untracked");
-  await expect(untrackedRow).toContainText("未在本地记录");
-  await expect(untrackedRow).toContainText("CPU");
+  await expect(untrackedRow.locator(".session-row__badge .badge")).toHaveText("CPU");
+  // 行内不写“未在本地记录”：它和云端状态一样只活在 tooltip 里。
+  await expect(untrackedRow).not.toContainText("未在本地记录");
+  await expect(untrackedRow).toHaveAttribute("title", /未在本地记录/);
+  await expect(untrackedRow).toHaveAttribute("title", /本地无对应连接凭据/);
   // 这一行不是控件：没有行内动作。
   await expect(untrackedRow.locator(".menu__trigger")).toHaveCount(0);
   // 有本地记录的运行时仍然是会话行，不会同时出现在未记录的那一边。
@@ -108,7 +111,7 @@ test("无边框窗口的控制通道接通", async ({ page }) => {
 */
 test("状态栏横跨整个窗口，终端画不到它上面", async ({ page }) => {
   await openSession(page, "e2e-alpha");
-  await expect(page.locator('[data-testid="terminal-status"]')).toContainText("已连接");
+  await expect(page.locator('[data-testid="terminal-status"]')).toHaveClass(/status--good/);
 
   const topmost = await page.evaluate(() => {
     const width = window.innerWidth;
@@ -188,7 +191,7 @@ test("界面切浅色，终端跟着换浅色调色板，shell 不受影响", as
 
   // The swap is a repaint, not a reconnect: same shell, same directory.
   await page.locator('[data-testid="close-settings"]').click();
-  await expect(page.locator('[data-testid="terminal-status"]')).toContainText("已连接");
+  await expect(page.locator('[data-testid="terminal-status"]')).toHaveClass(/status--good/);
   await expect(page.locator(".xterm-rows")).toContainText("cd /content");
   await expect(page.locator('[data-testid="terminal-count"]')).toHaveText("1");
 });

@@ -1,11 +1,15 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 
 export interface MenuItem {
   label: ReactNode;
   onSelect: () => void;
+  /** A glyph in the item's leading slot; hidden from assistive technology. */
+  icon?: ReactNode;
   /** Rendered in the destructive colour; still asks for confirmation itself. */
   danger?: boolean;
   disabled?: boolean;
+  /** Draws a separator above this item, grouping what follows. */
+  dividerBefore?: boolean;
 }
 
 /**
@@ -66,20 +70,27 @@ export function Menu({
       {open && (
         <div className={`menu__list ${align === "start" ? "" : "menu__list--end"}`} role="menu">
           {items.map((item, index) => (
-            <button
-              key={index}
-              type="button"
-              role="menuitem"
-              className={`menu__item ${item.danger ? "menu__item--danger" : ""}`}
-              disabled={item.disabled}
-              onClick={(event) => {
-                event.stopPropagation();
-                setOpen(false);
-                item.onSelect();
-              }}
-            >
-              {item.label}
-            </button>
+            <Fragment key={index}>
+              {item.dividerBefore && <div className="menu__separator" role="separator" />}
+              <button
+                type="button"
+                role="menuitem"
+                className={`menu__item ${item.danger ? "menu__item--danger" : ""}`}
+                disabled={item.disabled}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setOpen(false);
+                  item.onSelect();
+                }}
+              >
+                {item.icon && (
+                  <span className="menu__icon" aria-hidden="true">
+                    {item.icon}
+                  </span>
+                )}
+                <span>{item.label}</span>
+              </button>
+            </Fragment>
           ))}
         </div>
       )}

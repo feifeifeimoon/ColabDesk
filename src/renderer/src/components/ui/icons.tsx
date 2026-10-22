@@ -266,6 +266,45 @@ export function CloseIcon({ size = 12 }: IconProps) {
   );
 }
 
+/** Restart the remote kernel: one circular arrow, not Sync's two. */
+export function RestartIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M13.66 2.67v4h-4" />
+      <path d="M13.66 10a6 6 0 1 1-1.41-6.24" />
+    </Svg>
+  );
+}
+
+/** The SSH key written to the local config. */
+export function KeyIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <circle cx="5" cy="8" r="2.4" />
+      <path d="M7.4 8h6.1M11.4 8v2.1M13.5 8v1.4" />
+    </Svg>
+  );
+}
+
+/** Copy the ssh command: two offset sheets, not one file. */
+export function CopyIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <rect x="5.5" y="2.5" width="8" height="8" rx="1.5" />
+      <path d="M3.5 5.5H3A1.5 1.5 0 0 0 1.5 7v6A1.5 1.5 0 0 0 3 14.5h6a1.5 1.5 0 0 0 1.5-1.5v-.5" />
+    </Svg>
+  );
+}
+
+/** Stop the runtime: a filled square, distinct from the close X. */
+export function StopIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <rect x="3.5" y="3.5" width="9" height="9" rx="1.4" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
 /* ---- window controls (the app draws its own title bar) ---- */
 
 export function MinimizeIcon({ size }: IconProps) {
