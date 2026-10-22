@@ -22,7 +22,8 @@ vi.mock("../store", () => ({
   useAppStore: (select: (state: unknown) => unknown) => select(store.current),
 }));
 
-import { SettingsPage, SECTION_IDS, type SectionId } from "./SettingsPage";
+import { SettingsPage } from "./SettingsPage";
+import { SECTION_IDS, type SectionId } from "./settings-sections";
 
 const noop = () => {};
 
