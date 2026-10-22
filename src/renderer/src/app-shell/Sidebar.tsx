@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import type { StatusTone } from "../components/ui/Badge";
+import { Badge, type StatusTone } from "../components/ui/Badge";
 import { Button, IconButton } from "../components/ui/Button";
-import { PlusIcon, SettingsIcon, SyncIcon } from "../components/ui/icons";
-import { Menu } from "../components/ui/Menu";
+import { CloseIcon, CopyIcon, KeyIcon, PlusIcon, RestartIcon, SettingsIcon, StopIcon, SyncIcon } from "../components/ui/icons";
+import { Menu, type MenuItem } from "../components/ui/Menu";
 import { PanelDivider } from "../components/ui/PanelDivider";
 import { acceleratorLabel } from "../features/sessions/accelerators";
 import { PANEL_WIDTH } from "../lib/panel-width";
@@ -196,9 +196,11 @@ export function Sidebar() {
           // `neutral` has no modifier: the resting dot is `.status`'s own colour.
           const tone = CONNECTION_TONE[state] ?? "neutral";
           const dotClass = ["status", tone === "neutral" ? "" : `status--${tone}`].filter(Boolean).join(" ");
-          // "Closed" is the resting state and says nothing; every other state
-          // is written out (a dot alone never carries the state).
-          const stateLabel = state === "closed" ? null : (connectionLabels[state] ?? state);
+          // The two resting states say nothing: a green dot is "connected", a
+          // neutral one is "not connected". Connecting and failing are the two
+          // somebody opens this list to find, so they still get words.
+          const stateLabel =
+            state === "connecting" || state === "error" ? (connectionLabels[state] ?? state) : null;
           const busy = busyAction?.startsWith(`${session.name}:`) ?? false;
           const sessionTabs = tabs.filter((tab) => tab.session === session.name);
           // The tooltip counts shells, which is what it says; the menu below is
@@ -216,12 +218,89 @@ export function Sidebar() {
               : runtimeEndpoints.includes(session.endpoint)
                 ? "running"
                 : "gone";
+          // A dead record is painted, not written: the tooltip says why. A live
+          // connection outranks a stale server list, so a ready row stays normal.
+          const released = cloud === "gone" && state !== "ready";
+          const title = [
+            session.name,
+            cloud === "running"
+              ? t("sidebar.cloudRunning", "云端运行中")
+              : cloud === "gone"
+                ? t("sidebar.cloudGoneTitle", "云端已无此运行时；同步将移除该本地记录。")
+                : null,
+            connectionLabels[state] ?? state,
+            connection?.error ?? null,
+            session.endpoint && session.endpoint !== session.name ? session.endpoint : null,
+            shells > 1 ? t("sidebar.terminalsCount", "{{count}} 个终端", { count: shells }) : null,
+          ]
+            .filter((part): part is string => Boolean(part))
+            .join(" · ");
+          // The visible state word is already in the button's name; only add a
+          // hidden one when the state is resting, and carry the released claim
+          // because the paint alone cannot say it.
+          const accessibleState = [
+            stateLabel ? null : (connectionLabels[state] ?? state),
+            released ? t("sidebar.cloudGoneTitle", "云端已无此运行时；同步将移除该本地记录。") : null,
+          ]
+            .filter((part): part is string => Boolean(part))
+            .join(" · ");
+          const menuItems: MenuItem[] = [
+            {
+              label:
+                busy && busyAction?.endsWith("restart-kernel")
+                  ? t("sidebar.menuRestartingKernel", "重启中…")
+                  : t("sidebar.menuRestartKernel", "重启内核"),
+              icon: <RestartIcon size={14} />,
+              disabled: busy,
+              onSelect: () => void runSessionAction(session.name, "restart-kernel"),
+            },
+            {
+              label: t("sidebar.menuSshConfig", "写入 SSH 配置"),
+              icon: <KeyIcon size={14} />,
+              disabled: busy,
+              onSelect: () => void runSessionAction(session.name, "ssh-config"),
+            },
+            {
+              label: t("sidebar.menuCopySsh", "复制 ssh 命令"),
+              icon: <CopyIcon size={14} />,
+              onSelect: () => void runSessionAction(session.name, "copy-ssh"),
+            },
+            // Closing every tab is what hangs up — a file tab holds the
+            // connection too — and one tab on its own leaves it up for the
+            // others.
+            ...(sessionTabs.length > 0
+              ? [
+                  {
+                    label: t("sidebar.menuCloseAllTerminals", "关闭全部标签"),
+                    icon: <CloseIcon size={14} />,
+                    onSelect: () => void runSessionAction(session.name, "close-all"),
+                  },
+                ]
+              : []),
+            {
+              label:
+                busy && busyAction?.endsWith("stop")
+                  ? t("sidebar.menuStoppingSession", "停止中…")
+                  : t("sidebar.menuStopSession", "停止会话"),
+              icon: <StopIcon size={14} />,
+              danger: true,
+              disabled: busy,
+              dividerBefore: true,
+              onSelect: () => void runSessionAction(session.name, "stop"),
+            },
+          ];
           return (
             <div
               key={session.name}
               data-testid="session-row"
-              className={`session-row ${session.name === selectedSession ? "session-row--active" : ""}`}
-              title={`${connection?.error ?? session.endpoint ?? session.name}${shells > 1 ? ` · ${t("sidebar.terminalsCount", "{{count}} 个终端", { count: shells })}` : ""}`}
+              className={[
+                "session-row",
+                session.name === selectedSession ? "session-row--active" : "",
+                released ? "session-row--released" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              title={title}
               onContextMenu={(event) => {
                 event.preventDefault();
                 void runSessionAction(session.name, "open");
@@ -232,36 +311,30 @@ export function Sidebar() {
                 className="session-row__main"
                 onClick={() => void runSessionAction(session.name, "open")}
               >
-                <span aria-hidden="true" className={dotClass} />
-                <span className="session-row__name">{session.name}</span>
+                <span
+                  aria-hidden="true"
+                  data-testid={session.name === selectedSession ? "terminal-status" : undefined}
+                  className={dotClass}
+                />
+                <span className="session-row__title">
+                  <span className="session-row__name">{session.name}</span>
+                  <span className="session-row__badge">
+                    <Badge>{acceleratorLabel(session.accelerator)}</Badge>
+                  </span>
+                </span>
+                {/* The dot paints the state; this keeps it readable to a screen
+                    reader without putting a word back on the card. */}
+                {accessibleState && <span className="visually-hidden">{accessibleState}</span>}
                 {/*
-                  The machine's half of the card, in the order it survives a
-                  narrow rail: what the machine is, whether it is still there,
-                  how this window is getting on with it, and — last, because it
-                  is the least of it — how many terminals are open on it.
+                  The machine's half of the card: how this window is getting on
+                  with it when that is not the resting state, and — last,
+                  because it is the least of it — how many terminals are open on
+                  it. A healthy row has no second line at all.
                 */}
-                <span className="session-row__facts">
-                  <span className="session-row__fact">{acceleratorLabel(session.accelerator)}</span>
-                  {cloud && (
-                    <>
-                      <span className="session-row__sep" aria-hidden="true">·</span>
+                {(stateLabel || shells > 1) && (
+                  <span className="session-row__facts">
+                    {stateLabel && (
                       <span
-                        className="session-row__fact"
-                        {...(cloud === "gone"
-                          ? { title: t("sidebar.cloudGoneTitle", "云端已无此运行时；同步将移除该本地记录。") }
-                          : {})}
-                      >
-                        {cloud === "running"
-                          ? t("sidebar.cloudRunning", "云端运行中")
-                          : t("sidebar.cloudGone", "云端已无")}
-                      </span>
-                    </>
-                  )}
-                  {stateLabel && (
-                    <>
-                      <span className="session-row__sep" aria-hidden="true">·</span>
-                      <span
-                        {...(session.name === selectedSession ? { "data-testid": "terminal-status" } : {})}
                         className={[
                           "session-row__fact",
                           "session-row__state",
@@ -273,17 +346,17 @@ export function Sidebar() {
                       >
                         {stateLabel}
                       </span>
-                    </>
-                  )}
-                  {shells > 1 && (
-                    <>
+                    )}
+                    {stateLabel && shells > 1 && (
                       <span className="session-row__sep" aria-hidden="true">·</span>
+                    )}
+                    {shells > 1 && (
                       <span className="session-row__fact">
                         {t("sidebar.terminalsCount", "{{count}} 个终端", { count: shells })}
                       </span>
-                    </>
-                  )}
-                </span>
+                    )}
+                  </span>
+                )}
               </button>
 
               <span className="session-row__actions">
@@ -297,40 +370,7 @@ export function Sidebar() {
                 </IconButton>
                 <Menu
                   label={t("sidebar.menuActionLabel", "{{name}} 的操作", { name: session.name })}
-                  items={[
-                    sessionTabs.length > 0
-                      ? { label: t("sidebar.menuFocusTerminal", "聚焦终端"), onSelect: () => void runSessionAction(session.name, "open") }
-                      : { label: t("sidebar.menuOpenTerminal", "打开终端"), onSelect: () => void runSessionAction(session.name, "open") },
-                    { label: t("sidebar.menuNewTerminal", "新建终端"), onSelect: () => void runSessionAction(session.name, "new-terminal") },
-                    {
-                      label: busy && busyAction?.endsWith("restart-kernel") ? t("sidebar.menuRestartingKernel", "重启中…") : t("sidebar.menuRestartKernel", "重启内核"),
-                      disabled: busy,
-                      onSelect: () => void runSessionAction(session.name, "restart-kernel"),
-                    },
-                    {
-                      label: t("sidebar.menuSshConfig", "写入 SSH 配置"),
-                      disabled: busy,
-                      onSelect: () => void runSessionAction(session.name, "ssh-config"),
-                    },
-                    { label: t("sidebar.menuCopySsh", "复制 ssh 命令"), onSelect: () => void runSessionAction(session.name, "copy-ssh") },
-                    // Closing every tab is what hangs up — a file tab holds the
-                    // connection too — and one tab on its own leaves it up for the
-                    // others.
-                    ...(sessionTabs.length > 0
-                      ? [
-                          {
-                            label: t("sidebar.menuCloseAllTerminals", "关闭全部标签"),
-                            onSelect: () => void runSessionAction(session.name, "close-all"),
-                          },
-                        ]
-                      : []),
-                    {
-                      label: busy && busyAction?.endsWith("stop") ? t("sidebar.menuStoppingSession", "停止中…") : t("sidebar.menuStopSession", "停止会话"),
-                      danger: true,
-                      disabled: busy,
-                      onSelect: () => void runSessionAction(session.name, "stop"),
-                    },
-                  ]}
+                  items={menuItems}
                 />
               </span>
             </div>
@@ -349,23 +389,20 @@ export function Sidebar() {
             key={session.name}
             data-testid="untracked-row"
             className="session-row session-row--untracked"
-            title={t(
+            title={`${session.name} · ${t("sidebar.untracked", "未在本地记录")} · ${t(
               "sidebar.untrackedTitle",
               "云端存在此运行时但本地无对应连接凭据。如需终止请前往 Colab 网页控制台。",
-            )}
+            )}`}
           >
             <div className="session-row__main">
               <span aria-hidden="true" className="status status--warn" />
-              <span className="session-row__name session-row__name--endpoint">{session.name}</span>
-              {/* The state is written once, in the facts line: this row's dot
-                  and its words are the same one state, not two. */}
-              <span className="session-row__facts">
-                <span className="session-row__fact">{acceleratorLabel(session.accelerator)}</span>
-                <span className="session-row__sep" aria-hidden="true">·</span>
-                <span className="session-row__fact session-row__state session-row__state--warn">
-                  {t("sidebar.untracked", "未在本地记录")}
+              <span className="session-row__title">
+                <span className="session-row__name session-row__name--endpoint">{session.name}</span>
+                <span className="session-row__badge">
+                  <Badge>{acceleratorLabel(session.accelerator)}</Badge>
                 </span>
               </span>
+              <span className="visually-hidden">{t("sidebar.untracked", "未在本地记录")}</span>
             </div>
           </div>
         ))}

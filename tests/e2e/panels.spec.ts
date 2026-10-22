@@ -70,33 +70,32 @@ test("分隔条可用键盘调整，并把范围报给辅助技术", async ({ pa
 });
 
 /*
-  The rail is draggable precisely so it can be pushed out of the terminal's way,
-  which makes its narrowest state the one that has to hold up: the name is the
-  reason somebody opens this list, and a name cut to three characters is not a
-  name. Measured, because "it looks fine at 260" is the state this replaced.
+  The rail is draggable precisely so it can be pushed out of the terminal's way.
+  The first line now carries the name and the machine-type badge; at the 180px
+  floor the badge takes precedence and a long name may truncate. The row's
+  tooltip is the safety net: it carries the full name, endpoint and state.
 */
-test("会话栏收到最窄时，名字仍然完整、事实行仍然在", async ({ page }) => {
+test("会话栏收到最窄时，名字让位给机型 tag，完整名字在 tooltip 里", async ({ page }) => {
   await openSession(page, "e2e-alpha");
 
-  await dragDivider(page, "会话栏宽度", -600);
-  expect(await widthOf(page, ".sidebar")).toBeCloseTo(180, 0);
-
   const rows = page.locator('[data-testid="session-row"]');
-  await expect(rows).toHaveCount(2);
+  const row = rows.filter({ hasText: "e2e-alpha" }).first();
+  const name = row.locator(".session-row__name");
 
-  const name = rows.filter({ hasText: "e2e-alpha" }).locator(".session-row__name");
+  // 默认宽度下名字是完整的。
   await expect(name).toHaveText("e2e-alpha");
-  // 完整：没有被省略号截断（截断时 scrollWidth 会超过 clientWidth）。
   expect(
     await name.evaluate((element) => element.scrollWidth - element.clientWidth),
   ).toBeLessThanOrEqual(1);
 
-  // 事实行在最窄处也在，而且第一行仍是「点 + 名字」，没有把状态词塞回来。
-  const row = page.locator('[data-testid="session-row"]').first();
-  await expect(row.locator(".session-row__facts")).toBeVisible();
-  await expect(row.locator(".session-row__facts")).toContainText("T4");
-  await expect(row.locator(".session-row__facts")).toContainText("云端运行中");
-  await expect(row.locator(".session-row__facts")).toContainText("已连接");
+  await dragDivider(page, "会话栏宽度", -600);
+  expect(await widthOf(page, ".sidebar")).toBeCloseTo(180, 0);
+
+  await expect(rows).toHaveCount(2);
+  await expect(row.locator(".session-row__badge .badge")).toHaveText("T4");
+  await expect(row).toHaveAttribute("title", /e2e-alpha/);
+  await expect(row).toHaveAttribute("title", /云端运行中/);
+  await expect(row).toHaveAttribute("title", /已连接/);
 });
 
 test("分隔条静息时不画线，指向它才亮起来", async ({ page }) => {
@@ -109,16 +108,35 @@ test("分隔条静息时不画线，指向它才亮起来", async ({ page }) => 
   expect(await lineColour()).not.toBe("rgba(0, 0, 0, 0)");
 });
 
+test("会话菜单只留不重复的操作，每项都有图标", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  const row = page.locator('[data-testid="session-row"]').first();
+  await row.hover();
+  await row.locator(".menu__trigger").click();
+
+  const items = page.getByRole("menuitem");
+  await expect(items).toHaveCount(5);
+  for (const label of ["重启内核", "写入 SSH 配置", "复制 ssh 命令", "关闭全部标签", "停止会话"]) {
+    await expect(page.getByRole("menuitem", { name: label })).toBeVisible();
+  }
+  // Clicking the row and + already do these; the menu does not repeat them.
+  await expect(page.getByRole("menuitem", { name: "聚焦终端" })).toHaveCount(0);
+  await expect(page.getByRole("menuitem", { name: "打开终端" })).toHaveCount(0);
+  await expect(page.getByRole("menuitem", { name: "新建终端" })).toHaveCount(0);
+  await expect(page.locator(".menu__separator")).toHaveCount(1);
+  await expect(items.locator("svg")).toHaveCount(5);
+});
+
 test("两栏都拖到最宽时，终端还在、仍可用且不横向溢出", async ({ page }) => {
   await openSession(page, "e2e-alpha");
-  await expect(page.locator('[data-testid="terminal-status"]')).toContainText("已连接");
+  await expect(page.locator('[data-testid="terminal-status"]')).toHaveClass(/status--good/);
 
   await dragDivider(page, "文件面板宽度", -600);
   await dragDivider(page, "会话栏宽度", 600);
 
   // Dragging re-fits the terminal continuously, which resizes the PTY too: the
   // connection has to survive that, not just the layout.
-  await expect(page.locator('[data-testid="terminal-status"]')).toContainText("已连接");
+  await expect(page.locator('[data-testid="terminal-status"]')).toHaveClass(/status--good/);
   await expect(terminalRows(page)).not.toContainText("连接已断开");
 
   expect(await widthOf(page, ".terminal-area")).toBeGreaterThanOrEqual(300);

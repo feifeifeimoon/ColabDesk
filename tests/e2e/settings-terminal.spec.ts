@@ -100,7 +100,7 @@ test("换配色当场生效：沙箱与工作台一起换，shell 不受影响",
   await expect.poll(() => painted(page, ".terminal-area .xterm-viewport")).toBe("rgb(26, 27, 38)");
 
   await page.keyboard.press("Escape");
-  await expect(page.locator('[data-testid="terminal-status"]')).toContainText("已连接");
+  await expect(page.locator('[data-testid="terminal-status"]')).toHaveClass(/status--good/);
   await expect(terminalRows(page)).toContainText("shell #1");
 
   // Same shell, still in the directory it was left in.
@@ -129,7 +129,7 @@ test("切换界面语言不重连终端，正在运行的 shell 保持原样", a
   await expect(page.locator(".settings__title")).toContainText("Appearance");
 
   await page.getByRole("button", { name: "Back to Workbench" }).click();
-  await expect(page.locator('[data-testid="terminal-status"]')).toContainText("Connected");
+  await expect(page.locator('[data-testid="terminal-status"]')).toHaveClass(/status--good/);
   await expect(page.locator('[data-testid="terminal-count"]')).toHaveText("1");
   await expect(terminalRows(page)).toContainText("shell #1");
   await expect(terminalRows(page)).not.toContainText("shell #2");
@@ -168,7 +168,7 @@ test("改字号与行高会重排网格，但不动连接、也不抢走设置�
   await expect.poll(() => paneRows(page).count()).toBeLessThan(rows);
 
   await page.keyboard.press("Escape");
-  await expect(page.locator('[data-testid="terminal-status"]')).toContainText("已连接");
+  await expect(page.locator('[data-testid="terminal-status"]')).toHaveClass(/status--good/);
   await expect(terminalRows(page)).toContainText("shell #1");
 });
 
@@ -251,7 +251,7 @@ test("浅色槽位当场生效：关掉跟随就禁用，打开后再选它，�
   // #fafafa — One Half Light on a light window, in the sandbox and under it.
   await expect.poll(() => painted(page, ".terminal-area")).toBe("rgb(250, 250, 250)");
   await expect.poll(() => painted(page, ".terminal-preview")).toBe("rgb(250, 250, 250)");
-  await expect(page.locator('[data-testid="terminal-status"]')).toContainText("已连接");
+  await expect(page.locator('[data-testid="terminal-status"]')).toHaveClass(/status--good/);
 });
 
 test("配色与字号跨重启保留", async ({ app, page }) => {

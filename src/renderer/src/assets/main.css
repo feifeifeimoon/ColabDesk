@@ -374,17 +374,17 @@ kbd {
 }
 
 /*
-  Two lines: the name owns the first one outright, the machine's facts sit under
-  it. Splitting them is what makes the rail narrowable — a machine type as long
-  as `A100-SXM4-40GB` used to take its width out of the name, and the name lost.
+  Two lines, but the second is optional: the first line is the dot, the name and
+  the machine-type badge; the second holds only the exceptions and the terminal
+  count, so a healthy row is one line. The badge is what the name lost width to
+  — at the 180px floor a long name truncates, and the row's tooltip carries the
+  full name and endpoint, so the truncation is recoverable.
 
-  The first line is a band exactly as tall as a `sm` control so the dot, the
-  name and the action strip all sit on one centre line; `--session-row-band` is
-  named for that constraint rather than repeated as a number in three rules.
-  `--session-row-reserve` is the strip's width plus the gap beside it, and it is
-  reserved out of the NAME only: the strip floats over the row's own column so
-  the facts line keeps the card's whole width — at 180px that difference is a
-  fact printed or a fact lost.
+  The first line is a band exactly as tall as a `sm` control so the dot, name,
+  badge and action strip sit on one centre line; `--session-row-band` is named
+  for that constraint. `--session-row-reserve` is the strip's width plus the gap
+  beside it, held as the last grid column: the strip floats over that column, so
+  the name and badge stop before it instead of sitting underneath it.
 */
 /*
   Records that belong to the account signed in before. A box rather than a hint:
@@ -429,12 +429,27 @@ kbd {
   color: var(--ink);
 }
 
+/* A record the server no longer lists. It is painted, not written: the name and
+   dot go quiet and the row's own tooltip says why. A ready connection is
+   stronger evidence than a list read, so that row is not painted. */
+.session-row--released .session-row__name {
+  color: var(--mute);
+}
+
+.session-row--released .badge {
+  color: var(--mute);
+}
+
+.session-row--released .status::before {
+  background: var(--mute);
+}
+
 /* The clickable body carries the row's own click and fills the card; the action
    strip floats above its right end, so the row is not a button inside a button. */
 .session-row__main {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-rows: var(--session-row-band) auto;
+  grid-template-columns: auto minmax(0, 1fr) calc(var(--session-row-reserve) - var(--space-2));
+  grid-template-rows: var(--session-row-band);
   align-items: center;
   column-gap: var(--space-2);
   row-gap: 2px;
@@ -449,16 +464,33 @@ kbd {
   cursor: pointer;
 }
 
-.session-row__name {
+/* The name and its badge travel together: the name takes what it needs, the
+   badge follows immediately, and the free space stays after both. When the
+   rail is too narrow the name shrinks first (the badge never does). */
+.session-row__title {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   min-width: 0;
-  /* The strip's width, kept out of the name whether or not the strip is drawn:
-     a name that reflowed on hover would move the very word being read. */
-  padding-right: var(--session-row-reserve);
+}
+
+.session-row__name {
+  flex: 0 1 auto;
+  min-width: 0;
   font-size: var(--text-label);
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The machine type sits immediately after the name; the wrapper keeps the
+   badge's intrinsic width while the name takes the remaining space. */
+.session-row__badge {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
 }
 
 /* Full width rather than indented under the name: the facts line is the one
@@ -475,13 +507,6 @@ kbd {
   white-space: nowrap;
   color: var(--mute);
   font-size: var(--text-micro);
-}
-
-/* Identifiers are the machine's voice: the machine type is mono, and the words
-   around it are not. */
-.session-row__fact:first-child {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
 }
 
 .session-row__sep {
@@ -546,14 +571,11 @@ kbd {
   color: var(--body);
 }
 
+/* No action strip, so no reserved column: the endpoint and its badge share the
+   line. */
 .session-row--untracked .session-row__main {
+  grid-template-columns: auto minmax(0, 1fr);
   cursor: default;
-}
-
-/* This row has no action strip, so nothing is reserved for one: an endpoint is
-   long, and the width a strip-bearing row gives up is this row's to keep. */
-.session-row--untracked .session-row__name {
-  padding-right: 0;
 }
 
 .session-row__name--endpoint {
@@ -610,7 +632,9 @@ kbd {
 }
 
 .menu__item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   width: 100%;
   padding: var(--space-2) var(--space-3);
   border: none;
@@ -639,6 +663,25 @@ kbd {
 
 .menu__item--danger:hover:not(:disabled) {
   background: var(--error-soft);
+}
+
+.menu__icon {
+  display: inline-flex;
+  color: var(--mute);
+}
+
+.menu__item--danger .menu__icon {
+  color: var(--error);
+}
+
+.menu__item:disabled .menu__icon {
+  color: var(--mute);
+}
+
+.menu__separator {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--hairline);
 }
 
 .sidebar__footer {
@@ -2508,9 +2551,13 @@ textarea.input {
   height: 20px;
   padding: 0 var(--space-2);
   border-radius: var(--radius-full);
-  background: var(--canvas-soft);
-  border: 1px solid var(--hairline);
-  color: var(--body);
+  /* The second inset step: the first (`canvas-soft`) is the active row's own
+     fill and in dark it is the chrome itself, so a neutral badge disappeared
+     into both. `ink` text keeps the identifier readable on the fill, and the
+     stronger hairline gives the pill an edge the ordinary divider cannot. */
+  background: var(--canvas-soft-2);
+  border: 1px solid var(--hairline-strong);
+  color: var(--ink);
   font-size: var(--text-caption);
   font-family: var(--font-mono);
   white-space: nowrap;
