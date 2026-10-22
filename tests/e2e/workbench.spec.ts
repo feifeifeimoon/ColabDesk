@@ -63,8 +63,9 @@ test("服务器上有、本地没有的运行时也会列出来，但不可操�
   await expect(untrackedRow).toHaveCount(1);
   await expect(untrackedRow).toContainText("m-s-kkb-e2e0c1-untracked");
   await expect(untrackedRow.locator(".session-row__badge .badge")).toHaveText("CPU");
-  // 行内不写“未在本地记录”：它和云端状态一样只活在 tooltip 里。
-  await expect(untrackedRow).not.toContainText("未在本地记录");
+  // 视觉上不写“未在本地记录”：它在 tooltip 和屏幕阅读器文字里。
+  await expect(untrackedRow.locator(".session-row__name")).not.toContainText("未在本地记录");
+  await expect(untrackedRow.locator(".visually-hidden")).toHaveText("未在本地记录");
   await expect(untrackedRow).toHaveAttribute("title", /未在本地记录/);
   await expect(untrackedRow).toHaveAttribute("title", /本地无对应连接凭据/);
   // 这一行不是控件：没有行内动作。

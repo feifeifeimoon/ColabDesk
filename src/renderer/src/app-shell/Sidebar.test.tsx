@@ -62,6 +62,7 @@ function rowsMarkup(html: string): string {
 function factsMarkup(html: string): string {
   const row = rowsMarkup(html);
   const start = row.indexOf("session-row__facts");
+  if (start === -1) return "";
   return row.slice(start, row.indexOf("</button>", start));
 }
 
@@ -103,32 +104,33 @@ describe("Sidebar", () => {
   it("服务器上有、本地没有的运行时，以只读的一行列出", () => {
     store.current = { ...baseStore, sessions: [], untrackedSessions: [UNTRACKED] };
     const html = renderToStaticMarkup(createElement(Sidebar));
-    const visible = untrackedMarkup(html).replace(/title="[^"]*"/g, "");
+    const visible = untrackedMarkup(html)
+      .replace(/title="[^"]*"/g, "")
+      .replace(/<span class="visually-hidden">.*?<\/span>/g, "");
 
     expect(html).toContain('data-testid="untracked-row"');
     // 没有名字，所以用 endpoint 当标识，而且是机器的语气：mono。
     expect(html).toContain("session-row__name--endpoint");
     expect(html).toContain(UNTRACKED.endpoint);
-    // 行内只留警告点和机型 tag；状态词在 tooltip 里，不在事实行。
+    // 行内只留警告点和机型 tag；状态词在 tooltip 和屏幕阅读器文字里。
     expect(visible).toContain("status--warn");
     expect(visible).toContain('class="badge');
     expect(visible).toContain("CPU");
     expect(visible).not.toContain("未在本地记录");
+    expect(untrackedMarkup(html)).toContain('class="visually-hidden"');
     expect(untrackedMarkup(html)).toContain("未在本地记录");
   });
 
-  it("名字和机型 tag 在第一行，事实行在第二行，动作条独立", () => {
+  it("名字和机型 tag 在第一行，动作条独立", () => {
     const row = rowsMarkup(renderToStaticMarkup(createElement(Sidebar)));
     const buttonEnd = row.indexOf("</button>");
     const name = row.indexOf("session-row__name");
     const badge = row.indexOf("session-row__badge");
-    const facts = row.indexOf("session-row__facts");
 
     expect(buttonEnd).toBeGreaterThan(-1);
     expect(name).toBeGreaterThan(-1);
     expect(badge).toBeGreaterThan(name);
-    expect(badge).toBeLessThan(facts);
-    expect(facts).toBeLessThan(buttonEnd);
+    expect(badge).toBeLessThan(buttonEnd);
     expect(row.indexOf("session-row__actions")).toBeGreaterThan(buttonEnd);
   });
 
@@ -149,6 +151,71 @@ describe("Sidebar", () => {
 
     expect(badge).toContain('class="badge');
     expect(badge).toContain("CPU");
+  });
+
+  it("健康行没有第二行", () => {
+    const html = renderToStaticMarkup(createElement(Sidebar));
+    expect(rowsMarkup(html)).not.toContain("session-row__facts");
+  });
+
+  it("只有连接异常时，事实行不以分隔符开头", () => {
+    store.current = { ...baseStore, connections: { "session-1": { status: "connecting" } } };
+    const facts = factsMarkup(renderToStaticMarkup(createElement(Sidebar)));
+
+    expect(facts).toContain("连接中");
+    expect(facts).not.toContain("session-row__sep");
+  });
+
+  it("只有终端数时，事实行不以分隔符开头", () => {
+    store.current = {
+      ...baseStore,
+      tabs: [
+        { session: "session-1", kind: "shell" },
+        { session: "session-1", kind: "shell" },
+      ],
+    };
+    const facts = factsMarkup(renderToStaticMarkup(createElement(Sidebar)));
+
+    expect(facts).toContain("2 个终端");
+    expect(facts).not.toContain("session-row__sep");
+  });
+
+  it("连接异常和终端数同时存在时，只在两者之间放一个分隔符", () => {
+    store.current = {
+      ...baseStore,
+      connections: { "session-1": { status: "connecting" } },
+      tabs: [
+        { session: "session-1", kind: "shell" },
+        { session: "session-1", kind: "shell" },
+      ],
+    };
+    const facts = factsMarkup(renderToStaticMarkup(createElement(Sidebar)));
+
+    expect(facts).toContain("连接中");
+    expect(facts).toContain("2 个终端");
+    expect((facts.match(/session-row__sep/g) ?? []).length).toBe(1);
+    expect(facts.indexOf("连接中")).toBeLessThan(facts.indexOf("session-row__sep"));
+  });
+
+  it("休息状态只给屏幕阅读器一份，不再重复可见的那一份", () => {
+    store.current = { ...baseStore, connections: { "session-1": { status: "ready" } } };
+    const html = renderToStaticMarkup(createElement(Sidebar));
+    const hidden = rowsMarkup(html).match(/<span class="visually-hidden">(.*?)<\/span>/)?.[1];
+
+    expect(hidden).toBe("已连接");
+  });
+
+  it("可见的连接异常不会在隐藏文字里重复，但云端已无仍会读出来", () => {
+    store.current = {
+      ...baseStore,
+      runtimeEndpoints: [],
+      connections: { "session-1": { status: "connecting" } },
+    };
+    const html = renderToStaticMarkup(createElement(Sidebar));
+    const hidden = rowsMarkup(html).match(/<span class="visually-hidden">(.*?)<\/span>/)?.[1];
+
+    expect(hidden).toContain("云端已无");
+    expect(hidden).not.toContain("连接中");
   });
 
   it("云端还在的运行时，行里不写状态，tooltip 里才有", () => {

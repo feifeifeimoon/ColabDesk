@@ -235,6 +235,15 @@ export function Sidebar() {
           ]
             .filter((part): part is string => Boolean(part))
             .join(" · ");
+          // The visible state word is already in the button's name; only add a
+          // hidden one when the state is resting, and carry the released claim
+          // because the paint alone cannot say it.
+          const accessibleState = [
+            stateLabel ? null : (connectionLabels[state] ?? state),
+            released ? t("sidebar.cloudGoneTitle", "云端已无此运行时；同步将移除该本地记录。") : null,
+          ]
+            .filter((part): part is string => Boolean(part))
+            .join(" · ");
           const menuItems: MenuItem[] = [
             {
               label:
@@ -315,17 +324,16 @@ export function Sidebar() {
                 </span>
                 {/* The dot paints the state; this keeps it readable to a screen
                     reader without putting a word back on the card. */}
-                <span className="visually-hidden">{connectionLabels[state] ?? state}</span>
+                {accessibleState && <span className="visually-hidden">{accessibleState}</span>}
                 {/*
-                  The machine's half of the card: what the machine is, how this
-                  window is getting on with it when that is not the resting
-                  state, and — last, because it is the least of it — how many
-                  terminals are open on it.
+                  The machine's half of the card: how this window is getting on
+                  with it when that is not the resting state, and — last,
+                  because it is the least of it — how many terminals are open on
+                  it. A healthy row has no second line at all.
                 */}
-                <span className="session-row__facts">
-                  {stateLabel && (
-                    <>
-                      <span className="session-row__sep" aria-hidden="true">·</span>
+                {(stateLabel || shells > 1) && (
+                  <span className="session-row__facts">
+                    {stateLabel && (
                       <span
                         className={[
                           "session-row__fact",
@@ -338,17 +346,17 @@ export function Sidebar() {
                       >
                         {stateLabel}
                       </span>
-                    </>
-                  )}
-                  {shells > 1 && (
-                    <>
+                    )}
+                    {stateLabel && shells > 1 && (
                       <span className="session-row__sep" aria-hidden="true">·</span>
+                    )}
+                    {shells > 1 && (
                       <span className="session-row__fact">
                         {t("sidebar.terminalsCount", "{{count}} 个终端", { count: shells })}
                       </span>
-                    </>
-                  )}
-                </span>
+                    )}
+                  </span>
+                )}
               </button>
 
               <span className="session-row__actions">
@@ -394,6 +402,7 @@ export function Sidebar() {
                   <Badge>{acceleratorLabel(session.accelerator)}</Badge>
                 </span>
               </span>
+              <span className="visually-hidden">{t("sidebar.untracked", "未在本地记录")}</span>
             </div>
           </div>
         ))}

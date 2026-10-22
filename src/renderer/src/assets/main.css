@@ -449,7 +449,7 @@ kbd {
 .session-row__main {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) calc(var(--session-row-reserve) - var(--space-2));
-  grid-template-rows: var(--session-row-band) auto;
+  grid-template-rows: var(--session-row-band);
   align-items: center;
   column-gap: var(--space-2);
   row-gap: 2px;
@@ -507,15 +507,6 @@ kbd {
   white-space: nowrap;
   color: var(--mute);
   font-size: var(--text-micro);
-  /* The machine-type badge is 20px; centring the 11px words against it keeps
-     the facts line one line instead of letting the pill push the text up. */
-  line-height: 20px;
-}
-
-/* The machine type is an identifier, so it wears the identifier badge; the
-   words beside it stay text. */
-.session-row__facts .badge {
-  vertical-align: middle;
 }
 
 .session-row__sep {
