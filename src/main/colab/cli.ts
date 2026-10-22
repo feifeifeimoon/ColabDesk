@@ -293,7 +293,7 @@ export function runCliStreaming(
   });
 }
 
-/** `colab version` prints `Version: 0.7.4`. */
+/** `colab version` prints `Version: 0.7.5`. */
 export function parseVersion(text: string): string | null {
   for (const line of text.split(/\r?\n/)) {
     const trimmed = line.trim();

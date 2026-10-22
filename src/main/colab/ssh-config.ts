@@ -2,12 +2,11 @@
  * `~/.ssh/config` management: the escape hatch that makes a runtime reachable
  * from any terminal, `scp`/`sftp`, or VS Code Remote-SSH.
  *
- * Colab's own `colab ssh --proxy-mode` is one way to build that entry; this app
- * can also act as the ProxyCommand itself (`colabdesk bridge -s NAME`), which
- * is what makes the feature work without a patched CLI. Either way, editing a
- * user's SSH config is the riskiest thing here, so every entry lives inside a
- * marked managed block: writing replaces only that session's block, never
- * touching or reordering anything else in the file.
+ * Each entry points OpenSSH's `ProxyCommand` at the resolved CLI's `ssh
+ * --proxy-mode -s <name>`. Editing a user's SSH config is the riskiest thing
+ * here, so every entry lives inside a marked managed block: writing replaces
+ * only that session's block, never touching or reordering anything else in the
+ * file.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";

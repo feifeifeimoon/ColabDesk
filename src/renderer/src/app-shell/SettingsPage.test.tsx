@@ -37,7 +37,7 @@ function baseState(update: UpdateStatus) {
       app_version: "0.3.0",
       cli_path: "C:\\bundled\\python.exe",
       cli_source: "bundled",
-      cli_version: "0.7.4",
+      cli_version: "0.7.5",
       config_dir: "C:\\config",
       sessions_file_exists: true,
       authenticated: true,
@@ -84,7 +84,7 @@ describe("the account section", () => {
   it("shows the application version and the CLI version, distinguishably", () => {
     const rendered = text(render("about")) + text(render("account"));
     expect(rendered).toContain("0.3.0");
-    expect(rendered).toContain("0.7.4");
+    expect(rendered).toContain("0.7.5");
   });
 
   it("keeps the local CLI environment beside the account it authorizes", () => {
