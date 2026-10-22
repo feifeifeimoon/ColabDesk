@@ -44,9 +44,9 @@ const force = process.argv.includes("--force");
  * Pinned so two builds of the same git tag ship the same runtime. An unpinned
  * `pip install` makes the release that goes out depend on the day it was built.
  */
-const PYTHON_VERSION = "3.12";
+export const PYTHON_VERSION = "3.12";
 const CLI_PACKAGE = "google-colab-cli";
-const CLI_VERSION = "0.7.4";
+export const CLI_VERSION = "0.7.5";
 
 function log(msg) {
   console.log(`[bundle:cli] ${msg}`);
@@ -56,11 +56,18 @@ function error(msg) {
   console.error(`[bundle:cli] ERROR: ${msg}`);
 }
 
-/** Check if already bundled and valid */
-function isAlreadyBundled() {
-  const pyExe = join(PYTHON_DEST, pythonExeName);
-  const cliEntry = join(SITE_DEST, "colab_cli", "cli.py");
-  return existsSync(pyExe) && existsSync(cliEntry) && existsSync(MANIFEST_DEST);
+/** Check if already bundled and matching the pinned Python and CLI versions. */
+export function isAlreadyBundled(targetDir = TARGET_DIR) {
+  const pyExe = join(targetDir, "python", pythonExeName);
+  const cliEntry = join(targetDir, "site", "colab_cli", "cli.py");
+  const manifestPath = join(targetDir, "manifest.json");
+  if (!existsSync(pyExe) || !existsSync(cliEntry) || !existsSync(manifestPath)) return false;
+  try {
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    return manifest.cliVersion === CLI_VERSION && manifest.pythonVersion === PYTHON_VERSION;
+  } catch {
+    return false;
+  }
 }
 
 /** Locate `uv` executable */
@@ -232,38 +239,6 @@ function stripBytecode(dir) {
   if (removed > 0) log(`Stripped ${removed} bytecode artifacts from ${dir}`);
 }
 
-/** Fix Windows issue where termios/tty is imported at top level in colab_cli 0.7.4 */
-function patchWindowsConsole(siteDir) {
-  const consolePy = join(siteDir, "colab_cli", "console.py");
-  if (!existsSync(consolePy)) return;
-
-  let content = readFileSync(consolePy, "utf8");
-  if (content.includes("import termios") && !content.includes("# Raw-mode terminal handling is POSIX-only")) {
-    log("Applying Windows compatibility patch to colab_cli/console.py...");
-    // Replace top-level termios/tty imports with lazy imports inside if is_tty
-    content = content.replace(/^import termios\r?\n/m, "# termios deferred for Windows compatibility\n");
-    content = content.replace(/^import tty\r?\n/m, "# tty deferred for Windows compatibility\n");
-    content = content.replace(
-      /([ \t]*)old_settings = termios\.tcgetattr\(fd\) if is_tty else None/,
-      `$1if is_tty:
-$1    import termios
-$1    import tty
-$1    old_settings = termios.tcgetattr(fd)
-$1else:
-$1    old_settings = None`,
-    );
-    content = content.replace(
-      /([ \t]*)signal\.signal\(signal\.SIGWINCH, handle_sigwinch\)/g,
-      '$1if hasattr(signal, "SIGWINCH"):\n$1    signal.signal(signal.SIGWINCH, handle_sigwinch)',
-    );
-    content = content.replace(
-      /([ \t]*)signal\.signal\(signal\.SIGWINCH, signal\.SIG_DFL\)/g,
-      '$1if hasattr(signal, "SIGWINCH"):\n$1    signal.signal(signal.SIGWINCH, signal.SIG_DFL)',
-    );
-    writeFileSync(consolePy, content, "utf8");
-  }
-}
-
 async function bundle() {
   if (!force && isAlreadyBundled()) {
     log(`Runtime already bundled at ${TARGET_DIR}. Use --force to rebuild.`);
@@ -330,9 +305,6 @@ async function bundle() {
     process.exit(1);
   }
 
-  // The termios/tty import is a POSIX-only concern; patching it on macOS/Linux
-  // would rewrite a file that was never broken.
-  if (isWin) patchWindowsConsole(SITE_DEST);
   stripBytecode(SITE_DEST);
 
   // 3. Verify and read version

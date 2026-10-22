@@ -9,9 +9,8 @@
  *
  * `colab ssh --proxy-mode` bridges that to stdio so a system `ssh` can use it
  * as a ProxyCommand. This app instead hands the WebSocket straight to `ssh2`
- * as its transport, which removes three dependencies at once: no system
- * OpenSSH, no node-pty, and no patched Python (the CLI's Windows bridge fix
- * remains unreleased upstream).
+ * as its transport, which needs no system OpenSSH, no node-pty, and no child
+ * Python process per connection.
  *
  * One caveat from the server side: a runtime accepts a single SSH connection
  * (a second upgrade gets HTTP 429). So everything — terminal channels and SFTP

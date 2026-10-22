@@ -2,7 +2,7 @@ import { existsSync, lstatSync, mkdirSync, mkdtempSync, readlinkSync, rmSync, sy
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { copyPythonDistribution, verifyBundleSymlinks } from "./bundle-cli.mjs";
+import { CLI_VERSION, PYTHON_VERSION, copyPythonDistribution, isAlreadyBundled, verifyBundleSymlinks } from "./bundle-cli.mjs";
 
 let srcDir;
 let destDir;
@@ -84,4 +84,30 @@ describe("verifyBundleSymlinks", () => {
       expect(() => verifyBundleSymlinks(destDir)).toThrow(/Broken symlink detected/);
     });
   }
+});
+
+describe("isAlreadyBundled", () => {
+  function seedBundle(dir, manifest) {
+    const pyExe = process.platform === "win32" ? join(dir, "python", "python.exe") : join(dir, "python", "bin", "python3");
+    const cliEntry = join(dir, "site", "colab_cli", "cli.py");
+    mkdirSync(join(pyExe, ".."), { recursive: true });
+    mkdirSync(join(cliEntry, ".."), { recursive: true });
+    writeFileSync(pyExe, "binary");
+    writeFileSync(cliEntry, "# cli");
+    writeFileSync(join(dir, "manifest.json"), JSON.stringify(manifest));
+  }
+
+  it("pins google-colab-cli 0.7.5", () => {
+    expect(CLI_VERSION).toBe("0.7.5");
+  });
+
+  it("returns false when manifest cliVersion lags the pinned CLI_VERSION", () => {
+    seedBundle(destDir, { cliVersion: "0.7.4", pythonVersion: PYTHON_VERSION });
+    expect(isAlreadyBundled(destDir)).toBe(false);
+  });
+
+  it("returns true when files and manifest versions match the pins", () => {
+    seedBundle(destDir, { cliVersion: CLI_VERSION, pythonVersion: PYTHON_VERSION });
+    expect(isAlreadyBundled(destDir)).toBe(true);
+  });
 });

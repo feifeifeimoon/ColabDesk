@@ -6,7 +6,7 @@ import { CLI_PATH_ENV, combined, parseVersion, readManifestVersion, resolveCli }
 
 describe("parseVersion", () => {
   it("reads the labelled version", () => {
-    expect(parseVersion("Version: 0.7.4\n")).toBe("0.7.4");
+    expect(parseVersion("Version: 0.7.5\n")).toBe("0.7.5");
     expect(parseVersion("no version here")).toBeNull();
   });
 });

@@ -20,7 +20,7 @@ const STATUS_TONE: Record<StatusTone, string> = {
   danger: "status--danger",
 };
 
-/** Identifiers and counts: what a thing *is* (`T4`, `GPU`, `colab 0.7.4`). */
+/** Identifiers and counts: what a thing *is* (`T4`, `GPU`, `colab 0.7.5`). */
 export function Badge({ children, tone = "neutral" }: { children: ReactNode; tone?: Tone }) {
   return <span className={`badge ${BADGE_TONE[tone]}`.trim()}>{children}</span>;
 }
