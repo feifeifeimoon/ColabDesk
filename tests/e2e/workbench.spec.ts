@@ -224,10 +224,10 @@ test("语言切换写下偏好并在重载后生效，且动态更新界面文�
   await reloadWorkbench(app, page);
   await expect(page.locator(".startpage")).toContainText("A desktop SSH console for Google Colab runtimes");
 
-  // 重新打开设置切回中文（简体）
+  // 重新打开设置切回中文
   await page.locator('[data-testid="open-settings"]').click();
   await page.getByRole("button", { name: "Appearance" }).click();
-  await page.getByRole("button", { name: "中文（简体）" }).click();
+  await page.getByRole("button", { name: "中文" }).click();
   await expect(page.locator(".settings__title")).toContainText("外观");
   expect(await page.evaluate(() => localStorage.getItem("colabdesk.language"))).toBe("zh");
 });

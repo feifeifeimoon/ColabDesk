@@ -16,8 +16,8 @@ export interface UiLanguageChoice {
 }
 
 export const UI_LANGUAGE_CHOICES: UiLanguageChoice[] = [
-  { value: UI_LANGUAGE_SYSTEM, labelKey: "settings.languageSystem", fallback: "跟随系统" },
-  { value: UI_LANGUAGE_CHINESE, labelKey: "settings.languageChinese", fallback: "中文（简体）" },
+  { value: UI_LANGUAGE_SYSTEM, labelKey: "settings.languageSystem", fallback: "系统" },
+  { value: UI_LANGUAGE_CHINESE, labelKey: "settings.languageChinese", fallback: "中文" },
   { value: UI_LANGUAGE_ENGLISH, labelKey: "settings.languageEnglish", fallback: "English" },
 ];
 
