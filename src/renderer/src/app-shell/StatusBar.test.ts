@@ -10,7 +10,7 @@ vi.mock("../store", () => ({
 
 import type { UsageReport } from "@shared/types";
 import { setRendererUiLanguage } from "../i18n/i18n";
-import { balanceMeterTone, computeBalanceRatio, StatusBar } from "./AppShell";
+import { balanceMeterTone, computeBalanceRatio, soleBilledSession, StatusBar } from "./AppShell";
 
 const baseState = {
   usage: null as UsageReport | null,
@@ -18,6 +18,7 @@ const baseState = {
   tabs: [] as unknown[],
   sessions: [] as unknown[],
   connections: {},
+  runtimeEndpoints: null as string[] | null,
   update: { state: "idle", version: null },
   openSettings: vi.fn(),
 };
@@ -115,5 +116,34 @@ describe("balanceMeterTone", () => {
     expect(balanceMeterTone(0.05)).toBe("danger");
     expect(balanceMeterTone(0.01)).toBe("danger");
     expect(balanceMeterTone(0)).toBe("danger");
+  });
+});
+
+describe("the one session an account rate can be pinned on", () => {
+  const alpha = { name: "alpha", endpoint: "ep-a" };
+  const beta = { name: "beta", endpoint: "ep-b" };
+
+  it("names the only tracked runtime the server has", () => {
+    expect(soleBilledSession([alpha, beta], ["ep-a"], {}, 1)).toBe("alpha");
+  });
+
+  it("answers nothing when the server lists a runtime this window cannot name", () => {
+    expect(soleBilledSession([alpha, beta], ["ep-untracked"], {}, 1)).toBeNull();
+  });
+
+  it("answers nothing when more than one runtime is billing", () => {
+    expect(soleBilledSession([alpha, beta], ["ep-a", "ep-b"], {}, 2)).toBeNull();
+    expect(soleBilledSession([alpha, beta], ["ep-a", "ep-b"], {}, 1)).toBeNull();
+  });
+
+  it("falls back to one ready connection before the server list is read", () => {
+    expect(soleBilledSession([alpha, beta], null, { alpha: { status: "ready" } }, 1)).toBe("alpha");
+    expect(
+      soleBilledSession([alpha, beta], null, { alpha: { status: "ready" }, beta: { status: "ready" } }, 1),
+    ).toBeNull();
+  });
+
+  it("answers nothing while the billed count is unread", () => {
+    expect(soleBilledSession([alpha], ["ep-a"], {}, null)).toBeNull();
   });
 });

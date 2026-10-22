@@ -44,6 +44,16 @@ test("没有会话时，工作台已给出全部机器状态", async ({ page }) 
   await expect(status).toContainText("1.25/h");
   await expect(status.locator('[data-testid="statusbar-assignments"]')).toHaveText("1");
   await expect(status.locator('[data-testid="terminal-count"]')).toHaveText("0");
+
+  // 悬停气泡逐个会话写出机型与费率：T4/CPU 有参考值，未知机型必须是 —/h
+  // 而不是 0.00/h（未知机型的渲染由 accelerators.test.ts 钉住）。
+  await status.locator(".statusbar__group--interactive").hover();
+  const popover = page.locator(".statusbar-popover");
+  await expect(popover).toBeVisible();
+  await expect(popover).toContainText("T4");
+  await expect(popover).toContainText("~1.07/h");
+  await expect(popover).toContainText("CPU");
+  await expect(popover).toContainText("~0.08/h");
 });
 
 test("服务器上有、本地没有的运行时也会列出来，但不可操作", async ({ page }) => {
