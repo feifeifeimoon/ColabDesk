@@ -567,11 +567,13 @@ export function StatusBar() {
                   const state = connection?.status ?? "closed";
                   const tone = CONNECTION_TONE[state] ?? "neutral";
                   const highRam = session.machine_shape === "HIGH_RAM";
-                  const shapeLabel =
-                    session.machine_shape === "HIGH_RAM" ? "High-RAM" : session.machine_shape.replace("_", "-");
                   const shape =
                     session.machine_shape && session.machine_shape !== "STANDARD"
-                      ? ` · ${shapeLabel}`
+                      ? ` · ${
+                          session.machine_shape === "HIGH_RAM"
+                            ? "High-RAM"
+                            : session.machine_shape.replace("_", "-")
+                        }`
                       : "";
                   /*
                     No countdown here, and that is the point of this column.
@@ -596,7 +598,7 @@ export function StatusBar() {
                     : rateInfo.rate === null
                       ? t("statusbar.rateUnknownTitle", "Colab 未公布该机型的费率")
                       : highRam
-                        ? t("statusbar.rateHighRamTitle", "参考费率；High-RAM 按标准机型的 1.5 倍估算")
+                        ? t("statusbar.rateHighRamTitle", "参考费率；High-RAM 使用单独估算值")
                         : t("statusbar.rateEstimatedTitle", "参考费率；实际以 Colab 计费为准");
 
                   return (

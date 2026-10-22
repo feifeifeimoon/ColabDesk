@@ -5,9 +5,9 @@ import { Button, IconButton } from "../components/ui/Button";
 import { PlusIcon, SettingsIcon, SyncIcon } from "../components/ui/icons";
 import { Menu } from "../components/ui/Menu";
 import { PanelDivider } from "../components/ui/PanelDivider";
+import { acceleratorLabel } from "../features/sessions/accelerators";
 import { PANEL_WIDTH } from "../lib/panel-width";
 import { useAppStore } from "../store";
-import { acceleratorLabel } from "../store/selectors";
 
 const CONNECTION_TONE: Record<string, StatusTone> = {
   connecting: "warn",
@@ -241,7 +241,7 @@ export function Sidebar() {
                   is the least of it — how many terminals are open on it.
                 */}
                 <span className="session-row__facts">
-                  <span className="session-row__fact">{acceleratorLabel(session)}</span>
+                  <span className="session-row__fact">{acceleratorLabel(session.accelerator)}</span>
                   {cloud && (
                     <>
                       <span className="session-row__sep" aria-hidden="true">·</span>
@@ -360,7 +360,7 @@ export function Sidebar() {
               {/* The state is written once, in the facts line: this row's dot
                   and its words are the same one state, not two. */}
               <span className="session-row__facts">
-                <span className="session-row__fact">{acceleratorLabel(session)}</span>
+                <span className="session-row__fact">{acceleratorLabel(session.accelerator)}</span>
                 <span className="session-row__sep" aria-hidden="true">·</span>
                 <span className="session-row__fact session-row__state session-row__state--warn">
                   {t("sidebar.untracked", "未在本地记录")}

@@ -15,6 +15,8 @@ describe("accelerator ids", () => {
     expect(acceleratorLabel("V5E1")).toBe("TPU v5e1");
     expect(acceleratorLabel("V6E1")).toBe("TPU v6e1");
     expect(acceleratorLabel("H100")).toBe("H100");
+    expect(acceleratorLabel("")).toBe("CPU");
+    expect(acceleratorLabel(undefined)).toBe("CPU");
   });
 });
 

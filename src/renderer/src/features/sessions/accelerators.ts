@@ -60,8 +60,8 @@ const SINGLE_SHAPE_KEYS = new Set(["L4", "TPU V5E1", "TPU V6E1"]);
  * `tpu:v6e1`, while the backend and `sessions.json` write `V6E1` (and `NONE`
  * for a CPU runtime).
  */
-export function acceleratorKey(accelerator: string): string {
-  const upper = accelerator.trim().toUpperCase();
+export function acceleratorKey(accelerator: string | null | undefined): string {
+  const upper = typeof accelerator === "string" ? accelerator.trim().toUpperCase() : "";
   if (!upper || upper === "NONE" || upper === "CPU") return "CPU";
   if (upper === "TPU:V5E1" || upper === "V5E1") return "TPU V5E1";
   if (upper === "TPU:V6E1" || upper === "V6E1") return "TPU V6E1";
@@ -70,7 +70,7 @@ export function acceleratorKey(accelerator: string): string {
 }
 
 /** The picker's display name for a machine id. */
-export function acceleratorLabel(accelerator: string): string {
+export function acceleratorLabel(accelerator: string | null | undefined): string {
   const key = acceleratorKey(accelerator);
   if (key === "TPU V5E1") return "TPU v5e1";
   if (key === "TPU V6E1") return "TPU v6e1";
@@ -93,7 +93,11 @@ export interface SessionRate {
  * table. Otherwise the table answers, and HIGH_RAM uses its own measured rate
  * only on machines that offer the choice (`L4` and the TPUs have one shape).
  */
-export function sessionRate(accelerator: string, highRam: boolean, actualRate: number | null): SessionRate {
+export function sessionRate(
+  accelerator: string | null | undefined,
+  highRam: boolean,
+  actualRate: number | null,
+): SessionRate {
   if (actualRate !== null) return { rate: actualRate, actual: true };
   const key = acceleratorKey(accelerator);
   const entry = ACCELERATOR_RATES[key];

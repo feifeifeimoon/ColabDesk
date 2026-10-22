@@ -18,6 +18,7 @@ const baseState = {
   tabs: [] as unknown[],
   sessions: [] as unknown[],
   connections: {},
+  runtimeEndpoints: null as string[] | null,
   update: { state: "idle", version: null },
   openSettings: vi.fn(),
 };
