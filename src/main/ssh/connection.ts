@@ -36,7 +36,22 @@ export type ConnectionStatus = "connecting" | "ready" | "closed" | "error";
 /** The route to Colab resets TLS connections intermittently; retries help. */
 const CONNECT_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 1_200;
-const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+/** Sleeps, but wakes immediately when the connection is closed. */
+const delay = (ms: number, signal: AbortSignal): Promise<void> =>
+  new Promise((resolve) => {
+    if (signal.aborted) {
+      resolve();
+      return;
+    }
+    let timer: NodeJS.Timeout;
+    const wake = (): void => {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", wake);
+      resolve();
+    };
+    timer = setTimeout(wake, ms);
+    signal.addEventListener("abort", wake, { once: true });
+  });
 
 /**
  * How much output may be on its way to the renderer before the shell is asked
@@ -109,6 +124,12 @@ export class ColabSshConnection extends EventEmitter {
   private unacked = new Map<number, number>();
   private nextShellId = 1;
   private identity: Identity | null = null;
+  /** Set by `end()`: no attempt may start or retry after the owner let go. */
+  private closed = false;
+  /** Wakes the retry backoff when `end()` arrives. */
+  private readonly abort = new AbortController();
+  /** Settles the handshake in flight when the socket closes or the owner cancels. */
+  private rejectHandshake: ((error: Error) => void) | null = null;
 
   constructor(readonly target: SshTarget) {
     super();
@@ -127,6 +148,7 @@ export class ColabSshConnection extends EventEmitter {
    * its sshd is up and then drop it mid-handshake.
    */
   async connect(): Promise<void> {
+    if (this.closed) throw new Error("SSH 连接已关闭。");
     const identity = findIdentity();
     if (!identity) {
       throw new Error(
@@ -142,51 +164,103 @@ export class ColabSshConnection extends EventEmitter {
 
     let lastError: Error | null = null;
     for (let attempt = 1; attempt <= CONNECT_ATTEMPTS; attempt += 1) {
+      if (this.closed) {
+        lastError = new Error("SSH 连接已关闭。");
+        break;
+      }
       try {
         await this.openSocket(wsUrl, identity.publicKey);
+        if (this.closed) {
+          lastError = new Error("SSH 连接已关闭。");
+          break;
+        }
         await this.handshake(identity);
+        // `end()` can land between the handshake resolving and this
+        // continuation: the connection is closed before its caller sees it.
+        if (this.closed) {
+          lastError = new Error("SSH 连接已关闭。");
+          break;
+        }
         return;
       } catch (error) {
         lastError = error as Error;
         this.discardSocket();
+        if (this.closed) {
+          lastError = new Error("SSH 连接已关闭。");
+          break;
+        }
         const retryable = error instanceof TransientConnectError;
         if (!retryable || attempt === CONNECT_ATTEMPTS) break;
         this.setStatus("connecting");
-        await delay(RETRY_DELAY_MS * attempt);
+        await delay(RETRY_DELAY_MS * attempt, this.abort.signal);
       }
     }
 
     const failure = lastError ?? new Error("SSH 连接失败。");
-    this.setStatus("error", failure.message);
+    // An owner-initiated close already published `closed`; a late `error` here
+    // would overwrite it after the last tab is gone.
+    if (!this.closed) this.setStatus("error", failure.message);
     throw failure;
   }
 
   /** The SSH key exchange, over the socket `openSocket` just established. */
   private handshake(identity: Identity): Promise<void> {
     return new Promise<void>((resolve, reject) => {
+      let settled = false;
+      const finish = (error?: Error): void => {
+        if (settled) return;
+        settled = true;
+        this.rejectHandshake = null;
+        if (error) reject(error);
+        else resolve();
+      };
+      this.rejectHandshake = finish;
+
+      if (this.closed) {
+        finish(new Error("SSH 连接已关闭。"));
+        return;
+      }
+
       const client = new Client();
       this.client = client;
 
       client.on("ready", () => {
+        // `end()` may have settled the promise and published `closed` first;
+        // a queued `ready` must not put the status back.
+        if (settled || this.closed) return;
         this.setStatus("ready");
-        resolve();
+        finish();
       });
       client.on("error", (error) => {
         if (error.level === "client-authentication") {
-          reject(new Error(`SSH 认证失败：${error.message}（请确认 ~/.ssh/id_ed25519.pub 与私钥匹配）`));
+          finish(new Error(`SSH 认证失败：${error.message}（请确认 ~/.ssh/id_ed25519.pub 与私钥匹配）`));
           return;
         }
         // A socket that died mid-handshake reads as noise from ssh2 ("WebSocket
         // is not open: readyState 2"); it is worth another attempt, and if the
         // retries run out the user gets a plain-language message.
-        const transient = /not open|closed|disconnected|ECONNRESET|EPIPE|timed? ?out/i.test(error.message);
-        reject(
+        const transient = /not open|closed|disconnected|connection lost|ECONNRESET|EPIPE|timed? ?out/i.test(error.message);
+        finish(
           transient
             ? new TransientConnectError("SSH 握手被中断（运行时可能仍在启动，或网络被重置）。")
             : new Error(`SSH 连接失败：${error.message}`),
         );
       });
-      client.on("close", () => this.teardown("连接已关闭"));
+      client.on("close", () => {
+        // A handshake attempt has no shells and is cleaned up by `connect()`'s
+        // catch; announcing `closed` here would make the retry flicker
+        // connecting → closed → connecting. Only a ready connection retires.
+        if (this.status === "ready") this.teardown("连接已关闭");
+        // ssh2's own "lost before handshake" error only covers the window
+        // before the server banner. Once the header arrived it emits `close`
+        // and nothing else, so settling here is what keeps `connect` from
+        // parking forever and poisoning every later acquire.
+        finish(
+          this.closed
+            ? new Error("SSH 连接已关闭。")
+            : new TransientConnectError("SSH 握手被中断（运行时可能仍在启动，或网络被重置）。"),
+        );
+      });
 
       const sock = createWebSocketStream(this.ws!);
       this.sock = sock;
@@ -226,7 +300,12 @@ export class ColabSshConnection extends EventEmitter {
   /** One WebSocket upgrade; network failures are marked retryable. */
   private openSocket(wsUrl: string, pubkey: string): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      const ws = new WebSocket(wsUrl, { headers: { "X-Colab-Ssh-Pubkey": pubkey } });
+      const ws = new WebSocket(wsUrl, {
+        headers: { "X-Colab-Ssh-Pubkey": pubkey },
+        // An upgrade that never answers is still a connection attempt; without
+        // this the promise would wait for the TCP stack to give up.
+        handshakeTimeout: 15_000,
+      });
       this.ws = ws;
 
       let settled = false;
@@ -345,6 +424,12 @@ export class ColabSshConnection extends EventEmitter {
   }
 
   end(): void {
+    if (this.closed) return;
+    this.closed = true;
+    this.abort.abort();
+    // The owner is letting go mid-handshake: settle it now, or the manager's
+    // pending entry would outlive the connection it belongs to.
+    this.rejectHandshake?.(new Error("SSH 连接已关闭。"));
     for (const [id, channel] of this.shells) {
       channel.end();
       this.shells.delete(id);
@@ -366,6 +451,7 @@ export class ColabSshConnection extends EventEmitter {
 
   private teardown(reason: string): void {
     if (this.status === "closed") return;
+    const handshaking = this.status === "connecting";
     const hadError = this.status === "error";
     for (const [id] of this.shells) {
       this.shells.delete(id);
@@ -374,6 +460,10 @@ export class ColabSshConnection extends EventEmitter {
     this.unacked.clear();
     this.sock?.destroy();
     this.sock = null;
+    // `connect()` owns the status during a handshake attempt: it publishes
+    // "connecting" before a retry and "error" when the attempts run out.
+    // Publishing "closed" here would make every failed attempt flicker.
+    if (handshaking) return;
     this.setStatus(hadError ? "error" : "closed", hadError ? this.error : reason);
   }
 }

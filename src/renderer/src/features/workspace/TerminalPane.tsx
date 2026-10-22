@@ -19,6 +19,7 @@ import {
   writeClipboard,
   writeTerminal,
 } from "../../lib/api";
+import { translate } from "../../i18n/i18n";
 import { applyTerminalAppearance, changesGrid, fontStackFor, isLightPalette, type TerminalThemeId } from "../../lib/terminal-appearance";
 import { answerColorQueries } from "../../lib/terminal-color-reply";
 import { readTerminalPalette } from "../../lib/terminal-theme";
@@ -113,12 +114,14 @@ export function TerminalPane({
     latest.current = { active, appearance };
   });
 
+  // Stable on purpose: this is a dependency of the shell effect, and a new
+  // identity there would close the shell on a language switch.
   const markClosed = useCallback((): void => {
     channelRef.current = null;
-    const banner = t("terminal.connectionClosedBanner", "[连接已断开]");
+    const banner = translate("terminal.connectionClosedBanner", "[连接已断开]");
     terminalRef.current?.write(`\r\n\x1b[90m${banner}\x1b[0m\r\n`);
     setState("closed");
-  }, [t]);
+  }, []);
 
   useEffect(() => {
     // The cleanup clears the same buffers this effect fills, so it takes them
@@ -378,7 +381,7 @@ export function TerminalPane({
     let disposed = false;
     setState("connecting");
     setError(null);
-    terminal.writeln(`\x1b[90m${t("terminal.connecting", "正在连接 {{session}}…", { session })}\x1b[0m`);
+    terminal.writeln(`\x1b[90m${translate("terminal.connecting", "正在连接 {{session}}…", { session })}\x1b[0m`);
 
     openTerminal(session, terminal.cols, terminal.rows)
       .then((handle) => {
@@ -403,7 +406,7 @@ export function TerminalPane({
         const message = messageOf(cause);
         setState("error");
         setError(message);
-        terminal.writeln(`\x1b[31m${t("terminal.connectionFailed", "连接失败：{{message}}", { message })}\x1b[0m`);
+        terminal.writeln(`\x1b[31m${translate("terminal.connectionFailed", "连接失败：{{message}}", { message })}\x1b[0m`);
       });
 
     return () => {
@@ -413,7 +416,10 @@ export function TerminalPane({
       written.current = 0;
       if (channelId !== null) void closeTerminal(channelId);
     };
-  }, [session, attempt, t, markClosed]);
+    // `t` is deliberately not a dependency: react-i18next hands back a new
+    // function when the language changes, and re-running this effect would
+    // close every shell the user is running work in.
+  }, [session, attempt, markClosed]);
 
   // Appearance is injected into the live terminal rather than applied by
   // rebuilding it: the shell, its scrollback and whatever it is running all stay

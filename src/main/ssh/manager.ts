@@ -40,7 +40,15 @@ export class SshManager extends EventEmitter {
   private terminals = new Map<number, TerminalRecord>();
   private nextChannelId = 1;
 
-  constructor(private readonly resolveTarget: (name: string) => SshTarget) {
+  /**
+   * `createConnection` is a seam for the lifecycle tests: a fake connection lets
+   * `drop`/`acquire` be exercised without opening a socket.
+   */
+  constructor(
+    private readonly resolveTarget: (name: string) => SshTarget,
+    private readonly createConnection: (target: SshTarget) => ColabSshConnection = (target) =>
+      new ColabSshConnection(target),
+  ) {
     super();
   }
 
@@ -73,7 +81,7 @@ export class SshManager extends EventEmitter {
 
     if (existing) existing.end();
 
-    const connection = new ColabSshConnection(this.resolveTarget(name));
+    const connection = this.createConnection(this.resolveTarget(name));
     this.connections.set(name, connection);
 
     connection.on("data", (shellId: number, chunk: Buffer) => {
@@ -139,6 +147,10 @@ export class SshManager extends EventEmitter {
   /** Ends the connection for a session; its terminals are closed with it. */
   drop(name: string): void {
     const connection = this.connections.get(name);
+    // A handshake in flight has a `pending` entry even though it has no usable
+    // connection yet. Leaving it behind makes every later acquire join a
+    // promise that nothing will settle.
+    this.pending.delete(name);
     if (!connection) return;
     this.connections.delete(name);
     connection.end();

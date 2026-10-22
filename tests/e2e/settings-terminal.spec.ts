@@ -110,6 +110,40 @@ test("换配色当场生效：沙箱与工作台一起换，shell 不受影响",
   await expect.poll(async () => (await terminalText(page)).split("/content/data").length - 1).toBeGreaterThanOrEqual(2);
 });
 
+test("切换界面语言不重连终端，正在运行的 shell 保持原样", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await expect(terminalRows(page)).toContainText("shell #1");
+  await waitForPrompts(page, 2);
+
+  // Where the shell stands is the thing a reconnect cannot preserve.
+  await focusTerminal(page);
+  await page.keyboard.type("cd /content/data");
+  await page.keyboard.press("Enter");
+  await expect.poll(async () => (await terminalText(page)).includes("/content/data")).toBe(true);
+
+  // A language switch hands every mounted pane a new `t`. If the shell effect
+  // depended on it, the old shell would be closed and `shell #2` would appear.
+  await page.locator('[data-testid="open-settings"]').click();
+  await page.getByRole("button", { name: "外观" }).click();
+  await page.getByRole("button", { name: "English" }).click();
+  await expect(page.locator(".settings__title")).toContainText("Appearance");
+
+  await page.getByRole("button", { name: "Back to Workbench" }).click();
+  await expect(page.locator('[data-testid="terminal-status"]')).toContainText("Connected");
+  await expect(page.locator('[data-testid="terminal-count"]')).toHaveText("1");
+  await expect(terminalRows(page)).toContainText("shell #1");
+  await expect(terminalRows(page)).not.toContainText("shell #2");
+
+  // Same shell, still in the directory it was left in.
+  await focusTerminal(page);
+  await page.keyboard.type("pwd");
+  await page.keyboard.press("Enter");
+  await expect
+    .poll(async () => (await terminalText(page)).split("/content/data").length - 1)
+    .toBeGreaterThanOrEqual(2);
+  await expect(terminalRows(page)).not.toContainText("shell #2");
+});
+
 test("改字号与行高会重排网格，但不动连接、也不抢走设置的键盘", async ({ page }) => {
   await openSession(page, "e2e-alpha");
   await expect(terminalRows(page)).toContainText("shell #1");
