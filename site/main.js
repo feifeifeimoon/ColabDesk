@@ -105,16 +105,17 @@ async function resolvePlatform() {
   });
 }
 
-async function loadRelease() {
+async function loadGitHub() {
   try {
-    const response = await fetch(`${GITHUB.api}/repos/${GITHUB.repo}/releases/latest`, {
-      headers: { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
-    });
-    if (!response.ok) return;
-    const release = await response.json();
-    releaseAssets = Array.isArray(release.assets) ? release.assets : [];
+    // Same-origin: the Worker resolves the release on GitHub's side, so the
+    // visitor's network only has to reach the site it is already reading.
+    const response = await fetch("/api/github", { headers: { Accept: "application/json" } });
+    if (response.ok) {
+      const data = await response.json();
+      releaseAssets = Array.isArray(data.assets) ? data.assets : [];
+    }
   } catch {
-    // Offline or rate-limited: the placeholder links already point somewhere useful.
+    // Offline or blocked: the placeholder links already point somewhere useful.
   }
   applyLanguage();
 }
@@ -176,6 +177,6 @@ resolvePlatform()
   })
   .then(() => {
     renderDownloadCopy();
-    loadRelease();
+    loadGitHub();
   });
 loadStars();

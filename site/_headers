@@ -5,9 +5,9 @@
 # cached. A day for images and fonts is short enough that a replaced screenshot
 # does not linger, and long enough that a repeat visit costs almost nothing.
 #
-# The policy allows exactly what the page uses: its own files and the GitHub API
-# the star badge and release lookup call. There is no inline script or style, so
-# neither needs a hole.
+# The policy allows exactly what the page uses: its own files, the same-origin
+# endpoint that resolves releases, and the GitHub API the star badge calls.
+# There is no inline script or style, so neither needs a hole.
 /*
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self' https://api.github.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'
   X-Frame-Options: DENY
