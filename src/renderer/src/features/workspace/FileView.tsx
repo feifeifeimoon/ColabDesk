@@ -378,6 +378,14 @@ export function FileViewPanel({
     setFrontMatter(read?.kind === "text" ? hasFrontMatter(read.text) : false);
   }, [read]);
 
+  // A new read is a new document. A fast read can resolve before the loading
+  // render commits, so the rich editor would never unmount on its own; the key
+  // makes it reopen from the text that actually arrived.
+  const [readRevision, setReadRevision] = useState(0);
+  useEffect(() => {
+    if (read !== null) setReadRevision((count) => count + 1);
+  }, [read]);
+
   useEffect(() => {
     if (!copied) return;
     const timer = setTimeout(() => setCopied(false), 2000);
@@ -555,7 +563,7 @@ export function FileViewPanel({
             {showRich && read.kind === "text" && (
               useRichEditor ? (
                 <Suspense fallback={<p className="hint">{t("editor.loadingRich", "加载富文本…")}</p>}>
-                  <RichMarkdownEditor markdown={liveText} editable onChange={onRichChange} />
+                  <RichMarkdownEditor key={readRevision} markdown={liveText} editable onChange={onRichChange} />
                 </Suspense>
               ) : (
                 <MarkdownPreview text={liveText} />
