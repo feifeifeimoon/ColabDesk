@@ -21,7 +21,7 @@ vi.mock("../store", () => ({
   useAppStore: (select: (state: unknown) => unknown) => select(store.current),
 }));
 
-import { TopBar } from "./AppShell";
+import { MAC_INSET, TopBar } from "./AppShell";
 
 const noop = () => {};
 
@@ -135,5 +135,9 @@ describe("the bar's left section", () => {
       const count = (side.match(/data-testid="(toggle-sidebar|open-settings)"/g) ?? []).length;
       expect(count).toBe(1);
     }
+  });
+
+  it("compensates the macOS traffic-light inset for page zoom", () => {
+    expect(MAC_INSET).toBe("calc(78px / var(--ui-zoom-factor, 1))");
   });
 });

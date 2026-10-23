@@ -40,6 +40,7 @@ export const IPC = {
   windowMinimize: "window:minimize",
   windowToggleMaximize: "window:toggleMaximize",
   windowClose: "window:close",
+  windowSyncTrafficLights: "window:syncTrafficLights",
   updateStatus: "update:status",
   updateCheck: "update:check",
   updateDownload: "update:download",

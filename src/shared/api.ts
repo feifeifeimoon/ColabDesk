@@ -180,6 +180,8 @@ export interface ColabDeskApi {
   toggleMaximizeWindow(): Promise<void>;
   closeWindow(): Promise<void>;
   onWindowMaximized(listener: (maximized: boolean) => void): () => void;
+  zoomFactor(): number;
+  syncTrafficLights(zoomFactor: number): void;
 
   /**
    * The updater's current state. Read once on mount — a panel that only listened

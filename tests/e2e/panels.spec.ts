@@ -224,3 +224,31 @@ test("文件面板收到最窄时，图标工具栏仍完整地留在面板里",
     .evaluate((element) => element.scrollWidth - element.clientWidth);
   expect(overflow, "头部横向溢出").toBeLessThanOrEqual(0);
 });
+
+test("页面缩放时，左上角图标在物理窗口像素中始终避开原生红绿灯", async ({ app, page }) => {
+  for (const factor of [0.6, 1.4, 1]) {
+    await app.evaluate(({ BrowserWindow }, nextFactor) => {
+      BrowserWindow.getAllWindows()[0]?.webContents.setZoomFactor(nextFactor);
+    }, factor);
+
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          Number.parseFloat(document.documentElement.style.getPropertyValue("--ui-zoom-factor")),
+        ),
+      )
+      .toBeCloseTo(factor, 2);
+
+    if (process.platform === "darwin") {
+      const physicalLeft = await page
+        .locator(".topbar__brand")
+        .evaluate((el, z) => el.getBoundingClientRect().left * z, factor);
+      expect(physicalLeft).toBeCloseTo(CHROME_INSET, 0);
+
+      const buttonPos = await app.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0]?.getWindowButtonPosition(),
+      );
+      expect(buttonPos).toEqual({ x: 14, y: Math.round(20 * factor - 6) });
+    }
+  }
+});
