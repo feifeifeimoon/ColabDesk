@@ -36,14 +36,6 @@ function surface(page: Page, name: string): Locator {
   return pane(page, name).locator(".cm-content");
 }
 
-async function scrollSurface(page: Page, name: string, where: "middle" | "bottom"): Promise<void> {
-  await pane(page, name)
-    .locator(".cm-scroller")
-    .evaluate((element, target) => {
-      element.scrollTop = target === "bottom" ? element.scrollHeight : element.scrollHeight / 2;
-    }, where);
-}
-
 test("双击把文件开成一个标签，和终端并排", async ({ page }) => {
   await openSession(page, "e2e-alpha");
   await expect(page.getByRole("tab")).toHaveCount(1);
@@ -214,7 +206,14 @@ test("超限的日志：只给开头与结尾，省略处以文字交代，且�
   await expect(filePane.locator(".cm-searchMatch")).toHaveCount(1);
   await expect(surface(page, "train.log")).toContainText("省略");
   await page.keyboard.press("Escape");
-  await scrollSurface(page, "train.log", "bottom");
+  // The tail is the other half of the truncation promise. Find reaches it
+  // without depending on scroll heights: the document is long, and CodeMirror
+  // measures it while painting, so a direct scroll can stop short.
+  await filePane.locator(".cm-content").click();
+  await page.keyboard.press(`${MOD}+f`);
+  await page.keyboard.type("training done");
+  await page.keyboard.press("Enter");
+  await expect(filePane.locator(".cm-searchMatch")).toHaveCount(1);
   await expect(surface(page, "train.log")).toContainText("training done");
 });
 
