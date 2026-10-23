@@ -2,6 +2,7 @@
 // Pure so the formatting is testable.
 
 export const GITHUB = {
+  origin: "https://github.com",
   api: "https://api.github.com",
   repo: "feifeifeimoon/ColabDesk",
   releasesPage: "https://github.com/feifeifeimoon/ColabDesk/releases/latest",

@@ -1,11 +1,16 @@
 {
-  // The site is plain static files; there is no Worker script. Cloudflare's
-  // Workers Builds runs `npx wrangler deploy` and uploads this directory as the
-  // Worker's assets. `_headers` inside it is read by the platform, not served.
+  // The site is static except for one same-origin endpoint: `/api/github`
+  // resolves the latest release server-side, so a visitor whose network cannot
+  // reach api.github.com still gets direct download links. Cloudflare's Workers
+  // Builds runs `npx wrangler deploy`; `_headers` inside the assets directory
+  // is read by the platform, not served.
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "colabdesk",
+  "main": "./site/worker.js",
   "compatibility_date": "2026-10-20",
   "assets": {
-    "directory": "./site"
+    "directory": "./site",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
   }
 }
