@@ -60,10 +60,77 @@ test("双击把文件开成一个标签，和终端并排", async ({ page }) => 
   await expect(filePane).toBeVisible();
   await expect(filePane).toContainText("/content/README.txt");
   await expect(surface(page, "README.txt")).toContainText("ColabDesk E2E runtime.");
-  // A file that fits: line numbers are on, and there is a way out that is not
-  // an editor yet.
+  // A file that fits: line numbers are on; the path is the copy affordance.
   await expect(filePane.locator(".cm-gutters")).toHaveCount(1);
-  await expect(filePane.getByRole("button", { name: "下载到本地" })).toBeVisible();
+  await expect(filePane.locator('[data-testid="file-path-copy"]')).toBeVisible();
+});
+
+test("单击文件名复制完整路径", async ({ app, page }) => {
+  await openSession(page, "e2e-alpha");
+  await rowButton(page, "README.txt").dblclick();
+
+  const filePane = pane(page, "README.txt");
+  await filePane.locator('[data-testid="file-path-copy"]').click();
+  await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readText())).toBe(
+    "/content/README.txt",
+  );
+  await expect(filePane).toContainText("已复制");
+});
+
+test("Markdown opens with its syntax highlighted", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await rowButton(page, "README.md").dblclick();
+
+  const filePane = pane(page, "README.md");
+  await expect(filePane).toBeVisible();
+  await expect(surface(page, "README.md")).toContainText("ColabDesk runtime guide");
+
+  // The stable classes come from the design-token highlight style; finding
+  // them proves the Markdown language was mounted, not just the text.
+  await expect(filePane.locator(".cm-syntax-heading").first()).toBeVisible();
+  await expect(filePane.locator(".cm-syntax-strong").first()).toBeVisible();
+  await expect(filePane.locator(".cm-syntax-link").first()).toBeVisible();
+  // A fenced block names its own language; the same map loads its parser.
+  await expect(filePane.locator(".cm-syntax-string").first()).toBeVisible();
+
+  // Rich is the editable side: a Tiptap surface with its own toolbar, and the
+  // source stays mounted (hidden) so switching back keeps the buffer.
+  await filePane.locator('[data-testid="markdown-view-rich"]').click();
+  const rich = filePane.locator(".rich-markdown-content");
+  await expect(rich).toBeVisible();
+  await expect(filePane.getByRole("toolbar", { name: "格式" })).toBeVisible();
+  await expect(filePane.getByRole("button", { name: "粗体" })).toBeVisible();
+  await expect(rich.locator("h1")).toContainText("ColabDesk runtime guide");
+  await expect(rich.locator("strong")).toHaveText("Markdown");
+  await expect(rich.locator("a")).toHaveAttribute("href", "https://colabdesk.dev");
+  await expect(rich.locator("pre code")).toContainText("print('hello from a fence')");
+  await expect(filePane.locator(".file-area__source")).toBeHidden();
+
+  await filePane.locator('[data-testid="markdown-view-source"]').click();
+  await expect(filePane.locator(".cm-content")).toBeVisible();
+});
+
+test("富文本工具栏把 Markdown 写回源码", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await rowButton(page, "README.md").dblclick();
+
+  const filePane = pane(page, "README.md");
+  await filePane.locator('[data-testid="markdown-view-rich"]').click();
+  const rich = filePane.locator(".rich-markdown-content");
+  await expect(rich).toBeVisible();
+
+  // A collapsed cursor with Bold active types bold text; the markdown is then
+  // serialized back into the CodeMirror buffer the pane saves from.
+  await rich.click();
+  await page.keyboard.press(`${MOD}+End`);
+  await page.keyboard.press("Enter");
+  await filePane.getByRole("button", { name: "粗体" }).click();
+  await page.keyboard.type("TOOLBAR");
+  await expect(rich.locator("strong", { hasText: "TOOLBAR" })).toHaveText("TOOLBAR");
+
+  await filePane.locator('[data-testid="markdown-view-source"]').click();
+  await expect(filePane.locator(".cm-content")).toContainText("**TOOLBAR**");
+  await expect(filePane.locator('[data-testid="save-file"]')).toBeVisible();
 });
 
 test("单击只选中：不开标签，也不下载", async ({ page, sandbox }) => {
@@ -132,14 +199,21 @@ test("超限的日志：只给开头与结尾，省略处以文字交代，且�
 
   const filePane = pane(page, "train.log");
   await expect(filePane).toContainText("文件较大（2.8 MB），仅显示开头与结尾。");
-  await expect(filePane).toContainText("只读");
   await expect(filePane.getByRole("button", { name: "保存" })).toHaveCount(0);
   // Line numbers would be fiction after the gap, so the gutter is gone.
   await expect(filePane.locator(".cm-gutters")).toHaveCount(0);
 
   await expect(surface(page, "train.log")).toContainText("training begins");
-  await scrollSurface(page, "train.log", "middle");
+  // The gap marker is not at a fixed scroll position once lines wrap; the
+  // editor's own find puts it in view. "MB" occurs in the marker and nowhere
+  // in the log, and is ASCII, which a plain input can type.
+  await filePane.locator(".cm-content").click();
+  await page.keyboard.press(`${MOD}+f`);
+  await page.keyboard.type("MB");
+  await page.keyboard.press("Enter");
+  await expect(filePane.locator(".cm-searchMatch")).toHaveCount(1);
   await expect(surface(page, "train.log")).toContainText("省略");
+  await page.keyboard.press("Escape");
   await scrollSurface(page, "train.log", "bottom");
   await expect(surface(page, "train.log")).toContainText("training done");
 });
@@ -173,8 +247,11 @@ test("二进制文件只给一个出口：下载", async ({ page }) => {
 
   const filePane = pane(page, "blob.bin");
   await expect(filePane).toContainText("二进制文件无法预览");
-  await expect(filePane.getByRole("button", { name: "下载到本地" })).toBeVisible();
   await expect(filePane.locator(".cm-content")).toHaveCount(0);
+  // Download lives in the file row's menu; the header stays for viewing.
+  await row(page, "blob.bin").getByRole("button", { name: "blob.bin 的操作" }).click();
+  await expect(page.getByRole("menuitem", { name: "下载" })).toBeVisible();
+  await page.keyboard.press("Escape");
 });
 
 test("不是 UTF-8 的文件能读，但只说能看", async ({ page }) => {
@@ -183,12 +260,11 @@ test("不是 UTF-8 的文件能读，但只说能看", async ({ page }) => {
 
   const filePane = pane(page, "legacy.txt");
   await expect(filePane).toContainText("不是有效的 UTF-8 文本");
-  await expect(filePane).toContainText("只读");
   await expect(surface(page, "legacy.txt")).toBeVisible();
   await expect(filePane.getByRole("button", { name: "保存" })).toHaveCount(0);
 });
 
-test("改了就存：未保存的标记、Ctrl+S 写回，重开是远端的新内容", async ({ page }) => {
+test("改了就存：标签上的点、Ctrl+S 写回，重开是远端的新内容", async ({ page }) => {
   await openSession(page, "e2e-alpha");
   await rowButton(page, "README.txt").dblclick();
   const filePane = pane(page, "README.txt");
@@ -197,15 +273,14 @@ test("改了就存：未保存的标记、Ctrl+S 写回，重开是远端的新�
   await filePane.locator(".cm-content").click();
   await page.keyboard.type("EDITED");
 
-  await expect(filePane).toContainText("未保存");
+  await expect(filePane.locator('[data-testid="save-file"]')).toBeVisible();
   await expect(fileTab(page, "README.txt").locator(".session-tab__dot")).toHaveCount(1);
 
   await page.keyboard.press(`${MOD}+s`);
 
-  // Wait for the write to land (the button is disabled while it is in flight
-  // too), then read the state it left behind.
-  await expect(filePane).not.toContainText("未保存");
-  await expect(filePane.locator('[data-testid="save-file"]')).toBeDisabled();
+  // Wait for the write to land (the button disappears with the dirty flag),
+  // then read the state it left behind.
+  await expect(filePane.locator('[data-testid="save-file"]')).toHaveCount(0);
   await expect(fileTab(page, "README.txt").locator(".session-tab__dot")).toHaveCount(0);
   // The tree shows what the runtime has now: six more bytes than the fixture.
   await expect(row(page, "README.txt")).toContainText("51 B");
@@ -226,7 +301,8 @@ test("远端先变了：保存不静默覆盖，问到答案才写", async ({ ap
   const filePane = pane(page, "README.txt");
   await filePane.locator(".cm-content").click();
   await page.keyboard.type("MINE");
-  await expect(filePane).toContainText("未保存");
+  await expect(filePane.locator('[data-testid="save-file"]')).toBeVisible();
+  await expect(fileTab(page, "README.txt").locator(".session-tab__dot")).toHaveCount(1);
 
   // Someone else writes the file — the upload path is the one the app has.
   const replacement = join(sandbox, "README.txt");
@@ -240,11 +316,13 @@ test("远端先变了：保存不静默覆盖，问到答案才写", async ({ ap
   await page.keyboard.press(`${MOD}+s`);
 
   await expect(filePane).toContainText("文件已在服务器上更改");
-  await expect(filePane).toContainText("未保存");
+  await expect(filePane.getByRole("dialog", { name: "覆盖「README.txt」？" })).toBeVisible();
+  await expect(fileTab(page, "README.txt").locator(".session-tab__dot")).toHaveCount(1);
   await filePane.getByRole("button", { name: "覆盖" }).click();
 
   await expect(filePane).not.toContainText("文件已在服务器上更改");
-  await expect(filePane.locator('[data-testid="save-file"]')).toBeDisabled();
+  await expect(filePane.locator(".dialog")).toHaveCount(0);
+  await expect(filePane.locator('[data-testid="save-file"]')).toHaveCount(0);
   // The copy that won is the one the person chose.
   await page.getByRole("button", { name: "关闭 README.txt" }).click();
   await rowButton(page, "README.txt").dblclick();
@@ -260,17 +338,22 @@ test("有未保存的修改时，关标签先问一句；不保存就真的没�
   const filePane = pane(page, "README.txt");
   await filePane.locator(".cm-content").click();
   await page.keyboard.type("XX");
-  await expect(filePane).toContainText("未保存");
+  await expect(filePane.locator('[data-testid="save-file"]')).toBeVisible();
+  await expect(fileTab(page, "README.txt").locator(".session-tab__dot")).toHaveCount(1);
 
   await page.getByRole("button", { name: "关闭 README.txt" }).click();
-  await expect(filePane).toContainText("有未保存的修改");
-  await filePane.getByRole("button", { name: "取消" }).click();
+  await expect(filePane.getByRole("dialog", { name: "关闭「README.txt」？" })).toBeVisible();
+  await filePane
+    .getByRole("dialog", { name: "关闭「README.txt」？" })
+    .getByRole("button", { name: "关闭", exact: true })
+    .click();
+  await expect(filePane.locator(".dialog")).toHaveCount(0);
   await expect(fileTab(page, "README.txt")).toBeVisible();
   await expect(surface(page, "README.txt")).toContainText("XX");
 
   // The keyboard's way of closing asks the same question.
   await page.keyboard.press(`${MOD}+Shift+W`);
-  await expect(filePane).toContainText("有未保存的修改");
+  await expect(filePane.getByRole("dialog", { name: "关闭「README.txt」？" })).toBeVisible();
   await filePane.getByRole("button", { name: "不保存" }).click();
 
   await expect(fileTab(page, "README.txt")).toHaveCount(0);
@@ -299,11 +382,11 @@ test("保存还在路上时继续输入：那些字仍然是未保存的", async
   // something to save — a pane that called the second edit saved would leave it
   // disabled for good.
   await expect(filePane.locator('[data-testid="save-file"]')).toBeEnabled();
-  await expect(filePane).toContainText("未保存");
 
   // The second save carries both edits.
   await page.keyboard.press(`${MOD}+s`);
-  await expect(filePane).not.toContainText("未保存");
+  await expect(filePane.locator('[data-testid="save-file"]')).toHaveCount(0);
+  await expect(fileTab(page, "big.txt").locator(".session-tab__dot")).toHaveCount(0);
 });
 
 test("不可写的文件：说明白，也不给保存", async ({ page }) => {
@@ -311,7 +394,6 @@ test("不可写的文件：说明白，也不给保存", async ({ page }) => {
   await rowButton(page, "locked.cfg").dblclick();
 
   const filePane = pane(page, "locked.cfg");
-  await expect(filePane).toContainText("只读");
   await expect(filePane).toContainText("文件不可写");
   await expect(filePane.locator('[data-testid="save-file"]')).toHaveCount(0);
   await expect(surface(page, "locked.cfg")).toContainText("seed=1");

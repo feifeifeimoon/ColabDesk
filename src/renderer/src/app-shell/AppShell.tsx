@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, IconButton } from "../components/ui/Button";
@@ -612,39 +611,5 @@ export function StatusBar() {
         </span>
       </div>
     </footer>
-  );
-}
-
-/** Centered modal for a surface that is genuinely a detour — a form, a question. */
-export function Dialog({
-  title,
-  onClose,
-  children,
-  footer,
-}: {
-  title: ReactNode;
-  onClose: () => void;
-  children: ReactNode;
-  footer?: ReactNode;
-}) {
-  const { t } = useTranslation();
-  return (
-    <div
-      className="dialog-backdrop"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <div className="dialog" role="dialog" aria-modal="true" aria-label={String(title)}>
-        <header className="dialog__head">
-          <h2 className="dialog__title">{title}</h2>
-          <IconButton label={t("dialog.close", "关闭")} variant="ghost" size="sm" onClick={onClose}>
-            <CloseIcon />
-          </IconButton>
-        </header>
-        <div className="dialog__body">{children}</div>
-        {footer ? <footer className="dialog__footer">{footer}</footer> : null}
-      </div>
-    </div>
   );
 }

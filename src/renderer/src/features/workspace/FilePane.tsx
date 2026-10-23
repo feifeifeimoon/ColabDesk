@@ -15,7 +15,7 @@ import {
   SyncIcon,
 } from "../../components/ui/icons";
 import { Callout } from "../../components/ui/Notice";
-import { Dialog } from "../../app-shell/AppShell";
+import { Dialog } from "../../components/ui/Dialog";
 import { PanelDivider } from "../../components/ui/PanelDivider";
 import { ProgressBar } from "../../components/ui/ProgressBar";
 import { PANEL_WIDTH } from "../../lib/panel-width";
