@@ -6,8 +6,7 @@ on:
   push:
     tags: ["v*.*.*"]
 
-# electron-builder's GitHub publisher creates and uploads into the draft release;
-# every other job only reads.
+# `gh release upload` fills the draft release; every other job only reads it.
 permissions:
   contents: write
 
@@ -203,8 +202,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # electron-builder's publisher is known to rewrite the prerelease flag;
-          # assert the state we want rather than trusting the draft survived.
+          # Publish the checked draft, asserting the flags rather than trusting
+          # anything upstream.
           gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease=false --latest
 
       # Everything above checks the assets as GitHub stores them. This is the
