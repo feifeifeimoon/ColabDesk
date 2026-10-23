@@ -30,6 +30,7 @@ export function ContextMenu({
 }) {
   const listRef = useRef<HTMLDivElement | null>(null);
   const restoreFocus = useRef(false);
+  const selected = useRef(false);
   const [position, setPosition] = useState(point);
 
   // Measure before paint, then keep the menu inside the window: a right-click
@@ -97,7 +98,20 @@ export function ContextMenu({
 
   useEffect(
     () => () => {
-      if (restoreFocus.current) returnFocus?.focus();
+      if (restoreFocus.current) {
+        returnFocus?.focus();
+        return;
+      }
+      if (!selected.current) return;
+      // An action that opens a dialog, an input or a focused tab may already
+      // have taken the keyboard during the same commit. Only fall back to the
+      // row when nothing else did — Copy path and Refresh have no surface of
+      // their own, and dropping focus to <body> loses the tree.
+      queueMicrotask(() => {
+        if (document.activeElement === null || document.activeElement === document.body) {
+          returnFocus?.focus();
+        }
+      });
     },
     [returnFocus],
   );
@@ -109,7 +123,10 @@ export function ContextMenu({
       style={{ left: position.x, top: position.y }}
       label={label}
       items={items}
-      onSelect={onClose}
+      onSelect={() => {
+        selected.current = true;
+        onClose();
+      }}
     />,
     document.body,
   );

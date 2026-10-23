@@ -8,7 +8,15 @@
  */
 
 import type { Locator, Page } from "@playwright/test";
-import { enableFileSizes, expect, focusTerminal, openSession, test } from "./app-launch";
+import {
+  enableFileSizes,
+  expect,
+  focusTerminal,
+  MOD,
+  openSession,
+  test,
+  withClipboardLock,
+} from "./app-launch";
 
 function row(page: Page, name: string): Locator {
   return page.locator(".file-row").filter({ hasText: name });
@@ -142,6 +150,38 @@ test("根行可以用键盘打开菜单，新建入口在菜单里", async ({ pa
 
   await page.keyboard.press("Escape");
   await expect(page.getByRole("treeitem").first()).toBeFocused();
+});
+
+test("从顶层行按左键回到根行", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await rowButton(page, "README.txt").focus();
+
+  await page.keyboard.press("ArrowLeft");
+
+  await expect(page.getByRole("treeitem").first()).toBeFocused();
+});
+
+test("菜单项选中后，焦点回到原来的行", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await rowButton(page, "README.txt").focus();
+
+  await withClipboardLock(async () => {
+    await page.keyboard.press("Shift+F10");
+    await page.getByRole("menuitem", { name: "复制路径" }).click();
+  });
+
+  await expect(rowButton(page, "README.txt")).toBeFocused();
+});
+
+test("打开设置后，右键菜单不会浮在设置页上", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await row(page, "README.txt").click({ button: "right" });
+  await expect(page.getByRole("menuitem", { name: "打开" })).toBeVisible();
+
+  await page.keyboard.press(`${MOD}+,`);
+
+  await expect(page.locator('[data-testid="settings-page"]')).toBeVisible();
+  await expect(page.getByRole("menuitem")).toHaveCount(0);
 });
 
 test("打开的文件在树里标出当前行", async ({ page }) => {

@@ -30,6 +30,7 @@ import { ProgressBar } from "../../components/ui/ProgressBar";
 import { PANEL_WIDTH } from "../../lib/panel-width";
 import { childPath, projectRows, type Listing, type Row } from "./file-tree";
 import { makeRequestTokens } from "./request-tokens";
+import { mergeTransferProgress } from "./transfer-list";
 import { useAppStore } from "../../store";
 import { selectActiveFilePath } from "../../store/selectors";
 
@@ -132,9 +133,12 @@ export function FilePane({
   const showFileSizes = useAppStore((state) => state.showFileSizes);
   const setShowFileSizes = useAppStore((state) => state.setShowFileSizes);
   const activeFilePath = useAppStore((state) => selectActiveFilePath(state, session));
+  const settingsOpen = useAppStore((state) => state.settingsOpen);
+  const setupOpen = useAppStore((state) => state.creation.open);
 
   const panelRef = useRef<HTMLElement | null>(null);
   const treeRef = useRef<HTMLUListElement | null>(null);
+  const newEntryInput = useRef<HTMLInputElement | null>(null);
   const hoverTimer = useRef<number | null>(null);
 
   const open = useMemo(() => new Set(expanded ?? []), [expanded]);
@@ -246,12 +250,7 @@ export function FilePane({
   useEffect(() => {
     return api.onTransferProgress((progress) => {
       if (progress.session !== session) return;
-      setTransfers((current) => {
-        const next = current.filter((item) => item.id !== progress.id);
-        // Newest first: a finished batch should not push the running row out of
-        // the visible strip.
-        return [progress, ...next].slice(0, 6);
-      });
+      setTransfers((current) => mergeTransferProgress(current, progress));
     });
   }, [session]);
 
@@ -273,11 +272,18 @@ export function FilePane({
     setFocused(firstFocusable);
   }, [focused, rows, firstFocusable]);
 
-  // The context menu is portalled out of the panel; hiding the pane would leave
-  // it floating over whatever is on screen instead.
+  // The context menu is portalled out of the panel. Hiding the pane, opening
+  // settings or opening the setup console would leave it floating above the
+  // layer that just took over.
   useEffect(() => {
-    if (!visible) setMenu(null);
-  }, [visible]);
+    if (!visible || settingsOpen || setupOpen) setMenu(null);
+  }, [visible, settingsOpen, setupOpen]);
+
+  // Switching between "new file" and "new folder" for the same directory keeps
+  // the same input node, so `autoFocus` alone would not fire again.
+  useEffect(() => {
+    if (newEntry) newEntryInput.current?.focus();
+  }, [newEntry]);
 
   /**
    * Opens what is closed and refreshes what is open — the root and every open
@@ -441,7 +447,7 @@ export function FilePane({
         return;
       }
       const up = parentPath(row.path);
-      if (up !== row.path && up !== TREE_ROOT) focusRow(up);
+      if (up !== row.path) focusRow(up);
       return;
     }
     if (event.key === "Home" || event.key === "End") {
@@ -498,6 +504,11 @@ export function FilePane({
     } finally {
       setBusy(null);
       await refresh();
+      // The upload target may be collapsed while its listing is still cached:
+      // `refresh` only re-reads the root and open directories, and reopening
+      // the folder later would otherwise show the listing from before the
+      // upload. Re-read the one directory the upload definitely changed.
+      if (remoteDir !== TREE_ROOT && !open.has(remoteDir)) await load(remoteDir);
     }
   }
 
@@ -657,6 +668,14 @@ export function FilePane({
     setNewEntry({ parent, kind });
     setEntryName("");
     if (parent !== TREE_ROOT && !open.has(parent)) loadThenOpen(parent);
+  }
+
+  /** Closes the form and hands the keyboard back to the directory row. */
+  function cancelCreate(): void {
+    const parent = newEntry?.parent;
+    setNewEntry(null);
+    setEntryName("");
+    if (parent) focusRow(parent);
   }
 
   /** Dropped files land in the row under the pointer, or at the root. */
@@ -1030,11 +1049,11 @@ export function FilePane({
                     if (event.key !== "Escape") return;
                     event.preventDefault();
                     event.stopPropagation();
-                    setNewEntry(null);
-                    setEntryName("");
+                    cancelCreate();
                   }}
                 >
                   <input
+                    ref={newEntryInput}
                     className="input"
                     data-testid="new-entry-name"
                     aria-label={entryPlaceholder}
@@ -1056,10 +1075,7 @@ export function FilePane({
                     variant="ghost"
                     size="sm"
                     label={t("files.cancel", "取消")}
-                    onClick={() => {
-                      setNewEntry(null);
-                      setEntryName("");
-                    }}
+                    onClick={cancelCreate}
                   >
                     <CloseIcon />
                   </IconButton>

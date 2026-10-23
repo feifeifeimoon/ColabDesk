@@ -240,6 +240,25 @@ test("传输中按取消，行里说已取消，文件没有落地", async ({ pa
   await expect(page.locator(".file-row").filter({ hasText: ".part-" })).toHaveCount(0);
 });
 
+test("上传到已收起但有缓存的文件夹，重新打开能看到新文件", async ({ page, sandbox }) => {
+  const source = join(sandbox, "e2e-into-data.txt");
+  writeFileSync(source, "inside\n");
+  plantDialogAnswer(sandbox, "open", [source]);
+
+  await openSession(page, "e2e-alpha");
+  await row(page, "data").locator(".file-row__row").click();
+  await expect(row(page, "sample.csv")).toHaveCount(1);
+  await row(page, "data").locator(".file-row__row").click();
+  await expect(row(page, "sample.csv")).toHaveCount(0);
+
+  await openRowMenu(page, "data");
+  await page.getByRole("menuitem", { name: "上传文件到此处", exact: true }).click();
+  await expect(page.locator(".files-panel:visible .transfer__state")).toHaveText("完成");
+
+  await row(page, "data").locator(".file-row__row").click();
+  await expect(row(page, "e2e-into-data.txt")).toHaveCount(1);
+});
+
 test("一个会话的传输不出现在另一个会话的面板里", async ({ page, sandbox }) => {
   const source = join(sandbox, "e2e-alpha-only.txt");
   writeFileSync(source, "alpha\n");
@@ -279,4 +298,21 @@ test("新建文件夹的输入框里，方向键归输入框", async ({ page }) 
 
   await expect(input).toBeFocused();
   expect(await input.evaluate((element) => (element as HTMLInputElement).selectionStart)).toBe(4);
+});
+
+test("新建输入框切换类型仍有焦点，Esc 后回到目录行", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await newEntry(page, "file", "data");
+
+  const input = page.locator('[data-testid="new-entry-name"]');
+  await expect(input).toBeFocused();
+  await expect(input).toHaveAttribute("placeholder", "新文件名称");
+
+  await openRowMenu(page, "data");
+  await page.getByRole("menuitem", { name: "在此新建文件夹", exact: true }).click();
+  await expect(input).toBeFocused();
+  await expect(input).toHaveAttribute("placeholder", "新文件夹名称");
+
+  await page.keyboard.press("Escape");
+  await expect(row(page, "data").locator(".file-row__row")).toBeFocused();
 });
