@@ -6,8 +6,7 @@ on:
   push:
     tags: ["v*.*.*"]
 
-# electron-builder's GitHub publisher creates and uploads into the draft release;
-# every other job only reads.
+# `gh release upload` fills the draft release; every other job only reads it.
 permissions:
   contents: write
 
@@ -114,14 +113,45 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Package and upload into the draft
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Package locally and hand the upload to `gh release upload` below.
+      # `electron-builder --publish always` has two bugs that reinforce each
+      # other on a fresh tag: its `GET /repos/:owner/:repo/releases` does not
+      # see the draft opened by `gh release create --draft`, and
+      # `PublishManager.getOrCreatePublisher` races when the first archive and
+      # its `.blockmap` finish in the same tick — so two `GitHubPublisher`
+      # instances both call `POST /releases` and split the assets across two
+      # duplicate releases.
+      - name: Package without publishing
         run: >-
           npx electron-builder
           --config config/electron-builder.config.cjs
           ${{ matrix.args }}
-          --publish always
+          --publish never
+
+      - name: Upload assets into the draft release
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(
+            dist/colabdesk-setup-*-x64.exe
+            dist/colabdesk-*-x64.dmg
+            dist/colabdesk-*-arm64.dmg
+            dist/colabdesk-*-x64.zip
+            dist/colabdesk-*-arm64.zip
+            dist/*.blockmap
+            dist/latest*.yml
+          )
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "no release assets found in dist/" >&2
+            ls -la dist >&2
+            exit 1
+          fi
+          printf 'uploading: %s\n' "${files[@]}"
+          gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber
 
       - name: Keep the metadata for the asset check
         uses: actions/upload-artifact@v7
@@ -172,8 +202,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # electron-builder's publisher is known to rewrite the prerelease flag;
-          # assert the state we want rather than trusting the draft survived.
+          # Publish the checked draft, asserting the flags rather than trusting
+          # anything upstream.
           gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease=false --latest
 
       # Everything above checks the assets as GitHub stores them. This is the
