@@ -28,6 +28,7 @@ import { normalizeUiLanguage, type UiLanguage } from "@shared/ui-language";
 import type { AppState, PreferencesSlice } from "../types";
 
 const LANGUAGE_KEY = "colabdesk.language";
+const FILE_SIZES_KEY = "colabdesk.files.showSizes";
 
 const PANEL_WIDTH_KEYS: Record<PanelSide, string> = {
   sidebar: "colabdesk.panel.sidebarWidth",
@@ -48,6 +49,15 @@ function readPanelWidth(side: PanelSide): number {
   return Number.isFinite(stored) ? clampPanelWidth(side, stored) : PANEL_WIDTH[side].initial;
 }
 
+/** The name is the row's point; sizes are opt-in. */
+function readShowFileSizes(): boolean {
+  try {
+    return localStorage.getItem(FILE_SIZES_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
 export const createPreferencesSlice: StateCreator<AppState, [], [], PreferencesSlice> = (set, get) => {
   const theme = readThemePreference();
   const terminal = readTerminalAppearance();
@@ -64,6 +74,7 @@ export const createPreferencesSlice: StateCreator<AppState, [], [], PreferencesS
     sidebarOpen: true,
     filesOpen: true,
     panelWidths: { sidebar: readPanelWidth("sidebar"), files: readPanelWidth("files") },
+    showFileSizes: readShowFileSizes(),
 
     /** An explicit choice, which from then on outranks the OS. */
     setTheme: (preference) => {
@@ -112,6 +123,15 @@ export const createPreferencesSlice: StateCreator<AppState, [], [], PreferencesS
       const clamped = clampPanelWidth(side, width);
       localStorage.setItem(PANEL_WIDTH_KEYS[side], String(clamped));
       set({ panelWidths: { ...get().panelWidths, [side]: clamped } });
+    },
+
+    setShowFileSizes: (show) => {
+      try {
+        localStorage.setItem(FILE_SIZES_KEY, String(show));
+      } catch {
+        // ignore storage quota/disabled errors
+      }
+      set({ showFileSizes: show });
     },
   };
 };

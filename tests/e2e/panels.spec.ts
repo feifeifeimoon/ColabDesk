@@ -202,3 +202,25 @@ test("没有打开的终端时，右边栏开关不出现", async ({ page }) => 
 
   await expect(page.locator('[data-testid="toggle-files"]')).toBeVisible();
 });
+
+test("文件面板收到最窄时，图标工具栏仍完整地留在面板里", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  // The seam is the panel's left edge: dragging it right narrows the panel.
+  await dragDivider(page, "文件面板宽度", 200);
+
+  const panel = await page.locator(".files-panel").boundingBox();
+  expect(panel?.width).toBeCloseTo(220, 0);
+
+  const actions = await page.locator(".files-panel .pane__actions").boundingBox();
+  expect(actions, "工具栏没有布局盒").not.toBeNull();
+  expect(actions?.x ?? 0).toBeGreaterThanOrEqual(panel?.x ?? 0);
+  expect((actions?.x ?? 0) + (actions?.width ?? 0)).toBeLessThanOrEqual(
+    (panel?.x ?? 0) + (panel?.width ?? 0),
+  );
+  await expect(page.locator(".files-panel .pane__actions > *").last()).toBeVisible();
+
+  const overflow = await page
+    .locator(".files-panel .pane__head")
+    .evaluate((element) => element.scrollWidth - element.clientWidth);
+  expect(overflow, "头部横向溢出").toBeLessThanOrEqual(0);
+});

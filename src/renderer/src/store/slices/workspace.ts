@@ -219,6 +219,12 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
         return { expandedDirs: { ...current.expandedDirs, [session]: next } };
       }),
 
+    collapseAllDirectories: (session) =>
+      set((current) => {
+        if ((current.expandedDirs[session] ?? []).length === 0) return current;
+        return { expandedDirs: { ...current.expandedDirs, [session]: [] } };
+      }),
+
     forgetDirectory: (session, path) =>
       set((current) => {
         const expanded = current.expandedDirs[session] ?? [];

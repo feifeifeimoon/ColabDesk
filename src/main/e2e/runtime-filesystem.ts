@@ -173,6 +173,9 @@ export class RuntimeFilesystem {
     });
     content.entries.set("data", data);
 
+    // A link to a file: opening it must ask what it points at, not readdir it.
+    content.entries.set("README.link", { kind: "link", target: "/content/README.txt", mtime: now });
+
     // A link to that directory, so a listing has a link in it and deleting one
     // can be told apart from deleting what it points at.
     content.entries.set("mirror", { kind: "link", target: "/content/data", mtime: now });

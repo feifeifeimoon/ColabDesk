@@ -26,6 +26,7 @@ export const IPC = {
   termClose: "term:close",
   sftpList: "sftp:list",
   sftpStat: "sftp:stat",
+  sftpFollow: "sftp:follow",
   sftpReadText: "sftp:readText",
   sftpWriteText: "sftp:writeText",
   sftpMkdir: "sftp:mkdir",

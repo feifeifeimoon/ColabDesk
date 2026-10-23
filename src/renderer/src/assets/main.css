@@ -631,6 +631,18 @@ kbd {
   right: 0;
 }
 
+/* A context menu is placed at the pointer and portalled out of the tree, so it
+   is fixed rather than absolute and cannot be clipped by a scrolling listing. */
+.menu__list--fixed {
+  position: fixed;
+  top: auto;
+  left: auto;
+  z-index: 60;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+}
+
 .menu__item {
   display: flex;
   align-items: center;
@@ -668,6 +680,13 @@ kbd {
 .menu__icon {
   display: inline-flex;
   color: var(--mute);
+}
+
+/* The tick column is reserved for a checked and an unchecked toggle alike, so
+   the labels do not move when the switch flips. */
+.menu__check {
+  width: 14px;
+  justify-content: center;
 }
 
 .menu__item--danger .menu__icon {
@@ -3400,54 +3419,24 @@ textarea.input {
   box-shadow: inset 0 0 0 1px var(--link);
 }
 
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  flex-wrap: wrap;
-  padding: var(--space-2) var(--space-4);
-  border-bottom: 1px solid var(--hairline);
-  background: var(--canvas-soft);
-  font-family: var(--font-mono);
-  font-size: var(--text-caption);
-  flex-shrink: 0;
+/* The header is a dense toolbar: icon controls keep it inside the 220px floor
+   where three text labels would not. The one menu trigger matches their size. */
+.files-panel .pane__head .menu__trigger {
+  width: 28px;
+  height: 28px;
 }
 
-.crumb {
-  background: none;
-  border: none;
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-xs);
-  color: var(--body);
-  font: inherit;
-  cursor: pointer;
-}
-
-.crumb:hover {
-  background: var(--canvas);
-  color: var(--ink);
-}
-
-.crumb-sep {
-  color: var(--mute);
-}
-
-.crumb.up {
-  margin-left: auto;
-  color: var(--link);
-}
-
-.folder-form {
+.new-entry-form {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--hairline);
   background: var(--canvas-soft);
   flex-shrink: 0;
 }
 
-.folder-form .input {
+.new-entry-form .input {
   flex: 1;
 }
 
@@ -3463,11 +3452,14 @@ textarea.input {
 .file-row {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  /* The tree reads as one column: its interior gaps are the small step, not
+     the page's sibling step. */
+  gap: var(--space-1);
   /* Row height is the click target, and the floor the density rule sets: a
      directory of forty files reads as a list, not as forty buttons. */
   min-height: 28px;
-  /* The row's own left padding is the tree's indent, written per row. */
+  /* The row's own left padding is the tree's indent, written per row; the
+     first level starts at the panel's edge. */
   padding: 0 var(--space-3) 0 0;
 }
 
@@ -3478,15 +3470,32 @@ textarea.input {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
   background: none;
   border: none;
   padding: var(--space-1) 0;
   text-align: left;
   font: inherit;
-  font-size: var(--text-copy);
+  font-size: var(--text-label);
   color: var(--ink);
   cursor: pointer;
+}
+
+/* The root is a statement of where the tree starts, not a control: it has no
+   action of its own, so it must not look like a row that would do something. */
+.file-row__row--static {
+  cursor: default;
+}
+
+.file-row__name {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The root's path is a machine value; the shell lands at the same string. */
+.file-row__name--mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
 }
 
 /* The twisty keeps its column whether or not it draws: names line up across
@@ -3533,24 +3542,14 @@ textarea.input {
   background: var(--canvas-soft);
 }
 
-.file-row:hover {
-  background: var(--canvas-soft);
+/* The file tab in front, marked with the ink bar the top bar uses for "this is
+   the current one" — not a second kind of selection invented for the tree. */
+.file-row--active {
+  box-shadow: inset 2px 0 0 var(--ink);
 }
 
-.file-name {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  background: none;
-  border: none;
-  padding: 0;
-  text-align: left;
-  font: inherit;
-  font-size: var(--text-copy);
-  color: var(--ink);
-  cursor: pointer;
+.file-row--active .file-row__name {
+  font-weight: 500;
 }
 
 .file-size {
@@ -3561,17 +3560,39 @@ textarea.input {
   flex-shrink: 0;
 }
 
-.file-actions {
-  display: flex;
-  gap: var(--space-1);
-  flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 120ms ease;
+/* A directory's own empty and failure states live under its row, indented like
+   its children; the inset keeps them from reading as a sibling of the folder. */
+.file-empty {
+  padding: var(--space-3) var(--space-4);
 }
 
-.file-row:hover .file-actions,
-.file-actions:focus-within {
-  opacity: 1;
+.file-empty--nested {
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+}
+
+.file-empty--nested .empty {
+  padding: var(--space-3);
+  align-items: flex-start;
+  background: var(--canvas-soft);
+  font-size: var(--text-caption);
+  text-align: left;
+}
+
+.file-error {
+  padding: var(--space-2) var(--space-4);
+}
+
+.file-error .callout {
+  padding: var(--space-2) var(--space-3);
+  gap: var(--space-1);
+  font-size: var(--text-caption);
+}
+
+.file-error .callout .btn {
+  align-self: flex-start;
+  padding: 0;
+  height: auto;
 }
 
 .transfers {
@@ -3627,13 +3648,6 @@ textarea.input {
   height: 100%;
   background: var(--ink);
   transition: width 120ms linear;
-}
-
-.drop-hint {
-  padding: var(--space-3) var(--space-4);
-  border-top: 1px solid var(--hairline);
-  background: var(--canvas-soft);
-  flex-shrink: 0;
 }
 
 /* ---------- feature: login ---------- */

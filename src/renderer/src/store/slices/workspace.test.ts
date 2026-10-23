@@ -312,6 +312,18 @@ describe("the file tree's shape", () => {
     expect(store.getState().expandedDirs.alpha).toEqual(["/content/other"]);
   });
 
+  it("collapsing all closes every folder of one session only", () => {
+    const store = workspaceStore();
+    store.getState().toggleDirectory("alpha", "/content/data");
+    store.getState().toggleDirectory("alpha", "/content/data/deep");
+    store.getState().toggleDirectory("beta", "/content/other");
+
+    store.getState().collapseAllDirectories("alpha");
+
+    expect(store.getState().expandedDirs.alpha).toEqual([]);
+    expect(store.getState().expandedDirs.beta).toEqual(["/content/other"]);
+  });
+
   it("a changed count is a write", () => {
     const store = workspaceStore();
     store.getState().setTransferCount("alpha", 1);

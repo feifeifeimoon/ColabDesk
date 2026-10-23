@@ -50,6 +50,7 @@ const api: ColabDeskApi = {
 
   listDirectory: (session, path) => invoke(IPC.sftpList, { session, path }),
   statPaths: (session, paths) => invoke(IPC.sftpStat, { session, paths }),
+  followPath: (session, path) => invoke(IPC.sftpFollow, { session, path }),
   readTextFile: (session, path) => invoke(IPC.sftpReadText, { session, path }),
   writeTextFile: (request) => invoke(IPC.sftpWriteText, request),
   makeDirectory: (session, path) => invoke(IPC.sftpMkdir, { session, path }),

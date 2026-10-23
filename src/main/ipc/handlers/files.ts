@@ -19,6 +19,7 @@ import {
   nodeAt,
   removePath,
   removeQuietly,
+  statTarget,
 } from "../../ssh/sftp-ops";
 import {
   runTransfer,
@@ -192,6 +193,15 @@ export function registerFileHandlers({ ssh }: IpcContext): void {
 
   ipcMain.handle(IPC.sftpList, (_event, payload: { session: string; path: string }) =>
     withSftp(payload.session, (sftp) => listDirectory(sftp, payload.path)),
+  );
+
+  // Deliberately follows the link: the tree asks this only when a link is
+  // opened, and "a file link answered as a directory" is the bug it prevents.
+  ipcMain.handle(IPC.sftpFollow, (_event, payload: { session: string; path: string }) =>
+    withSftp(payload.session, async (sftp) => {
+      const node = await statTarget(sftp, payload.path);
+      return node ? { path: payload.path, type: node.type } : null;
+    }),
   );
 
   ipcMain.handle(IPC.sftpMkdir, (_event, payload: { session: string; path: string }) =>

@@ -152,6 +152,19 @@ export async function openSession(page: Page, name: string): Promise<void> {
 }
 
 /**
+ * Turns the optional size column on. Sizes are off by default, so a spec that
+ * reads one has to ask for it the way a person would.
+ */
+export async function enableFileSizes(page: Page): Promise<void> {
+  if ((await page.locator(".files-panel:visible .file-size").count()) > 0) return;
+  await page
+    .locator(".files-panel:visible")
+    .getByRole("button", { name: "更多文件操作" })
+    .click();
+  await page.getByRole("menuitemcheckbox", { name: "显示文件大小" }).click();
+}
+
+/**
  * The rows of the terminal the user is looking at. Scoped to the visible host
  * so the locator keeps naming one pane the day several are mounted at once.
  */
