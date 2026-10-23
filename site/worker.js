@@ -44,7 +44,7 @@ export async function latestTag(signal) {
   });
   if (response.status < 300 || response.status >= 400) return null;
   const location = response.headers.get("location") ?? "";
-  const match = /\/releases\/tag\/([^/?#]+)$/.exec(location);
+  const match = /\/releases\/tag\/([^/?#]+)(?:[?#]|$)/.exec(location);
   return match ? decodeURIComponent(match[1]) : null;
 }
 
@@ -61,8 +61,10 @@ export default {
     if (url.pathname !== "/api/github") return env.ASSETS.fetch(request);
 
     const cache = caches.default;
-    const key = new Request(url.toString(), { method: "GET" });
-    const cached = await cache.match(key);
+    // The answer does not depend on the query string: canonicalize it so
+    // `?cache-bust=1` cannot force a fresh upstream lookup per request.
+    const key = new Request(new URL("/api/github", url.origin).toString(), { method: "GET" });
+    const cached = await cache.match(key).catch(() => undefined);
     if (cached) return cached;
 
     const payload = await githubPayload();

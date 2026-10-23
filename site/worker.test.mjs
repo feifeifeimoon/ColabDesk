@@ -52,6 +52,10 @@ describe("the site's release endpoint", () => {
     vi.stubGlobal("fetch", vi.fn(async () => redirectTo(TAG_URL)));
     await expect(latestTag()).resolves.toBe(TAG);
 
+    // A query or fragment on the Location must not hide the tag.
+    vi.stubGlobal("fetch", vi.fn(async () => redirectTo(`${TAG_URL}?utm=1#notes`)));
+    await expect(latestTag()).resolves.toBe(TAG);
+
     vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 200 })));
     await expect(latestTag()).resolves.toBeNull();
   });
@@ -84,5 +88,63 @@ describe("the site's release endpoint", () => {
     const other = await worker.fetch(new Request("https://colabdesk.dev/index.html"), { ASSETS: assets }, ctx);
     expect(await other.text()).toBe("asset");
     expect(assets.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("serves a cached answer without calling upstream, whatever the query string", async () => {
+    const cached = Response.json({ assets: [{ name: "from-cache" }] });
+    const cache = { match: vi.fn(async () => cached), put: vi.fn() };
+    vi.stubGlobal("caches", { default: cache });
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+
+    const response = await worker.fetch(
+      new Request("https://colabdesk.dev/api/github?cache-bust=1"),
+      { ASSETS: { fetch: vi.fn() } },
+      { waitUntil: vi.fn() },
+    );
+
+    expect(await response.json()).toEqual({ assets: [{ name: "from-cache" }] });
+    expect(fetch).not.toHaveBeenCalled();
+    expect(cache.match.mock.calls[0][0].url).toBe("https://colabdesk.dev/api/github");
+  });
+
+  it("does not cache a failed lookup", async () => {
+    // A 200 with no redirect is the same answer as GitHub being unreachable:
+    // there is no tag to build assets from.
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 200 })));
+    const cache = { match: vi.fn(async () => undefined), put: vi.fn() };
+    vi.stubGlobal("caches", { default: cache });
+    const ctx = { waitUntil: vi.fn() };
+
+    const response = await worker.fetch(
+      new Request("https://colabdesk.dev/api/github"),
+      { ASSETS: { fetch: vi.fn() } },
+      ctx,
+    );
+
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({ assets: [] });
+    expect(cache.put).not.toHaveBeenCalled();
+    expect(ctx.waitUntil).not.toHaveBeenCalled();
+  });
+
+  it("falls through to upstream when the cache itself fails", async () => {
+    stubGitHub();
+    const cache = {
+      match: vi.fn(async () => {
+        throw new Error("cache unavailable");
+      }),
+      put: vi.fn(async () => {}),
+    };
+    vi.stubGlobal("caches", { default: cache });
+
+    const response = await worker.fetch(
+      new Request("https://colabdesk.dev/api/github"),
+      { ASSETS: { fetch: vi.fn() } },
+      { waitUntil: vi.fn() },
+    );
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).assets).toHaveLength(3);
   });
 });
