@@ -38,6 +38,7 @@ import { Dialog } from "../../components/ui/Dialog";
 import { SegmentedControl } from "../../components/ui/SegmentedControl";
 import { Callout } from "../../components/ui/Notice";
 import { MarkdownPreview } from "./MarkdownPreview";
+import { hasFrontMatter } from "./markdown-document";
 import { isMarkdownPath } from "./editor-language";
 import { TextSurface } from "./TextSurface";
 
@@ -95,6 +96,9 @@ export function FileView({
     setPending(null);
     setSaveError(null);
     setBaseline(null);
+    // The read about to replace this buffer has no view yet: the old one is
+    // being destroyed, and its text belongs to the previous file or revision.
+    viewRef.current = null;
     // A fresh read is clean by definition; the flag is dropped here rather than
     // in a cleanup, because this same effect is what a reload runs.
     savedDoc.current = null;
@@ -235,7 +239,7 @@ export function FileView({
       }}
       onReady={(view) => {
         viewRef.current = view;
-        savedDoc.current = view.state.doc;
+        if (view !== null) savedDoc.current = view.state.doc;
       }}
       onChange={noteEdit}
       onSave={() => void save(false)}
@@ -265,7 +269,7 @@ function PreviewBody({
   read: RemoteTextRead;
   path: string;
   editable: boolean;
-  onReady: (view: EditorView) => void;
+  onReady: (view: EditorView | null) => void;
   onChange: (view: EditorView) => void;
 }) {
   const { t } = useTranslation();
@@ -343,7 +347,7 @@ export function FileViewPanel({
   /** The live document, including edits the far side has not seen yet. */
   getPreviewText?: () => string;
   onRichChange: (markdown: string) => void;
-  onReady: (view: EditorView) => void;
+  onReady: (view: EditorView | null) => void;
   onChange: (view: EditorView) => void;
   onSave: () => void;
   onOverwrite: () => void;
@@ -359,13 +363,20 @@ export function FileViewPanel({
   const read = state.status === "ready" ? state.read : null;
   const [markdownView, setMarkdownView] = useState<"source" | "rich">("source");
   const [copied, setCopied] = useState(false);
+  // Decided when the file is read and again when Rich is entered, not on every
+  // keystroke: typing a horizontal rule at the top must not take the editor
+  // out from under the cursor.
+  const [frontMatter, setFrontMatter] = useState(false);
   const markdown = isMarkdownPath(path);
   const previewable = markdown && read?.kind === "text";
   const liveText = getPreviewText?.() ?? (read?.kind === "text" ? read.text : "");
   const writable = read?.kind === "text" && (read.mode & 0o222) !== 0;
-  const frontMatter = read?.kind === "text" && /^---\r?\n/.test(liveText);
   const useRichEditor = writable && !frontMatter;
   const showRich = markdownView === "rich" && previewable;
+
+  useEffect(() => {
+    setFrontMatter(read?.kind === "text" ? hasFrontMatter(read.text) : false);
+  }, [read]);
 
   useEffect(() => {
     if (!copied) return;
@@ -420,7 +431,7 @@ export function FileViewPanel({
     // the overwrite, not a plain save that would ask the same question again.
     questionActions = (
       <>
-        <Button variant="outline" onClick={onDiscardAndClose}>
+        <Button variant="outline" disabled={saving} onClick={onDiscardAndClose}>
           {t("editor.dontSave", "不保存")}
         </Button>
         <Button
@@ -438,10 +449,10 @@ export function FileViewPanel({
   } else if (conflict) {
     questionActions = (
       <>
-        <Button variant="outline" onClick={onDiscardAndReload}>
-          {t("editor.discardAndReload", "放弃我的修改并重新加载")}
+        <Button variant="outline" disabled={saving} onClick={onDiscardAndReload}>
+          {t("editor.discardAndReload", "放弃修改并重新加载")}
         </Button>
-        <Button variant="destructive" autoFocus onClick={onOverwrite}>
+        <Button variant="destructive" disabled={saving} autoFocus onClick={onOverwrite}>
           {t("editor.overwrite", "覆盖")}
         </Button>
       </>
@@ -494,7 +505,12 @@ export function FileViewPanel({
                 { value: "source", label: t("editor.source", "源码"), testId: "markdown-view-source" },
                 { value: "rich", label: t("editor.rich", "富文本"), testId: "markdown-view-rich" },
               ]}
-              onChange={setMarkdownView}
+              onChange={(next) => {
+                if (next === "rich") {
+                  setFrontMatter(read?.kind === "text" ? hasFrontMatter(liveText) : false);
+                }
+                setMarkdownView(next);
+              }}
             />
           )}
           {actions}

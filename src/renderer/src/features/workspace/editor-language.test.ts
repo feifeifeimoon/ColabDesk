@@ -24,6 +24,10 @@ describe("the editor's language map", () => {
     expect(languageForPath("sample.csv")).toBeNull();
     expect(languageForPath("README")).toBeNull();
     expect(languageForPath("dir.with.dots/README")).toBeNull();
+    // Inherited Object properties are not languages.
+    expect(languageForPath("notes.constructor")).toBeNull();
+    expect(languageForPath("notes.__proto__")).toBeNull();
+    expect(languageForPath("notes.toString")).toBeNull();
   });
 
   it("is case-insensitive and handles Windows paths", () => {

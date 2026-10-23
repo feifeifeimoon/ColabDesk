@@ -12,6 +12,7 @@
  */
 
 import { useRef } from "react";
+import { isHistoryTransaction } from "@tiptap/pm/history";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Image } from "@tiptap/extension-image";
@@ -30,14 +31,26 @@ export function RichMarkdownEditor({
   editable: boolean;
   onChange: (markdown: string) => void;
 }) {
-  // Parsing Markdown normalizes the document (and Tiptap emits updates for
-  // selection too). Only a serialization that differs from the document just
-  // created here is a person's edit; a click must not make the buffer dirty.
+  // Parsing Markdown normalizes the document, and focusing the surface can
+  // append trailing empty lines. Neither is a person's edit; a click must not
+  // make the buffer dirty.
   const lastMarkdown = useRef(markdown);
+  /** The file's own text and Tiptap's first serialization of it. */
+  const initialMarkdown = useRef(markdown);
+  const initialSerialized = useRef<string | null>(null);
   const created = useRef(false);
 
-  const sameDocument = (left: string, right: string) =>
+  // An undo can return to the opening document with a different number of
+  // trailing newlines. Only a history transaction is compared this loosely;
+  // a normal edit is compared by content, ignoring only trailing blank lines.
+  const sameOpeningDocument = (left: string, right: string) =>
     left.replace(/\s+$/, "") === right.replace(/\s+$/, "");
+
+  // Focusing the surface can append empty lines at the end; that is not an
+  // edit. Only trailing line breaks are ignored — a trailing space is content
+  // (a hard break), so it still marks the buffer dirty.
+  const sameContent = (left: string, right: string) =>
+    left.replace(/[\r\n]+$/, "") === right.replace(/[\r\n]+$/, "");
 
   const editor = useEditor({
     extensions: [
@@ -62,13 +75,28 @@ export function RichMarkdownEditor({
       },
     },
     onCreate: ({ editor }) => {
-      lastMarkdown.current = editor.getMarkdown();
+      const serialized = editor.getMarkdown();
+      initialMarkdown.current = markdown;
+      initialSerialized.current = serialized;
+      lastMarkdown.current = serialized;
       created.current = true;
     },
-    onUpdate: ({ editor }) => {
+    onUpdate: ({ editor, transaction }) => {
       if (!created.current) return;
       const next = editor.getMarkdown();
-      if (sameDocument(next, lastMarkdown.current)) {
+      if (
+        initialSerialized.current !== null &&
+        isHistoryTransaction(transaction) &&
+        sameOpeningDocument(next, initialSerialized.current)
+      ) {
+        // The rich document is back to what this editor opened: hand back the
+        // file's own text, not Tiptap's normalization of it, or the buffer
+        // stays dirty after an edit that no longer exists.
+        lastMarkdown.current = next;
+        onChange(initialMarkdown.current);
+        return;
+      }
+      if (sameContent(next, lastMarkdown.current)) {
         lastMarkdown.current = next;
         return;
       }

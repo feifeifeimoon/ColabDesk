@@ -107,7 +107,11 @@ function extensionOf(path: string): string {
 
 /** The language extension for a path, or null for plain text. */
 export function languageForPath(path: string): Extension | null {
-  return BY_EXTENSION[extensionOf(path)]?.() ?? null;
+  const extension = extensionOf(path);
+  // A plain object inherits `constructor`, `toString` and friends; an extension
+  // is not those, and calling one of them would throw instead of staying plain.
+  const language = Object.hasOwn(BY_EXTENSION, extension) ? BY_EXTENSION[extension] : undefined;
+  return language?.() ?? null;
 }
 
 /** Whether this path is Markdown, which is the one language with a preview. */

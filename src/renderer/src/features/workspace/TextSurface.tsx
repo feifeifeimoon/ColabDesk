@@ -99,7 +99,7 @@ export function TextSurface({
   /** Writable: keystrokes land, and the editor keeps undo history for them. */
   editable?: boolean;
   /** The view, for the pane that has to read the document back at save time. */
-  onReady?: (view: EditorView) => void;
+  onReady?: (view: EditorView | null) => void;
   /** Fires on every document change; the pane decides what that means. */
   onChange?: (view: EditorView) => void;
 }) {
@@ -142,7 +142,12 @@ export function TextSurface({
       parent,
     });
     latest.current.onReady?.(view);
-    return () => view.destroy();
+    return () => {
+      // The pane must know the view is gone before the next read arrives: a
+      // document left on this ref would be yesterday's file.
+      latest.current.onReady?.(null);
+      view.destroy();
+    };
   }, [text, path, showLineNumbers, editable]);
 
   return <div className="text-surface" ref={host} />;

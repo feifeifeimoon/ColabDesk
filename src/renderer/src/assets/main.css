@@ -2142,6 +2142,12 @@ kbd {
   text-underline-offset: 2px;
 }
 
+/* A link with nowhere safe to go is text: it must not promise a click. */
+.markdown-body a:not([href]) {
+  color: inherit;
+  text-decoration: none;
+}
+
 .markdown-body code {
   padding: 1px 4px;
   border-radius: var(--radius-xs);

@@ -34,4 +34,22 @@ describe("the Markdown preview", () => {
     // has never seen.
     expect(html).not.toContain("<script>");
   });
+
+  it("keeps local links inert instead of giving them an href", () => {
+    const html = renderToStaticMarkup(
+      createElement(MarkdownPreview, {
+        text: [
+          "[relative](./other.md)",
+          "[file](file:///etc/passwd)",
+          "[external](https://colabdesk.dev)",
+          "[mail](mailto:hello@colabdesk.dev)",
+        ].join("\n\n"),
+      }),
+    );
+
+    expect(html).not.toContain('href="./other.md"');
+    expect(html).not.toContain("href=\"file:");
+    expect(html).toContain('href="https://colabdesk.dev"');
+    expect(html).toContain('href="mailto:hello@colabdesk.dev"');
+  });
 });

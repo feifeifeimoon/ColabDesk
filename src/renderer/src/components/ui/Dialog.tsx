@@ -7,7 +7,7 @@
  * mean "cancel" — they call the same `onClose`.
  */
 
-import { useEffect, useId, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { IconButton } from "./Button";
 import { CloseIcon } from "./icons";
@@ -28,10 +28,16 @@ export function Dialog({
 }) {
   const { t } = useTranslation();
   const titleId = useId();
+  const root = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      // A parked pane keeps its dialog mounted. Escape under a hidden or inert
+      // surface belongs to the terminal that is on screen, not to a question
+      // nobody can see.
+      const dialog = root.current;
+      if (!dialog || dialog.getClientRects().length === 0 || dialog.closest("[inert]")) return;
       event.preventDefault();
       event.stopPropagation();
       onClose();
@@ -42,6 +48,7 @@ export function Dialog({
 
   return (
     <div
+      ref={root}
       className="dialog-backdrop"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();

@@ -114,6 +114,10 @@ test("富文本工具栏把 Markdown 写回源码", async ({ page }) => {
   // A collapsed cursor with Bold active types bold text; the markdown is then
   // serialized back into the CodeMirror buffer the pane saves from.
   await rich.click();
+  // Focusing the surface appends trailing empty lines in Tiptap's serialization;
+  // that is not an edit, so no save and no dot may appear.
+  await expect(filePane.locator('[data-testid="save-file"]')).toHaveCount(0);
+  await expect(fileTab(page, "README.md").locator(".session-tab__dot")).toHaveCount(0);
   await page.keyboard.press(`${MOD}+End`);
   await page.keyboard.press("Enter");
   await filePane.getByRole("button", { name: "粗体" }).click();
@@ -123,6 +127,47 @@ test("富文本工具栏把 Markdown 写回源码", async ({ page }) => {
   await filePane.locator('[data-testid="markdown-view-source"]').click();
   await expect(filePane.locator(".cm-content")).toContainText("**TOOLBAR**");
   await expect(filePane.locator('[data-testid="save-file"]')).toBeVisible();
+});
+
+test("富文本里撤销回原样：源码和未保存状态一起回到原样", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await rowButton(page, "README.md").dblclick();
+
+  const filePane = pane(page, "README.md");
+  await filePane.locator('[data-testid="markdown-view-rich"]').click();
+  const rich = filePane.locator(".rich-markdown-content");
+  await expect(rich).toBeVisible();
+
+  await rich.click();
+  await page.keyboard.press(`${MOD}+End`);
+  await page.keyboard.type("TEMP");
+  await expect(filePane.locator('[data-testid="save-file"]')).toBeVisible();
+
+  // The editor's undo restores its opening document; the source must then be
+  // the file's own text again, not Tiptap's normalization of it.
+  await page.keyboard.press(`${MOD}+z`);
+  await expect(filePane.locator('[data-testid="save-file"]')).toHaveCount(0);
+  await expect(fileTab(page, "README.md").locator(".session-tab__dot")).toHaveCount(0);
+
+  await filePane.locator('[data-testid="markdown-view-source"]').click();
+  await expect(filePane.locator(".cm-content")).not.toContainText("TEMP");
+});
+
+test("顶部一条横线不是 front matter，富文本仍然可用", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await rowButton(page, "README.md").dblclick();
+
+  const filePane = pane(page, "README.md");
+  await filePane.locator(".cm-content").click();
+  await page.keyboard.press(`${MOD}+Home`);
+  await page.keyboard.type("---");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+
+  await filePane.locator('[data-testid="markdown-view-rich"]').click();
+  await expect(filePane.locator(".rich-markdown-content")).toBeVisible();
+  await expect(filePane.getByRole("toolbar", { name: "格式" })).toBeVisible();
+  await expect(filePane.locator(".markdown-preview")).toHaveCount(0);
 });
 
 test("单击只选中：不开标签，也不下载", async ({ page, sandbox }) => {
@@ -328,6 +373,37 @@ test("远端先变了：保存不静默覆盖，问到答案才写", async ({ ap
   await expect(surface(page, "README.txt")).toContainText("MINE");
 });
 
+test("富文本里放弃修改并重载，看到的是服务器上的新内容", async ({ page, sandbox }) => {
+  await openSession(page, "e2e-alpha");
+  await rowButton(page, "README.md").dblclick();
+  const filePane = pane(page, "README.md");
+  await filePane.locator('[data-testid="markdown-view-rich"]').click();
+  const rich = filePane.locator(".rich-markdown-content");
+  await expect(rich).toBeVisible();
+
+  await rich.click();
+  await page.keyboard.press(`${MOD}+End`);
+  await page.keyboard.type("MINE");
+  await expect(filePane.locator('[data-testid="save-file"]')).toBeVisible();
+
+  // Someone else writes the file while the rich view holds the edit.
+  const replacement = join(sandbox, "README.md");
+  writeFileSync(replacement, "REPLACED BY SOMEONE ELSE\n");
+  plantDialogAnswer(sandbox, "open", [replacement]);
+  await page.getByRole("button", { name: "上传" }).click();
+  await page.locator(".dialog").getByRole("button", { name: "替换" }).click();
+  await expect(row(page, "README.md")).toContainText("25 B");
+
+  await filePane.locator('[data-testid="save-file"]').click();
+  await expect(filePane.getByRole("dialog", { name: "覆盖「README.md」？" })).toBeVisible();
+  await filePane.getByRole("button", { name: "放弃修改并重新加载" }).click();
+
+  // The reload must replace the rich document too, not just the hidden source.
+  await expect(rich).toContainText("REPLACED BY SOMEONE ELSE");
+  await expect(rich).not.toContainText("MINE");
+  await expect(fileTab(page, "README.md").locator(".session-tab__dot")).toHaveCount(0);
+});
+
 test("有未保存的修改时，关标签先问一句；不保存就真的没写", async ({ app, page }) => {
   // Same narrow column as the conflict case: the guard's three answers have to
   // be pressable where the pane can be at its floor.
@@ -360,6 +436,26 @@ test("有未保存的修改时，关标签先问一句；不保存就真的没�
   await rowButton(page, "README.txt").dblclick();
   await expect(surface(page, "README.txt")).toContainText("ColabDesk E2E runtime.");
   await expect(surface(page, "README.txt")).not.toContainText("XX");
+});
+
+test("文件面板停靠时，对话框不抢走终端的 Esc", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await rowButton(page, "README.txt").dblclick();
+  const filePane = pane(page, "README.txt");
+  await filePane.locator(".cm-content").click();
+  await page.keyboard.type("XX");
+  await page.getByRole("button", { name: "关闭 README.txt" }).click();
+  const dialog = filePane.getByRole("dialog", { name: "关闭「README.txt」？" });
+  await expect(dialog).toBeVisible();
+
+  // A new terminal parks the file pane, question and all. That Escape belongs
+  // to the terminal, so the hidden question must still be waiting on return.
+  await page.keyboard.press("Control+Shift+T");
+  await expect(filePane).toBeHidden();
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("tab", { name: "README.txt" }).click();
+  await expect(dialog).toBeVisible();
 });
 
 test("保存还在路上时继续输入：那些字仍然是未保存的", async ({ page }) => {

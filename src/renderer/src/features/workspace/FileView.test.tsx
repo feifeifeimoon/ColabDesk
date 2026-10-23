@@ -160,6 +160,20 @@ describe("file tab", () => {
     expect(markup).not.toContain("保存并关闭");
   });
 
+  it("does not let a save in flight be abandoned by another answer", () => {
+    const closing = render(TEXT, { dirty: true, closing: true, saving: true });
+    expect(closing).toMatch(/<button[^>]*disabled[^>]*>不保存/);
+    expect(closing).toMatch(/<button[^>]*disabled[^>]*>保存并关闭/);
+
+    const conflict = render(TEXT, {
+      dirty: true,
+      saving: true,
+      pending: { kind: "conflict", reason: "changed" },
+    });
+    expect(conflict).toMatch(/<button[^>]*disabled[^>]*>放弃修改并重新加载/);
+    expect(conflict).toMatch(/<button[^>]*disabled[^>]*>覆盖</);
+  });
+
   it("a file that moved on is a question with the buffer still on screen", () => {
     const changed = render(TEXT, { dirty: true, pending: { kind: "conflict", reason: "changed" } });
     expect(changed).toContain('role="dialog"');

@@ -25,7 +25,10 @@ export function MarkdownPreview({ text }: { text: string }) {
               const external = typeof href === "string" && EXTERNAL.test(href);
               return (
                 <a
-                  href={href}
+                  // A relative or file: href has no page to resolve against,
+                  // and leaving it on would let a middle-click hand it to the
+                  // window-open handler, which sends every URL out of the app.
+                  href={external ? href : undefined}
                   title={title}
                   onClick={(event) => {
                     event.preventDefault();
