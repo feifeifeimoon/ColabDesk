@@ -45,8 +45,8 @@ function render(
       pending: null,
       closing: false,
       saveError: null,
-      savedAt: null,
-      size: null,
+      getPreviewText: () => "",
+      onRichChange: () => {},
       onReady: () => {},
       onChange: () => {},
       onSave: () => {},
@@ -58,7 +58,6 @@ function render(
       onOverwriteAndClose: () => {},
       onDiscardAndClose: () => {},
       onCancelClose: () => {},
-      onDownload: () => {},
       ...over,
     }),
   );
@@ -93,7 +92,7 @@ const INVALID: FileViewState = {
 const BINARY: FileViewState = { status: "ready", read: { kind: "binary", size: 4096 } };
 
 /** The save control itself, so "there is no save here" cannot be fooled by the
-    word 保存 turning up inside 未保存 in the status line. */
+    word 保存 turning up inside a sentence. */
 function saveButton(markup: string): string {
   return markup.match(/<button[^>]*data-testid="save-file"[^>]*>/)?.[0] ?? "";
 }
@@ -105,49 +104,46 @@ describe("file tab", () => {
     expect(render(BINARY)).toContain("二进制文件无法预览");
   });
 
-  it("marks the states that are text but not all of it — and only those", () => {
-    expect(render(TRUNCATED)).toContain("只读");
-    expect(render(INVALID)).toContain("只读");
-    expect(render(LOCKED_TEXT)).toContain("只读");
+  it("says why each unwritable state cannot be saved, in the body", () => {
+    expect(render(TRUNCATED)).toContain("仅显示开头与结尾");
+    expect(render(INVALID)).toContain("不是有效的 UTF-8 文本");
     expect(render(LOCKED_TEXT)).toContain("文件不可写");
-    // A binary file never offers reading to begin with, so it gets no label.
-    expect(render(BINARY)).not.toContain("只读");
+    expect(render(BINARY)).toContain("二进制文件无法预览");
   });
 
   it("offers no save for anything that cannot be written back", () => {
     for (const state of [TRUNCATED, INVALID, BINARY, LOCKED_TEXT]) {
-      const markup = render(state);
-      expect(saveButton(markup)).toBe("");
-      expect(markup).toContain("下载到本地");
+      expect(saveButton(render(state))).toBe("");
     }
   });
 
-  it("offers a save for a file it can write, and holds it until there is something to save", () => {
-    expect(saveButton(render(TEXT))).toContain("disabled");
+  it("offers a save only once there is something to save", () => {
+    expect(saveButton(render(TEXT))).toBe("");
     expect(saveButton(render(TEXT, { dirty: true }))).not.toContain("disabled");
-    expect(render(TEXT, { dirty: true })).toContain("未保存");
     expect(render(TEXT, { dirty: true, saving: true })).toContain("保存中…");
-    expect(render(TEXT, { dirty: false, savedAt: 1 })).toContain("已保存");
   });
 
-  it("reports the endings and the size as facts about the file, and the size after a save", () => {
-    expect(render(TEXT)).toContain("行尾 CRLF");
-    expect(render(TEXT)).toContain("4 B");
-    // A write changed the size; the header shows what the runtime has now.
-    expect(render(TEXT, { dirty: true, size: 4096 })).toContain("4.0 KB");
-    expect(render(TRUNCATED)).toContain("3.0 MB");
+  it("keeps the header to the path and the view controls", () => {
+    const html = render(TEXT);
+    expect(html).toContain('data-testid="file-path-copy"');
+    expect(html).not.toContain("行尾");
+    expect(html).not.toContain("4 B");
+    expect(html).not.toContain("重新加载");
+    expect(html).not.toContain("下载到本地");
   });
 
   it("asks before closing a buffer with unsaved edits, and offers every way out", () => {
     const markup = render(TEXT, { dirty: true, closing: true });
+    expect(markup).toContain('role="dialog"');
+    expect(markup).toContain('aria-modal="true"');
     expect(markup).toContain("有未保存的修改");
     expect(markup).toContain("保存并关闭");
     expect(markup).toContain("不保存");
-    expect(markup).toContain("取消");
+    // Dismissing is the × (also Escape and the backdrop), not a third button.
+    expect(markup).toContain('aria-label="关闭"');
     expect(saveButton(markup)).toBe("");
-    // Raised from the strip or a shortcut: it has to say so to a screen reader,
-    // and put the keyboard on the answer that finishes the job.
-    expect(markup).toContain('role="status"');
+    // Raised from the strip or a shortcut: it has to say so to assistive
+    // technology, and put the keyboard on the answer that finishes the job.
     expect(markup).toMatch(/<button[^>]*autofocus[^>]*>[^<]*保存并关闭/);
   });
 
@@ -164,19 +160,26 @@ describe("file tab", () => {
     expect(markup).not.toContain("保存并关闭");
   });
 
-  it("asks before reloading over unsaved edits", () => {
-    const markup = render(TEXT, { dirty: true, pending: { kind: "confirmReload" } });
-    expect(markup).toContain("重新加载会丢弃它们");
-    expect(markup).toContain("重新加载并丢弃修改");
-    expect(saveButton(markup)).toBe("");
+  it("does not let a save in flight be abandoned by another answer", () => {
+    const closing = render(TEXT, { dirty: true, closing: true, saving: true });
+    expect(closing).toMatch(/<button[^>]*disabled[^>]*>不保存/);
+    expect(closing).toMatch(/<button[^>]*disabled[^>]*>保存并关闭/);
+
+    const conflict = render(TEXT, {
+      dirty: true,
+      saving: true,
+      pending: { kind: "conflict", reason: "changed" },
+    });
+    expect(conflict).toMatch(/<button[^>]*disabled[^>]*>放弃修改并重新加载/);
+    expect(conflict).toMatch(/<button[^>]*disabled[^>]*>覆盖</);
   });
 
   it("a file that moved on is a question with the buffer still on screen", () => {
     const changed = render(TEXT, { dirty: true, pending: { kind: "conflict", reason: "changed" } });
+    expect(changed).toContain('role="dialog"');
     expect(changed).toContain("文件已在服务器上更改");
     expect(changed).toContain("覆盖");
     expect(changed).toContain("放弃修改并重新加载");
-    expect(changed).toContain("未保存");
     // The buffer is what the question is about; losing sight of it is how the
     // three answers stop making sense.
     expect(changed).toContain('class="text-surface"');
@@ -191,7 +194,8 @@ describe("file tab", () => {
     expect(markup).toContain("保存失败");
     expect(markup).toContain("权限不足");
     // Still dirty, still offering the save again.
-    expect(markup).toContain("未保存");
+    expect(saveButton(markup)).toContain("save-file");
+    expect(saveButton(markup)).not.toContain("disabled");
   });
 
   it("a failed read offers the retry that is the point of the state", () => {
@@ -216,6 +220,24 @@ describe("file tab", () => {
   it("is named by the file it shows", () => {
     expect(render(TEXT)).toContain('aria-label="train.log"');
   });
+
+  it("the path is the copy affordance", () => {
+    const html = render(TEXT);
+    expect(html).toContain('data-testid="file-path-copy"');
+    expect(html).toContain('aria-label="复制路径：/content/train.log"');
+  });
+
+  it("offers the rich toggle only for a Markdown text file", () => {
+    const source = 'data-testid="markdown-view-source"';
+    const rich = 'data-testid="markdown-view-rich"';
+    const markdown = render(TEXT, { path: "/content/README.md", name: "README.md" });
+    expect(markdown).toContain(source);
+    expect(markdown).toContain(rich);
+    // A log is text, but has no rendered side.
+    expect(render(TEXT)).not.toContain(source);
+    // A truncated Markdown read is two excerpts, not a document to render.
+    expect(render(TRUNCATED, { path: "/content/notes.md", name: "notes.md" })).not.toContain(source);
+  });
 });
 
 describe("in English", () => {
@@ -234,7 +256,6 @@ describe("in English", () => {
       [TEXT, {}],
       [TEXT, { dirty: true, closing: true }],
       [TEXT, { dirty: true, pending: { kind: "conflict", reason: "changed" } }],
-      [TEXT, { dirty: true, pending: { kind: "confirmReload" } }],
       [TEXT, { dirty: true, saveError: "Permission denied." }],
       [LOCKED_TEXT, {}],
       [TRUNCATED, {}],

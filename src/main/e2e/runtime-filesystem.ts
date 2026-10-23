@@ -93,6 +93,31 @@ export class RuntimeFilesystem {
     });
     content.entries.set("model.pt", { kind: "file", content: Buffer.alloc(2048, 7), length: 2048, mtime: now });
 
+    // A Markdown fixture, so the editor's language selection has something to
+    // bite on: a heading, emphasis, a link, and a fenced block whose language
+    // comes from the same map the file extensions use.
+    const guide = [
+      "# ColabDesk runtime guide",
+      "",
+      "This is **Markdown**, not a log.",
+      "",
+      "- notes live here",
+      "- code lives beside them",
+      "",
+      "[Open ColabDesk](https://colabdesk.dev)",
+      "",
+      "```python",
+      "print('hello from a fence')",
+      "```",
+      "",
+    ].join("\n");
+    content.entries.set("README.md", {
+      kind: "file",
+      content: Buffer.from(guide),
+      length: Buffer.byteLength(guide),
+      mtime: now,
+    });
+
     // The three verdicts the text preview can reach beyond plain text: a file
     // too large to send whole, one that is not text at all, and one that is
     // text in some other encoding.

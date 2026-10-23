@@ -24,23 +24,28 @@
  * without a terminal or a connection.
  */
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { EditorView } from "@codemirror/view";
 import type { Text as EditorText } from "@codemirror/state";
 import type { RemoteTextRead } from "@shared/types";
 import * as api from "../../lib/api";
-import { messageOf } from "../../lib/api";
+import { messageOf, writeClipboard } from "../../lib/api";
 import { formatSize, parentPath } from "../../lib/format";
 import { useAppStore } from "../../store";
-import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
-import { CopyButton } from "../../components/ui/CopyButton";
+import { Dialog } from "../../components/ui/Dialog";
+import { SegmentedControl } from "../../components/ui/SegmentedControl";
 import { Callout } from "../../components/ui/Notice";
+import { MarkdownPreview } from "./MarkdownPreview";
+import { hasFrontMatter } from "./markdown-document";
+import { isMarkdownPath } from "./editor-language";
 import { TextSurface } from "./TextSurface";
 
-/** How long 「已保存」 stays in the status line before the facts come back. */
-const SAVED_FLASH_MS = 2000;
+/** Tiptap + ProseMirror are a lazy chunk; they load with the rich view. */
+const RichMarkdownEditor = lazy(() => import("./RichMarkdownEditor"));
+
+/** What the pane is asking, if anything, before it will go on. */
 
 export type FileViewState =
   | { status: "loading" }
@@ -48,9 +53,7 @@ export type FileViewState =
   | { status: "ready"; read: RemoteTextRead };
 
 /** What the pane is asking, if anything, before it will go on. */
-type Pending =
-  | { kind: "conflict"; reason: "changed" | "missing" }
-  | { kind: "confirmReload" };
+type Pending = { kind: "conflict"; reason: "changed" | "missing" };
 
 export function FileView({
   session,
@@ -67,8 +70,6 @@ export function FileView({
   /** The shown tab; a parked pane keeps its read and its scroll position. */
   active: boolean;
 }) {
-  const { t } = useTranslation();
-  const notify = useAppStore((state) => state.notify);
   const closeTab = useAppStore((state) => state.closeTab);
   const setTabDirty = useAppStore((state) => state.setTabDirty);
   const cancelPendingClose = useAppStore((state) => state.cancelPendingClose);
@@ -81,7 +82,6 @@ export function FileView({
   const [saving, setSaving] = useState(false);
   const [pending, setPending] = useState<Pending | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
   /** What the far side looked like when the buffer was last in step with it. */
   const [baseline, setBaseline] = useState<{ mtime: number; size: number } | null>(null);
 
@@ -96,6 +96,9 @@ export function FileView({
     setPending(null);
     setSaveError(null);
     setBaseline(null);
+    // The read about to replace this buffer has no view yet: the old one is
+    // being destroyed, and its text belongs to the previous file or revision.
+    viewRef.current = null;
     // A fresh read is clean by definition; the flag is dropped here rather than
     // in a cleanup, because this same effect is what a reload runs.
     savedDoc.current = null;
@@ -116,12 +119,6 @@ export function FileView({
       current = false;
     };
   }, [session, path, attempt, tabId, setTabDirty]);
-
-  useEffect(() => {
-    if (savedAt === null) return;
-    const timer = setTimeout(() => setSavedAt(null), SAVED_FLASH_MS);
-    return () => clearTimeout(timer);
-  }, [savedAt]);
 
   const read = state.status === "ready" ? state.read : null;
   const writable = read?.kind === "text" && (read.mode & 0o222) !== 0;
@@ -183,7 +180,6 @@ export function FileView({
       }
       setPending(null);
       setBaseline({ mtime: result.mtime, size: result.size });
-      setSavedAt(Date.now());
       markInStep(doc);
       // The tree shows a size, and the size just changed.
       noteFileWrite(session, parentPath(path) || "/");
@@ -233,19 +229,22 @@ export function FileView({
       pending={pending}
       closing={closing}
       saveError={saveError}
-      savedAt={savedAt}
-      size={baseline?.size ?? null}
+      getPreviewText={() => viewRef.current?.state.doc.toString() ?? (read?.kind === "text" ? read.text : "")}
+      onRichChange={(markdown) => {
+        // The source editor stays the buffer Save reads; replacing its doc is
+        // what makes a rich edit dirty and persists it across a view switch.
+        const view = viewRef.current;
+        if (!view || view.state.doc.toString() === markdown) return;
+        view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: markdown } });
+      }}
       onReady={(view) => {
         viewRef.current = view;
-        savedDoc.current = view.state.doc;
+        if (view !== null) savedDoc.current = view.state.doc;
       }}
       onChange={noteEdit}
       onSave={() => void save(false)}
       onOverwrite={() => void save(true)}
-      onReload={() => {
-        if (dirtyRef.current) setPending({ kind: "confirmReload" });
-        else reload();
-      }}
+      onReload={reload}
       onDiscardAndReload={discardAndReload}
       onKeepEditing={() => setPending(null)}
       onSaveAndClose={() => void saveThenClose(false)}
@@ -255,16 +254,6 @@ export function FileView({
         closeTab(tabId);
       }}
       onCancelClose={() => cancelPendingClose()}
-      onDownload={() => {
-        void api
-          .download(session, path, name, t("files.saveDialogTitle", "保存到本地"))
-          .catch((cause: unknown) => {
-            // A transfer that started reports itself on its row in the files
-            // panel; only never getting that far lands here, and that is an
-            // action's result, so it is a message.
-            notify({ tone: "danger", text: messageOf(cause) });
-          });
-      }}
     />
   );
 }
@@ -272,13 +261,15 @@ export function FileView({
 /** The text, or the reason there is not all of it. */
 function PreviewBody({
   read,
+  path,
   editable,
   onReady,
   onChange,
 }: {
   read: RemoteTextRead;
+  path: string;
   editable: boolean;
-  onReady: (view: EditorView) => void;
+  onReady: (view: EditorView | null) => void;
   onChange: (view: EditorView) => void;
 }) {
   const { t } = useTranslation();
@@ -295,7 +286,7 @@ function PreviewBody({
     return (
       <>
         <Callout tone="warn">{t("editor.invalidUtf8", "不是有效的 UTF-8 文本，仅可查看。")}</Callout>
-        <TextSurface text={read.text} />
+        <TextSurface text={read.text} path={path} />
       </>
     );
   }
@@ -311,12 +302,12 @@ function PreviewBody({
             size: formatSize(read.size),
           })}
         </Callout>
-        <TextSurface text={[read.head, omitted, read.tail].join("\n")} lineNumbers={false} />
+        <TextSurface text={[read.head, omitted, read.tail].join("\n")} path={path} lineNumbers={false} />
       </>
     );
   }
 
-  return <TextSurface text={read.text} editable={editable} onReady={onReady} onChange={onChange} />;
+  return <TextSurface text={read.text} path={path} editable={editable} onReady={onReady} onChange={onChange} />;
 }
 
 export function FileViewPanel({
@@ -329,8 +320,8 @@ export function FileViewPanel({
   pending,
   closing,
   saveError,
-  savedAt,
-  size,
+  getPreviewText,
+  onRichChange,
   onReady,
   onChange,
   onSave,
@@ -342,7 +333,6 @@ export function FileViewPanel({
   onOverwriteAndClose,
   onDiscardAndClose,
   onCancelClose,
-  onDownload,
 }: {
   path: string;
   name: string;
@@ -354,10 +344,10 @@ export function FileViewPanel({
   /** The strip asked to close this tab and is waiting for an answer. */
   closing: boolean;
   saveError: string | null;
-  savedAt: number | null;
-  /** The size as last written, which is the one the facts line should show. */
-  size: number | null;
-  onReady: (view: EditorView) => void;
+  /** The live document, including edits the far side has not seen yet. */
+  getPreviewText?: () => string;
+  onRichChange: (markdown: string) => void;
+  onReady: (view: EditorView | null) => void;
   onChange: (view: EditorView) => void;
   onSave: () => void;
   onOverwrite: () => void;
@@ -368,40 +358,44 @@ export function FileViewPanel({
   onOverwriteAndClose: () => void;
   onDiscardAndClose: () => void;
   onCancelClose: () => void;
-  onDownload: () => void;
 }) {
   const { t } = useTranslation();
   const read = state.status === "ready" ? state.read : null;
+  const [markdownView, setMarkdownView] = useState<"source" | "rich">("source");
+  const [copied, setCopied] = useState(false);
+  // Decided when the file is read and again when Rich is entered, not on every
+  // keystroke: typing a horizontal rule at the top must not take the editor
+  // out from under the cursor.
+  const [frontMatter, setFrontMatter] = useState(false);
+  const markdown = isMarkdownPath(path);
+  const previewable = markdown && read?.kind === "text";
+  const liveText = getPreviewText?.() ?? (read?.kind === "text" ? read.text : "");
   const writable = read?.kind === "text" && (read.mode & 0o222) !== 0;
-  // The badge is for "there is text here you cannot change" — too large to send
-  // whole, not UTF-8, not writable. A binary file has no text to label, so it
-  // gets none: the callout already says why it cannot be opened.
-  const readOnly =
-    read !== null &&
-    (read.kind === "truncated" || read.kind === "invalidUtf8" || (read.kind === "text" && !writable));
+  const useRichEditor = writable && !frontMatter;
+  const showRich = markdownView === "rich" && previewable;
 
-  const eol =
-    read?.kind === "text"
-      ? read.eol === "crlf"
-        ? t("editor.eolCrlf", "行尾 CRLF")
-        : read.eol === "mixed"
-          ? t("editor.eolMixed", "行尾 混合")
-          : t("editor.eolLf", "行尾 LF")
-      : null;
-  const bytes = size ?? read?.size ?? null;
-  const facts = [eol, bytes !== null ? formatSize(bytes) : null].filter(Boolean).join(" · ");
-  const mark = dirty
-    ? `● ${t("editor.unsaved", "未保存")}`
-    : savedAt !== null
-      ? t("editor.saved", "已保存")
-      : null;
-  const status = [facts, mark].filter(Boolean).join(" · ");
+  useEffect(() => {
+    setFrontMatter(read?.kind === "text" ? hasFrontMatter(read.text) : false);
+  }, [read]);
+
+  // A new read is a new document. A fast read can resolve before the loading
+  // render commits, so the rich editor would never unmount on its own; the key
+  // makes it reopen from the text that actually arrived.
+  const [readRevision, setReadRevision] = useState(0);
+  useEffect(() => {
+    if (read !== null) setReadRevision((count) => count + 1);
+  }, [read]);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(timer);
+  }, [copied]);
 
   const conflict = pending?.kind === "conflict" ? pending : null;
-  /** A question is up: the copy button steps out of the way so the answers fit
-      in a pane whose column can be at its 360px floor. The facts stay — "● 未保存"
-      is what the question is about — and they shrink first when room runs out. */
-  const asking = closing || conflict !== null || pending?.kind === "confirmReload";
+  /** A question is up: the view toggle steps out of the way so the answers fit
+      in a pane whose column can be at its 360px floor. */
+  const asking = closing || conflict !== null;
 
   let actions: ReactNode = null;
   if (state.status === "failed") {
@@ -411,17 +405,45 @@ export function FileViewPanel({
         {t("editor.retry", "重试")}
       </Button>
     );
-  } else if (closing) {
-    // The focus goes to the answer that finishes the job (this question is
-    // raised from the strip or a shortcut, never from inside the pane), and
-    // while the far side has moved on, the one that finishes it is the
-    // overwrite — or the discard. A plain save would conflict again and the
-    // pair of questions would trade places forever.
-    actions = (
-      <>
+  } else if (state.status === "ready" && !asking) {
+    // The viewing header is the path and the view toggle; Save appears only
+    // when there is something to save. A question takes the decision to the
+    // dialog instead of putting buttons in the header.
+    actions =
+      writable && dirty ? (
         <Button
           variant="primary"
           size="sm"
+          disabled={saving}
+          onClick={onSave}
+          data-testid="save-file"
+        >
+          {saving ? t("editor.saving", "保存中…") : t("editor.save", "保存")}
+        </Button>
+      ) : null;
+  }
+
+  const closeReason = closing ? t("editor.closeAsk", "有未保存的修改。") : null;
+  const conflictReason = conflict
+    ? conflict.reason === "missing"
+      ? t("editor.conflictMissing", "文件在服务器上已不存在，保存将重新创建。")
+      : t("editor.conflictBody", "文件已在服务器上更改，保存将覆盖服务器版本。")
+    : null;
+  const dialogTitle = closing
+    ? t("editor.closeTitle", "关闭「{{name}}」？", { name })
+    : t("editor.conflictTitle", "覆盖「{{name}}」？", { name });
+
+  let questionActions: ReactNode = null;
+  if (closing) {
+    // The primary finishes the job: while the far side has moved on, that is
+    // the overwrite, not a plain save that would ask the same question again.
+    questionActions = (
+      <>
+        <Button variant="outline" disabled={saving} onClick={onDiscardAndClose}>
+          {t("editor.dontSave", "不保存")}
+        </Button>
+        <Button
+          variant="primary"
           disabled={saving}
           autoFocus
           onClick={conflict ? onOverwriteAndClose : onSaveAndClose}
@@ -430,58 +452,16 @@ export function FileViewPanel({
             ? t("editor.overwriteAndClose", "覆盖并关闭")
             : t("editor.saveAndClose", "保存并关闭")}
         </Button>
-        <Button variant="outline" size="sm" onClick={onDiscardAndClose}>
-          {t("editor.dontSave", "不保存")}
-        </Button>
-        <Button variant="ghost" size="sm" onClick={onCancelClose}>
-          {t("editor.cancel", "取消")}
-        </Button>
       </>
     );
   } else if (conflict) {
-    actions = (
+    questionActions = (
       <>
-        <Button variant="destructive" size="sm" onClick={onOverwrite}>
+        <Button variant="outline" disabled={saving} onClick={onDiscardAndReload}>
+          {t("editor.discardAndReload", "放弃修改并重新加载")}
+        </Button>
+        <Button variant="destructive" disabled={saving} autoFocus onClick={onOverwrite}>
           {t("editor.overwrite", "覆盖")}
-        </Button>
-        <Button variant="outline" size="sm" onClick={onDiscardAndReload}>
-          {t("editor.discardAndReload", "放弃我的修改并重新加载")}
-        </Button>
-        <Button variant="ghost" size="sm" onClick={onKeepEditing}>
-          {t("editor.cancel", "取消")}
-        </Button>
-      </>
-    );
-  } else if (pending?.kind === "confirmReload") {
-    actions = (
-      <>
-        <Button variant="outline" size="sm" onClick={onDiscardAndReload}>
-          {t("editor.reloadDiscard", "重新加载并丢弃修改")}
-        </Button>
-        <Button variant="ghost" size="sm" onClick={onKeepEditing}>
-          {t("editor.cancel", "取消")}
-        </Button>
-      </>
-    );
-  } else if (state.status === "ready") {
-    actions = (
-      <>
-        {writable ? (
-          <Button
-            variant="primary"
-            size="sm"
-            disabled={!dirty || saving}
-            onClick={onSave}
-            data-testid="save-file"
-          >
-            {saving ? t("editor.saving", "保存中…") : t("editor.save", "保存")}
-          </Button>
-        ) : null}
-        <Button variant="ghost" size="sm" onClick={onReload}>
-          {t("editor.reload", "重新加载")}
-        </Button>
-        <Button variant="outline" size="sm" onClick={onDownload}>
-          {t("editor.download", "下载到本地")}
         </Button>
       </>
     );
@@ -504,65 +484,107 @@ export function FileViewPanel({
       }}
     >
       <div className="pane__head">
-        <span className="pane__title mono truncate" title={path}>
-          {path}
+        <span className="file-area__path-group">
+          <button
+            type="button"
+            className="file-area__path pane__title mono truncate"
+            data-testid="file-path-copy"
+            title={t("editor.copyPath", "复制路径")}
+            aria-label={`${t("editor.copyPath", "复制路径")}：${path}`}
+            onClick={() => {
+              void writeClipboard(path);
+              setCopied(true);
+            }}
+          >
+            {path}
+          </button>
+          {copied && (
+            <span className="file-area__copied" aria-live="polite">
+              {t("editor.copied", "已复制")}
+            </span>
+          )}
         </span>
         <span className="pane__actions">
-          {!asking && readOnly ? <Badge tone="warn">{t("editor.readOnly", "只读")}</Badge> : null}
-          {status !== "" && <span className="hint mono file-area__facts">{status}</span>}
-          {!asking && (
-            <CopyButton
-              text={path}
-              label={t("editor.copyPath", "复制路径")}
-              copiedLabel={t("editor.copied", "已复制")}
+          {previewable && !asking && (
+            <SegmentedControl
+              label={t("editor.viewMode", "查看方式")}
+              value={markdownView}
+              options={[
+                { value: "source", label: t("editor.source", "源码"), testId: "markdown-view-source" },
+                { value: "rich", label: t("editor.rich", "富文本"), testId: "markdown-view-rich" },
+              ]}
+              onChange={(next) => {
+                if (next === "rich") {
+                  setFrontMatter(read?.kind === "text" ? hasFrontMatter(liveText) : false);
+                }
+                setMarkdownView(next);
+              }}
             />
           )}
           {actions}
         </span>
       </div>
       <div className="file-area__body">
-        {state.status === "loading" && <p className="hint">{t("editor.reading", "读取中…")}</p>}
-        {state.status === "failed" && (
-          <Callout tone="danger">
-            {t("editor.readFailed", "读取失败")}：<span className="mono">{state.message}</span>
-          </Callout>
-        )}
-        {read?.kind === "text" && !writable && (
-          <Callout tone="warn">{t("editor.notWritable", "文件不可写，仅可查看。")}</Callout>
-        )}
-        {/* The questions and the failure that follows a save attempt are one
-            live region: they appear from an action taken elsewhere (the strip,
-            a shortcut, a write that came back wrong), so they have to say so
-            to anything that cannot see them appear. */}
-        {(closing || conflict || pending?.kind === "confirmReload" || saveError !== null) && (
-          <div className="file-area__status" role="status" aria-live="polite">
-            {closing && <Callout tone="warn">{t("editor.closeAsk", "有未保存的修改。")}</Callout>}
-            {conflict && (
-              <Callout tone="danger">
-                {conflict.reason === "missing"
-                  ? t("editor.conflictMissing", "文件在服务器上已不存在，保存将重新创建。")
-                  : t("editor.conflictBody", "文件已在服务器上更改，保存将覆盖服务器版本。")}
-              </Callout>
-            )}
-            {pending?.kind === "confirmReload" && (
-              <Callout tone="warn">{t("editor.reloadAsk", "有未保存的修改，重新加载会丢弃它们。")}</Callout>
-            )}
-            {saveError !== null && (
+        <div className="file-area__notices">
+          {state.status === "loading" && <p className="hint">{t("editor.reading", "读取中…")}</p>}
+          {state.status === "failed" && (
+            <Callout tone="danger">
+              {t("editor.readFailed", "读取失败")}：<span className="mono">{state.message}</span>
+            </Callout>
+          )}
+          {read?.kind === "text" && !writable && (
+            <Callout tone="warn">{t("editor.notWritable", "文件不可写，仅可查看。")}</Callout>
+          )}
+          {/* A save that failed is a result, not a question: it stays here.
+              Questions about unsaved edits are the dialog below. */}
+          {saveError !== null && (
+            <div className="file-area__status" role="status" aria-live="polite">
               <Callout tone="danger">
                 {t("editor.saveFailed", "保存失败")}：<span className="mono">{saveError}</span>
               </Callout>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
         {read && (
-          <PreviewBody
-            read={read}
-            editable={Boolean(writable)}
-            onReady={onReady}
-            onChange={onChange}
-          />
+          <>
+            <div
+              className="file-area__source"
+              hidden={showRich}
+              inert={showRich}
+            >
+              <PreviewBody
+                read={read}
+                path={path}
+                editable={Boolean(writable)}
+                onReady={onReady}
+                onChange={onChange}
+              />
+            </div>
+            {showRich && read.kind === "text" && (
+              useRichEditor ? (
+                <Suspense fallback={<p className="hint">{t("editor.loadingRich", "加载富文本…")}</p>}>
+                  <RichMarkdownEditor key={readRevision} markdown={liveText} editable onChange={onRichChange} />
+                </Suspense>
+              ) : (
+                <MarkdownPreview text={liveText} />
+              )
+            )}
+          </>
         )}
       </div>
+      {asking && (
+        <Dialog
+          size="confirm"
+          title={dialogTitle}
+          onClose={closing ? onCancelClose : onKeepEditing}
+          footer={<div className="dialog__actions">{questionActions}</div>}
+        >
+          <div className="dialog__description">
+            {closeReason && <p>{closeReason}</p>}
+            {conflictReason && <p>{conflictReason}</p>}
+          </div>
+        </Dialog>
+      )}
     </section>
   );
 }

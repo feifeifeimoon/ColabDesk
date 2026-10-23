@@ -153,7 +153,7 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
   // a picture answers here is whether "unsaved" reads without colour.
   await readmePane.locator(".cm-content").click();
   await page.keyboard.type("edited in the gallery");
-  await expect(readmePane).toContainText("未保存");
+  await expect(page.getByRole("tab", { name: "README.txt" }).locator(".session-tab__dot")).toBeVisible();
   await page.waitForTimeout(400);
   await capture(page, "08-file-tab-edited");
 
@@ -174,11 +174,26 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
   await capture(page, "08-file-tab-truncated");
   await page.keyboard.press("Escape");
 
+  // The rendered side of a Markdown file, which the source editor cannot show:
+  // headings, emphasis and fenced code as the document, not as syntax.
+  await page.locator(".file-row").filter({ hasText: "README.md" }).locator(".file-row__row").dblclick();
+  const markdownPane = page.locator('.file-area[aria-label="README.md"]');
+  await markdownPane.locator('[data-testid="markdown-view-rich"]').click();
+  await expect(markdownPane.locator(".rich-markdown-content h1")).toContainText("ColabDesk runtime guide");
+  await expect(markdownPane.getByRole("toolbar", { name: "格式" })).toBeVisible();
+  await markdownPane.locator(".rich-markdown-content").click();
+  await page.waitForTimeout(400);
+  await capture(page, "08-markdown-rich");
+  await page.getByRole("button", { name: "关闭 README.md" }).click();
+
   // Leave the strip the way the later shots expect to find it. The edited tab
   // goes through its own question — which is also the only place the close
   // guard would show up in a run of the gallery.
   await page.getByRole("button", { name: "关闭 train.log" }).click();
   await page.getByRole("button", { name: "关闭 README.txt" }).click();
+  await expect(page.getByRole("dialog", { name: "关闭「README.txt」？" })).toBeVisible();
+  await page.waitForTimeout(300);
+  await capture(page, "09-unsaved-dialog");
   await readmePane.getByRole("button", { name: "不保存" }).click();
   await expect(page.getByRole("tab", { name: "README.txt" })).toHaveCount(0);
 
