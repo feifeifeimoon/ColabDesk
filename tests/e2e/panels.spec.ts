@@ -82,7 +82,7 @@ test("分隔条可用键盘调整，并把范围报给辅助技术", async ({ pa
   floor the badge takes precedence and a long name may truncate. The row's
   tooltip is the safety net: it carries the full name, endpoint and state.
 */
-test("会话栏收到最窄时，名字让位给机型 tag，完整名字在 tooltip 里", async ({ page }) => {
+test("会话栏收到最窄时，名字让位给型号，完整名字在 tooltip 里", async ({ page }) => {
   await openSession(page, "e2e-alpha");
 
   const rows = page.locator('[data-testid="session-row"]');

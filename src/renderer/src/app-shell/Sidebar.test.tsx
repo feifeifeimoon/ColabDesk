@@ -60,17 +60,11 @@ function rowsMarkup(html: string): string {
   return html.slice(start, end);
 }
 
-/** The visible facts line only — attributes and the hidden state span excluded. */
-function factsMarkup(html: string): string {
-  const row = rowsMarkup(html);
-  const start = row.indexOf("session-row__facts");
-  if (start === -1) return "";
-  return row.slice(start, row.indexOf("</button>", start));
-}
-
-/** How many status dots a piece of markup draws. */
-function dots(html: string): number {
-  return (html.match(/class="status\b/g) ?? []).length;
+/** The rows' visible markup: tooltips and the hidden state sentence removed. */
+function visibleRowsMarkup(html: string): string {
+  return rowsMarkup(html)
+    .replace(/title="[^"]*"/g, "")
+    .replace(/<span class="visually-hidden[^"]*">.*?<\/span>/g, "");
 }
 
 describe("Sidebar", () => {
@@ -114,61 +108,56 @@ describe("Sidebar", () => {
     // 没有名字，所以用 endpoint 当标识，而且是机器的语气：mono。
     expect(html).toContain("session-row__name--endpoint");
     expect(html).toContain(UNTRACKED.endpoint);
-    // 行内只留警告点和机型 tag；状态词在 tooltip 和屏幕阅读器文字里。
-    expect(visible).toContain("status--warn");
-    expect(visible).toContain('class="badge');
+    // 行里只剩机器图标、标识和型号；没有状态点，也没有状态词。
+    expect(visible).toContain("session-row__machine");
+    expect(visible).toContain("session-row__badge");
     expect(visible).toContain("CPU");
     expect(visible).not.toContain("未在本地记录");
     expect(untrackedMarkup(html)).toContain('class="visually-hidden"');
     expect(untrackedMarkup(html)).toContain("未在本地记录");
   });
 
-  it("名字和机型 tag 在第一行，动作条独立", () => {
+  it("机器图标、名字和型号在第一行，动作条独立", () => {
     const row = rowsMarkup(renderToStaticMarkup(createElement(Sidebar)));
     const buttonEnd = row.indexOf("</button>");
+    const machine = row.indexOf("session-row__machine");
     const name = row.indexOf("session-row__name");
-    const badge = row.indexOf("session-row__badge");
+    const model = row.indexOf("session-row__badge");
 
     expect(buttonEnd).toBeGreaterThan(-1);
-    expect(name).toBeGreaterThan(-1);
-    expect(badge).toBeGreaterThan(name);
-    expect(badge).toBeLessThan(buttonEnd);
+    expect(machine).toBeGreaterThan(-1);
+    expect(name).toBeGreaterThan(machine);
+    expect(model).toBeGreaterThan(name);
+    expect(model).toBeLessThan(buttonEnd);
     expect(row.indexOf("session-row__actions")).toBeGreaterThan(buttonEnd);
   });
 
-  it("一台机器只有一个状态：行里不再出现两个点", () => {
+  it("列表不再画状态点：状态只在 tooltip 和屏幕阅读器文字里", () => {
     store.current = { ...baseStore, connections: { "session-1": { status: "ready" } } };
     const html = renderToStaticMarkup(createElement(Sidebar));
 
-    expect(dots(rowsMarkup(html))).toBe(1);
-    // The resting state is a dot, not a word; the state stays readable to a
-    // screen reader and in the tooltip, so colour is not the only carrier.
-    expect(factsMarkup(html)).not.toContain("已连接");
+    expect(rowsMarkup(html)).not.toContain('class="status');
+    expect(visibleRowsMarkup(html)).not.toContain("已连接");
     expect(html).toContain("已连接");
   });
 
-  it("机型 tag 在名字后面，不在事实行", () => {
+  it("型号在名字后面，行里没有第二行", () => {
     const row = rowsMarkup(renderToStaticMarkup(createElement(Sidebar)));
-    const badge = row.slice(row.indexOf("session-row__badge"), row.indexOf("session-row__facts"));
+    const model = row.slice(row.indexOf("session-row__badge"), row.indexOf("</button>"));
 
-    expect(badge).toContain('class="badge');
-    expect(badge).toContain("CPU");
+    expect(model).toContain("CPU");
+    expect(row).not.toContain("session-row__facts");
   });
 
-  it("健康行没有第二行", () => {
-    const html = renderToStaticMarkup(createElement(Sidebar));
-    expect(rowsMarkup(html)).not.toContain("session-row__facts");
-  });
-
-  it("只有连接异常时，事实行不以分隔符开头", () => {
+  it("连接异常不写进列表，只留在 tooltip 和隐藏文字里", () => {
     store.current = { ...baseStore, connections: { "session-1": { status: "connecting" } } };
-    const facts = factsMarkup(renderToStaticMarkup(createElement(Sidebar)));
+    const html = renderToStaticMarkup(createElement(Sidebar));
 
-    expect(facts).toContain("连接中");
-    expect(facts).not.toContain("session-row__sep");
+    expect(visibleRowsMarkup(html)).not.toContain("连接中");
+    expect(html).toContain("连接中");
   });
 
-  it("只有终端数时，事实行不以分隔符开头", () => {
+  it("终端数只留在 tooltip 里，行内不写", () => {
     store.current = {
       ...baseStore,
       tabs: [
@@ -176,55 +165,39 @@ describe("Sidebar", () => {
         { session: "session-1", kind: "shell" },
       ],
     };
-    const facts = factsMarkup(renderToStaticMarkup(createElement(Sidebar)));
+    const html = renderToStaticMarkup(createElement(Sidebar));
 
-    expect(facts).toContain("2 个终端");
-    expect(facts).not.toContain("session-row__sep");
+    expect(visibleRowsMarkup(html)).not.toContain("2 个终端");
+    expect(html).toContain("2 个终端");
   });
 
-  it("连接异常和终端数同时存在时，只在两者之间放一个分隔符", () => {
-    store.current = {
-      ...baseStore,
-      connections: { "session-1": { status: "connecting" } },
-      tabs: [
-        { session: "session-1", kind: "shell" },
-        { session: "session-1", kind: "shell" },
-      ],
-    };
-    const facts = factsMarkup(renderToStaticMarkup(createElement(Sidebar)));
-
-    expect(facts).toContain("连接中");
-    expect(facts).toContain("2 个终端");
-    expect((facts.match(/session-row__sep/g) ?? []).length).toBe(1);
-    expect(facts.indexOf("连接中")).toBeLessThan(facts.indexOf("session-row__sep"));
-  });
-
-  it("休息状态只给屏幕阅读器一份，不再重复可见的那一份", () => {
+  it("休息状态只给屏幕阅读器一份，列表里不画", () => {
     store.current = { ...baseStore, connections: { "session-1": { status: "ready" } } };
     const html = renderToStaticMarkup(createElement(Sidebar));
-    const hidden = rowsMarkup(html).match(/<span class="visually-hidden">(.*?)<\/span>/)?.[1];
+    const hidden = rowsMarkup(html).match(/<span class="visually-hidden [^"]*">(.*?)<\/span>/)?.[1];
 
     expect(hidden).toBe("已连接");
   });
 
-  it("可见的连接异常不会在隐藏文字里重复，但云端已无仍会读出来", () => {
+  it("连接异常和云端已无都读给屏幕阅读器，列表不写", () => {
     store.current = {
       ...baseStore,
       runtimeEndpoints: [],
       connections: { "session-1": { status: "connecting" } },
     };
     const html = renderToStaticMarkup(createElement(Sidebar));
-    const hidden = rowsMarkup(html).match(/<span class="visually-hidden">(.*?)<\/span>/)?.[1];
+    const hidden = rowsMarkup(html).match(/<span class="visually-hidden [^"]*">(.*?)<\/span>/)?.[1];
 
+    expect(hidden).toContain("连接中");
     expect(hidden).toContain("云端已无");
-    expect(hidden).not.toContain("连接中");
+    expect(visibleRowsMarkup(html)).not.toContain("连接中");
   });
 
   it("云端还在的运行时，行里不写状态，tooltip 里才有", () => {
     store.current = { ...baseStore, runtimeEndpoints: ["127.0.0.1"] };
     const html = renderToStaticMarkup(createElement(Sidebar));
 
-    expect(factsMarkup(html)).not.toContain("云端运行中");
+    expect(visibleRowsMarkup(html)).not.toContain("云端运行中");
     expect(html).toContain("云端运行中");
     expect(rowsMarkup(html)).not.toContain("session-row--released");
   });
@@ -233,7 +206,7 @@ describe("Sidebar", () => {
     store.current = { ...baseStore, runtimeEndpoints: [] };
     const html = renderToStaticMarkup(createElement(Sidebar));
 
-    expect(factsMarkup(html)).not.toContain("云端已无");
+    expect(visibleRowsMarkup(html)).not.toContain("云端已无");
     expect(html).toContain("云端已无此运行时");
     expect(html).toContain("同步将移除该本地记录");
     expect(rowsMarkup(html)).toContain("session-row--released");

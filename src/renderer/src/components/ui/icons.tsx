@@ -210,6 +210,27 @@ export function ChipIcon({ size }: IconProps) {
   );
 }
 
+/** A GPU: a card with one fan and its display ports, not a second chip. */
+export function GpuIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <rect x="1.9" y="4.4" width="12.2" height="7.2" rx="1" />
+      <circle cx="5.7" cy="8" r="2.3" />
+      <path d="M10.3 6.2h1.7M10.3 8h1.7M10.3 9.8h1.7" />
+    </Svg>
+  );
+}
+
+/** A TPU: a tensor as a cube — the array is the machine. */
+export function TpuIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M8 1.9 13.3 4.6v6.8L8 14.1 2.7 11.4V4.6Z" />
+      <path d="M2.7 4.6 8 7.3l5.3-2.7M8 7.3v6.8" />
+    </Svg>
+  );
+}
+
 /** Active tasks / sessions pulse. */
 export function ActivityIcon({ size }: IconProps) {
   return (

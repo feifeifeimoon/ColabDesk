@@ -69,6 +69,19 @@ export function acceleratorKey(accelerator: string | null | undefined): string {
   return upper;
 }
 
+/**
+ * The machine class, for the rail's leading icon. Every accelerator this app
+ * knows falls into one of three: a CPU runtime, a GPU, or a TPU.
+ */
+export type AcceleratorKind = "cpu" | "gpu" | "tpu";
+
+export function acceleratorKind(accelerator: string | null | undefined): AcceleratorKind {
+  const key = acceleratorKey(accelerator);
+  if (key === "CPU") return "cpu";
+  if (key.startsWith("TPU")) return "tpu";
+  return "gpu";
+}
+
 /** The picker's display name for a machine id. */
 export function acceleratorLabel(accelerator: string | null | undefined): string {
   const key = acceleratorKey(accelerator);

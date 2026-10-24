@@ -3,8 +3,10 @@ import { useTranslation } from "react-i18next";
 import { Badge, type StatusTone } from "../components/ui/Badge";
 import { Button, IconButton } from "../components/ui/Button";
 import {
+  ChipIcon,
   CloseIcon,
   CopyIcon,
+  GpuIcon,
   KeyIcon,
   PanelLeftIcon,
   PlusIcon,
@@ -12,10 +14,11 @@ import {
   SettingsIcon,
   StopIcon,
   SyncIcon,
+  TpuIcon,
 } from "../components/ui/icons";
 import { Menu, type MenuItem } from "../components/ui/Menu";
 import { PanelDivider } from "../components/ui/PanelDivider";
-import { acceleratorLabel } from "../features/sessions/accelerators";
+import { acceleratorKind, acceleratorLabel } from "../features/sessions/accelerators";
 import { toggleMaximizeWindow } from "../lib/api";
 import { PANEL_WIDTH } from "../lib/panel-width";
 import { IS_MAC, MAC_INSET } from "../lib/platform";
@@ -29,6 +32,9 @@ const CONNECTION_TONE: Record<string, StatusTone> = {
   error: "danger",
   closed: "neutral",
 };
+
+/** The machine class as a picture: the tile at the head of a card. */
+const MACHINE_ICON = { cpu: ChipIcon, gpu: GpuIcon, tpu: TpuIcon };
 
 /**
  * The left rail: one card per session, the way a terminal app lists hosts.
@@ -240,14 +246,12 @@ export function Sidebar() {
         {sessions.map((session) => {
           const connection = connections[session.name];
           const state = connection?.status ?? "closed";
-          // `neutral` has no modifier: the resting dot is `.status`'s own colour.
+          // `neutral` has no modifier: `.status`'s own colour is the resting one.
           const tone = CONNECTION_TONE[state] ?? "neutral";
-          const dotClass = ["status", tone === "neutral" ? "" : `status--${tone}`].filter(Boolean).join(" ");
-          // The two resting states say nothing: a green dot is "connected", a
-          // neutral one is "not connected". Connecting and failing are the two
-          // somebody opens this list to find, so they still get words.
-          const stateLabel =
-            state === "connecting" || state === "error" ? (connectionLabels[state] ?? state) : null;
+          const stateClass = ["status", tone === "neutral" ? "" : `status--${tone}`]
+            .filter(Boolean)
+            .join(" ");
+          const MachineIcon = MACHINE_ICON[acceleratorKind(session.accelerator)];
           const busy = busyAction?.startsWith(`${session.name}:`) ?? false;
           const sessionTabs = tabs.filter((tab) => tab.session === session.name);
           // The tooltip counts shells, which is what it says; the menu below is
@@ -282,11 +286,15 @@ export function Sidebar() {
           ]
             .filter((part): part is string => Boolean(part))
             .join(" · ");
-          // The visible state word is already in the button's name; only add a
-          // hidden one when the state is resting, and carry the released claim
-          // because the paint alone cannot say it.
-          const accessibleState = [
-            stateLabel ? null : (connectionLabels[state] ?? state),
+          /*
+            The rail paints machines, not connections: the state is in the
+            tooltip and in the hidden text a screen reader gets, and a failed
+            connection is written into the terminal the row opens. Keeping the
+            status classes here is what lets the e2e fixture wait for readiness
+            without reading the store.
+          */
+          const hiddenState = [
+            connectionLabels[state] ?? state,
             released ? t("sidebar.cloudGoneTitle", "云端已无此运行时；同步将移除该本地记录。") : null,
           ]
             .filter((part): part is string => Boolean(part))
@@ -358,52 +366,22 @@ export function Sidebar() {
                 className="session-row__main"
                 onClick={() => void runSessionAction(session.name, "open")}
               >
-                <span
-                  aria-hidden="true"
-                  data-testid={session.name === selectedSession ? "terminal-status" : undefined}
-                  className={dotClass}
-                />
-                <span className="session-row__title">
-                  <span className="session-row__name">{session.name}</span>
-                  <span className="session-row__badge">
-                    <Badge>{acceleratorLabel(session.accelerator)}</Badge>
-                  </span>
+                <span className="session-row__machine" aria-hidden="true">
+                  <MachineIcon size={16} />
                 </span>
-                {/* The dot paints the state; this keeps it readable to a screen
-                    reader without putting a word back on the card. */}
-                {accessibleState && <span className="visually-hidden">{accessibleState}</span>}
-                {/*
-                  The machine's half of the card: how this window is getting on
-                  with it when that is not the resting state, and — last,
-                  because it is the least of it — how many terminals are open on
-                  it. A healthy row has no second line at all.
-                */}
-                {(stateLabel || shells > 1) && (
-                  <span className="session-row__facts">
-                    {stateLabel && (
-                      <span
-                        className={[
-                          "session-row__fact",
-                          "session-row__state",
-                          tone === "danger" ? "session-row__state--danger" : "",
-                          tone === "warn" ? "session-row__state--warn" : "",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
-                      >
-                        {stateLabel}
-                      </span>
-                    )}
-                    {stateLabel && shells > 1 && (
-                      <span className="session-row__sep" aria-hidden="true">·</span>
-                    )}
-                    {shells > 1 && (
-                      <span className="session-row__fact">
-                        {t("sidebar.terminalsCount", "{{count}} 个终端", { count: shells })}
-                      </span>
-                    )}
-                  </span>
-                )}
+                <span className="session-row__name">{session.name}</span>
+                <span className="session-row__badge">
+                  <Badge>{acceleratorLabel(session.accelerator)}</Badge>
+                </span>
+                {/* Not painted: the connection state is a tooltip and a screen-
+                    reader sentence, and a failure is written into the terminal
+                    this button opens. */}
+                <span
+                  className={`visually-hidden ${stateClass}`}
+                  data-testid={session.name === selectedSession ? "terminal-status" : undefined}
+                >
+                  {hiddenState}
+                </span>
               </button>
 
               <span className="session-row__actions">
@@ -431,28 +409,31 @@ export function Sidebar() {
           controls because everything this app does to a session needs a record
           that does not exist for them.
         */}
-        {untrackedSessions.map((session) => (
-          <div
-            key={session.name}
-            data-testid="untracked-row"
-            className="session-row session-row--untracked"
-            title={`${session.name} · ${t("sidebar.untracked", "未在本地记录")} · ${t(
-              "sidebar.untrackedTitle",
-              "云端存在此运行时但本地无对应连接凭据。如需终止请前往 Colab 网页控制台。",
-            )}`}
-          >
-            <div className="session-row__main">
-              <span aria-hidden="true" className="status status--warn" />
-              <span className="session-row__title">
+        {untrackedSessions.map((session) => {
+          const UntrackedIcon = MACHINE_ICON[acceleratorKind(session.accelerator)];
+          return (
+            <div
+              key={session.name}
+              data-testid="untracked-row"
+              className="session-row session-row--untracked"
+              title={`${session.name} · ${t("sidebar.untracked", "未在本地记录")} · ${t(
+                "sidebar.untrackedTitle",
+                "云端存在此运行时但本地无对应连接凭据。如需终止请前往 Colab 网页控制台。",
+              )}`}
+            >
+              <div className="session-row__main">
+                <span className="session-row__machine" aria-hidden="true">
+                  <UntrackedIcon size={16} />
+                </span>
                 <span className="session-row__name session-row__name--endpoint">{session.name}</span>
                 <span className="session-row__badge">
                   <Badge>{acceleratorLabel(session.accelerator)}</Badge>
                 </span>
-              </span>
-              <span className="visually-hidden">{t("sidebar.untracked", "未在本地记录")}</span>
+                <span className="visually-hidden">{t("sidebar.untracked", "未在本地记录")}</span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="sidebar__footer">

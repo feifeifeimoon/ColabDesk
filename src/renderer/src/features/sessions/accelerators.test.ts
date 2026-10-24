@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { acceleratorKey, acceleratorLabel, sessionRate, sessionRateText } from "./accelerators";
+import {
+  acceleratorKey,
+  acceleratorKind,
+  acceleratorLabel,
+  sessionRate,
+  sessionRateText,
+} from "./accelerators";
 
 describe("accelerator ids", () => {
   it("folds the picker's spelling and the backend's spelling to one key", () => {
@@ -17,6 +23,16 @@ describe("accelerator ids", () => {
     expect(acceleratorLabel("H100")).toBe("H100");
     expect(acceleratorLabel("")).toBe("CPU");
     expect(acceleratorLabel(undefined)).toBe("CPU");
+  });
+
+  it("sorts every machine into the rail's three icon classes", () => {
+    expect(acceleratorKind("NONE")).toBe("cpu");
+    expect(acceleratorKind("")).toBe("cpu");
+    expect(acceleratorKind("T4")).toBe("gpu");
+    expect(acceleratorKind("A100")).toBe("gpu");
+    expect(acceleratorKind("H100")).toBe("gpu");
+    expect(acceleratorKind("tpu:v5e1")).toBe("tpu");
+    expect(acceleratorKind("V6E1")).toBe("tpu");
   });
 });
 
