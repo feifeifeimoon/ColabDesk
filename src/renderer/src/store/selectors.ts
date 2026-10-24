@@ -18,12 +18,31 @@ export function useHasWorkSurface(): boolean {
   );
 }
 
+/** The pane that owns the keyboard in the selected session. */
+export function selectFocusedGroupId(state: AppState): string | null {
+  const session = state.selectedSession;
+  if (!session) return null;
+  const groupId = state.focusedGroupBySession[session];
+  return groupId && state.groups[groupId] ? groupId : null;
+}
+
+/** The tab the keyboard is in: the focused pane's active tab. */
+export function selectFocusedTabId(state: AppState): string | null {
+  const groupId = selectFocusedGroupId(state);
+  if (!groupId) return null;
+  return state.groups[groupId]?.activeTabId ?? null;
+}
+
 /**
- * The file tab in front, if it belongs to this session. The tree marks that row
- * the way the rail marks the session that is on screen — a path, not a copy of
- * the tab, so a pane subscribed to it does not re-render on every tab change.
+ * The file tab in front of this session's focused pane, if it is a file. The
+ * tree marks that row the way the rail marks the session on screen — a path,
+ * not a copy of the tab, so a pane subscribed to it does not re-render on every
+ * tab change.
  */
 export function selectActiveFilePath(state: AppState, session: string): string | null {
-  const tab = state.tabs.find((candidate) => candidate.id === state.activeTabId);
+  const groupId = state.focusedGroupBySession[session];
+  const group = groupId ? state.groups[groupId] : null;
+  if (!group) return null;
+  const tab = state.tabs.find((candidate) => candidate.id === group.activeTabId);
   return tab?.kind === "file" && tab.session === session ? tab.path : null;
 }

@@ -82,8 +82,8 @@ test("服务器上有、本地没有的运行时也会列出来，但不可操�
 
 test("顶栏是拖拽区，栏内控件退出拖拽", async ({ page }) => {
   expect(await dragRegion(page, ".topbar")).toBe("drag");
-  // 标签条横跨栏的中间且必须保持拖拽，否则两端的控件之间没有可抓的地方。
-  expect(await dragRegion(page, ".topbar__tabs")).toBe("drag");
+  // 中间是现在唯一可抓的空白拖拽区：标签条已经搬到各自的 pane 里。
+  expect(await dragRegion(page, ".topbar__middle")).toBe("drag");
   expect(await dragRegion(page, '[data-testid="toggle-sidebar"]')).toBe("no-drag");
 });
 

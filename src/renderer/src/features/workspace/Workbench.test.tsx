@@ -1,18 +1,21 @@
 /**
- * The workbench: one slot per session, one pane per tab, one browser per
- * session — and two levels of parking.
+ * The workbench: one slot per session, one pane surface per session, one file
+ * browser per session — and three levels of parking (session, group, tab).
  *
- * Both levels are load-bearing. A session that is not selected leaves the
- * layout but keeps its tabs; inside the selected session, the tab that is not
- * the shown one does the same. Neither is visible to an end-to-end run, which
- * can only see that the shells answered.
+ * All three levels are load-bearing. A session that is not selected leaves the
+ * layout but keeps its panes and tabs; inside a session, the tabs that are not
+ * their group's active one do the same. None is visible to an end-to-end run,
+ * which can only see that the shells answered.
+ *
+ * The pane surface itself is tested in `PaneSurface.test.tsx`; this file is
+ * about the session slots around it.
  */
 
-import { createElement } from "react";
+import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "../../i18n/i18n";
-import type { TerminalTab } from "../../store/types";
+import type { TerminalTab, WorkspaceTab } from "../../store/types";
 
 const store = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
 
@@ -20,31 +23,36 @@ vi.mock("../../store", () => ({
   useAppStore: (select: (state: unknown) => unknown) => select(store.current),
 }));
 
-// The panes own xterm and a live SSH session; what the workbench decides — how
-// many there are, and which one it marks as being on screen — is the subject.
-vi.mock("./TerminalPane", async () => {
+// The pane surface owns dnd-kit and the tab strips; what the workbench decides
+// is which sessions are on screen and what parks with them.
+vi.mock("./PaneSurface", async () => {
   const { createElement: h } = await import("react");
   return {
-    TerminalPane: ({ session, active }: { session: string; active: boolean }) =>
+    PaneSurface: ({
+      session,
+      shown,
+      layout,
+    }: {
+      session: string;
+      shown: boolean;
+      layout: unknown;
+    }) =>
       h("div", {
-        className: "terminal-area",
+        className: "pane-surface",
         "data-session": session,
-        "data-active": String(active),
+        "data-shown": String(shown),
+        "data-has-layout": String(Boolean(layout)),
       }),
   };
 });
-vi.mock("./FileView", async () => {
+
+vi.mock("./tab-drag/TabDragProvider", async () => {
   const { createElement: h } = await import("react");
   return {
-    FileView: ({ session, name, active }: { session: string; name: string; active: boolean }) =>
-      h("div", {
-        className: "file-area",
-        "data-session": session,
-        "data-name": name,
-        "data-active": String(active),
-      }),
+    TabDragProvider: ({ children }: { children: ReactNode }) => h("div", null, children),
   };
 });
+
 vi.mock("./FilePane", async () => {
   const { createElement: h } = await import("react");
   return {
@@ -68,23 +76,41 @@ const shell = (session: string, ordinal: number): TerminalTab => ({
   kind: "shell",
   id: `${session}:${ordinal}`,
   session,
+  groupId: `${session}:group:1`,
   ordinal,
   customTitle: null,
 });
 
 /** A file tab: the same strip, the other kind. */
-const file = (session: string, path: string) => ({
-  kind: "file" as const,
+const file = (session: string, path: string): WorkspaceTab => ({
+  kind: "file",
   id: `${session}:file:${path}`,
   session,
+  groupId: `${session}:group:1`,
   path,
   name: path.slice(path.lastIndexOf("/") + 1),
 });
 
+const group = (session: string, tabOrder: string[], activeTabId: string) => ({
+  id: `${session}:group:1`,
+  session,
+  tabOrder,
+  activeTabId,
+  recentTabIds: tabOrder,
+});
+
+const leaf = (session: string) => ({
+  kind: "leaf" as const,
+  id: `leaf:${session}:group:1`,
+  groupId: `${session}:group:1`,
+});
+
 const base = {
-  tabs: [] as TerminalTab[],
+  tabs: [] as WorkspaceTab[],
+  groups: {} as Record<string, ReturnType<typeof group>>,
+  groupLayouts: {} as Record<string, ReturnType<typeof leaf>>,
+  focusedGroupBySession: {} as Record<string, string>,
   selectedSession: null as string | null,
-  activeTabId: null as string | null,
   filesOpen: false,
   sessions: [] as unknown[],
   sidebarOpen: true,
@@ -106,6 +132,10 @@ const render = (): string => renderToStaticMarkup(createElement(Workbench));
 /** The session slots, in the order their first shell was opened. */
 const slots = (markup: string): string[] => markup.match(/<div class="work-slot"[^>]*>/g) ?? [];
 
+/** The pane surfaces, in the same order. */
+const surfaces = (markup: string): string[] =>
+  markup.match(/<div class="pane-surface"[^>]*>/g) ?? [];
+
 describe("empty workbench", () => {
   it("names the next step when there is nothing to open", () => {
     expect(render()).toContain("新建一个运行时开始使用。");
@@ -126,13 +156,20 @@ describe("empty workbench", () => {
   });
 });
 
-describe("open shells", () => {
-  it("parks the sessions that are not selected, shells and all", () => {
+describe("session slots", () => {
+  it("parks the sessions that are not selected, panes and all", () => {
+    const alphaTab = shell("alpha", 1);
+    const betaTab = shell("beta", 1);
     store.current = {
       ...base,
-      tabs: [shell("alpha", 1), shell("beta", 1)],
+      tabs: [alphaTab, betaTab],
+      groups: {
+        "alpha:group:1": group("alpha", [alphaTab.id], alphaTab.id),
+        "beta:group:1": group("beta", [betaTab.id], betaTab.id),
+      },
+      groupLayouts: { alpha: leaf("alpha"), beta: leaf("beta") },
+      focusedGroupBySession: { alpha: "alpha:group:1", beta: "beta:group:1" },
       selectedSession: "alpha",
-      activeTabId: "alpha:1",
     };
 
     const [alpha, beta] = slots(render());
@@ -142,46 +179,45 @@ describe("open shells", () => {
     expect(beta, "beta 停靠：离开焦点顺序").toContain("inert");
   });
 
-  it("gives every shell of the selected session a pane and shows one", () => {
+  it("gives every session with tabs its own pane surface and layout", () => {
+    const alphaTab = shell("alpha", 1);
+    const betaTab = shell("beta", 1);
     store.current = {
       ...base,
-      tabs: [shell("alpha", 1), shell("alpha", 2)],
+      tabs: [alphaTab, betaTab],
+      groups: {
+        "alpha:group:1": group("alpha", [alphaTab.id], alphaTab.id),
+        "beta:group:1": group("beta", [betaTab.id], betaTab.id),
+      },
+      groupLayouts: { alpha: leaf("alpha"), beta: leaf("beta") },
+      focusedGroupBySession: { alpha: "alpha:group:1", beta: "beta:group:1" },
       selectedSession: "alpha",
-      activeTabId: "alpha:2",
     };
 
-    const panes = render().match(/<div class="terminal-area"[^>]*>/g) ?? [];
+    const panes = surfaces(render());
 
-    // In tab order, both mounted, and the second one is the shell on screen.
     expect(panes).toHaveLength(2);
-    expect(panes[0]).toContain('data-active="false"');
-    expect(panes[1]).toContain('data-active="true"');
-  });
-
-  it("a file is a tab like a shell is: its own pane, parked when another is shown", () => {
-    const trainLog = file("alpha", "/content/train.log");
-    store.current = {
-      ...base,
-      tabs: [shell("alpha", 1), trainLog],
-      selectedSession: "alpha",
-      activeTabId: trainLog.id,
-    };
-
-    const markup = render();
-    const terminals = markup.match(/<div class="terminal-area"[^>]*>/g) ?? [];
-    const files = markup.match(/<div class="file-area"[^>]*>/g) ?? [];
-
-    // The shell stands down rather than unmounting; the file is what is shown.
-    expect(terminals).toHaveLength(1);
-    expect(terminals[0]).toContain('data-active="false"');
-    expect(files).toHaveLength(1);
-    expect(files[0]).toContain('data-active="true"');
-    expect(files[0]).toContain('data-name="train.log"');
+    expect(panes[0]).toContain('data-session="alpha"');
+    expect(panes[0]).toContain('data-shown="true"');
+    expect(panes[0]).toContain('data-has-layout="true"');
+    expect(panes[1]).toContain('data-session="beta"');
+    expect(panes[1]).toContain('data-shown="false"');
   });
 
   it("keeps one file browser per session, parked rather than unmounted when hidden", () => {
     const tabs = [shell("alpha", 1), shell("beta", 1)];
-    store.current = { ...base, tabs, selectedSession: "alpha", filesOpen: true };
+    store.current = {
+      ...base,
+      tabs,
+      groups: {
+        "alpha:group:1": group("alpha", [tabs[0]!.id], tabs[0]!.id),
+        "beta:group:1": group("beta", [tabs[1]!.id], tabs[1]!.id),
+      },
+      groupLayouts: { alpha: leaf("alpha"), beta: leaf("beta") },
+      focusedGroupBySession: { alpha: "alpha:group:1", beta: "beta:group:1" },
+      selectedSession: "alpha",
+      filesOpen: true,
+    };
     const withPanel = render();
     expect(withPanel.match(/class="files-panel"/g)).toHaveLength(2);
     // Both sessions keep a tab of their own in the DOM; only one is on screen.
@@ -191,9 +227,28 @@ describe("open shells", () => {
     // Collapsing the panel hides the tree instead of folding it: the shape it
     // was left in, and the listings behind it, have to survive — so the pane is
     // still in the document, hidden and inert rather than gone.
-    store.current = { ...base, tabs, selectedSession: "alpha", filesOpen: false };
+    store.current = { ...store.current, filesOpen: false };
     const hidden = render();
     expect(hidden.match(/class="files-panel"/g)).toHaveLength(2);
     expect(hidden.match(/<div class="files-panel"[^>]*>/g)?.[0]).toContain("hidden");
+  });
+
+  it("keeps a file tab a tab: it does not get a pane of its own", () => {
+    const trainLog = file("alpha", "/content/train.log");
+    const alphaShell = shell("alpha", 1);
+    store.current = {
+      ...base,
+      tabs: [alphaShell, trainLog],
+      groups: { "alpha:group:1": group("alpha", [alphaShell.id, trainLog.id], trainLog.id) },
+      groupLayouts: { alpha: leaf("alpha") },
+      focusedGroupBySession: { alpha: "alpha:group:1" },
+      selectedSession: "alpha",
+    };
+
+    const markup = render();
+    expect(surfaces(markup)).toHaveLength(1);
+    // It is the group's active tab, so the surface — not the workbench — shows
+    // it; the workbench only sees one session slot.
+    expect(markup.match(/class="files-panel"/g)).toHaveLength(1);
   });
 });

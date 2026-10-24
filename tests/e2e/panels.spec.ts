@@ -144,28 +144,28 @@ test("两栏都拖到最宽时，终端还在、仍可用且不横向溢出", as
   expect(overflow).toBeLessThanOrEqual(0);
 });
 
-test("标签条从终端正上方开始，跟着会话栏走", async ({ page }) => {
+test("每个面板的标签条从自己的终端正上方开始，跟着会话栏走", async ({ page }) => {
   await openSession(page, "e2e-alpha");
 
-  /** How far the strip's left edge sits from the terminal's. */
+  /** How far the strip's left edge sits from its terminal's. */
   const drift = async (): Promise<number> => {
-    const strip = await page.locator(".topbar__tabs").boundingBox();
-    const terminal = await page.locator(".terminal-area").boundingBox();
+    const strip = await page.locator(".group-strip").boundingBox();
+    const terminal = await page.locator(".terminal-area:visible").boundingBox();
     if (!strip || !terminal) throw new Error("没有布局盒");
     return Math.abs(strip.x - terminal.x);
   };
 
   expect(await drift()).toBeLessThanOrEqual(1);
 
-  // The bar is divided the way the window is: widening the rail moves the strip.
+  // The bar is divided the way the window is: widening the rail moves the pane,
+  // and the strip moves with it because it lives inside the pane.
   await dragDivider(page, "会话栏宽度", 80);
   expect(await widthOf(page, ".sidebar")).toBeGreaterThan(280);
   expect(await drift()).toBeLessThanOrEqual(1);
 
-  // Collapsed, there is no terminal column to line up with: the section shrinks
-  // back to its own two controls and the strip follows them.
+  // Collapsed, the pane starts at the window edge and the strip follows it.
   await page.locator('[data-testid="toggle-sidebar"]').click();
-  const collapsed = await page.locator(".topbar__tabs").boundingBox();
+  const collapsed = await page.locator(".group-strip").boundingBox();
   expect(collapsed?.x ?? 999).toBeLessThan(120 + CHROME_INSET);
 });
 

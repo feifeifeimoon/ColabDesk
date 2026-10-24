@@ -38,7 +38,7 @@ export function Sidebar() {
 
   /**
    * Publishes this rail's width for the top bar's first section, which is drawn
-   * exactly this wide so the tab strip starts where the terminal does.
+   * exactly this wide so the bar's middle starts where the terminal does.
    *
    * Measured rather than recomputed there: the rail's width is whatever the
    * layout gave it — on a narrow window it gives way to the terminal — and a

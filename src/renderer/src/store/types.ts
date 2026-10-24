@@ -11,6 +11,7 @@
 import type { CreateSessionOptions } from "@shared/api";
 import type { EnvStatus, Session, SshState, UpdateStatus, UsageReport } from "@shared/types";
 import type { PanelSide } from "../lib/panel-width";
+import type { GroupLayout, PaneZone, TabGroup } from "../lib/tab-groups";
 import type { Theme, ThemePreference } from "../lib/theme";
 import type { TerminalAppearance, TerminalThemeId } from "../lib/terminal-appearance";
 
@@ -35,6 +36,8 @@ export interface TerminalTab {
   kind: "shell";
   id: string;
   session: string;
+  /** The pane this tab belongs to. A tab is always in exactly one group. */
+  groupId: string;
   /** Its number among the session's shells: "终端 1", "终端 2", … */
   ordinal: number;
   /**
@@ -60,6 +63,7 @@ export interface FileTab {
   /** One tab per file: opening the same one again focuses it, never duplicates it. */
   id: string;
   session: string;
+  groupId: string;
   path: string;
   name: string;
 }
@@ -68,9 +72,14 @@ export type WorkspaceTab = TerminalTab | FileTab;
 
 export interface WorkspaceSlice {
   tabs: WorkspaceTab[];
-  /** The rail's selection: whose shells the tab strip shows. */
+  /** Panes, by id. Every tab belongs to exactly one group. */
+  groups: Record<string, TabGroup>;
+  /** One split tree per session; a session with tabs always has one. */
+  groupLayouts: Record<string, GroupLayout>;
+  /** The pane that owns the keyboard, remembered per session. */
+  focusedGroupBySession: Record<string, string>;
+  /** The rail's selection: whose panes the workbench shows. */
   selectedSession: string | null;
-  activeTabId: string | null;
   connections: Record<string, SshState>;
   /**
    * The file tree's shape, per session: which directories are open. It lives
@@ -90,10 +99,13 @@ export interface WorkspaceSlice {
    */
   fileWrites: Record<string, { dir: string; revision: number }>;
 
-  /** Goes to a session, opening its first shell if it has none, and focuses it. */
+  /** Goes to a session, opening its first shell if it has no group yet. */
   openSession(session: string): void;
-  /** One more shell on the same connection — the reason tabs exist. */
-  openTab(session: string): void;
+  /**
+   * One more shell on the same connection. Without a group it lands in the
+   * session's focused pane; with one, that pane is focused first.
+   */
+  openTab(session: string, groupId?: string): void;
   /**
    * Names a shell. `null`, or nothing but whitespace, goes back to the derived
    * "终端 N". File tabs are not renameable: their name is the file's.
@@ -104,7 +116,7 @@ export interface WorkspaceSlice {
   closeTab(tabId: string): void;
   /**
    * What the strip's `×` and `Ctrl+Shift+W` do: close the tab, or — when it has
-   * unsaved edits — bring it forward and let its pane ask what to do.
+   * unsaved edits — bring its pane forward and let it ask what to do.
    */
   requestCloseTab(tabId: string): void;
   /** The pane's "never mind" to that question. */
@@ -113,12 +125,22 @@ export interface WorkspaceSlice {
   setTabDirty(tabId: string, dirty: boolean): void;
   /** A save landed in this directory; the tree re-reads it. */
   noteFileWrite(session: string, dir: string): void;
-  /** Brings one tab of the selected session to the front. */
+  /** Makes this pane the one the keyboard belongs to. */
+  focusGroup(session: string, groupId: string): void;
+  /** Brings one tab to the front of its pane and focuses that pane. */
   focusTab(tabId: string): void;
   /** Closes every tab of a session, which is what releases its connection. */
   closeSessionTabs(session: string): void;
-  /** Focuses the nth tab of the selected session, for the number keys. */
+  /** Focuses the nth tab of the focused pane, for the number keys. */
   focusTabAt(index: number): void;
+  /** Moves a tab inside its pane's strip. */
+  reorderTab(groupId: string, tabId: string, beforeTabId: string | null): void;
+  /** Moves a tab into another pane's strip, or to its end when `beforeTabId` is null. */
+  moveTabToGroup(tabId: string, targetGroupId: string, beforeTabId: string | null): void;
+  /** Moves a tab into a new group on the target pane's edge. */
+  splitTabToGroup(tabId: string, targetGroupId: string, zone: PaneZone): void;
+  /** Committed after a divider drag; the ratio is clamped by the pure model. */
+  setGroupRatio(session: string, splitId: string, ratio: number): void;
   setConnection(state: SshState): void;
   /** Opens a directory that was closed, closes one that was open. */
   toggleDirectory(session: string, path: string): void;

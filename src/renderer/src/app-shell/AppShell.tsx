@@ -1,16 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, IconButton } from "../components/ui/Button";
 import {
   ActivityIcon,
-  CloseIcon,
   CloseWindowIcon,
   MaximizeIcon,
   MinimizeIcon,
   PanelLeftIcon,
   PanelRightIcon,
   SettingsIcon,
-  PlusIcon,
   RestoreIcon,
   SyncIcon,
   TerminalIcon,
@@ -33,11 +31,12 @@ export const MAC_INSET = "calc(78px / var(--ui-zoom-factor, 1))";
 
 /**
  * The single top bar: it is the window's title bar too. Panel toggles sit at
- * both ends, the session tabs in the middle, and — on Windows and Linux, where
- * the OS frame is gone — the window controls at the far right.
+ * both ends, the middle is the window's drag region, and — on Windows and Linux,
+ * where the OS frame is gone — the window controls at the far right. Session
+ * tabs live in each pane's own strip now, so this bar no longer duplicates them.
  *
  * While settings is up, the two panel toggles stand down: they act on a layout
- * that is not on screen. The tabs stay, because they are the way back to a
+ * that is not on screen. The panes stay, because they are the way back to a
  * terminal.
  */
 export function TopBar() {
@@ -45,54 +44,11 @@ export function TopBar() {
   const sidebarOpen = useAppStore((state) => state.sidebarOpen);
   const filesOpen = useAppStore((state) => state.filesOpen);
   const settingsOpen = useAppStore((state) => state.settingsOpen);
-  const tabs = useAppStore((state) => state.tabs);
-  const selectedSession = useAppStore((state) => state.selectedSession);
-  const activeTabId = useAppStore((state) => state.activeTabId);
   const hasWorkSurface = useHasWorkSurface();
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
   const openSettings = useAppStore((state) => state.openSettings);
   const signedOut = useAppStore((state) => state.env?.authenticated === false);
   const toggleFiles = useAppStore((state) => state.toggleFiles);
-  const openTab = useAppStore((state) => state.openTab);
-  // Closing a tab is a request, not an action: a file tab with unsaved edits
-  // gets asked about first (see the workspace slice).
-  const requestCloseTab = useAppStore((state) => state.requestCloseTab);
-  const focusTab = useAppStore((state) => state.focusTab);
-  const dirtyTabs = useAppStore((state) => state.dirtyTabs);
-  const renameTab = useAppStore((state) => state.renameTab);
-
-  // Renaming in place: one tab at a time, and the draft lives here rather than
-  // in the store — nothing else can start an edit, so nothing else needs to see
-  // it. `initial` is the name that was on screen when the edit opened, which is
-  // what "did the user change it?" has to be measured against.
-  const [renaming, setRenaming] = useState<{ id: string; draft: string; initial: string } | null>(
-    null,
-  );
-  const renameCancelled = useRef(false);
-
-  /**
-   * Enter commits, losing focus commits, Escape cancels. Escape has to raise a
-   * flag first: whether unmounting a focused input also fires blur is not
-   * something to rely on across browsers (React routes blur through focusout),
-   * and a stray commit there would save a draft the user threw away.
-   */
-  function commitRename(edit: { id: string; draft: string; initial: string }): void {
-    if (renameCancelled.current) return;
-    setRenaming(null);
-    const next = edit.draft.trim();
-    // Unchanged means "no name of mine": the default is a translated string, and
-    // storing it would freeze this tab's label into the language of the moment.
-    if (next === edit.initial.trim()) return;
-    renameTab(edit.id, next === "" ? null : next);
-  }
-
-  // The strip is the selected session's workspace, so it shows that session's
-  // shells and nothing else. Memoised rather than selected: a selector that
-  // built this array would hand back a new reference on every store write.
-  const sessionTabs = useMemo(
-    () => tabs.filter((tab) => tab.session === selectedSession),
-    [tabs, selectedSession],
-  );
 
   return (
     <header
@@ -106,8 +62,8 @@ export function TopBar() {
     >
       {/* The traffic lights sit over this corner on macOS, so the room for them
           is padding *inside* the section rather than on the bar: the section
-          still ends where the rail does, which is what puts the tabs above the
-          terminal and the seam on the column below. */}
+          still ends where the rail does, which is what puts the drag region
+          above the terminal and the seam on the column below. */}
       <div
         className="topbar__side"
         data-rail={!signedOut && (sidebarOpen || settingsOpen) ? "open" : "closed"}
@@ -148,117 +104,10 @@ export function TopBar() {
           ))}
       </div>
 
-      <div className="topbar__tabs" role="tablist">
-        {sessionTabs.map((tab) => {
-          const onScreen = tab.id === activeTabId && !settingsOpen;
-          const label =
-            tab.kind === "file"
-              ? tab.name
-              : (tab.customTitle ??
-                t("topbar.terminalTab", "终端 {{index}}", { index: tab.ordinal }));
-          return (
-            <div
-              key={tab.id}
-              role="tab"
-              aria-selected={onScreen}
-              className={`session-tab ${onScreen ? "session-tab--active" : ""}`}
-              onMouseDown={(event) => {
-                // Middle click closes, like every terminal emulator does — and
-                // like the × does: a file tab with unsaved edits is a question.
-                if (event.button === 1) {
-                  event.preventDefault();
-                  requestCloseTab(tab.id);
-                } else if (event.button === 0) {
-                  focusTab(tab.id);
-                }
-              }}
-            >
-              {renaming?.id === tab.id ? (
-                <input
-                  className="session-tab__rename"
-                  value={renaming.draft}
-                  autoFocus
-                  spellCheck={false}
-                  aria-label={t("topbar.terminalRename", "重命名终端")}
-                  data-testid="tab-rename"
-                  onFocus={(event) => event.currentTarget.select()}
-                  onChange={(event) => setRenaming({ ...renaming, draft: event.target.value })}
-                  // The keyboard and the pointer belong to the field while it is
-                  // open: the tab treats middle click as "close".
-                  onMouseDown={(event) => event.stopPropagation()}
-                  onDoubleClick={(event) => event.stopPropagation()}
-                  onKeyDown={(event) => {
-                    // An Enter that is picking an IME candidate is not a commit.
-                    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
-                    if (event.key === "Enter") commitRename(renaming);
-                    else if (event.key === "Escape") {
-                      renameCancelled.current = true;
-                      setRenaming(null);
-                    }
-                  }}
-                  onBlur={() => commitRename(renaming)}
-                />
-              ) : (
-                /* The path is the tooltip for a file: the strip truncates the name,
-                   and where the file lives is the thing a name cannot say. A dot
-                   says "not on the runtime yet" — the pane puts it in words. A
-                   renamed shell shows its own name here, since truncation has to
-                   be recoverable. */
-                <span
-                  className="truncate"
-                  title={tab.kind === "file" ? tab.path : (tab.customTitle ?? undefined)}
-                  onDoubleClick={
-                    tab.kind === "shell"
-                      ? (event) => {
-                          event.stopPropagation();
-                          renameCancelled.current = false;
-                          // Opens on the name that is on screen: replace it by
-                          // typing, adjust it with the arrow keys.
-                          setRenaming({ id: tab.id, draft: label, initial: label });
-                        }
-                      : undefined
-                  }
-                >
-                  {dirtyTabs[tab.id] ? <span className="session-tab__dot" aria-hidden="true" /> : null}
-                  {label}
-                </span>
-              )}
-              <button
-                type="button"
-                className="session-tab__close"
-                aria-label={
-                  // A tab with a name of its own is closed by that name — the
-                  // number is not what the reader just called it.
-                  tab.kind === "file"
-                    ? t("topbar.tabCloseNamed", "关闭 {{name}}", { name: tab.name })
-                    : tab.customTitle
-                      ? t("topbar.tabCloseNamed", "关闭 {{name}}", { name: tab.customTitle })
-                      : t("topbar.terminalClose", "关闭终端 {{index}}", { index: tab.ordinal })
-                }
-                title={tab.kind === "file" ? t("topbar.fileTabCloseTitle", "关闭文件") : t("topbar.terminalCloseTitle", "关闭终端")}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  requestCloseTab(tab.id);
-                }}
-              >
-                <CloseIcon />
-              </button>
-            </div>
-          );
-        })}
-
-        <button
-          type="button"
-          className="session-tab session-tab--add"
-          data-testid="new-terminal"
-          onClick={() => selectedSession && openTab(selectedSession)}
-          disabled={selectedSession === null}
-          aria-label={t("topbar.newTerminal", "新建终端")}
-          title={t("topbar.newTerminalTitle", "新建终端（Ctrl+Shift+T）")}
-        >
-          <PlusIcon />
-        </button>
-      </div>
+      {/* The tab strips live in their panes now: every pane owns its own row,
+          and this bar keeps only the window's chrome. The middle stays an empty
+          drag region so the window can still be moved from between the ends. */}
+      <div className="topbar__middle" data-testid="topbar-middle" />
 
       {/* The file panel's edge, continued up through the bar: the line that
           divides the bar where it divides the window. Drawn rather than given

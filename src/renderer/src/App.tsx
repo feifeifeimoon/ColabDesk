@@ -15,7 +15,7 @@ import "./assets/main.css";
  * This is the shape a terminal tool has — nothing is a page you navigate to.
  *
  * The shell itself holds no state. Each part subscribes to the slice it needs,
- * so a connection update repaints the tab strip and nothing else.
+ * so a connection update repaints the pane strips and nothing else.
  */
 export default function App() {
   useEffect(startAppEvents, []);

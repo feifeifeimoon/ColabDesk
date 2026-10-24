@@ -12,8 +12,6 @@
     "terminalRename": "重命名终端",
     "tabCloseNamed": "关闭 {{name}}",
     "fileTabCloseTitle": "关闭文件",
-    "newTerminal": "新建终端",
-    "newTerminalTitle": "新建终端（Ctrl+Shift+T）",
     "filesCollapse": "收起文件面板",
     "filesExpand": "展开文件面板",
     "filesTooltip": "{{action}}文件面板（Ctrl+Shift+B）",
@@ -23,6 +21,12 @@
     "windowClose": "关闭",
     "settings": "设置",
     "settingsTooltip": "设置（Ctrl+,）"
+  },
+  "workspace": {
+    "groupTabs": "面板 {{index}} 标签",
+    "newTabInGroup": "在此面板新建终端",
+    "newTabInGroupTitle": "在此面板新建终端（Ctrl+Shift+T）",
+    "resizePanes": "调整分屏大小"
   },
   "statusbar": {
     "statusConnecting": "连接中…",
