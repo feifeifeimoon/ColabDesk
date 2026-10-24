@@ -250,6 +250,10 @@ kbd {
 
 .workspace-window-chrome .window-controls {
   margin-right: 0;
+  /* The chrome centers the files toggle, but the control group is a flex item
+     and the buttons only get their height from stretching. Left centered it
+     collapses to the icons' line box and the hover targets float mid-row. */
+  align-self: stretch;
 }
 
 .window-controls__button {
