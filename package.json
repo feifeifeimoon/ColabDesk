@@ -1,6 +1,6 @@
 {
   "name": "colabdesk",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "非官方 Google Colab 桌面客户端：会话、额度、终端与文件传输",
   "main": "./out/main/index.js",
   "private": true,
