@@ -282,14 +282,6 @@ export function SettingsPage() {
           />
         </Panel>
         {keyError && <Callout tone="danger">{keyError}</Callout>}
-        <Callout>
-          <p>
-            {t(
-              "settings.disclaimer",
-              "ColabDesk 是第三方开源客户端，与 Google 无官方关联。所有网络通信与身份凭据均由官方 Colab CLI 处理。",
-            )}
-          </p>
-        </Callout>
       </div>
     );
   }
@@ -395,6 +387,16 @@ export function SettingsPage() {
         </Panel>
         <LogPanel />
         <UpdatePanel />
+        {/* The app's relationship to Google is a fact about the app, not about
+            the account signed in right now. */}
+        <Callout>
+          <p>
+            {t(
+              "settings.disclaimer",
+              "ColabDesk 是第三方开源客户端，与 Google 无官方关联。所有网络通信与身份凭据均由官方 Colab CLI 处理。",
+            )}
+          </p>
+        </Callout>
       </div>
     );
   }
