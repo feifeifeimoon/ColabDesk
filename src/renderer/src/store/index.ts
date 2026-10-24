@@ -11,6 +11,7 @@
 import { create } from "zustand";
 import { onSessionCreateOutput, onSshStatus, onUpdateStatus, updateStatus } from "../lib/api";
 import { watchSystemTheme } from "../lib/theme";
+import { watchWindowZoom } from "../lib/window-zoom";
 import { createCreationSlice } from "./slices/creation";
 import { createEnvironmentSlice } from "./slices/environment";
 import { createPreferencesSlice } from "./slices/preferences";
@@ -45,6 +46,7 @@ export function startAppEvents(): () => void {
   const store = useAppStore;
   store.getState().applySystemTheme();
   const stopSystemTheme = watchSystemTheme(() => store.getState().applySystemTheme());
+  const stopWindowZoom = watchWindowZoom();
   const usageTimer = window.setInterval(() => void store.getState().loadUsage(), USAGE_REFRESH_MS);
   const stopSshStatus = onSshStatus((state) => store.getState().setConnection(state));
   // Read once as well as subscribed: the updater checks on a daily timer, so a
@@ -63,6 +65,7 @@ export function startAppEvents(): () => void {
 
   return () => {
     stopSystemTheme();
+    stopWindowZoom();
     window.clearInterval(usageTimer);
     stopSshStatus();
     stopUpdateStatus();

@@ -1,6 +1,6 @@
 /** The typed surface the renderer sees; everything else stays in main. */
 
-import { contextBridge, ipcRenderer, webUtils } from "electron";
+import { contextBridge, ipcRenderer, webFrame, webUtils } from "electron";
 import { EVENTS, IPC } from "@shared/ipc";
 import type { ColabDeskApi, RuntimeList, SessionList } from "@shared/api";
 
@@ -74,6 +74,8 @@ const api: ColabDeskApi = {
   toggleMaximizeWindow: () => invoke(IPC.windowToggleMaximize),
   closeWindow: () => invoke(IPC.windowClose),
   onWindowMaximized: (listener) => subscribe(EVENTS.windowMaximized, listener),
+  zoomFactor: () => webFrame.getZoomFactor(),
+  syncTrafficLights: (zoomFactor) => ipcRenderer.send(IPC.windowSyncTrafficLights, zoomFactor),
 
   updateStatus: () => invoke(IPC.updateStatus),
   checkForUpdates: () => invoke(IPC.updateCheck),

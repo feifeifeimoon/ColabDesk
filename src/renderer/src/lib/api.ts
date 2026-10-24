@@ -76,6 +76,8 @@ export const toggleMaximizeWindow = () => bridge().toggleMaximizeWindow();
 export const closeWindow = () => bridge().closeWindow();
 export const onWindowMaximized = (listener: Parameters<ColabDeskApi["onWindowMaximized"]>[0]) =>
   bridge().onWindowMaximized(listener);
+export const zoomFactor = () => bridge().zoomFactor();
+export const syncTrafficLights = (factor: number) => bridge().syncTrafficLights(factor);
 
 export const updateStatus = () => bridge().updateStatus();
 export const checkForUpdates = () => bridge().checkForUpdates();

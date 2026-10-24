@@ -10,10 +10,11 @@
 import { BrowserWindow, ipcMain } from "electron";
 import { EVENTS, IPC } from "@shared/ipc";
 import { broadcast } from "../../broadcast";
+import { syncTrafficLightPosition } from "../../window";
 import type { IpcContext } from "../register";
 
 export function registerWindowHandlers(_context: IpcContext): void {
-  const windowFor = (event: Electron.IpcMainInvokeEvent): BrowserWindow | null =>
+  const windowFor = (event: Electron.IpcMainInvokeEvent | Electron.IpcMainEvent): BrowserWindow | null =>
     BrowserWindow.fromWebContents(event.sender);
 
   ipcMain.handle(IPC.windowMinimize, (event) => {
@@ -27,6 +28,10 @@ export function registerWindowHandlers(_context: IpcContext): void {
   });
   ipcMain.handle(IPC.windowClose, (event) => {
     windowFor(event)?.close();
+  });
+  ipcMain.on(IPC.windowSyncTrafficLights, (event, zoomFactor: number) => {
+    const window = windowFor(event);
+    if (window) syncTrafficLightPosition(window, zoomFactor);
   });
 }
 

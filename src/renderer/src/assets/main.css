@@ -160,6 +160,7 @@ kbd {
   gap: var(--space-1);
   flex: 0 0 auto;
   width: var(--rail-width, auto);
+  min-width: max-content;
   padding: 0 var(--space-1) 0 var(--space-2);
 }
 

@@ -24,8 +24,12 @@ import { balanceMeterTone, computeBalanceRatio, soleBilledSession } from "./stat
 
 /** macOS keeps its native traffic lights; everyone else gets ours. */
 const IS_MAC = navigator.userAgent.includes("Mac");
-/** Room for the traffic lights, which sit over the bar on macOS. */
-const MAC_INSET = 78;
+/**
+ * Room for the traffic lights, which sit over the bar on macOS at a fixed 78
+ * window-px regardless of page zoom — dividing by `--ui-zoom-factor` keeps the
+ * rendered padding at 78 physical window pixels after `webFrame` scales CSS.
+ */
+export const MAC_INSET = "calc(78px / var(--ui-zoom-factor, 1))";
 
 /**
  * The single top bar: it is the window's title bar too. Panel toggles sit at

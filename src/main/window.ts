@@ -5,6 +5,32 @@ import { watchWindowState } from "./ipc/handlers/window";
 const isMac = process.platform === "darwin";
 
 /**
+ * The top bar is 40px tall; its visual center sits at 20 CSS px from the top.
+ * Native traffic lights stay 12px tall in window pixels while CSS scales with
+ * page zoom, so their top edge follows `20 * zoomFactor - 6`.
+ */
+const TITLEBAR_CSS_CENTER = 20;
+const TRAFFIC_LIGHT_RADIUS = 6;
+const TRAFFIC_LIGHT_X = 14;
+
+export function trafficLightPosition(zoomFactor = 1): { x: number; y: number } {
+  const safeFactor = Number.isFinite(zoomFactor) && zoomFactor > 0 ? zoomFactor : 1;
+  return {
+    x: TRAFFIC_LIGHT_X,
+    y: Math.max(0, Math.round(TITLEBAR_CSS_CENTER * safeFactor - TRAFFIC_LIGHT_RADIUS)),
+  };
+}
+
+export function syncTrafficLightPosition(
+  window: BrowserWindow,
+  zoomFactor: number,
+  platform: NodeJS.Platform = process.platform,
+): void {
+  if (platform !== "darwin" || window.isDestroyed()) return;
+  window.setWindowButtonPosition(trafficLightPosition(zoomFactor));
+}
+
+/**
  * The window icon is a dev-checkout concern only. electron-builder bakes `resources/icon.*`
  * into the executable and the app bundle, so a packaged build already reports the right icon
  * on its own and setting one here would just be a second source of truth. In a dev checkout
@@ -33,7 +59,7 @@ export function createWindow(): BrowserWindow {
     backgroundColor: "#0b0e13",
     ...(icon ? { icon } : {}),
     ...(isMac
-      ? { titleBarStyle: "hiddenInset" as const, trafficLightPosition: { x: 14, y: 14 } }
+      ? { titleBarStyle: "hiddenInset" as const, trafficLightPosition: trafficLightPosition() }
       : { frame: false }),
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
@@ -44,6 +70,11 @@ export function createWindow(): BrowserWindow {
   });
 
   watchWindowState(window);
+  if (isMac) {
+    window.webContents.on("dom-ready", () => {
+      syncTrafficLightPosition(window, window.webContents.getZoomFactor());
+    });
+  }
 
   window.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url);
