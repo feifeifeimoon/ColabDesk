@@ -123,19 +123,15 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
 
   await page.keyboard.press("Escape");
 
-  // The tree, with a folder open and a row's menu out: the row is the whole
-  // click target, its actions are one trigger, and the indent is what says
-  // where a file is. All three are judgments a picture answers and a test
-  // cannot.
+  // The tree, with a folder open and a row's context menu out: the row is the
+  // whole click target, right-click asks what can be done, and the indent is
+  // what says where a file is. All three are judgments a picture answers and a
+  // test cannot.
   const dataRow = page.locator(".file-row").filter({ hasText: "data" });
   await dataRow.locator(".file-row__row").click();
   await page.waitForTimeout(400);
   await capture(page, "07-file-tree");
-  await page
-    .locator(".file-row")
-    .filter({ hasText: "model.pt" })
-    .getByRole("button", { name: "model.pt 的操作" })
-    .click();
+  await page.locator(".file-row").filter({ hasText: "model.pt" }).click({ button: "right" });
   await page.waitForTimeout(400);
   await capture(page, "07-file-row-menu");
   await page.keyboard.press("Escape");

@@ -305,6 +305,70 @@ export function StopIcon({ size }: IconProps) {
   );
 }
 
+/** More actions: three dots, not the menu's typographic ellipsis. */
+export function MoreIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <circle cx="3.5" cy="8" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="8" cy="8" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="12.5" cy="8" r="0.9" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
+/** A new folder: the folder outline with a plus inside. */
+export function FolderPlusIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M1.9 12.3V4.6a1 1 0 0 1 1-1h2.6l1.3 1.5h6.3a1 1 0 0 1 1 1v6.2a1 1 0 0 1-1 1H2.9a1 1 0 0 1-1-1Z" />
+      <path d="M8 7.2v4M6 9.2h4" />
+    </Svg>
+  );
+}
+
+/** Upload: an arrow leaving a tray. The mirror of Download. */
+export function UploadIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M8 10.5V3.2" />
+      <path d="M5.3 5.9 8 3.2l2.7 2.7" />
+      <path d="M2.8 10.7v1.9h10.4v-1.9" />
+    </Svg>
+  );
+}
+
+/** Download: an arrow landing in a tray. */
+export function DownloadIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M8 3.2v7.3" />
+      <path d="M5.3 7.8 8 10.5l2.7-2.7" />
+      <path d="M2.8 10.7v1.9h10.4v-1.9" />
+    </Svg>
+  );
+}
+
+/** Delete: a lidded bin, distinct from Stop's filled square. */
+export function TrashIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M2.8 4.6h10.4" />
+      <path d="M6.2 4.6V3.3h3.6v1.3" />
+      <path d="M4.2 4.6l.6 8.1h6.4l.6-8.1" />
+      <path d="M6.8 6.9v3.5M9.2 6.9v3.5" />
+    </Svg>
+  );
+}
+
+/** A checked menu item: one tick, no box. */
+export function CheckIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M3.2 8.4 6.4 11.4 12.8 4.6" />
+    </Svg>
+  );
+}
+
 /* ---- window controls (the app draws its own title bar) ---- */
 
 export function MinimizeIcon({ size }: IconProps) {

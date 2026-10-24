@@ -6,7 +6,9 @@
  * - **Nothing follows a symbolic link by accident.** `stat` resolves links on
  *   the far side, so asking it about a link answers about the target — deleting
  *   one would empty whatever it pointed at. Existence and type questions go
- *   through `lstat`, and a link is removed as a link.
+ *   through `lstat`, and a link is removed as a link. The one deliberate
+ *   exception is `statTarget`: the tree asks it only when the user opens a
+ *   link, because expanding a linked file is the accident this rule prevents.
  * - **A file appears at its destination only complete.** A transfer is staged
  *   beside the target (`.name.part-xxxx`) and renamed onto it when it finishes,
  *   so a failed or cancelled one cannot leave a half-written file that looks
@@ -129,6 +131,26 @@ export function statNode(sftp: SFTPWrapper, path: string): Promise<RemoteEntry |
     sftp.lstat(path, (error, attrs) => {
       if (error) {
         // ssh2 puts the SFTP status number on the error's `code`.
+        if ((error as { code?: number }).code === SSH_FX_NO_SUCH_FILE) return resolve(null);
+        reject(new Error(`读取 ${path} 失败：${error.message}`));
+        return;
+      }
+      resolve(attrs ? entryOf(baseNameOf(path), attrs) : null);
+    });
+  });
+}
+
+/**
+ * What the path points at, following symbolic links.
+ *
+ * The deliberate exception to the lstat rule above: the tree asks this only
+ * when somebody opens a link, so it can expand a linked directory or open a
+ * linked file instead of calling readdir on whichever it happens to be.
+ */
+export function statTarget(sftp: SFTPWrapper, path: string): Promise<RemoteEntry | null> {
+  return new Promise((resolve, reject) => {
+    sftp.stat(path, (error, attrs) => {
+      if (error) {
         if ((error as { code?: number }).code === SSH_FX_NO_SUCH_FILE) return resolve(null);
         reject(new Error(`读取 ${path} 失败：${error.message}`));
         return;

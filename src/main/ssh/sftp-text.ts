@@ -26,6 +26,7 @@ import {
   isRegularFile,
   joinRemotePath,
   statNode,
+  statTarget,
   promoteStaged,
   removeQuietly,
   stagedName,
@@ -93,10 +94,16 @@ function tailText(buffer: Buffer): { text: string; bytes: number } {
 }
 
 export async function readTextFile(sftp: SFTPWrapper, path: string): Promise<RemoteTextRead> {
-  const entry = await statNode(sftp, path);
-  if (!entry) throw new Error(`读取 ${path} 失败：文件不存在。`);
+  const link = await statNode(sftp, path);
+  if (!link) throw new Error(`读取 ${path} 失败：文件不存在。`);
+  // A file reached through a symbolic link is readable (the read follows it),
+  // but not writable here: a save stages beside the link and renames onto it,
+  // which would replace the link instead of the file it points at.
+  const entry = link.type === "link" ? await statTarget(sftp, path) : link;
+  if (!entry) throw new Error(`读取 ${path} 失败：链接目标不存在。`);
   if (!isRegularFile(entry.mode)) throw new Error(`读取 ${path} 失败：不是常规文件。`);
-  const { size, mtime, mode } = entry;
+  const { size, mtime } = entry;
+  const mode = link.type === "link" ? entry.mode & ~0o222 : entry.mode;
 
   if (size > TEXT_EDIT_MAX) {
     const headBuffer = await readRange(sftp, path, 0, PREVIEW_CHUNK - 1);

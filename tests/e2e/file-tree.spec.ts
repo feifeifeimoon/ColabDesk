@@ -8,7 +8,15 @@
  */
 
 import type { Locator, Page } from "@playwright/test";
-import { expect, focusTerminal, openSession, test } from "./app-launch";
+import {
+  enableFileSizes,
+  expect,
+  focusTerminal,
+  MOD,
+  openSession,
+  test,
+  withClipboardLock,
+} from "./app-launch";
 
 function row(page: Page, name: string): Locator {
   return page.locator(".file-row").filter({ hasText: name });
@@ -84,4 +92,114 @@ test("shell 里建的东西，刷新之后出现在树上", async ({ page }) => 
   // 刷新重读根与已展开的目录；新目录出现在它该在的位置。
   await page.getByRole("button", { name: "刷新" }).click();
   await expect(row(page, "from-shell")).toHaveCount(1);
+});
+
+test("文件大小默认隐藏，更多菜单里可以打开", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await expect(row(page, "README.txt").locator(".file-size")).toHaveCount(0);
+
+  await enableFileSizes(page);
+  await expect(row(page, "README.txt").locator(".file-size")).toHaveText("45 B");
+});
+
+test("全部收起合上每一个文件夹，但不删掉它们的行", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await rowButton(page, "data").click();
+  await expect(row(page, "sample.csv")).toHaveCount(1);
+
+  await page.getByRole("button", { name: "更多文件操作" }).click();
+  await page.getByRole("menuitem", { name: "全部收起" }).click();
+
+  await expect(row(page, "sample.csv")).toHaveCount(0);
+  await expect(rowButton(page, "data")).toHaveAttribute("aria-expanded", "false");
+});
+
+test("右键行打开操作菜单，Escape 收起", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+
+  await row(page, "README.txt").click({ button: "right" });
+  await expect(page.getByRole("menuitem", { name: "打开" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "复制路径" })).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menuitem")).toHaveCount(0);
+});
+
+test("键盘的菜单键打开同一张操作菜单，Escape 把焦点还给行", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await rowButton(page, "README.txt").focus();
+
+  await page.keyboard.press("Shift+F10");
+  await expect(page.getByRole("menuitem", { name: "打开" })).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(rowButton(page, "README.txt")).toBeFocused();
+});
+
+test("根行可以用键盘打开菜单，新建入口在菜单里", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await page.getByRole("treeitem").first().focus();
+
+  await page.keyboard.press("Shift+F10");
+  await expect(
+    page.getByRole("menuitem", { name: "在此新建文件", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", { name: "在此新建文件夹", exact: true }),
+  ).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("treeitem").first()).toBeFocused();
+});
+
+test("从顶层行按左键回到根行", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await rowButton(page, "README.txt").focus();
+
+  await page.keyboard.press("ArrowLeft");
+
+  await expect(page.getByRole("treeitem").first()).toBeFocused();
+});
+
+test("菜单项选中后，焦点回到原来的行", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await rowButton(page, "README.txt").focus();
+
+  await withClipboardLock(async () => {
+    await page.keyboard.press("Shift+F10");
+    await page.getByRole("menuitem", { name: "复制路径" }).click();
+  });
+
+  await expect(rowButton(page, "README.txt")).toBeFocused();
+});
+
+test("打开设置后，右键菜单不会浮在设置页上", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await row(page, "README.txt").click({ button: "right" });
+  await expect(page.getByRole("menuitem", { name: "打开" })).toBeVisible();
+
+  await page.keyboard.press(`${MOD}+,`);
+
+  await expect(page.locator('[data-testid="settings-page"]')).toBeVisible();
+  await expect(page.getByRole("menuitem")).toHaveCount(0);
+});
+
+test("打开的文件在树里标出当前行", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await rowButton(page, "README.txt").dblclick();
+
+  await expect(row(page, "README.txt")).toHaveClass(/file-row--active/);
+  await expect(rowButton(page, "README.txt")).toHaveAttribute("aria-current", "true");
+});
+
+test("指向文件的符号链接按文件打开，而不是去读目录", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await expect(row(page, "README.link")).toHaveCount(1);
+
+  await rowButton(page, "README.link").dblclick();
+
+  const filePane = page.locator('.file-area[aria-label="README.link"]');
+  await expect(filePane).toBeVisible();
+  await expect(filePane).toContainText("/content/README.link");
+  await expect(filePane.locator(".cm-content")).toContainText("ColabDesk E2E runtime.");
 });

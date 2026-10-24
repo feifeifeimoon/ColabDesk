@@ -118,6 +118,12 @@ export interface ColabDeskApi {
   /** Which of these remote paths already exist, so a conflict can be asked about. */
   statPaths(session: string, paths: string[]): Promise<RemotePathState[]>;
   /**
+   * What a path is once symbolic links are followed. `null` means the target is
+   * gone; a link is answered as the file or directory it points at, which is
+   * what lets the tree open a linked file instead of calling readdir on it.
+   */
+  followPath(session: string, path: string): Promise<RemotePathState | null>;
+  /**
    * A remote file as text, for the preview: the whole file when it is small
    * enough to be worth reading, its two ends when it is not, and a verdict
    * (`binary` / `invalidUtf8`) when it is not text at all.

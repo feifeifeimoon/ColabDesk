@@ -4,24 +4,35 @@ import * as api from "../../lib/api";
 import { messageOf } from "../../lib/api";
 import { formatPercent, formatSize, localName, parentPath } from "../../lib/format";
 import type { ConflictPolicy, RemoteEntry, TransferProgress } from "@shared/types";
-import { Button } from "../../components/ui/Button";
-import { Menu } from "../../components/ui/Menu";
+import { Button, IconButton } from "../../components/ui/Button";
+import { ContextMenu } from "../../components/ui/ContextMenu";
+import { Menu, type MenuItem } from "../../components/ui/Menu";
 import {
   ChevronRightIcon,
+  ChevronUpIcon,
+  CloseIcon,
+  CopyIcon,
+  DownloadIcon,
   FileIcon,
   FolderClosedIcon,
   FolderOpenIcon,
+  FolderPlusIcon,
   LinkIcon,
+  MoreIcon,
   SyncIcon,
+  TrashIcon,
+  UploadIcon,
 } from "../../components/ui/icons";
-import { Callout } from "../../components/ui/Notice";
+import { Callout, EmptyState } from "../../components/ui/Notice";
 import { Dialog } from "../../components/ui/Dialog";
 import { PanelDivider } from "../../components/ui/PanelDivider";
 import { ProgressBar } from "../../components/ui/ProgressBar";
 import { PANEL_WIDTH } from "../../lib/panel-width";
-import { childPath, isDirectoryRow, projectRows, type Listing, type Row } from "./file-tree";
+import { childPath, projectRows, type Listing, type Row } from "./file-tree";
 import { makeRequestTokens } from "./request-tokens";
+import { mergeTransferProgress } from "./transfer-list";
 import { useAppStore } from "../../store";
+import { selectActiveFilePath } from "../../store/selectors";
 
 /**
  * The runtime's filesystem over SFTP, as a tree.
@@ -36,6 +47,10 @@ import { useAppStore } from "../../store";
  * is opened and kept when it closes — reopening a folder should not cost a round
  * trip for a listing nobody changed.
  *
+ * A row has no permanent action button: right-clicking it is the gesture that
+ * asks what can be done, the same way a file manager answers. The keyboard gets
+ * the same menu from the context-menu key (or Shift+F10) on the focused row.
+ *
  * An upload that would replace a file already on the runtime asks first: the
  * question is the only thing standing between a re-upload and a silently
  * destroyed copy, and it is asked once for the whole batch rather than per file.
@@ -45,7 +60,7 @@ import { useAppStore } from "../../store";
 const TREE_ROOT = "/content";
 
 /** How deep a row indents, and how far that goes before it stops growing. */
-const INDENT_PX = 14;
+const INDENT_PX = 12;
 const INDENT_DEPTH_CAP = 6;
 
 /** Opens a folder after the pointer rests on it, the way a file manager does. */
@@ -57,6 +72,29 @@ interface ConflictAsk {
   remoteDir: string;
   names: string[];
 }
+
+/** A delete waiting on the confirmation dialog. */
+interface DeleteAsk {
+  entry: RemoteEntry;
+  path: string;
+}
+
+/** The open context menu, anchored to a row or to the panel's empty area. */
+interface MenuState {
+  point: { x: number; y: number };
+  row: Row | null;
+  returnFocus: HTMLElement | null;
+}
+
+/** What a link points at, once that has been asked. */
+type LinkTarget = "file" | "dir";
+
+/**
+ * Which pane last wrote `--files-width`. One runtime's pane is visible at a
+ * time, but every session keeps one mounted; a hidden pane unmounting must not
+ * clear a value the visible pane published.
+ */
+let filesWidthOwner: string | null = null;
 
 export function FilePane({
   session,
@@ -75,18 +113,32 @@ export function FilePane({
   /** The directory row the pointer is over, which is where a drop would land. */
   const [dropDir, setDropDir] = useState<string | null>(null);
   const [conflict, setConflict] = useState<ConflictAsk | null>(null);
+  const [deleteAsk, setDeleteAsk] = useState<DeleteAsk | null>(null);
+  const [menu, setMenu] = useState<MenuState | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
-  const [creatingIn, setCreatingIn] = useState<string | null>(null);
-  const [folderName, setFolderName] = useState("");
+  const [newEntry, setNewEntry] = useState<{ parent: string; kind: "file" | "folder" } | null>(null);
+  const [entryName, setEntryName] = useState("");
+  const [resolving, setResolving] = useState<string | null>(null);
+  const [resolvedLinks, setResolvedLinks] = useState<Record<string, LinkTarget>>({});
+  const [error, setError] = useState<string | null>(null);
+
   const expanded = useAppStore((state) => state.expandedDirs[session]);
   const toggleDirectory = useAppStore((state) => state.toggleDirectory);
+  const collapseAllDirectories = useAppStore((state) => state.collapseAllDirectories);
   const forgetDirectory = useAppStore((state) => state.forgetDirectory);
   const openFileTab = useAppStore((state) => state.openFileTab);
   const width = useAppStore((state) => state.panelWidths.files);
   const setPanelWidth = useAppStore((state) => state.setPanelWidth);
+  const showFileSizes = useAppStore((state) => state.showFileSizes);
+  const setShowFileSizes = useAppStore((state) => state.setShowFileSizes);
+  const activeFilePath = useAppStore((state) => selectActiveFilePath(state, session));
+  const settingsOpen = useAppStore((state) => state.settingsOpen);
+  const setupOpen = useAppStore((state) => state.creation.open);
+
   const panelRef = useRef<HTMLElement | null>(null);
   const treeRef = useRef<HTMLUListElement | null>(null);
+  const newEntryInput = useRef<HTMLInputElement | null>(null);
   const hoverTimer = useRef<number | null>(null);
 
   const open = useMemo(() => new Set(expanded ?? []), [expanded]);
@@ -102,10 +154,11 @@ export function FilePane({
    */
   useEffect(() => {
     const panel = panelRef.current;
-    if (!panel) return;
+    if (!panel || !visible) return;
     const publish = (): void => {
       const { width: rendered } = panel.getBoundingClientRect();
       if (rendered === 0) return;
+      filesWidthOwner = session;
       document.documentElement.style.setProperty("--files-width", `${rendered}px`);
     };
     const observer = new ResizeObserver(publish);
@@ -113,9 +166,14 @@ export function FilePane({
     publish();
     return () => {
       observer.disconnect();
-      document.documentElement.style.removeProperty("--files-width");
+      // Only the pane that wrote the value may remove it: another session's
+      // pane may already be visible with a value of its own.
+      if (filesWidthOwner === session) {
+        filesWidthOwner = null;
+        document.documentElement.style.removeProperty("--files-width");
+      }
     };
-  }, []);
+  }, [session, visible]);
 
   /** Read at call time rather than captured; the parent rebuilds these closures. */
   const latest = useRef({ onTransferCount });
@@ -187,21 +245,45 @@ export function FilePane({
     void load(fileWrite.dir);
   }, [fileWrite, load]);
 
+  // Transfers are per session, and so is this list: a hidden session's pane is
+  // mounted too, and without this filter it would show another runtime's work.
   useEffect(() => {
     return api.onTransferProgress((progress) => {
-      setTransfers((current) => {
-        const next = current.filter((item) => item.id !== progress.id);
-        next.push(progress);
-        return next.slice(-6);
-      });
+      if (progress.session !== session) return;
+      setTransfers((current) => mergeTransferProgress(current, progress));
     });
-  }, []);
+  }, [session]);
 
   /** The rows to draw: the projection of the open directories, in order. */
   const rows = useMemo(() => projectRows(listings, open, TREE_ROOT), [listings, open]);
 
-  /** The rows a click or an arrow key may land on, in the order they are drawn. */
-  const focusable = rows;
+  /**
+   * Every drawn row is a keyboard stop, the root included: the root has no
+   * activation action, but its context menu is where New File / New Folder at
+   * the root live, so the keyboard needs a way to reach it.
+   */
+  const firstFocusable = rows[0]?.path ?? null;
+
+  // A row can disappear under the caret (a delete, a collapse, a refresh). The
+  // tree must keep one tab stop, or the keyboard cannot get back into it.
+  useEffect(() => {
+    if (focused === null) return;
+    if (rows.some((row) => row.path === focused)) return;
+    setFocused(firstFocusable);
+  }, [focused, rows, firstFocusable]);
+
+  // The context menu is portalled out of the panel. Hiding the pane, opening
+  // settings or opening the setup console would leave it floating above the
+  // layer that just took over.
+  useEffect(() => {
+    if (!visible || settingsOpen || setupOpen) setMenu(null);
+  }, [visible, settingsOpen, setupOpen]);
+
+  // Switching between "new file" and "new folder" for the same directory keeps
+  // the same input node, so `autoFocus` alone would not fire again.
+  useEffect(() => {
+    if (newEntry) newEntryInput.current?.focus();
+  }, [newEntry]);
 
   /**
    * Opens what is closed and refreshes what is open — the root and every open
@@ -221,10 +303,55 @@ export function FilePane({
     if (!open.has(path) && listings[path] === undefined) void load(path);
   }
 
+  function loadThenOpen(path: string): void {
+    toggleDirectory(session, path);
+    if (listings[path] === undefined) void load(path);
+  }
+
   function focusRow(path: string): void {
     setFocused(path);
     const element = treeRef.current?.querySelector<HTMLElement>(`[data-path="${CSS.escape(path)}"]`);
     element?.focus();
+  }
+
+  /** What a row is, following a link's answer once the user has opened it. */
+  function kindOf(row: Row): "dir" | "file" | "link" {
+    if (row.entry === null || row.entry.type === "dir") return "dir";
+    if (row.entry.type === "file") return "file";
+    return resolvedLinks[row.path] ?? "link";
+  }
+
+  async function linkTarget(path: string): Promise<LinkTarget | null> {
+    const cached = resolvedLinks[path];
+    if (cached) return cached;
+    const answer = await api.followPath(session, path);
+    const target = answer?.type;
+    if (target === "dir" || target === "file") {
+      setResolvedLinks((current) => ({ ...current, [path]: target }));
+      return target;
+    }
+    return null;
+  }
+
+  /** Opens a link as what it points at: a folder expands, a file gets a tab. */
+  async function openLink(row: Row): Promise<void> {
+    setResolving(row.path);
+    try {
+      const target = await linkTarget(row.path);
+      if (target === "dir") {
+        loadThenOpen(row.path);
+      } else if (target === "file") {
+        openFileTab(session, row.path, row.name);
+      } else {
+        setError(t("files.linkTargetMissing", "链接目标不存在"));
+        return;
+      }
+      setError(null);
+    } catch (cause) {
+      setError(messageOf(cause));
+    } finally {
+      setResolving(null);
+    }
   }
 
   /**
@@ -239,55 +366,99 @@ export function FilePane({
    *
    * A folder is the other way round: its first click already toggled, so the
    * second click of a file-manager double-click is swallowed rather than
-   * toggling it back shut.
+   * toggling it back shut. A link is opened as what it points at, on the
+   * gesture that would have opened a file.
    */
-  function activateRow(event: React.MouseEvent, row: Row, isDir: boolean): void {
-    if (isDir) {
+  function activateRow(event: React.MouseEvent, row: Row): void {
+    const kind = kindOf(row);
+    if (kind === "dir") {
       if (event.detail === 2) return;
-      if (row.open && row.path !== TREE_ROOT) toggle(row.path);
+      if (row.open) toggle(row.path);
       else loadThenOpen(row.path);
+      return;
+    }
+    if (kind === "link") {
+      if (event.detail === 1) return;
+      void openLink(row);
       return;
     }
     if (event.detail === 1 || !row.entry) return;
     openFileTab(session, row.path, row.entry.name);
   }
 
-  /** Arrow keys over the drawn rows, which is the whole of the tree's keyboard. */
+  function openRowMenuAt(row: Row): void {
+    const element = treeRef.current?.querySelector<HTMLElement>(`[data-path="${CSS.escape(row.path)}"]`);
+    const rect = element?.getBoundingClientRect();
+    focusRow(row.path);
+    const active = document.activeElement;
+    setMenu({
+      point: { x: (rect?.left ?? 0) + 24, y: rect?.bottom ?? 0 },
+      row,
+      returnFocus: active instanceof HTMLElement ? active : null,
+    });
+  }
+
+  function openRowMenu(event: React.MouseEvent, row: Row | null): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (row) focusRow(row.path);
+    const active = document.activeElement;
+    setMenu({
+      point: { x: event.clientX, y: event.clientY },
+      row,
+      returnFocus: active instanceof HTMLElement ? active : null,
+    });
+  }
+
+  /** Arrow keys walk the drawn rows; the root is not one of them. */
   function onKeyDown(event: React.KeyboardEvent<HTMLUListElement>): void {
-    const current = rows.findIndex((row) => row.path === focused);
+    // The inline folder form and any menu inside the tree own their own keys.
+    // Without this guard an arrow in the name field moves the selection.
+    const target = event.target as HTMLElement;
+    if (!target.closest(".file-row__row")) return;
+    const row = rows.find((candidate) => candidate.path === focused);
+    if (!row) return;
+
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
+      const index = rows.findIndex((candidate) => candidate.path === row.path);
       const step = event.key === "ArrowDown" ? 1 : -1;
-      const next = focusable[Math.min(Math.max(current + step, 0), focusable.length - 1)];
+      const next = rows[Math.min(Math.max(index + step, 0), rows.length - 1)];
       if (next) focusRow(next.path);
       return;
     }
-    if (current < 0) return;
-    const row = rows[current]!;
-    if (event.key === "ArrowRight" && row.entry?.type !== "file") {
+    if (event.key === "ArrowRight" && kindOf(row) === "dir") {
       event.preventDefault();
-      if (open.has(row.path) || row.path === TREE_ROOT) {
-        const child = rows[current + 1];
-        if (child) focusRow(child.path);
+      if (row.open) {
+        const at = rows.findIndex((candidate) => candidate.path === row.path);
+        const child = rows[at + 1];
+        if (child && child.depth > row.depth) focusRow(child.path);
       } else {
-        toggle(row.path);
+        loadThenOpen(row.path);
       }
       return;
     }
     if (event.key === "ArrowLeft") {
       event.preventDefault();
-      if (open.has(row.path) && row.path !== TREE_ROOT) {
+      // The root is always open and has no parent to go back to.
+      if (row.path === TREE_ROOT) return;
+      if (kindOf(row) === "dir" && row.open) {
         toggle(row.path);
         return;
       }
       const up = parentPath(row.path);
-      if (up !== row.path) focusRow(up === "" ? TREE_ROOT : up);
+      if (up !== row.path) focusRow(up);
       return;
     }
     if (event.key === "Home" || event.key === "End") {
       event.preventDefault();
-      const first = focusable[event.key === "Home" ? 0 : focusable.length - 1];
-      if (first) focusRow(first.path);
+      const next = rows[event.key === "Home" ? 0 : rows.length - 1];
+      if (next) focusRow(next.path);
+      return;
+    }
+    if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+      event.preventDefault();
+      openRowMenuAt(row);
     }
   }
 
@@ -316,8 +487,6 @@ export function FilePane({
     }
   }
 
-  const [error, setError] = useState<string | null>(null);
-
   async function runUpload(
     localPaths: string[],
     remoteDir: string,
@@ -335,6 +504,11 @@ export function FilePane({
     } finally {
       setBusy(null);
       await refresh();
+      // The upload target may be collapsed while its listing is still cached:
+      // `refresh` only re-reads the root and open directories, and reopening
+      // the folder later would otherwise show the listing from before the
+      // upload. Re-read the one directory the upload definitely changed.
+      if (remoteDir !== TREE_ROOT && !open.has(remoteDir)) await load(remoteDir);
     }
   }
 
@@ -349,11 +523,22 @@ export function FilePane({
     }
   }
 
-  async function pickAndUploadFolder() {
+  async function pickAndUploadTo(remoteDir: string) {
+    try {
+      await beginUpload(
+        await api.pickUploadTargets(t("files.uploadDialogTitle", "选择要上传的文件")),
+        remoteDir,
+      );
+    } catch (cause) {
+      setError(messageOf(cause));
+    }
+  }
+
+  async function pickAndUploadFolder(remoteDir = TREE_ROOT) {
     try {
       await beginUpload(
         await api.pickUploadFolder(t("files.uploadFolderTitle", "选择要上传的文件夹")),
-        TREE_ROOT,
+        remoteDir,
       );
     } catch (cause) {
       setError(messageOf(cause));
@@ -384,11 +569,7 @@ export function FilePane({
     }
   }
 
-  async function remove(entry: RemoteEntry, path: string) {
-    const extra = entry.type === "dir" ? t("files.deleteConfirmDir", "（整个目录）") : "";
-    if (!window.confirm(t("files.deleteConfirm", "删除 {{name}}{{extra}}？此操作不可撤销。", { name: entry.name, extra }))) {
-      return;
-    }
+  async function deleteRow(path: string): Promise<void> {
     setBusy(`delete:${path}`);
     try {
       await api.deletePath(session, path);
@@ -403,6 +584,13 @@ export function FilePane({
         }
         return next;
       });
+      setResolvedLinks((current) =>
+        Object.fromEntries(
+          Object.entries(current).filter(
+            ([key]) => key !== path && !key.startsWith(`${path}/`),
+          ),
+        ),
+      );
       await load(parentPath(path) || TREE_ROOT);
       setError(null);
     } catch (cause) {
@@ -412,14 +600,12 @@ export function FilePane({
     }
   }
 
-  async function createFolder(parent: string) {
-    const name = folderName.trim();
-    if (!name) return;
+  async function createFolder(parent: string, name: string): Promise<void> {
     setBusy("mkdir");
     try {
       await api.makeDirectory(session, childPath(parent, name));
-      setFolderName("");
-      setCreatingIn(null);
+      setEntryName("");
+      setNewEntry(null);
       await load(parent);
       setError(null);
     } catch (cause) {
@@ -427,6 +613,69 @@ export function FilePane({
     } finally {
       setBusy(null);
     }
+  }
+
+  /**
+   * A new file is an empty one, created through the same staging write a save
+   * uses, then opened as a tab: the person asked for a file to work in, not for
+   * a row to select.
+   */
+  async function createFile(parent: string, name: string): Promise<void> {
+    const path = childPath(parent, name);
+    setBusy("create-file");
+    try {
+      const result = await api.writeTextFile({
+        session,
+        path,
+        text: "",
+        eol: "lf",
+        expected: null,
+      });
+      if (!result.ok) {
+        setError(
+          result.reason === "changed"
+            ? t("files.nameTaken", "同名文件已存在。")
+            : t("files.createFailed", "创建文件失败，请重试。"),
+        );
+        return;
+      }
+      setEntryName("");
+      setNewEntry(null);
+      await load(parent);
+      setError(null);
+      openFileTab(session, path, name);
+    } catch (cause) {
+      setError(messageOf(cause));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function createEntry(): Promise<void> {
+    const target = newEntry;
+    const name = entryName.trim();
+    if (!target || !name) return;
+    if (name === "." || name === ".." || name.includes("/")) {
+      setError(t("files.nameInvalid", "名称不能包含 /，也不能是 . 或 ..。"));
+      return;
+    }
+    if (target.kind === "folder") await createFolder(target.parent, name);
+    else await createFile(target.parent, name);
+  }
+
+  /** Opens the inline form, and opens the folder when it was closed. */
+  function beginCreate(parent: string, kind: "file" | "folder"): void {
+    setNewEntry({ parent, kind });
+    setEntryName("");
+    if (parent !== TREE_ROOT && !open.has(parent)) loadThenOpen(parent);
+  }
+
+  /** Closes the form and hands the keyboard back to the directory row. */
+  function cancelCreate(): void {
+    const parent = newEntry?.parent;
+    setNewEntry(null);
+    setEntryName("");
+    if (parent) focusRow(parent);
   }
 
   /** Dropped files land in the row under the pointer, or at the root. */
@@ -454,17 +703,142 @@ export function FilePane({
     }, HOVER_EXPAND_MS);
   }
 
-  function loadThenOpen(path: string): void {
-    toggleDirectory(session, path);
-    if (listings[path] === undefined) void load(path);
-  }
-
   function cancelHoverExpand(): void {
     if (hoverTimer.current !== null) {
       window.clearTimeout(hoverTimer.current);
       hoverTimer.current = null;
     }
   }
+
+  /** The items for a row's context menu, or for the panel's empty area. */
+  function itemsForMenu(row: Row | null): MenuItem[] {
+    const path = row?.path ?? TREE_ROOT;
+    const entry = row?.entry ?? null;
+    const kind = row ? kindOf(row) : "dir";
+    const isRoot = path === TREE_ROOT;
+    const isDir = kind === "dir";
+    const isFile = kind === "file";
+    const items: MenuItem[] = [];
+
+    if (isFile) {
+      items.push({
+        label: t("files.open", "打开"),
+        icon: <FileIcon size={14} />,
+        onSelect: () => openFileTab(session, path, entry?.name ?? path),
+      });
+    }
+    if (kind === "link") {
+      items.push({
+        label: t("files.open", "打开"),
+        icon: <LinkIcon size={14} />,
+        onSelect: () => {
+          if (row) void openLink(row);
+        },
+      });
+    }
+    if (isDir) {
+      items.push(
+        {
+          label: t("files.newFileHere", "在此新建文件"),
+          icon: <FileIcon size={14} />,
+          disabled: busy !== null,
+          onSelect: () => beginCreate(path, "file"),
+        },
+        {
+          label: t("files.newFolderHere", "在此新建文件夹"),
+          icon: <FolderPlusIcon size={14} />,
+          disabled: busy !== null,
+          onSelect: () => beginCreate(path, "folder"),
+        },
+        {
+          label: t("files.uploadHere", "上传文件到此处"),
+          icon: <UploadIcon size={14} />,
+          dividerBefore: true,
+          disabled: busy !== null,
+          onSelect: () => void pickAndUploadTo(path),
+        },
+        {
+          label: t("files.uploadFolderHere", "上传文件夹到此处"),
+          icon: <UploadIcon size={14} />,
+          disabled: busy !== null,
+          onSelect: () => void pickAndUploadFolder(path),
+        },
+      );
+    }
+    if (isFile) {
+      items.push({
+        label: t("files.download", "下载"),
+        icon: <DownloadIcon size={14} />,
+        disabled: busy !== null,
+        onSelect: () => {
+          if (entry) void download(entry, path);
+        },
+      });
+    }
+    if (isDir && !isRoot) {
+      items.push({
+        label: t("files.downloadFolder", "下载文件夹"),
+        icon: <DownloadIcon size={14} />,
+        disabled: busy !== null,
+        onSelect: () => {
+          if (entry) void downloadDirectory(entry, path);
+        },
+      });
+    }
+    items.push({
+      label: t("files.copyPath", "复制路径"),
+      icon: <CopyIcon size={14} />,
+      onSelect: () => void api.writeClipboard(path),
+    });
+    if (row === null) {
+      items.push({
+        label: t("files.refresh", "刷新"),
+        icon: <SyncIcon size={14} />,
+        dividerBefore: true,
+        disabled: listings[TREE_ROOT]?.loading ?? false,
+        onSelect: () => void refresh(),
+      });
+    }
+    if (!isRoot) {
+      items.push({
+        label: t("files.delete", "删除"),
+        icon: <TrashIcon size={14} />,
+        danger: true,
+        dividerBefore: true,
+        disabled: busy !== null,
+        onSelect: () => {
+          if (entry) setDeleteAsk({ entry, path });
+        },
+      });
+    }
+    return items;
+  }
+
+  const moreItems: MenuItem[] = [
+    {
+      label: t("files.uploadFolder", "上传文件夹"),
+      icon: <UploadIcon size={14} />,
+      disabled: busy !== null,
+      onSelect: () => void pickAndUploadFolder(),
+    },
+    {
+      label: t("files.collapseAll", "全部收起"),
+      icon: <ChevronUpIcon size={14} />,
+      disabled: open.size === 0,
+      onSelect: () => collapseAllDirectories(session),
+    },
+    {
+      label: t("files.showSizes", "显示文件大小"),
+      checked: showFileSizes,
+      dividerBefore: true,
+      onSelect: () => setShowFileSizes(!showFileSizes),
+    },
+  ];
+
+  const entryPlaceholder =
+    newEntry?.kind === "file"
+      ? t("files.fileNamePlaceholder", "新文件名称")
+      : t("files.folderNamePlaceholder", "新文件夹名称");
 
   return (
     <aside
@@ -493,33 +867,40 @@ export function FilePane({
       <div className="pane__head">
         <span className="pane__title">{t("files.title", "文件")}</span>
         <span className="pane__actions">
-          <Button
+          <IconButton
             variant="ghost"
             size="sm"
+            label={t("files.refresh", "刷新")}
             onClick={() => void refresh()}
             disabled={listings[TREE_ROOT]?.loading ?? false}
           >
-            {t("files.refresh", "刷新")}
-          </Button>
-          <Button
+            <SyncIcon
+              size={14}
+              className={listings[TREE_ROOT]?.loading ? "spin-sync" : undefined}
+            />
+          </IconButton>
+          <IconButton
             variant="ghost"
             size="sm"
-            data-testid="new-folder"
-            onClick={() => {
-              setCreatingIn(creatingIn === TREE_ROOT ? null : TREE_ROOT);
-              setFolderName("");
-            }}
+            label={busy === "upload" ? t("files.uploading", "上传中…") : t("files.upload", "上传")}
+            onClick={() => void pickAndUpload()}
             disabled={busy !== null}
           >
-            {t("files.newFolder", "新建")}
-          </Button>
-          <Button variant="primary" size="sm" onClick={pickAndUpload} disabled={busy !== null}>
-            {busy === "upload" ? t("files.uploading", "上传中…") : t("files.upload", "上传")}
-          </Button>
+            <UploadIcon size={14} />
+          </IconButton>
+          <Menu
+            label={t("files.moreActions", "更多文件操作")}
+            trigger={<MoreIcon size={14} />}
+            items={moreItems}
+          />
         </span>
       </div>
 
-      {error && <p className="error pane-error">{error}</p>}
+      {error && (
+        <div className="pane-error">
+          <Callout tone="danger">{error}</Callout>
+        </div>
+      )}
 
       {/*
         One list, with depth on the row rather than nesting in the DOM: the tree
@@ -531,167 +912,207 @@ export function FilePane({
         aria-label={t("files.treeLabel", "运行时文件")}
         ref={treeRef}
         onKeyDown={onKeyDown}
+        onContextMenu={(event) => {
+          const target = event.target as HTMLElement;
+          if (target.closest(".file-row, .new-entry-form, .file-empty, .file-error")) return;
+          openRowMenu(event, null);
+        }}
       >
         {rows.map((row) => {
           const listing = listings[row.path];
           const isRoot = row.path === TREE_ROOT;
-          const isDir = isDirectoryRow(row);
+          const kind = kindOf(row);
+          const isDir = kind === "dir";
+          const isFile = kind === "file";
+          const isActive = activeFilePath === row.path;
+          const isResolving = resolving === row.path;
+          // A directory being read, or a link being resolved, says so in the
+          // icon column; the row keeps its name and its place.
+          const isLoading = Boolean(listing?.loading) || isResolving;
+          const title = isRoot
+            ? t("files.rootLabel", "运行时根目录")
+            : isDir
+              ? row.open
+                ? t("files.closeDir", "收起目录")
+                : t("files.openDir", "进入目录")
+              : kind === "link"
+                ? t("files.openLink", "双击打开链接")
+                : t("files.openFile", "双击打开");
+
+          const icon = isLoading ? (
+            <SyncIcon size={14} className="spin-sync" />
+          ) : row.entry?.type === "link" ? (
+            <LinkIcon size={14} />
+          ) : isDir ? (
+            row.open ? <FolderOpenIcon size={14} /> : <FolderClosedIcon size={14} />
+          ) : (
+            <FileIcon size={14} />
+          );
+
+          const inner = (
+            <>
+              <span className="file-row__twisty" aria-hidden="true">
+                {isDir && !isRoot ? (
+                  <ChevronRightIcon size={12} className={row.open ? "file-row__chevron--open" : undefined} />
+                ) : null}
+              </span>
+              <span className="file-row__icon" aria-hidden="true">
+                {icon}
+              </span>
+              {/* The root shows its own path: with no breadcrumb above it,
+                  this row is how the tree says what it is rooted at. */}
+              <span className={`file-row__name truncate${isRoot ? " file-row__name--mono" : ""}`}>
+                {isRoot ? TREE_ROOT : row.name}
+              </span>
+            </>
+          );
+
           return (
-            <li key={row.path}>
+            <li key={row.path} role="none">
               <div
                 className={`file-row ${dropDir === row.path ? "file-row--drop" : ""} ${
                   focused === row.path ? "file-row--focused" : ""
-                }`}
-                style={{ paddingLeft: `calc(var(--space-3) + ${Math.min(row.depth, INDENT_DEPTH_CAP) * INDENT_PX}px)` }}
+                } ${isActive ? "file-row--active" : ""} ${isRoot ? "file-row--root" : ""}`}
+                style={{ paddingLeft: `${Math.min(row.depth, INDENT_DEPTH_CAP) * INDENT_PX}px` }}
                 onDragOver={(event) => {
                   if (!isDir) return;
                   event.preventDefault();
                   event.stopPropagation();
                   setDropDir(row.path);
-                  armHoverExpand(row.path);
+                  if (!row.open) armHoverExpand(row.path);
                 }}
                 onDragLeave={() => {
                   setDropDir(null);
                   cancelHoverExpand();
                 }}
                 onDrop={isDir ? (event) => void onDropInto(event, row.path) : undefined}
+                onContextMenu={(event) => openRowMenu(event, row)}
               >
-                <button
-                  type="button"
-                  className="file-row__row"
-                  role="treeitem"
-                  aria-level={row.depth + 1}
-                  aria-expanded={isDir && !isRoot ? row.open : undefined}
-                  aria-selected={focused === row.path}
-                  // The spinner in the icon column says "being read" to the eye;
-                  // this says it to everything else.
-                  aria-busy={listing?.loading ? true : undefined}
-                  data-path={row.path}
-                  tabIndex={focused === row.path || (focused === null && isRoot) ? 0 : -1}
-                  title={isDir ? t("files.openDir", "进入目录") : t("files.openFile", "双击打开")}
-                  onFocus={() => setFocused(row.path)}
-                  onClick={(event) => activateRow(event, row, isDir)}
-                >
-                  <span className={`file-row__twisty ${isDir && !isRoot ? "" : "file-row__twisty--empty"}`} aria-hidden="true">
-                    {isDir && !isRoot ? (
-                      <ChevronRightIcon size={12} className={row.open ? "file-row__chevron--open" : undefined} />
-                    ) : null}
-                  </span>
-                  <span className="file-row__icon" aria-hidden="true">
-                    {/* A folder being read says so in its own icon column: the
-                        row keeps its name and its place, and the state shows
-                        without pointing at it. */}
-                    {listing?.loading ? (
-                      <SyncIcon size={14} className="spin-sync" />
-                    ) : isDir ? (
-                      row.open ? <FolderOpenIcon size={14} /> : <FolderClosedIcon size={14} />
-                    ) : row.entry?.type === "link" ? (
-                      <LinkIcon size={14} />
-                    ) : (
-                      <FileIcon size={14} />
-                    )}
-                  </span>
-                  {/* The root shows its own path: with no breadcrumb above it,
-                      this row is how the tree says what it is rooted at. */}
-                  <span className="truncate">{isRoot ? TREE_ROOT : row.name}</span>
-                </button>
+                {isRoot ? (
+                  <div
+                    className="file-row__row file-row__row--static"
+                    role="treeitem"
+                    aria-level={1}
+                    aria-expanded={true}
+                    aria-selected={focused === TREE_ROOT}
+                    aria-busy={isLoading ? true : undefined}
+                    data-path={TREE_ROOT}
+                    tabIndex={
+                      focused === TREE_ROOT || (focused === null && firstFocusable === TREE_ROOT)
+                        ? 0
+                        : -1
+                    }
+                    title={title}
+                    onFocus={() => setFocused(TREE_ROOT)}
+                  >
+                    {inner}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="file-row__row"
+                    role="treeitem"
+                    aria-level={row.depth + 1}
+                    aria-expanded={isDir ? row.open : undefined}
+                    aria-selected={focused === row.path}
+                    aria-current={isActive ? "true" : undefined}
+                    // The spinner in the icon column says "being read" to the eye;
+                    // this says it to everything else.
+                    aria-busy={isLoading ? true : undefined}
+                    data-path={row.path}
+                    tabIndex={
+                      focused === row.path || (focused === null && row.path === firstFocusable)
+                        ? 0
+                        : -1
+                    }
+                    title={title}
+                    onFocus={() => setFocused(row.path)}
+                    onClick={(event) => activateRow(event, row)}
+                  >
+                    {inner}
+                  </button>
+                )}
 
-                <span className="file-size">
-                  {row.entry?.type === "file" ? formatSize(row.entry.size) : ""}
-                </span>
-
-                {/* One trigger, and only while the row is pointed at: a button on
-                    every row is what made a directory of files unreadable. */}
-                <span className="file-actions">
-                  <Menu
-                    label={t("files.menuLabel", "{{name}} 的操作", { name: isRoot ? TREE_ROOT : row.name })}
-                    items={[
-                      ...(row.entry?.type === "file"
-                        ? [
-                            {
-                              label: t("files.open", "打开"),
-                              onSelect: () => openFileTab(session, row.path, row.entry!.name),
-                            },
-                          ]
-                        : []),
-                      ...(isDir
-                        ? [
-                            {
-                              label: t("files.newFolderHere", "在此新建"),
-                              disabled: busy !== null,
-                              onSelect: () => {
-                                setCreatingIn(creatingIn === row.path ? null : row.path);
-                                setFolderName("");
-                                loadThenOpen(row.path);
-                              },
-                            },
-                          ]
-                        : []),
-                      ...(row.entry?.type === "link" || isRoot
-                        ? []
-                        : [
-                            {
-                              label: isDir
-                                ? t("files.downloadFolder", "下载文件夹")
-                                : t("files.download", "下载"),
-                              disabled: busy === `download:${row.path}`,
-                              onSelect: () =>
-                                isDir
-                                  ? void downloadDirectory(row.entry!, row.path)
-                                  : void download(row.entry!, row.path),
-                            },
-                          ]),
-                      ...(isRoot
-                        ? []
-                        : [
-                            {
-                              label: t("files.delete", "删除"),
-                              danger: true,
-                              disabled: busy === `delete:${row.path}`,
-                              onSelect: () => void remove(row.entry!, row.path),
-                            },
-                          ]),
-                    ]}
-                  />
-                </span>
+                {showFileSizes && isFile && row.entry?.type === "file" && (
+                  <span className="file-size">{formatSize(row.entry.size)}</span>
+                )}
               </div>
 
-              {creatingIn === row.path && (
+              {newEntry?.parent === row.path && (
                 <form
-                  className="folder-form"
+                  className="new-entry-form"
                   onSubmit={(event) => {
                     event.preventDefault();
-                    void createFolder(row.path);
+                    void createEntry();
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Escape") return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    cancelCreate();
                   }}
                 >
                   <input
+                    ref={newEntryInput}
                     className="input"
-                    data-testid="folder-name"
-                    value={folderName}
-                    onChange={(event) => setFolderName(event.target.value)}
-                    placeholder={t("files.folderNamePlaceholder", "新文件夹名称")}
+                    data-testid="new-entry-name"
+                    aria-label={entryPlaceholder}
+                    value={entryName}
+                    onChange={(event) => setEntryName(event.target.value)}
+                    placeholder={entryPlaceholder}
                     autoFocus
                   />
                   <Button
                     variant="primary"
                     size="sm"
                     type="submit"
-                    data-testid="folder-create"
-                    disabled={!folderName.trim() || busy !== null}
+                    data-testid="new-entry-create"
+                    disabled={!entryName.trim() || busy !== null}
                   >
                     {t("files.create", "创建")}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setCreatingIn(null)}>
-                    {t("files.cancel", "取消")}
-                  </Button>
+                  <IconButton
+                    variant="ghost"
+                    size="sm"
+                    label={t("files.cancel", "取消")}
+                    onClick={cancelCreate}
+                  >
+                    <CloseIcon />
+                  </IconButton>
                 </form>
               )}
 
               {row.open && listing && !listing.loading && listing.error && (
-                <p className="error pane-error">{listing.error}</p>
+                <div
+                  className="file-error"
+                  style={{ paddingLeft: `${Math.min(row.depth + 1, INDENT_DEPTH_CAP) * INDENT_PX}px` }}
+                >
+                  <Callout tone="danger">
+                    <span>{listing.error}</span>
+                    <Button variant="link" size="sm" onClick={() => void load(row.path)}>
+                      {t("files.retry", "重试")}
+                    </Button>
+                  </Callout>
+                </div>
               )}
-              {row.open && listing && !listing.loading && !listing.error && listing.entries.length === 0 && !isRoot && (
-                <p className="hint pane-error">{t("files.empty", "空目录")}</p>
+              {row.open && listing && !listing.loading && !listing.error && listing.entries.length === 0 && (
+                isRoot ? (
+                  <div className="file-empty" onContextMenu={(event) => openRowMenu(event, row)}>
+                    <EmptyState title={t("files.emptyRoot", "运行时还没有文件")}>
+                      {t("files.emptyRootHint", "拖入文件，或在终端中创建。")}
+                    </EmptyState>
+                  </div>
+                ) : (
+                  <div
+                    className="file-empty file-empty--nested"
+                    style={{ paddingLeft: `${Math.min(row.depth + 1, INDENT_DEPTH_CAP) * INDENT_PX}px` }}
+                    onContextMenu={(event) => openRowMenu(event, row)}
+                  >
+                    <EmptyState title={t("files.empty", "当前目录为空")}>
+                      {t("files.emptyDirHint", "右键可上传文件，或新建文件、文件夹。")}
+                    </EmptyState>
+                  </div>
+                )
               )}
             </li>
           );
@@ -723,7 +1144,18 @@ export function FilePane({
                             : t("files.transferDone", "完成")
                           : formatPercent(transfer.transferred, transfer.total)}
                   </span>
-                  {!transfer.done && (
+                  {transfer.done ? (
+                    <IconButton
+                      variant="ghost"
+                      size="sm"
+                      label={t("files.dismissTransfer", "清除")}
+                      onClick={() =>
+                        setTransfers((current) => current.filter((item) => item.id !== transfer.id))
+                      }
+                    >
+                      <CloseIcon />
+                    </IconButton>
+                  ) : (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -742,13 +1174,6 @@ export function FilePane({
           ))}
         </div>
       )}
-
-      <p className="hint drop-hint">
-        {t("files.dropHint", "拖拽文件或文件夹至此处上传")}
-        <Button variant="link" size="sm" onClick={pickAndUploadFolder} disabled={busy !== null}>
-          {t("files.chooseFolder", "选择文件夹")}
-        </Button>
-      </p>
 
       {conflict && (
         <Dialog
@@ -782,6 +1207,54 @@ export function FilePane({
           </Callout>
           <p className="hint">{t("files.conflictHint", "所选做法对本次全部文件生效。")}</p>
         </Dialog>
+      )}
+
+      {deleteAsk && (
+        <Dialog
+          size="confirm"
+          title={t("files.deleteTitle", "删除 {{name}}？", { name: deleteAsk.entry.name })}
+          onClose={() => setDeleteAsk(null)}
+          footer={
+            <div className="row">
+              <Button variant="outline" onClick={() => setDeleteAsk(null)}>
+                {t("files.cancel", "取消")}
+              </Button>
+              <Button
+                variant="destructive"
+                autoFocus
+                onClick={() => {
+                  const ask = deleteAsk;
+                  setDeleteAsk(null);
+                  if (ask) void deleteRow(ask.path);
+                }}
+              >
+                {t("files.delete", "删除")}
+              </Button>
+            </div>
+          }
+        >
+          <p className="hint">
+            {deleteAsk.entry.type === "dir"
+              ? t("files.deleteBodyDir", "此操作不可撤销，目录中的内容会一并删除。")
+              : t("files.deleteBody", "此操作不可撤销。")}
+          </p>
+        </Dialog>
+      )}
+
+      {menu && (
+        <ContextMenu
+          point={menu.point}
+          label={
+            menu.row
+              ? t("files.menuLabel", "{{name}} 的操作", {
+                  name: menu.row.path === TREE_ROOT ? TREE_ROOT : menu.row.name,
+                })
+              : t("files.panelMenuLabel", "文件面板操作")
+          }
+          items={itemsForMenu(menu.row)}
+          onClose={() => setMenu(null)}
+          returnFocus={menu.returnFocus}
+        />
       )}
     </aside>
   );

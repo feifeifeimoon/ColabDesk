@@ -11,7 +11,7 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Locator, Page } from "@playwright/test";
-import { expect, MOD, openSession, plantDialogAnswer, test } from "./app-launch";
+import { enableFileSizes, expect, MOD, openSession, plantDialogAnswer, test } from "./app-launch";
 
 function row(page: Page, name: string): Locator {
   return page.locator(".file-row").filter({ hasText: name });
@@ -195,7 +195,7 @@ test("键盘与菜单是双击的两条等价路径，同一个文件只有一�
 
   await rowButton(page, "README.txt").focus();
   await page.keyboard.press("Enter");
-  await row(page, "README.txt").getByRole("button", { name: "README.txt 的操作" }).click();
+  await row(page, "README.txt").click({ button: "right" });
   await page.getByRole("menuitem", { name: "打开" }).click();
 
   // Three ways in, one tab: the strip is not a history of what was asked for.
@@ -292,8 +292,8 @@ test("二进制文件只给一个出口：下载", async ({ page }) => {
   const filePane = pane(page, "blob.bin");
   await expect(filePane).toContainText("二进制文件无法预览");
   await expect(filePane.locator(".cm-content")).toHaveCount(0);
-  // Download lives in the file row's menu; the header stays for viewing.
-  await row(page, "blob.bin").getByRole("button", { name: "blob.bin 的操作" }).click();
+  // Download lives in the file row's context menu; the header stays for viewing.
+  await row(page, "blob.bin").click({ button: "right" });
   await expect(page.getByRole("menuitem", { name: "下载" })).toBeVisible();
   await page.keyboard.press("Escape");
 });
@@ -310,6 +310,7 @@ test("不是 UTF-8 的文件能读，但只说能看", async ({ page }) => {
 
 test("改了就存：标签上的点、Ctrl+S 写回，重开是远端的新内容", async ({ page }) => {
   await openSession(page, "e2e-alpha");
+  await enableFileSizes(page);
   await rowButton(page, "README.txt").dblclick();
   const filePane = pane(page, "README.txt");
   await expect(surface(page, "README.txt")).toContainText("ColabDesk E2E runtime.");
@@ -341,6 +342,7 @@ test("远端先变了：保存不静默覆盖，问到答案才写", async ({ ap
   // this was found (CI's window is narrower than a desktop's).
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setSize(980, 720));
   await openSession(page, "e2e-alpha");
+  await enableFileSizes(page);
   await rowButton(page, "README.txt").dblclick();
   const filePane = pane(page, "README.txt");
   await filePane.locator(".cm-content").click();
@@ -375,6 +377,7 @@ test("远端先变了：保存不静默覆盖，问到答案才写", async ({ ap
 
 test("富文本里放弃修改并重载，看到的是服务器上的新内容", async ({ page, sandbox }) => {
   await openSession(page, "e2e-alpha");
+  await enableFileSizes(page);
   await rowButton(page, "README.md").dblclick();
   const filePane = pane(page, "README.md");
   await filePane.locator('[data-testid="markdown-view-rich"]').click();

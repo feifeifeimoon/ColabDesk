@@ -122,6 +122,8 @@ export interface WorkspaceSlice {
   setConnection(state: SshState): void;
   /** Opens a directory that was closed, closes one that was open. */
   toggleDirectory(session: string, path: string): void;
+  /** Closes every open folder of one session, keeping the listings cached. */
+  collapseAllDirectories(session: string): void;
   /** Drops a directory and everything under it, for a folder that is gone. */
   forgetDirectory(session: string, path: string): void;
   setTransferCount(session: string, active: number): void;
@@ -222,6 +224,8 @@ export interface PreferencesSlice {
   filesOpen: boolean;
   /** How wide each rail is, in pixels; the terminal takes what is left. */
   panelWidths: Record<PanelSide, number>;
+  /** Whether a file row shows its size; off by default, the name is the point. */
+  showFileSizes: boolean;
 
   setTheme(preference: ThemePreference): void;
   toggleTheme(): void;
@@ -234,6 +238,7 @@ export interface PreferencesSlice {
   toggleFiles(): void;
   /** Clamped here, so every caller gets the same limits. */
   setPanelWidth(side: PanelSide, width: number): void;
+  setShowFileSizes(show: boolean): void;
 }
 
 /** Which section of the settings rail is showing. State, so it lives here. */
