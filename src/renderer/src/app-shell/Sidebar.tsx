@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, type StatusTone } from "../components/ui/Badge";
+import { Badge } from "../components/ui/Badge";
 import { Button, IconButton } from "../components/ui/Button";
 import {
   ChipIcon,
@@ -26,14 +26,6 @@ import { useAppStore } from "../store";
 import { useWorkspaceChrome } from "../store/selectors";
 import { BrandMark } from "./BrandMark";
 
-const CONNECTION_TONE: Record<string, StatusTone> = {
-  connecting: "warn",
-  ready: "good",
-  error: "danger",
-  closed: "neutral",
-};
-
-/** The machine class as a picture: the tile at the head of a card. */
 const MACHINE_ICON = { cpu: ChipIcon, gpu: GpuIcon, tpu: TpuIcon };
 
 /**
@@ -246,11 +238,6 @@ export function Sidebar() {
         {sessions.map((session) => {
           const connection = connections[session.name];
           const state = connection?.status ?? "closed";
-          // `neutral` has no modifier: `.status`'s own colour is the resting one.
-          const tone = CONNECTION_TONE[state] ?? "neutral";
-          const stateClass = ["status", tone === "neutral" ? "" : `status--${tone}`]
-            .filter(Boolean)
-            .join(" ");
           const MachineIcon = MACHINE_ICON[acceleratorKind(session.accelerator)];
           const busy = busyAction?.startsWith(`${session.name}:`) ?? false;
           const sessionTabs = tabs.filter((tab) => tab.session === session.name);
@@ -289,9 +276,7 @@ export function Sidebar() {
           /*
             The rail paints machines, not connections: the state is in the
             tooltip and in the hidden text a screen reader gets, and a failed
-            connection is written into the terminal the row opens. Keeping the
-            status classes here is what lets the e2e fixture wait for readiness
-            without reading the store.
+            connection is written into the terminal the row opens.
           */
           const hiddenState = [
             connectionLabels[state] ?? state,
@@ -377,7 +362,8 @@ export function Sidebar() {
                     reader sentence, and a failure is written into the terminal
                     this button opens. */}
                 <span
-                  className={`visually-hidden ${stateClass}`}
+                  className="visually-hidden"
+                  data-connection={state}
                   data-testid={session.name === selectedSession ? "terminal-status" : undefined}
                 >
                   {hiddenState}

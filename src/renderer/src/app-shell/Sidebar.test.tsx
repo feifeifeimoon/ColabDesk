@@ -64,7 +64,7 @@ function rowsMarkup(html: string): string {
 function visibleRowsMarkup(html: string): string {
   return rowsMarkup(html)
     .replace(/title="[^"]*"/g, "")
-    .replace(/<span class="visually-hidden[^"]*">.*?<\/span>/g, "");
+    .replace(/<span class="visually-hidden"[^>]*>.*?<\/span>/g, "");
 }
 
 describe("Sidebar", () => {
@@ -174,9 +174,10 @@ describe("Sidebar", () => {
   it("休息状态只给屏幕阅读器一份，列表里不画", () => {
     store.current = { ...baseStore, connections: { "session-1": { status: "ready" } } };
     const html = renderToStaticMarkup(createElement(Sidebar));
-    const hidden = rowsMarkup(html).match(/<span class="visually-hidden [^"]*">(.*?)<\/span>/)?.[1];
+    const hidden = rowsMarkup(html).match(/<span class="visually-hidden"[^>]*>(.*?)<\/span>/)?.[1];
 
     expect(hidden).toBe("已连接");
+    expect(rowsMarkup(html)).toContain('data-connection="ready"');
   });
 
   it("连接异常和云端已无都读给屏幕阅读器，列表不写", () => {
@@ -186,10 +187,11 @@ describe("Sidebar", () => {
       connections: { "session-1": { status: "connecting" } },
     };
     const html = renderToStaticMarkup(createElement(Sidebar));
-    const hidden = rowsMarkup(html).match(/<span class="visually-hidden [^"]*">(.*?)<\/span>/)?.[1];
+    const hidden = rowsMarkup(html).match(/<span class="visually-hidden"[^>]*>(.*?)<\/span>/)?.[1];
 
     expect(hidden).toContain("连接中");
     expect(hidden).toContain("云端已无");
+    expect(rowsMarkup(html)).toContain('data-connection="connecting"');
     expect(visibleRowsMarkup(html)).not.toContain("连接中");
   });
 
