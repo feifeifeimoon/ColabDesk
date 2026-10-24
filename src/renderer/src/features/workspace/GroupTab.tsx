@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useSortable } from "@dnd-kit/sortable";
+import { useDraggable } from "@dnd-kit/core";
 import { CloseIcon } from "../../components/ui/icons";
 import { useAppStore } from "../../store";
 import type { TabGroup } from "../../lib/tab-groups";
@@ -33,7 +33,7 @@ export function GroupTab({
   const [renaming, setRenaming] = useState<{ draft: string; initial: string } | null>(null);
   const renameCancelled = useRef(false);
 
-  const { setNodeRef, listeners, isDragging } = useSortable({
+  const { setNodeRef, listeners, isDragging } = useDraggable({
     id: tab.id,
     data: {
       kind: "tab",
@@ -166,7 +166,13 @@ export function GroupTab({
             : t("topbar.terminalCloseTitle", "关闭终端")
         }
         onPointerDown={(event) => event.stopPropagation()}
-        onMouseDown={(event) => event.stopPropagation()}
+        onMouseDown={(event) => {
+          // The strip's mousedown guard stops the tab from taking focus; this
+          // button stops the event before that guard sees it, so it has to do
+          // the same or closing a tab would blur the terminal beside it.
+          if (event.button === 0) event.preventDefault();
+          event.stopPropagation();
+        }}
         onClick={(event) => {
           event.stopPropagation();
           requestCloseTab(tab.id);

@@ -132,6 +132,35 @@ test("把标签拖到面板右边，分成左右两个 pane，各自的 shell �
   await expect(left.locator(".xterm-rows")).not.toContainText("RIGHT-ONLY");
 });
 
+test("拖动当前激活的标签分屏后，键盘还留在那个终端里", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await page.locator('[data-testid="new-terminal"]').click();
+  await expect(terminalRows(page)).toContainText("shell #2");
+  await focusTerminal(page);
+  await page.keyboard.type("echo BEFORE-DRAG");
+  await page.keyboard.press("Enter");
+  await expect(terminalRows(page)).toContainText("BEFORE-DRAG");
+
+  // The active tab is the one being split, so its pane was already focused and
+  // stays focused: no prop change will ask xterm for the keyboard back. Pressing
+  // the strip must therefore not take focus from it.
+  const activeTab = page.getByRole("tab", { name: "终端 2" });
+  const activePane = page.locator(".pane-slot:visible").first();
+  await dragTabTo(page, activeTab, await rightEdgeOf(activePane), "right");
+
+  const right = paneWithShell(page, 2);
+  await expect(right).toContainText("shell #2");
+  await page.keyboard.type("echo ACTIVE-SPLIT");
+  await page.keyboard.press("Enter");
+  await expect(right.locator(".xterm-rows")).toContainText("ACTIVE-SPLIT");
+
+  // A plain click on the active tab is the same promise, without a drag.
+  await page.getByRole("tab", { name: "终端 2" }).click();
+  await page.keyboard.type("echo CLICK-STILL");
+  await page.keyboard.press("Enter");
+  await expect(right.locator(".xterm-rows")).toContainText("CLICK-STILL");
+});
+
 test("把标签拖到面板下边，分成上下两个 pane", async ({ page }) => {
   await openSession(page, "e2e-alpha");
   await page.locator('[data-testid="new-terminal"]').click();
@@ -168,6 +197,11 @@ test("把标签拖到另一个 pane 的中心：合并进那个 group，原来�
   await expect(terminalRows(page)).toContainText("KEEP-ME");
 
   await page.getByRole("tab", { name: "终端 2" }).click();
+  await focusTerminal(page);
+  await page.keyboard.type("echo SECOND-MARK");
+  await page.keyboard.press("Enter");
+  await expect(terminalRows(page)).toContainText("SECOND-MARK");
+
   const firstTab = page.getByRole("tab", { name: "终端 1" });
   const activePane = page.locator(".pane-slot:visible").first();
   await dragTabTo(page, firstTab, await rightEdgeOf(activePane), "right");
@@ -183,8 +217,10 @@ test("把标签拖到另一个 pane 的中心：合并进那个 group，原来�
   await expect(page.locator(".group-strip")).toHaveCount(1);
   await expect(page.locator(".pane-slot:visible")).toHaveCount(1);
   await expect(terminalRows(page)).toContainText("shell #2");
+  // This is the shell that was just moved between groups.
+  await expect(terminalRows(page)).toContainText("SECOND-MARK");
 
-  // The moved tab's shell kept its scrollback.
+  // And the shell moved by the earlier split still has its own scrollback.
   await page.getByRole("tab", { name: "终端 1" }).click();
   await expect(terminalRows(page)).toContainText("shell #1");
   await expect(terminalRows(page)).toContainText("KEEP-ME");
@@ -207,15 +243,17 @@ test("把一个 pane 的标签拖到另一个 pane 的标签条，跨组移动",
   await expect(targetStrip.getByRole("tab")).toHaveText(["终端 1"]);
 
   const secondTab = page.getByRole("tab", { name: "终端 2" });
-  const target = await targetStrip.boundingBox();
-  if (!target) throw new Error("没有布局盒");
+  const firstTargetTab = targetStrip.getByRole("tab").first();
+  const firstTargetBox = await firstTargetTab.boundingBox();
+  if (!firstTargetBox) throw new Error("没有布局盒");
   await dragTabTo(page, secondTab, {
-    x: target.x + target.width - 10,
-    y: target.y + target.height / 2,
+    x: firstTargetBox.x + 6,
+    y: firstTargetBox.y + firstTargetBox.height / 2,
   });
 
   await expect(sourceStrip.getByRole("tab")).toHaveText(["终端 3"]);
-  await expect(targetStrip.getByRole("tab")).toHaveText(["终端 1", "终端 2"]);
+  // It lands before the tab it was dropped on, not at the end.
+  await expect(targetStrip.getByRole("tab")).toHaveText(["终端 2", "终端 1"]);
   await expect(page.locator(".group-strip")).toHaveCount(2);
   // The moved tab becomes the target pane's active one; the source keeps its
   // own active tab on screen.
@@ -231,12 +269,28 @@ test("拖动 pane 之间的分隔条，两个 shell 都不受影响", async ({ p
   await dragTabTo(page, firstTab, await rightEdgeOf(activePane), "right");
 
   const leftStrip = groupStrip(page, 0);
-  const before = await leftStrip.boundingBox();
-  const divider = await page.locator(".pane-divider").boundingBox();
-  if (!before || !divider) throw new Error("没有布局盒");
+  const divider = page.locator(".pane-divider");
+  await expect(divider).toHaveAttribute("role", "separator");
+  await expect(divider).toHaveAttribute("aria-orientation", "vertical");
+  await expect(divider).toHaveAttribute("aria-label", "调整分屏大小 1");
 
-  const x = divider.x + divider.width / 2;
-  const y = divider.y + divider.height / 2;
+  // Keyboard resize is the accessible path to the same ratio.
+  const beforeKeyboard = await leftStrip.boundingBox();
+  const startValue = Number(await divider.getAttribute("aria-valuenow"));
+  await divider.focus();
+  await page.keyboard.press("ArrowRight");
+  const afterKeyboard = await leftStrip.boundingBox();
+  expect(afterKeyboard!.width).toBeGreaterThan(beforeKeyboard!.width);
+  await expect
+    .poll(async () => Number(await divider.getAttribute("aria-valuenow")))
+    .toBeGreaterThan(startValue);
+
+  const before = await leftStrip.boundingBox();
+  const dividerBox = await divider.boundingBox();
+  if (!before || !dividerBox) throw new Error("没有布局盒");
+
+  const x = dividerBox.x + dividerBox.width / 2;
+  const y = dividerBox.y + dividerBox.height / 2;
   await page.mouse.move(x, y);
   await page.mouse.down();
   await page.mouse.move(x + 60, y, { steps: 12 });

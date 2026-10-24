@@ -1,6 +1,5 @@
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
-import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 import { PlusIcon } from "../../components/ui/icons";
 import type { TabGroup } from "../../lib/tab-groups";
 import { useAppStore } from "../../store";
@@ -47,24 +46,30 @@ export function GroupStrip({
       data-focused={focused ? "true" : undefined}
       style={style}
       onPointerDown={() => focusGroup(group.session, group.id)}
+      onMouseDown={(event) => {
+        // The strip is a control surface, but pressing it must not take focus
+        // from the terminal: a drag that splits the focused tab keeps the same
+        // `focused` prop, so xterm would never be asked for the keyboard back.
+        // Cancelling the mouse event's default keeps the activeElement where it
+        // was; click/double-click still fire, so rename and middle-click work.
+        if (event.button === 0) event.preventDefault();
+      }}
     >
       <div
         className="group-strip__tabs"
         role="tablist"
         aria-label={t("workspace.groupTabs", "面板 {{index}} 标签", { index })}
       >
-        <SortableContext items={group.tabOrder} strategy={horizontalListSortingStrategy}>
-          {tabs.map((tab, position) => (
-            <GroupTab
-              key={tab.id}
-              tab={tab}
-              group={group}
-              label={labelFor(tab)}
-              active={tab.id === group.activeTabId}
-              isLast={position === tabs.length - 1}
-            />
-          ))}
-        </SortableContext>
+        {tabs.map((tab, position) => (
+          <GroupTab
+            key={tab.id}
+            tab={tab}
+            group={group}
+            label={labelFor(tab)}
+            active={tab.id === group.activeTabId}
+            isLast={position === tabs.length - 1}
+          />
+        ))}
       </div>
       <button
         type="button"

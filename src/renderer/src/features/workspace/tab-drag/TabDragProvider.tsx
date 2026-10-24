@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   closestCenter,
   DndContext,
@@ -179,11 +179,37 @@ function resolveDropTarget(pointer: { x: number; y: number }, data: TabDragData)
 export function TabDragProvider({ children }: { children: ReactNode }) {
   const [active, setActive] = useState<TabDragData | null>(null);
   const [target, setTarget] = useState<TabDropTarget | null>(null);
+  const syntheticEscape = useRef(false);
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: TAB_DRAG_ACTIVATION_DISTANCE },
     }),
   );
+
+  /**
+   * Escape must cancel a tab drag even when xterm owns the keyboard.
+   *
+   * The strip keeps focus in the terminal (a split of the already-focused tab
+   * never changes the `focused` prop, so nothing else would give it back), and
+   * xterm stops Escape before it reaches dnd-kit's document listener. Catch it
+   * in the capture phase and feed dnd-kit the same key on the document; the
+   * sensor's own cancel path then tears the gesture down.
+   */
+  useEffect(() => {
+    if (!active) return;
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== "Escape" || syntheticEscape.current) return;
+      event.preventDefault();
+      event.stopPropagation();
+      syntheticEscape.current = true;
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", code: "Escape", bubbles: true }),
+      );
+      syntheticEscape.current = false;
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [active]);
 
   const onDragStart = (event: DragStartEvent): void => {
     const data = event.active.data.current;

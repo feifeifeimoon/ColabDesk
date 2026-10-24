@@ -164,6 +164,36 @@ export function leafGroups(layout: GroupLayout): string[] {
   return [...leafGroups(layout.first), ...leafGroups(layout.second)];
 }
 
+function firstGroupId(layout: GroupLayout): string {
+  return layout.kind === "leaf" ? layout.groupId : firstGroupId(layout.first);
+}
+
+/**
+ * The pane that takes a removed group's place: the first leaf of the other
+ * child of its parent split. In `[[A / B] | C]`, removing B focuses A, not C.
+ */
+export function findSiblingGroupId(layout: GroupLayout, groupId: string): string | null {
+  if (layout.kind === "leaf") return null;
+  if (layout.first.kind === "leaf" && layout.first.groupId === groupId) {
+    return firstGroupId(layout.second);
+  }
+  if (layout.second.kind === "leaf" && layout.second.groupId === groupId) {
+    return firstGroupId(layout.first);
+  }
+  return (
+    findSiblingGroupId(layout.first, groupId) ?? findSiblingGroupId(layout.second, groupId)
+  );
+}
+
+/**
+ * The fallback when a session has no remembered pane, or the removed pane has no
+ * sibling: the last leaf in visual order. `openSession`, `reconcile` and the
+ * number-key focus all use this one policy.
+ */
+export function lastGroupId(layout: GroupLayout): string {
+  return layout.kind === "leaf" ? layout.groupId : lastGroupId(layout.second);
+}
+
 export function findGroupLeaf(layout: GroupLayout, groupId: string): GroupLayout | null {
   if (layout.kind === "leaf") return layout.groupId === groupId ? layout : null;
   return findGroupLeaf(layout.first, groupId) ?? findGroupLeaf(layout.second, groupId);

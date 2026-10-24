@@ -12,7 +12,7 @@ const KEY_STEP_COARSE = 64;
 
 function clampForPixels(raw: number, size: number): number {
   if (!(size > 0)) return 0.5;
-  // 160px on each side when the surface can afford it; on a very narrow pane
+  // 240px on each side when the surface can afford it; on a very narrow pane
   // the ratio still wins, exactly like a dragged rail width.
   const margin = Math.min(0.45, Math.max(MIN_RATIO, MIN_GROUP_PX / size));
   return Math.min(1 - margin, Math.max(margin, raw));

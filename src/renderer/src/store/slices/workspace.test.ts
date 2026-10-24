@@ -58,6 +58,38 @@ const focusedGroup = (store: { getState: () => TestState }) => {
   return groupId ? state.groups[groupId] : undefined;
 };
 
+/** The shape every workspace action must leave behind. */
+function expectConsistent(store: { getState: () => TestState }): void {
+  const state = store.getState();
+
+  for (const tab of state.tabs) {
+    const group = state.groups[tab.groupId];
+    if (!group) throw new Error(`tab ${tab.id} has no live group`);
+    expect(group.session).toBe(tab.session);
+    expect(group.tabOrder).toContain(tab.id);
+  }
+
+  for (const [id, group] of Object.entries(state.groups)) {
+    expect(group.id).toBe(id);
+    expect(group.tabOrder.length).toBeGreaterThan(0);
+    expect(new Set(group.tabOrder).size).toBe(group.tabOrder.length);
+    expect(group.tabOrder).toContain(group.activeTabId);
+    for (const tabId of group.tabOrder) {
+      expect(state.tabs.find((tab) => tab.id === tabId)?.groupId).toBe(id);
+    }
+    const layout = state.groupLayouts[group.session];
+    if (!layout) throw new Error(`group ${id} has no layout`);
+    expect(leafGroups(layout)).toContain(id);
+  }
+
+  for (const [session, groupId] of Object.entries(state.focusedGroupBySession)) {
+    const layout = state.groupLayouts[session];
+    if (!layout) throw new Error(`focused session ${session} has no layout`);
+    expect(leafGroups(layout)).toContain(groupId);
+    expect(state.groups[groupId]).toBeDefined();
+  }
+}
+
 beforeEach(() => vi.mocked(sshDisconnect).mockClear());
 
 describe("opening shells", () => {
@@ -489,6 +521,7 @@ describe("panes and tab groups", () => {
     expect(store.getState().groups[leaves[1]!]!.tabOrder).toEqual([second.id]);
     expect(focusedTabId(store)).toBe(second.id);
     expect(store.getState().tabs.find((tab) => tab.id === second.id)!.groupId).toBe(leaves[1]);
+    expectConsistent(store);
   });
 
   it("splits one tab out of a multi-tab group and keeps the rest", () => {
@@ -525,6 +558,25 @@ describe("panes and tab groups", () => {
     expect(store.getState().groups[target.id]!.activeTabId).toBe(first!.id);
     expect(store.getState().groups[group.id]!.tabOrder).toEqual([second!.id]);
     expect(store.getState().tabs.find((tab) => tab.id === first!.id)!.groupId).toBe(target.id);
+    expectConsistent(store);
+  });
+
+  it("inserts a moved tab before a given tab", () => {
+    const store = workspaceStore();
+    store.getState().openTab("alpha");
+    store.getState().openTab("alpha");
+    store.getState().openTab("alpha");
+    const [first, second, third] = shells(store);
+    const group = focusedGroup(store)!;
+    store.getState().splitTabToGroup(third!.id, group.id, "right");
+    const target = focusedGroup(store)!;
+
+    store.getState().moveTabToGroup(first!.id, target.id, third!.id);
+
+    expect(store.getState().groups[target.id]!.tabOrder).toEqual([first!.id, third!.id]);
+    expect(store.getState().groups[target.id]!.activeTabId).toBe(first!.id);
+    expect(store.getState().groups[group.id]!.tabOrder).toEqual([second!.id]);
+    expectConsistent(store);
   });
 
   it("closing the active tab returns to the most recent tab", () => {
@@ -554,6 +606,34 @@ describe("panes and tab groups", () => {
     expect(focusedGroup(store)!.id).toBe(firstGroup.id);
     expect(focusedTabId(store)).toBe(first.id);
     expect(store.getState().tabs).toHaveLength(1);
+    expectConsistent(store);
+  });
+
+  it("closing a pane in a nested split focuses its sibling, not the last pane", () => {
+    const store = workspaceStore();
+    store.getState().openTab("alpha");
+    store.getState().openTab("alpha");
+    store.getState().openTab("alpha");
+    const [first, second] = shells(store);
+    const root = focusedGroup(store)!;
+    store.getState().splitTabToGroup(shells(store)[2]!.id, root.id, "right");
+    const right = focusedGroup(store)!;
+    store.getState().focusTab(first!.id);
+    store.getState().splitTabToGroup(second!.id, root.id, "bottom");
+    const nested = focusedGroup(store)!;
+    expect(leafGroups(store.getState().groupLayouts.alpha!)).toEqual([
+      root.id,
+      nested.id,
+      right.id,
+    ]);
+
+    store.getState().closeTab(second!.id);
+
+    // C's sibling is A; the last leaf is the unrelated right-hand pane B.
+    expect(focusedGroup(store)!.id).toBe(root.id);
+    expect(focusedTabId(store)).toBe(first!.id);
+    expect(leafGroups(store.getState().groupLayouts.alpha!)).toEqual([root.id, right.id]);
+    expectConsistent(store);
   });
 
   it("closing the last tab of the last pane releases the session", () => {

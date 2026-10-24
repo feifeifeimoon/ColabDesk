@@ -5,8 +5,10 @@ import {
   createGroupId,
   createSplitId,
   findGroupLeaf,
+  findSiblingGroupId,
   isSameOrder,
   isSplitDropNoOp,
+  lastGroupId,
   leafGroups,
   leafLayout,
   moveWithin,
@@ -170,7 +172,8 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
     const layout = groupLayouts[session];
     const leaves = layout ? leafGroups(layout) : [];
     const wanted = groupId ?? focused[session];
-    let target = wanted && leaves.includes(wanted) ? wanted : leaves[leaves.length - 1];
+    let target =
+      wanted && leaves.includes(wanted) ? wanted : layout ? lastGroupId(layout) : undefined;
 
     if (target && groups[target]) {
       groups[target] = attachToGroup(groups[target]!, tab.id, null);
@@ -255,7 +258,7 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       groupLayouts[session] = next;
       const leaves = leafGroups(next);
       if (!leaves.includes(focused[session] ?? "")) {
-        focused[session] = leaves[leaves.length - 1]!;
+        focused[session] = lastGroupId(next);
       }
     }
 
@@ -328,7 +331,12 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       const layout = groupLayouts[session];
       const leaves = layout ? leafGroups(layout) : [];
       const remembered = focused[session];
-      const target = remembered && leaves.includes(remembered) ? remembered : leaves[leaves.length - 1];
+      const target =
+        remembered && leaves.includes(remembered)
+          ? remembered
+          : layout
+            ? lastGroupId(layout)
+            : undefined;
       if (target) focused[session] = target;
 
       set({
@@ -409,6 +417,10 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       const focused = { ...state.focusedGroupBySession };
       const group = groups[closing.groupId];
       let layout: GroupLayout | undefined = groupLayouts[session];
+      // The sibling is the other child of the removed leaf's parent split. It
+      // has to be read before removeGroup collapses that parent; the last leaf
+      // in visual order can be a distant pane in a nested layout.
+      const sibling = layout ? findSiblingGroupId(layout, closing.groupId) : null;
 
       if (group) {
         const detached = detachFromGroup(group, tabId);
@@ -427,8 +439,8 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
             }
           }
           if (focused[session] === group.id) {
-            const leaves = layout ? leafGroups(layout) : [];
-            const next = leaves[leaves.length - 1];
+            const next =
+              sibling && groups[sibling] ? sibling : layout ? lastGroupId(layout) : undefined;
             if (next) focused[session] = next;
             else delete focused[session];
           }
@@ -533,7 +545,7 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       const layout = state.groupLayouts[session];
       const groupId =
         state.focusedGroupBySession[session] ??
-        (layout ? leafGroups(layout)[leafGroups(layout).length - 1] : undefined);
+        (layout ? lastGroupId(layout) : undefined);
       const group = groupId ? state.groups[groupId] : undefined;
       const target = group?.tabOrder[index];
       if (target) get().focusTab(target);

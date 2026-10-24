@@ -9,7 +9,7 @@
  * user typed has to survive a language switch while the default one follows it.
  */
 
-import { createElement, type ReactNode } from "react";
+import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { setRendererUiLanguage } from "../../i18n/i18n";
@@ -22,10 +22,8 @@ vi.mock("../../store", () => ({
   useAppStore: (select: (state: unknown) => unknown) => select(store.current),
 }));
 
-vi.mock("@dnd-kit/sortable", () => ({
-  useSortable: () => ({ setNodeRef: () => {}, listeners: undefined, isDragging: false }),
-  SortableContext: ({ children }: { children: ReactNode }) => children,
-  horizontalListSortingStrategy: {},
+vi.mock("@dnd-kit/core", () => ({
+  useDraggable: () => ({ setNodeRef: () => {}, listeners: undefined, isDragging: false }),
 }));
 
 import { GroupStrip } from "./GroupStrip";
@@ -121,6 +119,14 @@ describe("a pane's tab strip", () => {
     expect(markup).toContain("train.log");
     expect(markup).toContain('title="/content/train.log"');
     expect(markup).toContain('aria-label="关闭 train.log"');
+  });
+
+  it("renders its English surface without Chinese fallbacks", async () => {
+    await setRendererUiLanguage("en");
+    const markup = render([shell(null), file]);
+
+    expect(markup).toContain("Terminal 1");
+    expect(markup).not.toMatch(/[\u4e00-\u9fff]/);
   });
 
   it("marks the active tab and keeps the group's focus marker", () => {

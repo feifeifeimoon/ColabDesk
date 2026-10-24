@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  findSiblingGroupId,
   groupRects,
   isSameOrder,
   isSplitDropNoOp,
+  lastGroupId,
   leafGroups,
   moveWithin,
   pickNextActiveTab,
@@ -148,6 +150,33 @@ describe("removing a group", () => {
 
   it("returns null when the only leaf goes", () => {
     expect(removeGroup(leaf("a"), "a")).toBeNull();
+  });
+});
+
+describe("sibling focus", () => {
+  const nested = split(
+    "root",
+    "row",
+    0.5,
+    split("inner", "column", 0.5, leaf("a"), leaf("b")),
+    leaf("c"),
+  );
+
+  it("finds the other child of the removed pane's parent, not the last pane", () => {
+    // [[A / B] | C]: B's sibling is A, even though C is the last leaf.
+    expect(findSiblingGroupId(nested, "b")).toBe("a");
+    expect(findSiblingGroupId(nested, "a")).toBe("b");
+    // C's sibling subtree is [A / B]; its nearest (first) leaf is A.
+    expect(findSiblingGroupId(nested, "c")).toBe("a");
+  });
+
+  it("has no sibling for a single pane", () => {
+    expect(findSiblingGroupId(leaf("a"), "a")).toBeNull();
+  });
+
+  it("uses the visual last leaf only as the documented fallback", () => {
+    expect(lastGroupId(nested)).toBe("c");
+    expect(lastGroupId(leaf("a"))).toBe("a");
   });
 });
 

@@ -191,11 +191,11 @@ export function PaneSurface({
         })}
 
       {shown &&
-        splits.map((split) => (
+        splits.map((split, index) => (
           <PaneDivider
             key={split.id}
             split={split}
-            label={t("workspace.resizePanes", "调整分屏大小")}
+            label={`${t("workspace.resizePanes", "调整分屏大小")} ${index + 1}`}
             onPreview={(ratio) => paint({ [split.id]: ratio })}
             onCommit={(ratio) => setGroupRatio(session, split.id, ratio)}
           />
