@@ -1350,7 +1350,10 @@ kbd {
 .group-strip__tabs {
   display: flex;
   align-items: stretch;
-  flex: 1;
+  /* The run takes only its tabs' width, so the + follows the last one. When the
+     tabs outgrow the strip this still shrinks and scrolls, keeping the + where
+     it can be reached. */
+  flex: 0 1 auto;
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
@@ -1362,6 +1365,9 @@ kbd {
 
 .group-strip__add {
   flex: 0 0 auto;
+  /* The free space falls after the button, so it sits at the end of the tab
+     run rather than at the far edge of a wide pane. */
+  margin-right: auto;
 }
 
 /* A top-row strip is the window's titlebar: the empty parts drag the window,
