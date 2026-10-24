@@ -53,7 +53,7 @@ async function occurrences(page: Page, needle: string): Promise<number> {
 test("打开会话就连上运行时，按键走到远端再回来", async ({ page }) => {
   await openSession(page, "e2e-alpha");
 
-  await expect(page.locator('[data-testid="terminal-status"]')).toHaveClass(/status--good/);
+  await expect(page.locator('[data-testid="terminal-status"]')).toHaveAttribute("data-connection", "ready");
   await expect(terminalRows(page)).toContainText("shell #1");
 
   // 打开终端后应用自己会发一行 `cd /content`，所以要等第二次提示符再动手。
@@ -109,7 +109,7 @@ test("每个会话连自己的运行时，标签条只显示选中会话的终�
 
   // 切回去，alpha 的连接一直在。
   await openSession(page, "e2e-alpha");
-  await expect(page.locator('[data-testid="terminal-status"]')).toHaveClass(/status--good/);
+  await expect(page.locator('[data-testid="terminal-status"]')).toHaveAttribute("data-connection", "ready");
   await expect(terminalRows(page)).toContainText("shell #1");
 });
 
@@ -183,7 +183,7 @@ test("同一个会话可以开多个终端，各自独立不串台", async ({ pa
 
 test("关掉一个终端，会话的连接留着；关掉最后一个才断开", async ({ page }) => {
   await openSession(page, "e2e-alpha");
-  await expect(page.locator('[data-testid="terminal-status"]')).toHaveClass(/status--good/);
+  await expect(page.locator('[data-testid="terminal-status"]')).toHaveAttribute("data-connection", "ready");
 
   await page.locator('[data-testid="new-terminal"]').click();
   await expect(page.locator('[role="tab"]')).toHaveCount(2);
@@ -191,7 +191,7 @@ test("关掉一个终端，会话的连接留着；关掉最后一个才断开",
   await page.getByLabel("关闭终端 2").click();
 
   await expect(page.locator('[role="tab"]')).toHaveCount(1);
-  await expect(page.locator('[data-testid="terminal-status"]')).toHaveClass(/status--good/);
+  await expect(page.locator('[data-testid="terminal-status"]')).toHaveAttribute("data-connection", "ready");
   await expect(terminalRows(page)).toContainText("shell #1");
 
   await page.getByLabel("关闭终端 1").click();

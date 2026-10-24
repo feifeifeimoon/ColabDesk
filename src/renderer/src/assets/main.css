@@ -343,7 +343,7 @@ kbd {
   padding: 0 var(--space-2) var(--space-2);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-2);
   position: relative;
 }
 
@@ -447,56 +447,54 @@ kbd {
   background: var(--canvas-soft);
 }
 
+/*
+  One card per machine. The card's surface, not its colour, is what says "this
+  is a unit": `canvas` sits one step above the rail's `chrome` in dark mode and
+  one hairline above it in light. The state dot is gone — the list is a rack of
+  machines, and a connection failure is written into the terminal the card
+  opens. A stale record is still painted, because its name is the only thing
+  that says it is no longer a machine you can reach.
+*/
 .session-row {
-  --session-row-band: 28px;
+  --session-row-band: 26px;
   --session-row-reserve: 64px;
   position: relative;
   display: block;
   width: 100%;
-  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2);
-  border: 1px solid transparent;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-sm);
-  background: none;
+  background: var(--canvas);
   color: var(--body);
   font: inherit;
   text-align: left;
 }
 
 .session-row:hover {
-  background: var(--canvas-soft);
+  background: var(--canvas-soft-2);
   color: var(--ink);
 }
 
 .session-row--active {
-  background: var(--muted);
-  border-color: var(--hairline);
+  background: var(--canvas-soft-2);
+  box-shadow: inset 2px 0 0 var(--primary);
   color: var(--ink);
 }
 
-/* A record the server no longer lists. It is painted, not written: the name and
-   dot go quiet and the row's own tooltip says why. A ready connection is
-   stronger evidence than a list read, so that row is not painted. */
-.session-row--released .session-row__name {
+.session-row--released .session-row__name,
+.session-row--released .badge,
+.session-row--released .session-row__machine {
   color: var(--mute);
-}
-
-.session-row--released .badge {
-  color: var(--mute);
-}
-
-.session-row--released .status::before {
-  background: var(--mute);
 }
 
 /* The clickable body carries the row's own click and fills the card; the action
    strip floats above its right end, so the row is not a button inside a button. */
 .session-row__main {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) calc(var(--session-row-reserve) - var(--space-2));
+  grid-template-columns: 26px minmax(0, 1fr) auto calc(var(--session-row-reserve) - var(--space-2));
   grid-template-rows: var(--session-row-band);
   align-items: center;
   column-gap: var(--space-2);
-  row-gap: 2px;
   width: 100%;
   min-width: 0;
   padding: 0;
@@ -508,69 +506,38 @@ kbd {
   cursor: pointer;
 }
 
-/* The name and its badge travel together: the name takes what it needs, the
-   badge follows immediately, and the free space stays after both. When the
-   rail is too narrow the name shrinks first (the badge never does). */
-.session-row__title {
-  grid-column: 2;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.session-row__name {
-  flex: 0 1 auto;
-  min-width: 0;
-  font-size: var(--text-label);
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* The machine type sits immediately after the name; the wrapper keeps the
-   badge's intrinsic width while the name takes the remaining space. */
-.session-row__badge {
-  display: inline-flex;
-  align-items: center;
-  flex: 0 0 auto;
-}
-
-/* Full width rather than indented under the name: the facts line is the one
-   that has to survive the narrowest rail, and those 14px are most of a word.
-   Inline flow, not flex: the line ends in ONE ellipsis when the rail is too
-   narrow for everything, and a flex row would cut it mid-item instead — which
-   left a separator with no word after it, a promise of facts that are not
-   there. The order below is the order the ellipsis eats, least important last. */
-.session-row__facts {
-  grid-column: 1 / -1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--mute);
-  font-size: var(--text-micro);
-}
-
-.session-row__sep {
-  color: var(--hairline-strong);
-  margin: 0 var(--space-1);
-}
-
-/* Only a non-resting connection paints its words: connecting and failing are
-   the two the person came to the rail to find, and `--body` at 11px is not
-   loud enough for either. */
-.session-row__state {
+/* The machine class, in a fixed 26px slot. The slot has no fill of its own: it
+   is whatever the card is in every state, so a raised card never grows a patch;
+   only the glyph lifts to ink. */
+.session-row__machine {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  background: transparent;
   color: var(--body);
 }
 
-.session-row__state--warn {
-  color: var(--warning-deep);
+.session-row:not(.session-row--untracked):hover .session-row__machine,
+.session-row--active .session-row__machine {
+  color: var(--ink);
 }
 
-.session-row__state--danger {
-  color: var(--error);
+.session-row__name {
+  min-width: 0;
+  font-size: var(--text-copy);
+  font-weight: 500;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The model is the identifier: the icon says the class, this says which one. */
+.session-row__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
 }
 
 /*
@@ -611,14 +578,13 @@ kbd {
   which is a machine identifier, so it is set in mono.
 */
 .session-row--untracked:hover {
-  background: none;
+  background: var(--canvas);
   color: var(--body);
 }
 
-/* No action strip, so no reserved column: the endpoint and its badge share the
-   line. */
+/* No action strip, so no reserved column: the model sits at the card's edge. */
 .session-row--untracked .session-row__main {
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: 26px minmax(0, 1fr) auto;
   cursor: default;
 }
 

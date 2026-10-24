@@ -151,7 +151,7 @@ test("工作区的窗口控制浮在右上角，文件面板开关和它同一�
 */
 test("状态栏横跨整个窗口，终端画不到它上面", async ({ page }) => {
   await openSession(page, "e2e-alpha");
-  await expect(page.locator('[data-testid="terminal-status"]')).toHaveClass(/status--good/);
+  await expect(page.locator('[data-testid="terminal-status"]')).toHaveAttribute("data-connection", "ready");
 
   const topmost = await page.evaluate(() => {
     const width = window.innerWidth;
@@ -231,7 +231,7 @@ test("界面切浅色，终端跟着换浅色调色板，shell 不受影响", as
 
   // The swap is a repaint, not a reconnect: same shell, same directory.
   await page.locator('[data-testid="close-settings"]').click();
-  await expect(page.locator('[data-testid="terminal-status"]')).toHaveClass(/status--good/);
+  await expect(page.locator('[data-testid="terminal-status"]')).toHaveAttribute("data-connection", "ready");
   await expect(page.locator(".xterm-rows")).toContainText("cd /content");
   await expect(page.locator('[data-testid="terminal-count"]')).toHaveText("1");
 });

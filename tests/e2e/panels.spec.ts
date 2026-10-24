@@ -82,7 +82,7 @@ test("分隔条可用键盘调整，并把范围报给辅助技术", async ({ pa
   floor the badge takes precedence and a long name may truncate. The row's
   tooltip is the safety net: it carries the full name, endpoint and state.
 */
-test("会话栏收到最窄时，名字让位给机型 tag，完整名字在 tooltip 里", async ({ page }) => {
+test("会话栏收到最窄时，名字让位给型号，完整名字在 tooltip 里", async ({ page }) => {
   await openSession(page, "e2e-alpha");
 
   const rows = page.locator('[data-testid="session-row"]');
@@ -136,14 +136,14 @@ test("会话菜单只留不重复的操作，每项都有图标", async ({ page 
 
 test("两栏都拖到最宽时，终端还在、仍可用且不横向溢出", async ({ page }) => {
   await openSession(page, "e2e-alpha");
-  await expect(page.locator('[data-testid="terminal-status"]')).toHaveClass(/status--good/);
+  await expect(page.locator('[data-testid="terminal-status"]')).toHaveAttribute("data-connection", "ready");
 
   await dragDivider(page, "文件面板宽度", -600);
   await dragDivider(page, "会话栏宽度", 600);
 
   // Dragging re-fits the terminal continuously, which resizes the PTY too: the
   // connection has to survive that, not just the layout.
-  await expect(page.locator('[data-testid="terminal-status"]')).toHaveClass(/status--good/);
+  await expect(page.locator('[data-testid="terminal-status"]')).toHaveAttribute("data-connection", "ready");
   await expect(terminalRows(page)).not.toContainText("连接已断开");
 
   expect(await widthOf(page, ".terminal-area")).toBeGreaterThanOrEqual(300);

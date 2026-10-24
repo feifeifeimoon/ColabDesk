@@ -70,10 +70,16 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
   await reloadWorkbench(app, page);
 
   await openSession(page, "e2e-alpha");
-  await expect(page.locator('[data-testid="terminal-status"]')).toHaveClass(/status--good/);
+  await expect(page.locator('[data-testid="terminal-status"]')).toHaveAttribute("data-connection", "ready");
   await page.waitForTimeout(800);
 
   await capture(page, "01-workbench");
+
+  // The rail's cards are made of two surfaces, so the workbench is worth a
+  // picture in both polarities — the light one alone would not show the card.
+  await toggleTheme(page);
+  await capture(page, "01-workbench");
+  await toggleTheme(page);
 
   // Both panels collapsed is the terminal's full width — the focus mode.
   await page.locator('[data-testid="toggle-files"]').click();
@@ -296,7 +302,7 @@ test("@gallery 十套终端配色", async ({ page }) => {
   mkdirSync(directory, { recursive: true });
 
   await openSession(page, "e2e-alpha");
-  await expect(page.locator('[data-testid="terminal-status"]')).toHaveClass(/status--good/);
+  await expect(page.locator('[data-testid="terminal-status"]')).toHaveAttribute("data-connection", "ready");
   await page.locator('[data-testid="open-settings"]').click();
   await page.locator(".settings__nav-item").filter({ hasText: "终端" }).click();
 
