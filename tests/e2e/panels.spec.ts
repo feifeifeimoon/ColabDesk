@@ -252,3 +252,43 @@ test("页面缩放时，左上角图标在物理窗口像素中始终避开原�
     }
   }
 });
+
+/**
+ * The window's own zoom chords. `sendInputEvent` is how a spec reaches
+ * `before-input-event`; the menu accelerators the app keeps for Ctrl+- and
+ * Ctrl+0 are invisible to it, which is exactly why the unshifted Ctrl+= has
+ * to be handled here.
+ */
+test("Ctrl+= 与小键盘加号都能放大页面，带 Shift 的组合留给终端字号", async ({ app, page }) => {
+  const primary = process.platform === "darwin" ? "meta" : "control";
+  const zoomLevel = () =>
+    app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.webContents.getZoomLevel() ?? null);
+  const renderedFactor = () =>
+    page.evaluate(() =>
+      Number.parseFloat(document.documentElement.style.getPropertyValue("--ui-zoom-factor")),
+    );
+  const press = (keyCode: string, modifiers: ("control" | "meta" | "shift")[]) =>
+    app.evaluate(({ BrowserWindow }, chord) => {
+      const contents = BrowserWindow.getAllWindows()[0]?.webContents;
+      if (!contents) return;
+      contents.sendInputEvent({ type: "keyDown", keyCode: chord.keyCode, modifiers: chord.modifiers });
+      contents.sendInputEvent({ type: "keyUp", keyCode: chord.keyCode, modifiers: chord.modifiers });
+    }, { keyCode, modifiers });
+
+  expect(await zoomLevel()).toBe(0);
+
+  // The default menu only binds CommandOrControl+Plus (Ctrl+Shift+=), the chord
+  // the terminal uses for its font size; the unshifted one is ours to provide.
+  await press("=", [primary]);
+  await expect.poll(zoomLevel).toBe(0.5);
+  await expect.poll(renderedFactor).toBeCloseTo(1.2 ** 0.5, 2);
+
+  // The numpad chord was unbound for the same reason.
+  await press("numadd", [primary]);
+  await expect.poll(zoomLevel).toBe(1);
+
+  // The shifted chord belongs to the terminal. This handler must not consume
+  // it, or a focused terminal would lose its font-size shortcut.
+  await press("=", [primary, "shift"]);
+  await expect.poll(zoomLevel).toBe(1);
+});
