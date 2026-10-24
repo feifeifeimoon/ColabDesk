@@ -113,6 +113,12 @@ describe("the about section", () => {
     expect(html).toContain('data-testid="update-check"');
   });
 
+  it("states the app's third-party status, and keeps it off the account page", () => {
+    const phrase = "第三方开源客户端";
+    expect(text(render("about"))).toContain(phrase);
+    expect(text(render("account"))).not.toContain(phrase);
+  });
+
   it("names the version when one is available, and offers to download it", () => {
     store.current = baseState({ state: "available", version: "0.4.0" });
     const rendered = text(render("about"));
