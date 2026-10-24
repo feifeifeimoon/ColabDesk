@@ -45,9 +45,12 @@ export function pageZoomDelta(
   const primary = platform === "darwin" ? input.meta : input.control;
   if (!primary || input.shift) return null;
 
-  if (input.code === "Equal" || input.key === "=") return ZOOM_STEP;
-  if (input.code === "NumpadAdd" || input.key === "Add") return ZOOM_STEP;
-  if (input.code === "NumpadSubtract" || input.key === "Subtract") return -ZOOM_STEP;
+  // `+` is unshifted on some layouts (German, for one), where the physical
+  // code is not `Equal`. The shifted chord was already excluded above, so this
+  // cannot take the terminal's font-size key.
+  if (input.code === "Equal" || input.key === "=" || input.key === "+") return ZOOM_STEP;
+  if (input.code === "NumpadAdd") return ZOOM_STEP;
+  if (input.code === "NumpadSubtract") return -ZOOM_STEP;
   return null;
 }
 

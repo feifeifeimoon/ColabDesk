@@ -20,11 +20,14 @@ describe("pageZoomDelta", () => {
     expect(pageZoomDelta(input({ control: true, key: "=", code: "Equal" }), "win32")).toBe(0.5);
     // Layouts that report the character without the physical code still work.
     expect(pageZoomDelta(input({ control: true, key: "=" }), "win32")).toBe(0.5);
+    // German and friends put `+` on an unshifted key, so the code is not Equal.
+    expect(pageZoomDelta(input({ control: true, key: "+", code: "BracketRight" }), "win32")).toBe(0.5);
   });
 
-  it("zooms in from the numpad, in every shape the platform reports", () => {
+  it("zooms in from the numpad", () => {
+    expect(pageZoomDelta(input({ control: true, key: "+", code: "NumpadAdd" }), "win32")).toBe(0.5);
+    // The physical code is what carries it when the character is not reported.
     expect(pageZoomDelta(input({ control: true, code: "NumpadAdd" }), "win32")).toBe(0.5);
-    expect(pageZoomDelta(input({ control: true, key: "Add" }), "win32")).toBe(0.5);
   });
 
   it("leaves the shifted chords to the terminal font size", () => {
@@ -34,8 +37,8 @@ describe("pageZoomDelta", () => {
   });
 
   it("zooms out from the numpad but leaves Ctrl+- to the default menu", () => {
+    expect(pageZoomDelta(input({ control: true, key: "-", code: "NumpadSubtract" }), "win32")).toBe(-0.5);
     expect(pageZoomDelta(input({ control: true, code: "NumpadSubtract" }), "win32")).toBe(-0.5);
-    expect(pageZoomDelta(input({ control: true, key: "Subtract" }), "win32")).toBe(-0.5);
     // Ctrl+- is already bound by the default menu; handling it twice would
     // apply two steps on any Electron build that dispatches the accelerator.
     expect(pageZoomDelta(input({ control: true, key: "-", code: "Minus" }), "win32")).toBeNull();
