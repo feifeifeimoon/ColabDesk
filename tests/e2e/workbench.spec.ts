@@ -82,8 +82,8 @@ test("服务器上有、本地没有的运行时也会列出来，但不可操�
 
 test("顶栏是拖拽区，栏内控件退出拖拽", async ({ page }) => {
   expect(await dragRegion(page, ".topbar")).toBe("drag");
-  // 标签条横跨栏的中间且必须保持拖拽，否则两端的控件之间没有可抓的地方。
-  expect(await dragRegion(page, ".topbar__tabs")).toBe("drag");
+  // 中间是现在唯一可抓的空白拖拽区：标签条已经搬到各自的 pane 里。
+  expect(await dragRegion(page, ".topbar__middle")).toBe("drag");
   expect(await dragRegion(page, '[data-testid="toggle-sidebar"]')).toBe("no-drag");
 });
 
@@ -102,6 +102,45 @@ test("无边框窗口的控制通道接通", async ({ page }) => {
     return "ok";
   });
   expect(roundTrip).toBe("ok");
+});
+
+test("工作区的窗口控制浮在右上角，文件面板开关和它同一行", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+
+  // The workspace is the titlebar: no global bar above the pane strip.
+  await expect(page.locator(".topbar")).toHaveCount(0);
+  const chrome = page.locator(".workspace-window-chrome");
+  await expect(chrome).toBeVisible();
+  expect((await chrome.boundingBox())?.y).toBe(0);
+
+  if (process.platform === "darwin") {
+    // The native traffic lights are at the other corner.
+    await expect(chrome.locator(".window-controls")).toHaveCount(0);
+  } else {
+    await expect(chrome.locator(".window-controls button")).toHaveCount(3);
+  }
+
+  const filesToggle = chrome.locator('[data-testid="toggle-files"]');
+  await expect(filesToggle).toBeVisible();
+  await filesToggle.click();
+  await expect(page.locator(".files-panel")).toBeHidden();
+  // Closed: the top strip reserves room for the toggle and the window controls.
+  const padding = await page
+    .locator('.group-strip[data-titlebar="true"]')
+    .evaluate((element) => getComputedStyle(element).paddingRight);
+  expect(padding).not.toBe("0px");
+
+  await filesToggle.click();
+  await expect(page.locator(".files-panel")).toBeVisible();
+  await expect(page.locator(".files-panel__titlebar")).toBeVisible();
+
+  // Settings is not a workspace: the one global bar comes back with it.
+  await page.keyboard.press("Control+,");
+  await expect(page.locator(".topbar")).toBeVisible();
+  await expect(chrome).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".topbar")).toHaveCount(0);
+  await expect(chrome).toBeVisible();
 });
 
 /*

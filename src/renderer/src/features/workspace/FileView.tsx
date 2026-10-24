@@ -60,15 +60,15 @@ export function FileView({
   path,
   name,
   tabId,
-  active,
+  visible,
 }: {
   session: string;
   path: string;
   name: string;
   /** The tab this pane belongs to: how the strip and the store name it. */
   tabId: string;
-  /** The shown tab; a parked pane keeps its read and its scroll position. */
-  active: boolean;
+  /** In the layout; a hidden tab keeps its read and its scroll position. */
+  visible: boolean;
 }) {
   const closeTab = useAppStore((state) => state.closeTab);
   const setTabDirty = useAppStore((state) => state.setTabDirty);
@@ -222,7 +222,7 @@ export function FileView({
     <FileViewPanel
       path={path}
       name={name}
-      active={active}
+      visible={visible}
       state={state}
       dirty={dirty}
       saving={saving}
@@ -313,7 +313,7 @@ function PreviewBody({
 export function FileViewPanel({
   path,
   name,
-  active,
+  visible,
   state,
   dirty,
   saving,
@@ -336,7 +336,7 @@ export function FileViewPanel({
 }: {
   path: string;
   name: string;
-  active: boolean;
+  visible: boolean;
   state: FileViewState;
   dirty: boolean;
   saving: boolean;
@@ -470,8 +470,8 @@ export function FileViewPanel({
   return (
     <section
       className="file-area"
-      hidden={!active}
-      inert={!active}
+      hidden={!visible}
+      inert={!visible}
       aria-label={name}
       onKeyDown={(event) => {
         // The pane's own save key, scoped to the pane: a global one would take

@@ -38,7 +38,7 @@ function render(
     createElement(FileViewPanel, {
       path: "/content/train.log",
       name: "train.log",
-      active: true,
+      visible: true,
       state,
       dirty: false,
       saving: false,
@@ -210,7 +210,7 @@ describe("file tab", () => {
   });
 
   it("a parked tab is hidden and inert, never merely invisible", () => {
-    const parked = render(TEXT, { active: false });
+    const parked = render(TEXT, { visible: false });
     expect(parked).toContain('hidden=""');
     expect(parked).toContain('inert=""');
     const shown = render(TEXT);

@@ -23,6 +23,13 @@ async function widthOf(page: Page, selector: string): Promise<number> {
   return box.width;
 }
 
+/** The drag region Chromium resolved for an element. */
+function dragRegion(page: Page, selector: string): Promise<string> {
+  return page
+    .locator(selector)
+    .evaluate((element) => getComputedStyle(element).getPropertyValue("-webkit-app-region").trim());
+}
+
 /** The rails are in the accessibility tree; a parked tab's are not. */
 function divider(page: Page, name: string) {
   return page.getByRole("separator", { name });
@@ -144,55 +151,77 @@ test("两栏都拖到最宽时，终端还在、仍可用且不横向溢出", as
   expect(overflow).toBeLessThanOrEqual(0);
 });
 
-test("标签条从终端正上方开始，跟着会话栏走", async ({ page }) => {
+test("每个面板的标签条从自己的终端正上方开始，跟着会话栏走", async ({ page }) => {
   await openSession(page, "e2e-alpha");
 
-  /** How far the strip's left edge sits from the terminal's. */
+  /** How far the strip's left edge sits from its terminal's. */
   const drift = async (): Promise<number> => {
-    const strip = await page.locator(".topbar__tabs").boundingBox();
-    const terminal = await page.locator(".terminal-area").boundingBox();
+    const strip = await page.locator(".group-strip").boundingBox();
+    const terminal = await page.locator(".terminal-area:visible").boundingBox();
     if (!strip || !terminal) throw new Error("没有布局盒");
     return Math.abs(strip.x - terminal.x);
   };
 
   expect(await drift()).toBeLessThanOrEqual(1);
 
-  // The bar is divided the way the window is: widening the rail moves the strip.
+  // The bar is divided the way the window is: widening the rail moves the pane,
+  // and the strip moves with it because it lives inside the pane.
   await dragDivider(page, "会话栏宽度", 80);
   expect(await widthOf(page, ".sidebar")).toBeGreaterThan(280);
   expect(await drift()).toBeLessThanOrEqual(1);
 
-  // Collapsed, there is no terminal column to line up with: the section shrinks
-  // back to its own two controls and the strip follows them.
+  // Collapsed, the pane starts at the window edge and the strip follows it.
   await page.locator('[data-testid="toggle-sidebar"]').click();
-  const collapsed = await page.locator(".topbar__tabs").boundingBox();
+  const collapsed = await page.locator(".group-strip").boundingBox();
   expect(collapsed?.x ?? 999).toBeLessThan(120 + CHROME_INSET);
 });
 
-test("顶栏在每个分栏处画出分界，且与下面的列是同一条线", async ({ page }) => {
+test("工作区没有第二条顶栏：pane strip 就是顶行，各列分界从顶到底同一条线", async ({ page }) => {
   await openSession(page, "e2e-alpha");
 
-  const side = page.locator(".topbar__side");
+  // A live workspace drops the global bar; the top pane strip is the titlebar.
+  await expect(page.locator(".topbar")).toHaveCount(0);
+  const strip = page.locator('.group-strip[data-titlebar="true"]');
+  await expect(strip).toHaveCount(1);
 
-  // The rail's seam: a real 1px border, and it sits on the rail's own border
-  // column — the section's right edge *is* the rail's right edge, so a
-  // border-right inside it lands on the pixel the rail's border-right owns.
-  const railBorder = await side.evaluate((element) => getComputedStyle(element).borderRightWidth);
-  expect(railBorder).toBe("1px");
+  const stripBox = await strip.boundingBox();
   const rail = await page.locator(".sidebar").boundingBox();
-  const seamX = await side.evaluate((element) => element.getBoundingClientRect().right);
-  expect(Math.abs(seamX - ((rail?.x ?? 0) + (rail?.width ?? 0)))).toBeLessThanOrEqual(1);
-
-  // The panel's seam lands on the panel's own left border.
   const panel = await page.locator(".files-panel").boundingBox();
-  const seam = await page.locator('[data-testid="seam-files"]').boundingBox();
-  expect(seam, "文件面板那条分界没有画出来").not.toBeNull();
-  expect(Math.abs((seam?.x ?? 0) - (panel?.x ?? 0))).toBeLessThanOrEqual(1);
+  if (!stripBox || !rail || !panel) throw new Error("没有布局盒");
 
-  // With the rail away there is no boundary there, so no line is drawn.
-  await page.locator('[data-testid="toggle-sidebar"]').click();
-  const collapsed = await side.evaluate((element) => getComputedStyle(element).borderRightWidth);
-  expect(collapsed).toBe("0px");
+  expect(stripBox.y).toBe(0);
+  expect(rail.y).toBe(0);
+  expect(panel.y).toBe(0);
+
+  // The rail's border-right is the seam; the strip starts on that column.
+  expect(Math.abs(stripBox.x - (rail.x + rail.width))).toBeLessThanOrEqual(1);
+  // The files panel's border-left is the other seam; the strip ends there.
+  expect(Math.abs(stripBox.x + stripBox.width - panel.x)).toBeLessThanOrEqual(1);
+
+  // The rail header and the files panel's titlebar are the same 40px row.
+  const header = await page.locator(".sidebar__head").boundingBox();
+  const fileTitlebar = await page.locator(".files-panel__titlebar").boundingBox();
+  expect(header?.height).toBe(40);
+  expect(fileTitlebar?.height).toBe(40);
+
+  // The strip and the two side titlebars move the window; the tab opts out.
+  expect(await dragRegion(page, '.group-strip[data-titlebar="true"]')).toBe("drag");
+  expect(await dragRegion(page, ".sidebar__head")).toBe("drag");
+  expect(await dragRegion(page, ".files-panel__titlebar")).toBe("drag");
+  expect(await dragRegion(page, '.group-strip[data-titlebar="true"] [role="tab"]')).toBe("no-drag");
+
+  // Collapsed, there is no rail column: the brand + expand control lead the strip.
+  await page.locator('.sidebar__head [data-testid="toggle-sidebar"]').click();
+  await expect(page.locator(".sidebar")).toHaveCount(0);
+  const leading = page.locator(".group-strip__leading");
+  await expect(leading).toHaveCount(1);
+  await expect(leading.locator('[data-testid="toggle-sidebar"]')).toBeVisible();
+  const collapsed = await page.locator('.group-strip[data-titlebar="true"]').boundingBox();
+  expect(collapsed?.x ?? 999).toBeLessThan(120 + CHROME_INSET);
+
+  await leading.locator('[data-testid="toggle-sidebar"]').click();
+  await expect(page.locator(".sidebar")).toBeVisible();
+  await expect(page.locator(".sidebar__head")).toBeVisible();
 });
 
 test("没有打开的终端时，右边栏开关不出现", async ({ page }) => {
@@ -287,4 +316,32 @@ test("Ctrl+= 与小键盘加号都能放大页面，界面缩放跟着走", asyn
   // The numpad chord was unbound for the same reason.
   await press("numadd", [primary]);
   await expect.poll(zoomLevel).toBe(1);
+});
+
+test("工作区自己的 rail header 在 macOS 也避开红绿灯", async ({ app, page }) => {
+  test.skip(process.platform !== "darwin", "原生红绿灯只在 macOS 存在");
+  await openSession(page, "e2e-alpha");
+
+  const physicalLeft = async (selector: string, factor: number): Promise<number> =>
+    page.locator(selector).evaluate((element, zoom) => element.getBoundingClientRect().left * zoom, factor);
+
+  for (const factor of [0.6, 1.4, 1]) {
+    await app.evaluate(({ BrowserWindow }, nextFactor) => {
+      BrowserWindow.getAllWindows()[0]?.webContents.setZoomFactor(nextFactor);
+    }, factor);
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          Number.parseFloat(document.documentElement.style.getPropertyValue("--ui-zoom-factor")),
+        ),
+      )
+      .toBeCloseTo(factor, 2);
+
+    expect(await physicalLeft(".sidebar__brand", factor)).toBeCloseTo(CHROME_INSET, 0);
+  }
+
+  // Collapsed, the brand moves into the top-left strip with the same inset.
+  await page.locator('.sidebar__head [data-testid="toggle-sidebar"]').click();
+  await expect(page.locator(".group-strip__brand")).toBeVisible();
+  expect(await physicalLeft(".group-strip__brand", 1)).toBeCloseTo(CHROME_INSET, 0);
 });

@@ -127,6 +127,13 @@ kbd {
   height: 100%;
   overflow: hidden;
   background: var(--page);
+  position: relative;
+  /* The three 44px controls. The top-right files toggle sits to their left. */
+  --window-controls-width: 132px;
+}
+
+.app[data-mac="true"] {
+  --window-controls-width: 0px;
 }
 
 /* The only chrome row above the work surface, and the window's title bar too:
@@ -208,22 +215,13 @@ kbd {
   color: var(--ink);
 }
 
-/* The strip spans the middle of the bar, so it must keep the drag: taking it
-   out left nothing between the two end groups to grab. Tabs opt out instead —
-   including `+`, which is a `.session-tab` and a `<button>` both. */
-.topbar__tabs {
-  display: flex;
-  align-items: stretch;
+/* The middle of the window bar is the drag region now that tabs live in their
+   panes. It must stay drag: taking it out leaves nothing between the end groups
+   to grab. */
+.topbar__middle {
   flex: 1;
   min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding-left: var(--space-1);
   -webkit-app-region: drag;
-}
-
-.topbar__tabs::-webkit-scrollbar {
-  display: none;
 }
 
 /* ---------- window controls (frameless on Windows/Linux) ---------- */
@@ -233,6 +231,25 @@ kbd {
   align-items: stretch;
   margin-right: calc(-1 * var(--space-2));
   -webkit-app-region: no-drag;
+}
+
+/* The top-right corner of a live workspace. It is fixed over the top row: the
+   pane strip reaches the window edge when the files panel is closed, and the
+   files panel's own 40px titlebar sits under it when it is open. */
+.workspace-window-chrome {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 40px;
+  -webkit-app-region: no-drag;
+}
+
+.workspace-window-chrome .window-controls {
+  margin-right: 0;
 }
 
 .window-controls__button {
@@ -278,6 +295,32 @@ kbd {
   background: var(--chrome);
   border-right: 1px solid var(--hairline);
   min-height: 0;
+}
+
+/* The workspace titlebar's left section: the rail's own copy of the brand and
+   the way to collapse it, because the global top bar is not drawn over a live
+   workspace. The traffic lights are padded out on macOS by inline MAC_INSET. */
+.sidebar__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 40px;
+  flex-shrink: 0;
+  padding: 0 var(--space-1) 0 var(--space-2);
+  background: var(--chrome);
+  border-bottom: 1px solid var(--hairline);
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.sidebar__head button {
+  -webkit-app-region: no-drag;
+}
+
+.sidebar__brand {
+  display: flex;
+  align-items: center;
+  color: var(--ink);
 }
 
 .sidebar__section {
@@ -771,7 +814,9 @@ kbd {
 }
 
 .session-tab {
+  position: relative;
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: var(--space-2);
   padding: 0 var(--space-2) 0 var(--space-3);
@@ -1248,12 +1293,223 @@ kbd {
   display: none;
 }
 
-/* One session's shells, stacked. Only the shown tab is in the layout and the
-   rest are parked with their shells alive, so hiding is explicit here too. */
-.terminal-stack {
+/* One session's panes. The slots are flat, absolutely positioned children on
+   purpose: a TerminalPane is a live xterm and an SSH channel, so splitting or
+   moving a tab must only change a slot's rectangle, never move the component
+   to another parent. */
+.pane-surface {
+  position: relative;
+  flex: 1;
+  /* The rails give way to this column; individual panes may be narrower than
+     this once the session is split. */
+  min-width: 360px;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--canvas);
+}
+
+.pane-slot {
+  position: absolute;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pane-slot[hidden] {
+  display: none;
+}
+
+.pane-slot > .terminal-area,
+.pane-slot > .file-area {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Each pane's own tab row: the strip that makes a pane a workspace. */
+.group-strip {
+  position: absolute;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--chrome);
+  border-bottom: 1px solid var(--hairline);
+  z-index: 3;
+}
+
+/* Only the focused pane carries this line; the active tab keeps the primary
+   underline inside its own strip. */
+.group-strip[data-focused="true"] {
+  box-shadow: inset 2px 0 0 var(--primary);
+}
+
+.group-strip__tabs {
+  display: flex;
+  align-items: stretch;
   flex: 1;
   min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.group-strip__tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.group-strip__add {
+  flex: 0 0 auto;
+}
+
+/* A top-row strip is the window's titlebar: the empty parts drag the window,
+   every control opts out. Lower panes keep their strips as ordinary controls. */
+.group-strip[data-titlebar="true"] {
+  -webkit-app-region: drag;
+}
+
+.group-strip[data-titlebar="true"] button,
+.group-strip[data-titlebar="true"] .session-tab,
+.group-strip[data-titlebar="true"] input,
+.group-strip[data-titlebar="true"] .menu {
+  -webkit-app-region: no-drag;
+}
+
+/* Collapsed rail: brand + expand control live at the head of the top-left
+   strip, so the rail's titlebar does not become a permanent empty column. */
+.group-strip__leading {
   display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 100%;
+  flex-shrink: 0;
+  padding: 0 var(--space-1) 0 var(--space-2);
+  border-right: 1px solid var(--hairline);
+  -webkit-app-region: drag;
+}
+
+.group-strip__leading button {
+  -webkit-app-region: no-drag;
+}
+
+.group-strip__brand {
+  display: flex;
+  align-items: center;
+  color: var(--ink);
+}
+
+/* The insertion bar follows the pointer, not a sliding tab: the strip keeps
+   its tabs anchored so a drag never moves the terminal under the reader. */
+.session-tab[data-drop-before="true"]::before,
+.session-tab[data-drop-after="true"]::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--primary);
+  z-index: 1;
+}
+
+.session-tab[data-drop-before="true"]::before {
+  left: -1px;
+}
+
+.session-tab[data-drop-after="true"]::after {
+  right: -1px;
+}
+
+.session-tab[data-dragging="true"] {
+  color: var(--mute);
+  opacity: 0.6;
+}
+
+/* The seam between panes. 9px hit strip, 1px line; like the rails, the strip
+   draws nothing of its own at rest beyond that line. */
+.pane-divider {
+  position: absolute;
+  z-index: 4;
+  touch-action: none;
+}
+
+.pane-divider[data-direction="row"] {
+  width: 9px;
+  transform: translateX(-50%);
+  cursor: col-resize;
+}
+
+.pane-divider[data-direction="column"] {
+  height: 9px;
+  transform: translateY(-50%);
+  cursor: row-resize;
+}
+
+.pane-divider::after {
+  content: "";
+  position: absolute;
+  background: var(--hairline-strong);
+}
+
+.pane-divider[data-direction="row"]::after {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+}
+
+.pane-divider[data-direction="column"]::after {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  transform: translateY(-50%);
+}
+
+.pane-divider:hover::after,
+.pane-divider:focus-visible::after,
+.pane-divider[data-resizing="true"]::after {
+  background: var(--primary);
+}
+
+/* A split preview: the half the new pane will occupy. Shell panes borrow the
+   terminal's cursor colour so the overlay survives every palette; file panes
+   use the app's primary. */
+.tab-drop-overlay {
+  position: fixed;
+  z-index: 10;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--pane-accent) 12%, transparent);
+  box-shadow: inset 0 0 0 1px var(--pane-accent);
+}
+
+.tab-drop-overlay[data-tone="terminal"] {
+  --pane-accent: var(--terminal-cursor);
+}
+
+.tab-drop-overlay[data-tone="app"] {
+  --pane-accent: var(--primary);
+}
+
+/* The tab follows the pointer while the strip stays anchored. */
+.tab-drag-chip {
+  display: flex;
+  align-items: center;
+  max-width: 240px;
+  height: 28px;
+  padding: 0 var(--space-3);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--chrome);
+  color: var(--ink);
+  box-shadow: var(--shadow-3);
+  font-size: var(--text-label);
+  pointer-events: none;
 }
 
 .terminal-area[hidden] {
@@ -1262,9 +1518,7 @@ kbd {
 
 .terminal-area {
   flex: 1;
-  /* The rails can be dragged wide; the terminal keeps a usable width by taking
-     it back from them, which is why they shrink and it has a floor. */
-  min-width: 360px;
+  min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -3412,6 +3666,16 @@ textarea.input {
 .files-panel.drag-over {
   border-color: var(--link);
   box-shadow: var(--shadow-3);
+}
+
+/* The window chrome above an open files panel: a 40px band that lines up with
+   the top pane strip, carrying the workspace's fixed top-right controls. */
+.files-panel__titlebar {
+  height: 40px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--chrome);
+  -webkit-app-region: drag;
 }
 
 /* The directory row a drop would land in: same emphasis, on the row itself. */

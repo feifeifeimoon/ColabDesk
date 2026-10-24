@@ -47,14 +47,14 @@ function withoutEscapes(text: string): string {
 }
 
 /**
- * One shell on a session's connection, filling part of the middle column.
+ * One shell on a session's connection, filling one pane.
  *
- * A pane outlives its turn on screen: every open tab keeps one mounted, and the
- * parked ones keep their shell and their scrollback. That is why "am I the
- * visible one" is asked at event time — fitting a pane that is out of the
- * layout would measure zero and push a nonsense window size to the remote PTY,
- * and a parked pane that grabbed the keyboard would swallow the copy the
- * visible one should get.
+ * A pane outlives its turn on screen: every tab keeps a mounted terminal, and a
+ * tab that is not its group's active one keeps its shell and its scrollback.
+ * That is why "am I visible" and "am I the focused pane" are asked at event
+ * time — fitting a pane that is out of the layout would measure zero and push a
+ * nonsense window size to the remote PTY, and a parked pane that grabbed the
+ * keyboard would swallow the copy the focused one should get.
  *
  * Output is routed by channel, but a pane does not know its channel until the
  * open round trip finishes — and the shell's first bytes can beat that. So
@@ -76,11 +76,14 @@ function withoutEscapes(text: string): string {
  */
 export function TerminalPane({
   session,
-  active,
+  visible,
+  focused,
 }: {
   session: string;
-  /** The pane the user is looking at; the others stay mounted but parked. */
-  active: boolean;
+  /** In the layout: a pane in a parked tab or a parked session is not. */
+  visible: boolean;
+  /** The pane the keyboard belongs to; the other visible panes are still live. */
+  focused: boolean;
 }) {
   const { t } = useTranslation();
   const appearance = useAppStore((state) => state.terminal);
@@ -109,9 +112,9 @@ export function TerminalPane({
   const [attempt, setAttempt] = useState(0);
 
   /** What the handlers below need, read when they run rather than when they were made. */
-  const latest = useRef({ active, appearance });
+  const latest = useRef({ visible, focused, appearance });
   useEffect(() => {
-    latest.current = { active, appearance };
+    latest.current = { visible, focused, appearance };
   });
 
   // Stable on purpose: this is a dependency of the shell effect, and a new
@@ -248,14 +251,14 @@ export function TerminalPane({
     // output. The reply goes out through `onData` below, i.e. the same path a
     // keystroke takes, so it lands on this pane's channel and no other.
     const colorReply = answerColorQueries(terminal);
-    if (latest.current.active) {
+    if (latest.current.visible) {
       try {
         fit.fit();
       } catch {
         // Zero-sized during the first paint; the observer below fits it.
       }
-      terminal.focus();
     }
+    if (latest.current.focused) terminal.focus();
 
     const send = (data: string) => {
       const channelId = channelRef.current;
@@ -315,10 +318,10 @@ export function TerminalPane({
     });
 
     // A macOS-style Cmd+C/V also copies and pastes, since there is no Ctrl there.
-    // Gated on visibility: this listens on the window, so every parked pane
-    // would otherwise answer and the first one would swallow the event.
+    // Gated on focus: this listens on the window, so every visible or parked
+    // pane would otherwise answer and the first one would swallow the event.
     const onMacCopy = (event: KeyboardEvent) => {
-      if (!latest.current.active) return;
+      if (!latest.current.focused) return;
       if (!event.metaKey || event.shiftKey) return;
       if (event.code === "KeyC") {
         copySelection();
@@ -343,9 +346,9 @@ export function TerminalPane({
     });
 
     const observer = new ResizeObserver(() => {
-      // A parked pane measures 0×0. It refits when it comes back into view,
-      // which is also the only moment its grid matters.
-      if (!latest.current.active) return;
+      // A hidden pane measures 0×0. It refits when it becomes visible, which is
+      // also the only moment its grid matters.
+      if (!latest.current.visible) return;
       try {
         fit.fit();
       } catch {
@@ -435,7 +438,7 @@ export function TerminalPane({
 
     applyTerminalAppearance(terminal, appearance, previous);
     if (!changesGrid(appearance, previous)) return;
-    if (!latest.current.active) return;
+    if (!latest.current.visible) return;
     try {
       fitRef.current?.fit();
     } catch {
@@ -460,9 +463,9 @@ export function TerminalPane({
   }, [terminalThemeId]);
 
   // Back into view: the pane was out of the layout, so it neither repainted nor
-  // followed the window's size while it was parked.
+  // followed the window's size while it was hidden.
   useEffect(() => {
-    if (!active) return;
+    if (!visible) return;
     const terminal = terminalRef.current;
     if (!terminal) return;
     try {
@@ -473,8 +476,14 @@ export function TerminalPane({
     // Output written while hidden updates the buffer without ever being
     // presented, and a fit that lands on the same grid does not repaint either.
     terminal.refresh(0, terminal.rows - 1);
-    terminal.focus();
-  }, [active]);
+  }, [visible]);
+
+  // The keyboard belongs to one pane at a time; another pane becoming visible
+  // must not steal it.
+  useEffect(() => {
+    if (!focused) return;
+    terminalRef.current?.focus();
+  }, [focused]);
 
   /**
    * Search walks the buffer and selects what it finds. No decorations: the
@@ -493,8 +502,8 @@ export function TerminalPane({
     <div
       className="terminal-area"
       data-terminal-padding={appearance.padding}
-      hidden={!active}
-      inert={!active}
+      hidden={!visible}
+      inert={!visible}
     >
       {searchOpen && (
         <TerminalSearchBar

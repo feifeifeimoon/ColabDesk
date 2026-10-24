@@ -36,6 +36,8 @@ const baseStore = {
   env: null as { authenticated: boolean } | null,
   selectedSession: null,
   tabs: [],
+  settingsOpen: false,
+  creation: { open: false },
   connections: {},
   usage: null,
   busyAction: null,
@@ -310,6 +312,36 @@ describe("Sidebar", () => {
     };
     const html = renderToStaticMarkup(createElement(Sidebar));
     expect(html).not.toContain("无法读取云端运行时列表");
+  });
+});
+
+describe("workspace chrome", () => {
+  it("puts the brand and the rail toggle in the rail's own header", () => {
+    store.current = {
+      ...baseStore,
+      selectedSession: "session-1",
+      tabs: [{ session: "session-1" }],
+      settingsOpen: false,
+      creation: { open: false },
+      toggleSidebar: vi.fn(),
+    };
+    const html = renderToStaticMarkup(createElement(Sidebar));
+
+    expect(html).toContain('class="sidebar__head"');
+    expect(html).toContain('data-testid="toggle-sidebar"');
+    expect(html).toContain('aria-label="收起会话栏"');
+  });
+
+  it("does not add the header when the global bar is carrying it", () => {
+    store.current = {
+      ...baseStore,
+      selectedSession: "session-1",
+      tabs: [{ session: "session-1" }],
+      settingsOpen: true,
+    };
+    const html = renderToStaticMarkup(createElement(Sidebar));
+
+    expect(html).not.toContain('class="sidebar__head"');
   });
 });
 

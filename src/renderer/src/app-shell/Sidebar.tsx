@@ -2,12 +2,26 @@ import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge, type StatusTone } from "../components/ui/Badge";
 import { Button, IconButton } from "../components/ui/Button";
-import { CloseIcon, CopyIcon, KeyIcon, PlusIcon, RestartIcon, SettingsIcon, StopIcon, SyncIcon } from "../components/ui/icons";
+import {
+  CloseIcon,
+  CopyIcon,
+  KeyIcon,
+  PanelLeftIcon,
+  PlusIcon,
+  RestartIcon,
+  SettingsIcon,
+  StopIcon,
+  SyncIcon,
+} from "../components/ui/icons";
 import { Menu, type MenuItem } from "../components/ui/Menu";
 import { PanelDivider } from "../components/ui/PanelDivider";
 import { acceleratorLabel } from "../features/sessions/accelerators";
+import { toggleMaximizeWindow } from "../lib/api";
 import { PANEL_WIDTH } from "../lib/panel-width";
+import { IS_MAC, MAC_INSET } from "../lib/platform";
 import { useAppStore } from "../store";
+import { useWorkspaceChrome } from "../store/selectors";
+import { BrandMark } from "./BrandMark";
 
 const CONNECTION_TONE: Record<string, StatusTone> = {
   connecting: "warn",
@@ -22,6 +36,10 @@ const CONNECTION_TONE: Record<string, StatusTone> = {
  * behind the `+` and `⋯` at its top right, which only appear while the card is
  * pointed at. The foot of the rail is the app's own corner: the way into
  * settings.
+ *
+ * In a live workspace the rail also draws the window titlebar's left section:
+ * a 40px head with the brand and the way to collapse it. The global bar is not
+ * drawn there, so these controls do not exist twice.
  *
  * A row is two lines because the name and the machine's facts used to share
  * one. They were never equal: the machine type is as long as it likes
@@ -38,7 +56,7 @@ export function Sidebar() {
 
   /**
    * Publishes this rail's width for the top bar's first section, which is drawn
-   * exactly this wide so the tab strip starts where the terminal does.
+   * exactly this wide so the bar's middle starts where the terminal does.
    *
    * Measured rather than recomputed there: the rail's width is whatever the
    * layout gave it — on a narrow window it gives way to the terminal — and a
@@ -79,6 +97,8 @@ export function Sidebar() {
   const syncing = useAppStore((state) => state.sessionsSyncing);
   const openNewSession = useAppStore((state) => state.openNewSession);
   const openSettings = useAppStore((state) => state.openSettings);
+  const toggleSidebar = useAppStore((state) => state.toggleSidebar);
+  const workspaceChrome = useWorkspaceChrome();
 
   // Collapsing unmounts the rail; that is the one panel whose contents nobody
   // expects to survive a collapse. Signed out, the whole rail goes with it: its
@@ -95,6 +115,33 @@ export function Sidebar() {
 
   return (
     <aside className="sidebar" ref={railRef} style={{ width, minWidth: PANEL_WIDTH.sidebar.min }}>
+      {workspaceChrome && (
+        <div
+          className="sidebar__head"
+          style={IS_MAC ? { paddingLeft: MAC_INSET } : undefined}
+          onDoubleClick={(event) => {
+            const target = event.target as Element | null;
+            if (!target?.closest("button, .menu, input")) void toggleMaximizeWindow();
+          }}
+        >
+          <span className="sidebar__brand" title={t("topbar.brand", "ColabDesk")}>
+            <BrandMark />
+          </span>
+          <Button
+            variant="ghost"
+            icon
+            data-testid="toggle-sidebar"
+            aria-pressed={open}
+            aria-label={t("topbar.sidebarCollapse", "收起会话栏")}
+            title={t("topbar.sidebarTooltip", "{{action}}会话栏（Ctrl+Shift+E）", {
+              action: t("topbar.actionCollapse", "收起"),
+            })}
+            onClick={toggleSidebar}
+          >
+            <PanelLeftIcon />
+          </Button>
+        </div>
+      )}
       <PanelDivider
         side="sidebar"
         edge="right"

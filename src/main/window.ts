@@ -43,9 +43,10 @@ export function devIconPath(): string | undefined {
 }
 
 /**
- * The app draws its own title bar (its top bar is also the tab strip), so the
- * OS frame goes away: fully frameless on Windows and Linux, and on macOS just
- * the inset traffic lights, which macOS users expect to stay native.
+ * The app draws its own title bar (the top bar is the window chrome and drag
+ * region; tabs live in their panes below it), so the OS frame goes away: fully
+ * frameless on Windows and Linux, and on macOS just the inset traffic lights,
+ * which macOS users expect to stay native.
  */
 export function createWindow(): BrowserWindow {
   // BrowserWindow ignores `icon` on macOS; that platform's dock is set in index.ts instead.

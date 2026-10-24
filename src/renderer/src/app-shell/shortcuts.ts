@@ -9,6 +9,7 @@
 
 import { useEffect } from "react";
 import { useAppStore } from "../store";
+import { selectFocusedTabId } from "../store/selectors";
 
 export function useAppShortcuts(): void {
   useEffect(() => {
@@ -51,7 +52,8 @@ export function useAppShortcuts(): void {
         event.preventDefault();
         event.stopPropagation();
         // Closing a tab with unsaved edits is a question, not an action.
-        if (store.activeTabId) store.requestCloseTab(store.activeTabId);
+        const focusedTabId = selectFocusedTabId(store);
+        if (focusedTabId) store.requestCloseTab(focusedTabId);
       } else if (event.code === "KeyB") {
         event.preventDefault();
         event.stopPropagation();

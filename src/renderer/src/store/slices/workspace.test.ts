@@ -11,6 +11,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createStore } from "zustand/vanilla";
+import { leafGroups } from "../../lib/tab-groups";
 import type { SessionsSlice, SurfacesSlice, WorkspaceSlice } from "../types";
 import { createSessionsSlice } from "./sessions";
 import { createSurfacesSlice } from "./surfaces";
@@ -39,6 +40,56 @@ const named = (name: string) => ({ name }) as TestState["sessions"][number];
 const shells = (store: { getState: () => TestState }) =>
   store.getState().tabs.flatMap((tab) => (tab.kind === "shell" ? [tab] : []));
 
+/** The active tab of the selected session's focused pane. */
+const focusedTabId = (store: { getState: () => TestState }): string | null => {
+  const state = store.getState();
+  const groupId = state.selectedSession
+    ? state.focusedGroupBySession[state.selectedSession]
+    : undefined;
+  return groupId ? (state.groups[groupId]?.activeTabId ?? null) : null;
+};
+
+/** The group the selected session's keyboard is in. */
+const focusedGroup = (store: { getState: () => TestState }) => {
+  const state = store.getState();
+  const groupId = state.selectedSession
+    ? state.focusedGroupBySession[state.selectedSession]
+    : undefined;
+  return groupId ? state.groups[groupId] : undefined;
+};
+
+/** The shape every workspace action must leave behind. */
+function expectConsistent(store: { getState: () => TestState }): void {
+  const state = store.getState();
+
+  for (const tab of state.tabs) {
+    const group = state.groups[tab.groupId];
+    if (!group) throw new Error(`tab ${tab.id} has no live group`);
+    expect(group.session).toBe(tab.session);
+    expect(group.tabOrder).toContain(tab.id);
+  }
+
+  for (const [id, group] of Object.entries(state.groups)) {
+    expect(group.id).toBe(id);
+    expect(group.tabOrder.length).toBeGreaterThan(0);
+    expect(new Set(group.tabOrder).size).toBe(group.tabOrder.length);
+    expect(group.tabOrder).toContain(group.activeTabId);
+    for (const tabId of group.tabOrder) {
+      expect(state.tabs.find((tab) => tab.id === tabId)?.groupId).toBe(id);
+    }
+    const layout = state.groupLayouts[group.session];
+    if (!layout) throw new Error(`group ${id} has no layout`);
+    expect(leafGroups(layout)).toContain(id);
+  }
+
+  for (const [session, groupId] of Object.entries(state.focusedGroupBySession)) {
+    const layout = state.groupLayouts[session];
+    if (!layout) throw new Error(`focused session ${session} has no layout`);
+    expect(leafGroups(layout)).toContain(groupId);
+    expect(state.groups[groupId]).toBeDefined();
+  }
+}
+
 beforeEach(() => vi.mocked(sshDisconnect).mockClear());
 
 describe("opening shells", () => {
@@ -52,7 +103,7 @@ describe("opening shells", () => {
     expect(store.getState().tabs).toHaveLength(2);
     expect(new Set([first!.id, second!.id]).size).toBe(2);
     expect(second!.ordinal).toBeGreaterThan(first!.ordinal);
-    expect(store.getState().activeTabId).toBe(second!.id);
+    expect(focusedTabId(store)).toBe(second!.id);
 
     // The number follows the highest one still open, so two live tabs of a
     // session can never share a name.
@@ -72,7 +123,7 @@ describe("opening shells", () => {
 
     expect(store.getState().selectedSession).toBe("alpha");
     expect(store.getState().tabs).toHaveLength(2);
-    expect(store.getState().activeTabId).toBe(store.getState().tabs[0]!.id);
+    expect(focusedTabId(store)).toBe(store.getState().tabs[0]!.id);
   });
 
   it("focuses the nth shell of the selected session", () => {
@@ -83,7 +134,7 @@ describe("opening shells", () => {
 
     store.getState().focusTabAt(0);
 
-    expect(store.getState().activeTabId).toBe(
+    expect(focusedTabId(store)).toBe(
       store.getState().tabs.find((tab) => tab.session === "beta")!.id,
     );
   });
@@ -99,7 +150,7 @@ describe("opening files", () => {
 
     const files = store.getState().tabs.filter((tab) => tab.kind === "file");
     expect(files).toHaveLength(1);
-    expect(store.getState().activeTabId).toBe(files[0]!.id);
+    expect(focusedTabId(store)).toBe(files[0]!.id);
     expect(store.getState().selectedSession).toBe("alpha");
   });
 
@@ -136,7 +187,7 @@ describe("unsaved edits", () => {
     // The pane that owns the buffer has to be the one on screen, or the
     // question would be asked of nobody — and the workbench, not the settings
     // page, is where the pane lives.
-    expect(store.getState().activeTabId).toBe(file.id);
+    expect(focusedTabId(store)).toBe(file.id);
     expect(store.getState().settingsOpen).toBe(false);
   });
 
@@ -227,7 +278,7 @@ describe("closing shells", () => {
     expect(sshDisconnect).not.toHaveBeenCalled();
     expect(store.getState().tabs).toHaveLength(1);
     expect(store.getState().expandedDirs.alpha).toEqual(["/content/data"]);
-    expect(store.getState().activeTabId).toBe(store.getState().tabs[0]!.id);
+    expect(focusedTabId(store)).toBe(store.getState().tabs[0]!.id);
   });
 
   it("releases the connection with the last shell, and drops what was reported", () => {
@@ -243,7 +294,7 @@ describe("closing shells", () => {
     store.getState().closeTab(only!.id);
 
     expect(store.getState().tabs).toHaveLength(0);
-    expect(store.getState().activeTabId).toBeNull();
+    expect(focusedTabId(store)).toBeNull();
     expect(store.getState().expandedDirs.alpha).toBeUndefined();
     expect(store.getState().transferCounts.alpha).toBeUndefined();
     // A leftover would make the next mount re-read a directory nobody opened.
@@ -430,5 +481,273 @@ describe("naming a tab", () => {
 
     expect(shells(store).map((tab) => tab.customTitle)).toEqual(["训练机 A", null]);
     expect(beta!.ordinal).toBe(1);
+  });
+});
+
+describe("panes and tab groups", () => {
+  /** Two shells in one pane, then the second split to a pane of its own. */
+  function twoPanes() {
+    const store = workspaceStore();
+    store.getState().openTab("alpha");
+    store.getState().openTab("alpha");
+    const second = shells(store)[1]!;
+    const firstGroup = focusedGroup(store)!;
+    store.getState().splitTabToGroup(second.id, firstGroup.id, "right");
+    const [updatedFirst, updatedSecond] = shells(store);
+    return { store, first: updatedFirst!, second: updatedSecond!, firstGroup };
+  }
+
+  it("keeps shells opened into the same pane in one group", () => {
+    const store = workspaceStore();
+    store.getState().openTab("alpha");
+    store.getState().openTab("alpha");
+    const [first, second] = shells(store);
+
+    expect(Object.keys(store.getState().groups)).toHaveLength(1);
+    const group = focusedGroup(store)!;
+    expect(group.tabOrder).toEqual([first!.id, second!.id]);
+    expect(group.activeTabId).toBe(second!.id);
+    expect(second!.groupId).toBe(group.id);
+  });
+
+  it("splits a tab into a new group and keeps the source group", () => {
+    const { store, first, second } = twoPanes();
+    const layout = store.getState().groupLayouts.alpha!;
+    const leaves = leafGroups(layout);
+
+    expect(leaves).toHaveLength(2);
+    expect(Object.keys(store.getState().groups)).toHaveLength(2);
+    expect(store.getState().groups[leaves[0]!]!.tabOrder).toEqual([first.id]);
+    expect(store.getState().groups[leaves[1]!]!.tabOrder).toEqual([second.id]);
+    expect(focusedTabId(store)).toBe(second.id);
+    expect(store.getState().tabs.find((tab) => tab.id === second.id)!.groupId).toBe(leaves[1]);
+    expectConsistent(store);
+  });
+
+  it("splits one tab out of a multi-tab group and keeps the rest", () => {
+    const store = workspaceStore();
+    store.getState().openTab("alpha");
+    store.getState().openTab("alpha");
+    store.getState().openTab("alpha");
+    const [first, second, third] = shells(store);
+    const group = focusedGroup(store)!;
+
+    store.getState().splitTabToGroup(third!.id, group.id, "right");
+
+    const leaves = leafGroups(store.getState().groupLayouts.alpha!);
+    expect(leaves).toHaveLength(2);
+    expect(store.getState().groups[leaves[0]!]!.tabOrder).toEqual([first!.id, second!.id]);
+    expect(store.getState().groups[leaves[1]!]!.tabOrder).toEqual([third!.id]);
+    // The source pane chose the previous active tab by MRU.
+    expect(store.getState().groups[leaves[0]!]!.activeTabId).toBe(second!.id);
+  });
+
+  it("moves a tab into another group and makes it that group's active tab", () => {
+    const store = workspaceStore();
+    store.getState().openTab("alpha");
+    store.getState().openTab("alpha");
+    store.getState().openTab("alpha");
+    const [first, second, third] = shells(store);
+    const group = focusedGroup(store)!;
+    store.getState().splitTabToGroup(third!.id, group.id, "right");
+    const target = focusedGroup(store)!;
+
+    store.getState().moveTabToGroup(first!.id, target.id, null);
+
+    expect(store.getState().groups[target.id]!.tabOrder).toEqual([third!.id, first!.id]);
+    expect(store.getState().groups[target.id]!.activeTabId).toBe(first!.id);
+    expect(store.getState().groups[group.id]!.tabOrder).toEqual([second!.id]);
+    expect(store.getState().tabs.find((tab) => tab.id === first!.id)!.groupId).toBe(target.id);
+    expectConsistent(store);
+  });
+
+  it("inserts a moved tab before a given tab", () => {
+    const store = workspaceStore();
+    store.getState().openTab("alpha");
+    store.getState().openTab("alpha");
+    store.getState().openTab("alpha");
+    const [first, second, third] = shells(store);
+    const group = focusedGroup(store)!;
+    store.getState().splitTabToGroup(third!.id, group.id, "right");
+    const target = focusedGroup(store)!;
+
+    store.getState().moveTabToGroup(first!.id, target.id, third!.id);
+
+    expect(store.getState().groups[target.id]!.tabOrder).toEqual([first!.id, third!.id]);
+    expect(store.getState().groups[target.id]!.activeTabId).toBe(first!.id);
+    expect(store.getState().groups[group.id]!.tabOrder).toEqual([second!.id]);
+    expectConsistent(store);
+  });
+
+  it("closing the active tab returns to the most recent tab", () => {
+    const store = workspaceStore();
+    store.getState().openTab("alpha");
+    store.getState().openTab("alpha");
+    store.getState().openTab("alpha");
+    const [first, second, third] = shells(store);
+    store.getState().focusTab(first!.id);
+    store.getState().focusTab(second!.id);
+    store.getState().focusTab(third!.id);
+
+    store.getState().closeTab(third!.id);
+
+    expect(focusedTabId(store)).toBe(second!.id);
+    expect(focusedGroup(store)!.tabOrder).toEqual([first!.id, second!.id]);
+  });
+
+  it("closing a pane's last tab removes the pane and focuses its sibling", () => {
+    const { store, first, second, firstGroup } = twoPanes();
+    const secondGroup = focusedGroup(store)!;
+
+    store.getState().closeTab(second.id);
+
+    expect(store.getState().groups[secondGroup.id]).toBeUndefined();
+    expect(leafGroups(store.getState().groupLayouts.alpha!)).toEqual([firstGroup.id]);
+    expect(focusedGroup(store)!.id).toBe(firstGroup.id);
+    expect(focusedTabId(store)).toBe(first.id);
+    expect(store.getState().tabs).toHaveLength(1);
+    expectConsistent(store);
+  });
+
+  it("closing a pane in a nested split focuses its sibling, not the last pane", () => {
+    const store = workspaceStore();
+    store.getState().openTab("alpha");
+    store.getState().openTab("alpha");
+    store.getState().openTab("alpha");
+    const [first, second] = shells(store);
+    const root = focusedGroup(store)!;
+    store.getState().splitTabToGroup(shells(store)[2]!.id, root.id, "right");
+    const right = focusedGroup(store)!;
+    store.getState().focusTab(first!.id);
+    store.getState().splitTabToGroup(second!.id, root.id, "bottom");
+    const nested = focusedGroup(store)!;
+    expect(leafGroups(store.getState().groupLayouts.alpha!)).toEqual([
+      root.id,
+      nested.id,
+      right.id,
+    ]);
+
+    store.getState().closeTab(second!.id);
+
+    // C's sibling is A; the last leaf is the unrelated right-hand pane B.
+    expect(focusedGroup(store)!.id).toBe(root.id);
+    expect(focusedTabId(store)).toBe(first!.id);
+    expect(leafGroups(store.getState().groupLayouts.alpha!)).toEqual([root.id, right.id]);
+    expectConsistent(store);
+  });
+
+  it("closing the last tab of the last pane releases the session", () => {
+    const store = workspaceStore();
+    store.getState().openTab("alpha");
+    const [only] = shells(store);
+
+    store.getState().closeTab(only!.id);
+
+    expect(store.getState().groups).toEqual({});
+    expect(store.getState().groupLayouts.alpha).toBeUndefined();
+    expect(store.getState().focusedGroupBySession.alpha).toBeUndefined();
+    expect(sshDisconnect).toHaveBeenCalledWith("alpha");
+  });
+
+  it("reorders only inside the group it was asked about", () => {
+    const { store, first, second } = twoPanes();
+    const firstGroup = store.getState().groups[first.groupId]!;
+
+    store.getState().reorderTab(firstGroup.id, second.id, null);
+
+    // The second tab is in another group; asking the first group to reorder it
+    // must not silently move it across.
+    expect(store.getState().groups[firstGroup.id]!.tabOrder).toEqual([first.id]);
+    expect(store.getState().tabs.find((tab) => tab.id === second.id)!.groupId).toBe(
+      second.groupId,
+    );
+  });
+
+  it("reorders tabs within a group without changing its active tab", () => {
+    const store = workspaceStore();
+    store.getState().openTab("alpha");
+    store.getState().openTab("alpha");
+    const [first, second] = shells(store);
+    const group = focusedGroup(store)!;
+
+    store.getState().reorderTab(group.id, second!.id, first!.id);
+
+    expect(store.getState().groups[group.id]!.tabOrder).toEqual([second!.id, first!.id]);
+    expect(store.getState().groups[group.id]!.activeTabId).toBe(second!.id);
+  });
+
+  it("focuses a tab in another pane and remembers that pane", () => {
+    const { store, first, second } = twoPanes();
+    const firstGroup = store.getState().groups[first.groupId]!;
+
+    store.getState().focusTab(first.id);
+
+    expect(focusedGroup(store)!.id).toBe(firstGroup.id);
+    expect(focusedTabId(store)).toBe(first.id);
+    expect(store.getState().groups[second.groupId]!.activeTabId).toBe(second.id);
+  });
+
+  it("restores a session's focused pane when switching back", () => {
+    const { store, second } = twoPanes();
+    const focused = focusedGroup(store)!.id;
+    store.getState().openTab("beta");
+
+    store.getState().openSession("alpha");
+
+    expect(focusedGroup(store)!.id).toBe(focused);
+    expect(focusedTabId(store)).toBe(second.id);
+  });
+
+  it("does not let a reused tab id revive an old pane", () => {
+    const { store, first, second } = twoPanes();
+    store.getState().closeTab(second.id);
+
+    store.getState().openTab("alpha");
+    const reopened = shells(store).find((tab) => tab.id === second.id)!;
+
+    expect(reopened.groupId).toBe(first.groupId);
+    expect(Object.keys(store.getState().groups)).toHaveLength(1);
+    expect(store.getState().groups[first.groupId]!.tabOrder).toEqual([first.id, reopened.id]);
+  });
+
+  it("drops a vanished session's groups, layout and focus entry", () => {
+    const { store, first } = twoPanes();
+    store.getState().openTab("beta");
+    store.setState({ sessions: [named("beta")] });
+
+    store.getState().pruneTabs();
+
+    expect(Object.values(store.getState().groups).every((group) => group.session === "beta")).toBe(
+      true,
+    );
+    expect(store.getState().groupLayouts.alpha).toBeUndefined();
+    expect(store.getState().focusedGroupBySession.alpha).toBeUndefined();
+    expect(store.getState().tabs.some((tab) => tab.id === first.id)).toBe(false);
+  });
+
+  it("brings a dirty tab's pane forward before asking about it", () => {
+    const { store, first, second } = twoPanes();
+    const secondGroup = store.getState().groups[second.groupId]!;
+    store.getState().focusTab(first.id);
+    store.getState().setTabDirty(second.id, true);
+
+    store.getState().requestCloseTab(second.id);
+
+    expect(focusedGroup(store)!.id).toBe(secondGroup.id);
+    expect(focusedTabId(store)).toBe(second.id);
+    expect(store.getState().pendingCloseTabId).toBe(second.id);
+  });
+
+  it("does not reset a split ratio when a one-tab pane is dropped on its sibling edge", () => {
+    const { store, second } = twoPanes();
+    const layout = store.getState().groupLayouts.alpha!;
+    if (layout.kind !== "split") throw new Error("expected a split");
+    store.getState().setGroupRatio("alpha", layout.id, 0.7);
+
+    store.getState().splitTabToGroup(second.id, leafGroups(layout)[0]!, "right");
+
+    const after = store.getState().groupLayouts.alpha!;
+    if (after.kind !== "split") throw new Error("expected the split to stay");
+    expect(after.ratio).toBe(0.7);
   });
 });

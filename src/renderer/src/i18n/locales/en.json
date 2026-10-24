@@ -12,8 +12,6 @@
     "terminalRename": "Rename terminal",
     "tabCloseNamed": "Close {{name}}",
     "fileTabCloseTitle": "Close file",
-    "newTerminal": "New terminal",
-    "newTerminalTitle": "New terminal (Ctrl+Shift+T)",
     "filesCollapse": "Collapse files panel",
     "filesExpand": "Expand files panel",
     "filesTooltip": "{{action}} files panel (Ctrl+Shift+B)",
@@ -23,6 +21,12 @@
     "windowClose": "Close",
     "settings": "Settings",
     "settingsTooltip": "Settings (Ctrl+,)"
+  },
+  "workspace": {
+    "groupTabs": "Pane {{index}} tabs",
+    "newTabInGroup": "New terminal in this pane",
+    "newTabInGroupTitle": "New terminal in this pane (Ctrl+Shift+T)",
+    "resizePanes": "Resize split panes"
   },
   "statusbar": {
     "statusConnecting": "Connecting…",
