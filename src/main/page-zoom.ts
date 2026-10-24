@@ -52,10 +52,13 @@ export function pageZoomDelta(
 }
 
 /** Applies the step to the window before the renderer sees the key. */
-export function installPageZoomShortcuts(window: BrowserWindow): void {
+export function installPageZoomShortcuts(
+  window: BrowserWindow,
+  platform: NodeJS.Platform = process.platform,
+): void {
   const contents = window.webContents;
   contents.on("before-input-event", (event, input) => {
-    const delta = pageZoomDelta(input);
+    const delta = pageZoomDelta(input, platform);
     if (delta === null) return;
     event.preventDefault();
     contents.setZoomLevel(contents.getZoomLevel() + delta);

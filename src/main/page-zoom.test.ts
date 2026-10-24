@@ -68,7 +68,7 @@ describe("installPageZoomShortcuts", () => {
       getZoomLevel: () => 1,
       setZoomLevel,
     };
-    installPageZoomShortcuts({ webContents: contents } as unknown as BrowserWindow);
+    installPageZoomShortcuts({ webContents: contents } as unknown as BrowserWindow, "win32");
 
     const preventDefault = vi.fn();
     listener!({ preventDefault }, input({ control: true, key: "=", code: "Equal" }));
