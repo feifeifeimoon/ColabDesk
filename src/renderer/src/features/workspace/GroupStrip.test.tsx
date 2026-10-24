@@ -63,6 +63,7 @@ function render(tabs: WorkspaceTab[], extra: Record<string, unknown> = {}): stri
     requestCloseTab: noop,
     openTab: noop,
     focusGroup: noop,
+    toggleSidebar: noop,
     ...extra,
   };
   return renderToStaticMarkup(
@@ -73,6 +74,9 @@ function render(tabs: WorkspaceTab[], extra: Record<string, unknown> = {}): stri
       focused: true,
       style: {},
       visible: true,
+      titlebar: Boolean(extra.titlebar),
+      leading: Boolean(extra.leading),
+      trailing: extra.trailing as string | undefined,
     }),
   );
 }
@@ -145,6 +149,20 @@ describe("a pane's tab strip", () => {
     expect(markup).toContain('aria-label="面板 1 标签"');
     expect(markup).toContain('data-testid="new-terminal"');
     expect(markup).toContain('aria-label="在此面板新建终端"');
+  });
+
+  it("carries the titlebar and the collapsed-rail controls", () => {
+    const markup = render([shell(null)], {
+      leading: true,
+      titlebar: true,
+      trailing: "172px",
+    });
+
+    expect(markup).toContain('data-titlebar="true"');
+    expect(markup).toContain('class="group-strip__leading"');
+    expect(markup).toContain('data-testid="toggle-sidebar"');
+    expect(markup).toContain('aria-label="展开会话栏"');
+    expect(markup).toContain("172px");
   });
 
   it("renders nothing for a parked session", () => {

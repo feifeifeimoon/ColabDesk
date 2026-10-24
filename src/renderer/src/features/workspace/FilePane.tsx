@@ -32,7 +32,7 @@ import { childPath, projectRows, type Listing, type Row } from "./file-tree";
 import { makeRequestTokens } from "./request-tokens";
 import { mergeTransferProgress } from "./transfer-list";
 import { useAppStore } from "../../store";
-import { selectActiveFilePath } from "../../store/selectors";
+import { selectActiveFilePath, useWorkspaceChrome } from "../../store/selectors";
 
 /**
  * The runtime's filesystem over SFTP, as a tree.
@@ -135,6 +135,7 @@ export function FilePane({
   const activeFilePath = useAppStore((state) => selectActiveFilePath(state, session));
   const settingsOpen = useAppStore((state) => state.settingsOpen);
   const setupOpen = useAppStore((state) => state.creation.open);
+  const workspaceChrome = useWorkspaceChrome();
 
   const panelRef = useRef<HTMLElement | null>(null);
   const treeRef = useRef<HTMLUListElement | null>(null);
@@ -864,6 +865,15 @@ export function FilePane({
         width={width}
         onCommit={(next) => setPanelWidth("files", next)}
       />
+      {/* In a live workspace the window controls and files toggle sit above this
+          panel's head; this 32px band is the titlebar they share. */}
+      {workspaceChrome && (
+        <div
+          className="files-panel__titlebar"
+          aria-hidden="true"
+          onDoubleClick={() => void api.toggleMaximizeWindow()}
+        />
+      )}
       <div className="pane__head">
         <span className="pane__title">{t("files.title", "文件")}</span>
         <span className="pane__actions">

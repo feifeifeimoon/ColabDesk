@@ -104,6 +104,45 @@ test("无边框窗口的控制通道接通", async ({ page }) => {
   expect(roundTrip).toBe("ok");
 });
 
+test("工作区的窗口控制浮在右上角，文件面板开关和它同一行", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+
+  // The workspace is the titlebar: no global bar above the pane strip.
+  await expect(page.locator(".topbar")).toHaveCount(0);
+  const chrome = page.locator(".workspace-window-chrome");
+  await expect(chrome).toBeVisible();
+  expect((await chrome.boundingBox())?.y).toBe(0);
+
+  if (process.platform === "darwin") {
+    // The native traffic lights are at the other corner.
+    await expect(chrome.locator(".window-controls")).toHaveCount(0);
+  } else {
+    await expect(chrome.locator(".window-controls button")).toHaveCount(3);
+  }
+
+  const filesToggle = chrome.locator('[data-testid="toggle-files"]');
+  await expect(filesToggle).toBeVisible();
+  await filesToggle.click();
+  await expect(page.locator(".files-panel")).toBeHidden();
+  // Closed: the top strip reserves room for the toggle and the window controls.
+  const padding = await page
+    .locator('.group-strip[data-titlebar="true"]')
+    .evaluate((element) => getComputedStyle(element).paddingRight);
+  expect(padding).not.toBe("0px");
+
+  await filesToggle.click();
+  await expect(page.locator(".files-panel")).toBeVisible();
+  await expect(page.locator(".files-panel__titlebar")).toBeVisible();
+
+  // Settings is not a workspace: the one global bar comes back with it.
+  await page.keyboard.press("Control+,");
+  await expect(page.locator(".topbar")).toBeVisible();
+  await expect(chrome).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".topbar")).toHaveCount(0);
+  await expect(chrome).toBeVisible();
+});
+
 /*
   状态栏横跨整个窗口，压在两栏和终端之上。终端那一列曾经把自己的最后一行画到它
   上面（fit 取的行数比它的盒子能装的多一行，而没有东西裁剪它），肉眼看到的正是

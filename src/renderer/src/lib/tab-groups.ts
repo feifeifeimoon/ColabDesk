@@ -47,8 +47,10 @@ export type GroupLayout =
 export const MIN_RATIO = 0.15;
 export const MAX_RATIO = 0.85;
 export const DEFAULT_RATIO = 0.5;
-/** The pane's own tab row; the content starts below it. */
+/** The pane's ordinary tab row; content starts below it. */
 export const GROUP_STRIP_HEIGHT = 32;
+/** A top-row strip is the window titlebar, so it keeps the app's 40px bar. */
+export const TITLEBAR_HEIGHT = 40;
 /** A divider drag keeps this much room on each side when the surface allows it.
     A file pane's head (path + view toggle + Save) is the widest fixed content a
     split has to keep usable, so the floor is a pane's floor, not a terminal's. */

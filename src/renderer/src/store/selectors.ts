@@ -18,6 +18,33 @@ export function useHasWorkSurface(): boolean {
   );
 }
 
+/**
+ * A live workspace owns the top row: its top pane strip is the window titlebar,
+ * so the global `TopBar` is not drawn. Settings and runtime setup are layers
+ * over that workspace, not workspaces of their own, and keep the bar.
+ *
+ * A banner also takes the bar back: it is a full-width row under the titlebar,
+ * and the fixed top-right window controls would otherwise sit on its actions.
+ */
+export function useWorkspaceChrome(): boolean {
+  return useAppStore((state) => {
+    const update = state.update;
+    const banner =
+      Boolean(state.error) ||
+      update?.state === "downloaded" ||
+      (update?.state === "available" &&
+        update.version !== null &&
+        update.version !== state.dismissedVersion);
+
+    return (
+      !state.settingsOpen &&
+      !state.creation.open &&
+      !banner &&
+      state.tabs.some((tab) => tab.session === state.selectedSession)
+    );
+  });
+}
+
 /** The pane that owns the keyboard in the selected session. */
 export function selectFocusedGroupId(state: AppState): string | null {
   const session = state.selectedSession;

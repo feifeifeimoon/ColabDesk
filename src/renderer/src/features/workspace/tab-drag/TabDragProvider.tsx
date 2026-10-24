@@ -14,6 +14,7 @@ import {
 } from "@dnd-kit/core";
 import {
   GROUP_STRIP_HEIGHT,
+  TITLEBAR_HEIGHT,
   groupRects,
   isSameOrder,
   isSplitDropNoOp,
@@ -132,11 +133,13 @@ function resolveDropTarget(pointer: { x: number; y: number }, data: TabDragData)
     const panel = toPixels(groupRect, surfaceRect);
     if (!inside(pointer, panel)) continue;
 
+    const stripHeight =
+      Math.abs(groupRect.top) < 1e-6 ? TITLEBAR_HEIGHT : GROUP_STRIP_HEIGHT;
     const content = {
       left: panel.left,
-      top: panel.top + GROUP_STRIP_HEIGHT,
+      top: panel.top + stripHeight,
       width: panel.width,
-      height: panel.height - GROUP_STRIP_HEIGHT,
+      height: panel.height - stripHeight,
     };
     if (content.height <= 0) return null;
 

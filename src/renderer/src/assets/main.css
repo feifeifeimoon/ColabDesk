@@ -127,6 +127,13 @@ kbd {
   height: 100%;
   overflow: hidden;
   background: var(--page);
+  position: relative;
+  /* The three 44px controls. The top-right files toggle sits to their left. */
+  --window-controls-width: 132px;
+}
+
+.app[data-mac="true"] {
+  --window-controls-width: 0px;
 }
 
 /* The only chrome row above the work surface, and the window's title bar too:
@@ -226,6 +233,25 @@ kbd {
   -webkit-app-region: no-drag;
 }
 
+/* The top-right corner of a live workspace. It is fixed over the top row: the
+   pane strip reaches the window edge when the files panel is closed, and the
+   files panel's own 40px titlebar sits under it when it is open. */
+.workspace-window-chrome {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 40px;
+  -webkit-app-region: no-drag;
+}
+
+.workspace-window-chrome .window-controls {
+  margin-right: 0;
+}
+
 .window-controls__button {
   display: inline-flex;
   align-items: center;
@@ -269,6 +295,32 @@ kbd {
   background: var(--chrome);
   border-right: 1px solid var(--hairline);
   min-height: 0;
+}
+
+/* The workspace titlebar's left section: the rail's own copy of the brand and
+   the way to collapse it, because the global top bar is not drawn over a live
+   workspace. The traffic lights are padded out on macOS by inline MAC_INSET. */
+.sidebar__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 40px;
+  flex-shrink: 0;
+  padding: 0 var(--space-1) 0 var(--space-2);
+  background: var(--chrome);
+  border-bottom: 1px solid var(--hairline);
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.sidebar__head button {
+  -webkit-app-region: no-drag;
+}
+
+.sidebar__brand {
+  display: flex;
+  align-items: center;
+  color: var(--ink);
 }
 
 .sidebar__section {
@@ -1310,6 +1362,42 @@ kbd {
 
 .group-strip__add {
   flex: 0 0 auto;
+}
+
+/* A top-row strip is the window's titlebar: the empty parts drag the window,
+   every control opts out. Lower panes keep their strips as ordinary controls. */
+.group-strip[data-titlebar="true"] {
+  -webkit-app-region: drag;
+}
+
+.group-strip[data-titlebar="true"] button,
+.group-strip[data-titlebar="true"] .session-tab,
+.group-strip[data-titlebar="true"] input,
+.group-strip[data-titlebar="true"] .menu {
+  -webkit-app-region: no-drag;
+}
+
+/* Collapsed rail: brand + expand control live at the head of the top-left
+   strip, so the rail's titlebar does not become a permanent empty column. */
+.group-strip__leading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 100%;
+  flex-shrink: 0;
+  padding: 0 var(--space-1) 0 var(--space-2);
+  border-right: 1px solid var(--hairline);
+  -webkit-app-region: drag;
+}
+
+.group-strip__leading button {
+  -webkit-app-region: no-drag;
+}
+
+.group-strip__brand {
+  display: flex;
+  align-items: center;
+  color: var(--ink);
 }
 
 /* The insertion bar follows the pointer, not a sliding tab: the strip keeps
@@ -3578,6 +3666,16 @@ textarea.input {
 .files-panel.drag-over {
   border-color: var(--link);
   box-shadow: var(--shadow-3);
+}
+
+/* The window chrome above an open files panel: a 40px band that lines up with
+   the top pane strip, carrying the workspace's fixed top-right controls. */
+.files-panel__titlebar {
+  height: 40px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--chrome);
+  -webkit-app-region: drag;
 }
 
 /* The directory row a drop would land in: same emphasis, on the row itself. */

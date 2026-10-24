@@ -1,9 +1,13 @@
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
-import { PlusIcon } from "../../components/ui/icons";
+import { Button } from "../../components/ui/Button";
+import { PanelLeftIcon, PlusIcon } from "../../components/ui/icons";
+import { toggleMaximizeWindow } from "../../lib/api";
+import { IS_MAC, MAC_INSET } from "../../lib/platform";
 import type { TabGroup } from "../../lib/tab-groups";
 import { useAppStore } from "../../store";
 import type { WorkspaceTab } from "../../store/types";
+import { BrandMark } from "../../app-shell/BrandMark";
 import { GroupTab } from "./GroupTab";
 
 /**
@@ -18,6 +22,9 @@ export function GroupStrip({
   focused,
   style,
   visible,
+  titlebar = false,
+  leading = false,
+  trailing,
 }: {
   group: TabGroup;
   tabs: WorkspaceTab[];
@@ -27,10 +34,17 @@ export function GroupStrip({
   style: CSSProperties;
   /** The session is on screen; a parked session keeps its strips out of the DOM. */
   visible: boolean;
+  /** This strip is on the window's top row and carries the titlebar. */
+  titlebar?: boolean;
+  /** The rail is collapsed: brand + expand control lead this strip. */
+  leading?: boolean;
+  /** Room for the top-right files toggle and window controls. */
+  trailing?: string;
 }) {
   const { t } = useTranslation();
   const openTab = useAppStore((state) => state.openTab);
   const focusGroup = useAppStore((state) => state.focusGroup);
+  const toggleSidebar = useAppStore((state) => state.toggleSidebar);
 
   const labelFor = (tab: WorkspaceTab): string =>
     tab.kind === "file"
@@ -44,17 +58,44 @@ export function GroupStrip({
       className="group-strip"
       data-group-strip-id={group.id}
       data-focused={focused ? "true" : undefined}
-      style={style}
+      data-titlebar={titlebar ? "true" : undefined}
+      style={trailing ? { ...style, paddingRight: trailing } : style}
       onPointerDown={() => focusGroup(group.session, group.id)}
       onMouseDown={(event) => {
-        // The strip is a control surface, but pressing it must not take focus
-        // from the terminal: a drag that splits the focused tab keeps the same
-        // `focused` prop, so xterm would never be asked for the keyboard back.
-        // Cancelling the mouse event's default keeps the activeElement where it
-        // was; click/double-click still fire, so rename and middle-click work.
-        if (event.button === 0) event.preventDefault();
+        // A lower strip is not the window's drag region, so pressing its empty
+        // part must not blur the terminal. The titlebar strip's empty part is
+        // the drag region; its tabs and buttons cancel their own focus move.
+        if (!titlebar && event.button === 0) event.preventDefault();
+      }}
+      onDoubleClick={(event) => {
+        if (!titlebar) return;
+        const target = event.target as Element | null;
+        if (!target?.closest("button, [role='tab'], .menu, input")) void toggleMaximizeWindow();
       }}
     >
+      {leading && (
+        <div
+          className="group-strip__leading"
+          style={IS_MAC ? { paddingLeft: MAC_INSET } : undefined}
+        >
+          <span className="group-strip__brand" title={t("topbar.brand", "ColabDesk")}>
+            <BrandMark />
+          </span>
+          <Button
+            variant="ghost"
+            icon
+            data-testid="toggle-sidebar"
+            aria-pressed={false}
+            aria-label={t("topbar.sidebarExpand", "展开会话栏")}
+            title={t("topbar.sidebarTooltip", "{{action}}会话栏（Ctrl+Shift+E）", {
+              action: t("topbar.actionExpand", "展开"),
+            })}
+            onClick={toggleSidebar}
+          >
+            <PanelLeftIcon />
+          </Button>
+        </div>
+      )}
       <div
         className="group-strip__tabs"
         role="tablist"

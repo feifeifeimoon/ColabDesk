@@ -1,43 +1,32 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, IconButton } from "../components/ui/Button";
 import {
   ActivityIcon,
-  CloseWindowIcon,
-  MaximizeIcon,
-  MinimizeIcon,
   PanelLeftIcon,
   PanelRightIcon,
   SettingsIcon,
-  RestoreIcon,
   SyncIcon,
   TerminalIcon,
 } from "../components/ui/icons";
-import { closeWindow, minimizeWindow, onWindowMaximized, toggleMaximizeWindow } from "../lib/api";
+import { IS_MAC, MAC_INSET } from "../lib/platform";
+import { toggleMaximizeWindow } from "../lib/api";
 import { acceleratorLabel, sessionRate, sessionRateText } from "../features/sessions/accelerators";
 import { useAppStore } from "../store";
 import { useHasWorkSurface } from "../store/selectors";
 import { BrandMark } from "./BrandMark";
 import { balanceMeterTone, computeBalanceRatio, soleBilledSession } from "./status-bar";
-
-/** macOS keeps its native traffic lights; everyone else gets ours. */
-const IS_MAC = navigator.userAgent.includes("Mac");
-/**
- * Room for the traffic lights, which sit over the bar on macOS at a fixed 78
- * window-px regardless of page zoom — dividing by `--ui-zoom-factor` keeps the
- * rendered padding at 78 physical window pixels after `webFrame` scales CSS.
- */
-export const MAC_INSET = "calc(78px / var(--ui-zoom-factor, 1))";
+import { WindowControls } from "./WindowControls";
 
 /**
- * The single top bar: it is the window's title bar too. Panel toggles sit at
- * both ends, the middle is the window's drag region, and — on Windows and Linux,
- * where the OS frame is gone — the window controls at the far right. Session
- * tabs live in each pane's own strip now, so this bar no longer duplicates them.
+ * The single top bar of the non-workspace views: it is the window's title bar
+ * too. Panel toggles sit at both ends, the middle is the window's drag region,
+ * and — on Windows and Linux, where the OS frame is gone — the window controls
+ * at the far right.
  *
- * While settings is up, the two panel toggles stand down: they act on a layout
- * that is not on screen. The panes stay, because they are the way back to a
- * terminal.
+ * A live workspace does not draw this bar: its top pane strip is the titlebar
+ * (see `WorkspaceWindowChrome` and `GroupStrip`). This bar stays for the start
+ * page, settings and runtime setup, where there is no pane to carry the row.
  */
 export function TopBar() {
   const { t } = useTranslation();
@@ -139,49 +128,6 @@ export function TopBar() {
 
       {!IS_MAC && <WindowControls />}
     </header>
-  );
-}
-
-/** Minimize / maximize-restore / close, drawn by us because the frame is ours. */
-function WindowControls() {
-  const { t } = useTranslation();
-  const [maximized, setMaximized] = useState(false);
-
-  useEffect(() => onWindowMaximized(setMaximized), []);
-
-  return (
-    <div className="window-controls">
-      <button
-        type="button"
-        className="window-controls__button"
-        data-testid="window-minimize"
-        aria-label={t("topbar.windowMinimize", "最小化")}
-        title={t("topbar.windowMinimize", "最小化")}
-        onClick={() => void minimizeWindow()}
-      >
-        <MinimizeIcon />
-      </button>
-      <button
-        type="button"
-        className="window-controls__button"
-        data-testid="window-maximize"
-        aria-label={maximized ? t("topbar.windowRestore", "还原") : t("topbar.windowMaximize", "最大化")}
-        title={maximized ? t("topbar.windowRestore", "还原") : t("topbar.windowMaximize", "最大化")}
-        onClick={() => void toggleMaximizeWindow()}
-      >
-        {maximized ? <RestoreIcon /> : <MaximizeIcon />}
-      </button>
-      <button
-        type="button"
-        className="window-controls__button window-controls__button--close"
-        data-testid="window-close"
-        aria-label={t("topbar.windowClose", "关闭")}
-        title={t("topbar.windowClose", "关闭")}
-        onClick={() => void closeWindow()}
-      >
-        <CloseWindowIcon />
-      </button>
-    </div>
   );
 }
 

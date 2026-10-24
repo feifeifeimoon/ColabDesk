@@ -26,11 +26,17 @@ vi.mock("./GroupStrip", async () => {
       tabs,
       focused,
       index,
+      titlebar,
+      leading,
+      trailing,
     }: {
       group: TabGroup;
       tabs: WorkspaceTab[];
       focused: boolean;
       index: number;
+      titlebar?: boolean;
+      leading?: boolean;
+      trailing?: string;
     }) =>
       h("div", {
         className: "group-strip",
@@ -38,6 +44,9 @@ vi.mock("./GroupStrip", async () => {
         "data-focused": String(focused),
         "data-tabs": tabs.map((tab) => tab.id).join(","),
         "data-index": String(index),
+        "data-titlebar": titlebar ? "true" : undefined,
+        "data-leading": leading ? "true" : undefined,
+        "data-trailing": trailing,
       }),
   };
 });
@@ -115,6 +124,12 @@ const split = (first: GroupLayout, second: GroupLayout): GroupLayout => ({
 const base = {
   focusGroup: noop,
   setGroupRatio: noop,
+  settingsOpen: false,
+  creation: { open: false },
+  sidebarOpen: true,
+  filesOpen: true,
+  selectedSession: "alpha" as string | null,
+  tabs: [] as WorkspaceTab[],
 };
 
 beforeEach(() => {
@@ -127,13 +142,24 @@ function render({
   layout,
   focusedGroupId,
   shown = true,
+  sidebarOpen = true,
+  filesOpen = true,
 }: {
   tabs: WorkspaceTab[];
   groups: Record<string, TabGroup>;
   layout: GroupLayout;
   focusedGroupId?: string;
   shown?: boolean;
+  sidebarOpen?: boolean;
+  filesOpen?: boolean;
 }): string {
+  store.current = {
+    ...base,
+    tabs,
+    selectedSession: "alpha",
+    sidebarOpen,
+    filesOpen,
+  };
   return renderToStaticMarkup(
     createElement(PaneSurface, {
       session: "alpha",
@@ -194,6 +220,24 @@ describe("two panes", () => {
     expect(strips![0]).toContain('data-index="1"');
     expect(strips![1]).toContain('data-group-id="b"');
     expect(strips![1]).toContain('data-focused="true"');
+  });
+
+  it("gives the top row the titlebar and puts the collapsed rail in the first strip", () => {
+    const strips = render({
+      tabs,
+      groups,
+      layout,
+      focusedGroupId: "b",
+      sidebarOpen: false,
+      filesOpen: false,
+    }).match(/<div class="group-strip"[^>]*>/g);
+
+    expect(strips![0]).toContain('data-titlebar="true"');
+    expect(strips![0]).toContain('data-leading="true"');
+    expect(strips![1]).toContain('data-titlebar="true"');
+    expect(strips![1]).not.toContain('data-leading="true"');
+    // The rightmost top strip reserves room for the files toggle and controls.
+    expect(strips![1]).toContain("data-trailing=");
   });
 
   it("renders one divider for the split", () => {

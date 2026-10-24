@@ -2,6 +2,7 @@ import { useMemo, useRef, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import {
   GROUP_STRIP_HEIGHT,
+  TITLEBAR_HEIGHT,
   groupRects,
   leafGroups,
   splitRects,
@@ -11,6 +12,7 @@ import {
   type TabGroup,
 } from "../../lib/tab-groups";
 import { useAppStore } from "../../store";
+import { useWorkspaceChrome } from "../../store/selectors";
 import type { WorkspaceTab } from "../../store/types";
 import { FileView } from "./FileView";
 import { GroupStrip } from "./GroupStrip";
@@ -21,12 +23,18 @@ function pct(value: number): string {
   return `${value * 100}%`;
 }
 
+/** A top-row group's strip is the window titlebar, one rung taller. */
+function stripHeightFor(rect: PaneRect): number {
+  return Math.abs(rect.top) < 1e-6 ? TITLEBAR_HEIGHT : GROUP_STRIP_HEIGHT;
+}
+
 function contentStyle(rect: PaneRect): CSSProperties {
+  const strip = stripHeightFor(rect);
   return {
     left: pct(rect.left),
     width: pct(rect.width),
-    top: `calc(${pct(rect.top)} + ${GROUP_STRIP_HEIGHT}px)`,
-    height: `calc(${pct(rect.height)} - ${GROUP_STRIP_HEIGHT}px)`,
+    top: `calc(${pct(rect.top)} + ${strip}px)`,
+    height: `calc(${pct(rect.height)} - ${strip}px)`,
   };
 }
 
@@ -35,7 +43,7 @@ function stripStyle(rect: PaneRect): CSSProperties {
     left: pct(rect.left),
     top: pct(rect.top),
     width: pct(rect.width),
-    height: GROUP_STRIP_HEIGHT,
+    height: stripHeightFor(rect),
   };
 }
 
@@ -45,10 +53,11 @@ function escapeSelector(value: string): string {
 }
 
 function paintContent(element: HTMLElement, rect: PaneRect): void {
+  const strip = stripHeightFor(rect);
   element.style.left = pct(rect.left);
   element.style.width = pct(rect.width);
-  element.style.top = `calc(${pct(rect.top)} + ${GROUP_STRIP_HEIGHT}px)`;
-  element.style.height = `calc(${pct(rect.height)} - ${GROUP_STRIP_HEIGHT}px)`;
+  element.style.top = `calc(${pct(rect.top)} + ${strip}px)`;
+  element.style.height = `calc(${pct(rect.height)} - ${strip}px)`;
 }
 
 function paintDivider(element: HTMLElement, split: SplitRect): void {
@@ -92,11 +101,17 @@ export function PaneSurface({
   const surfaceRef = useRef<HTMLDivElement | null>(null);
   const focusGroup = useAppStore((state) => state.focusGroup);
   const setGroupRatio = useAppStore((state) => state.setGroupRatio);
+  const sidebarOpen = useAppStore((state) => state.sidebarOpen);
+  const filesOpen = useAppStore((state) => state.filesOpen);
+  const workspaceChrome = useWorkspaceChrome();
 
   const rects = useMemo(() => groupRects(layout), [layout]);
   const splits = useMemo(() => splitRects(layout), [layout]);
   const leaves = useMemo(() => leafGroups(layout), [layout]);
   const tabById = useMemo(() => new Map(tabs.map((tab) => [tab.id, tab])), [tabs]);
+  const topLeaves = leaves.filter((groupId) => Math.abs(rects.get(groupId)?.top ?? 1) < 1e-6);
+  const firstTop = topLeaves[0];
+  const lastTop = topLeaves[topLeaves.length - 1];
 
   /** Divider preview: repaint every group, not just the dragged seam. */
   function paint(overrides: Record<string, number>): void {
@@ -186,6 +201,13 @@ export function PaneSurface({
               focused={groupId === focusedGroupId}
               style={stripStyle(rect)}
               visible={shown}
+              titlebar={workspaceChrome && topLeaves.includes(groupId)}
+              leading={workspaceChrome && !sidebarOpen && groupId === firstTop}
+              trailing={
+                workspaceChrome && !filesOpen && groupId === lastTop
+                  ? "calc(var(--window-controls-width, 0px) + 40px)"
+                  : undefined
+              }
             />
           );
         })}

@@ -19,7 +19,8 @@ vi.mock("../store", () => ({
   useAppStore: (select: (state: unknown) => unknown) => select(store.current),
 }));
 
-import { MAC_INSET, TopBar } from "./AppShell";
+import { MAC_INSET } from "../lib/platform";
+import { TopBar } from "./AppShell";
 
 const noop = () => {};
 

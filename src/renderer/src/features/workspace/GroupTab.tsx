@@ -92,6 +92,12 @@ export function GroupTab({
       data-dragging={isDragging || drag.draggingTabId === tab.id ? "true" : undefined}
       onPointerDown={(event) => activate(event, dragOnPointerDown)}
       onMouseDown={(event) => {
+        // A tab press must not take focus from the terminal: a drag that splits
+        // the already-focused tab keeps the same `focused` prop, so nothing else
+        // would ask xterm for the keyboard back. This is on the tab, not on the
+        // strip, because the empty part of a top-row strip is the window's drag
+        // region and cancelling its default would stop the window moving.
+        if (event.button === 0) event.preventDefault();
         // Middle click closes, like every terminal emulator does — and like the
         // × does: a file tab with unsaved edits is a question.
         if (event.button === 1) {
