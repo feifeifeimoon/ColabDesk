@@ -117,7 +117,25 @@ test("工作区的窗口控制浮在右上角，文件面板开关和它同一�
     // The native traffic lights are at the other corner.
     await expect(chrome.locator(".window-controls")).toHaveCount(0);
   } else {
-    await expect(chrome.locator(".window-controls button")).toHaveCount(3);
+    const buttons = chrome.locator(".window-controls button");
+    await expect(buttons).toHaveCount(3);
+    // The hover target is the shape the reader sees: the buttons fill the
+    // titlebar row here exactly as they do in the global bar, rather than
+    // collapsing to the icons' line box and floating mid-row.
+    const chromeBox = await chrome.boundingBox();
+    const buttonBoxes = await buttons.evaluateAll((elements) =>
+      elements.map((element) => {
+        const rect = element.getBoundingClientRect();
+        return { top: rect.top, height: rect.height };
+      }),
+    );
+    expect(chromeBox).not.toBeNull();
+    if (chromeBox) {
+      for (const box of buttonBoxes) {
+        expect(box.top).toBe(chromeBox.y);
+        expect(box.height).toBe(chromeBox.height);
+      }
+    }
   }
 
   const filesToggle = chrome.locator('[data-testid="toggle-files"]');
