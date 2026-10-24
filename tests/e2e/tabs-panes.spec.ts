@@ -264,6 +264,11 @@ test("把一个 pane 的标签拖到另一个 pane 的标签条，跨组移动",
 test("拖动 pane 之间的分隔条，两个 shell 都不受影响", async ({ page }) => {
   await openSession(page, "e2e-alpha");
   await page.locator('[data-testid="new-terminal"]').click();
+  // The divider floor is per pane; with both rails open on the CI-sized window
+  // a split has almost no room left to demonstrate a drag. Collapse them first.
+  await page.locator('[data-testid="toggle-sidebar"]').click();
+  await page.locator('[data-testid="toggle-files"]').click();
+
   const firstTab = page.getByRole("tab", { name: "终端 1" });
   const activePane = page.locator(".pane-slot:visible").first();
   await dragTabTo(page, firstTab, await rightEdgeOf(activePane), "right");
