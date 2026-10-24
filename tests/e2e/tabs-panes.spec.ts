@@ -101,6 +101,27 @@ test("拖拽标签在同一个面板内重排，终端不重连", async ({ page 
   await expect(terminalRows(page)).toContainText("STILL-HERE");
 });
 
+test("新建按钮跟在最后一个标签后面，而不是停在这一行的最右边", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await page.locator('[data-testid="new-terminal"]').click();
+  await page.locator('[data-testid="new-terminal"]').click();
+
+  const strip = page.locator(".group-strip");
+  const tabs = strip.locator("[role=tab]");
+  await expect(tabs).toHaveCount(3);
+
+  const last = await tabs.last().boundingBox();
+  const add = await strip.locator('[data-testid="new-terminal"]').boundingBox();
+  const stripBox = await strip.boundingBox();
+  if (!last || !add || !stripBox) throw new Error("没有布局盒");
+
+  // The button starts where the run ends — the tab's border-right is the seam.
+  expect(Math.abs(add.x - (last.x + last.width))).toBeLessThanOrEqual(1);
+  // The rest of the row is free space, not a second anchor: that gap is what
+  // tells "after the tabs" apart from "at the far right".
+  expect(stripBox.x + stripBox.width - (add.x + add.width)).toBeGreaterThan(100);
+});
+
 test("把标签拖到面板右边，分成左右两个 pane，各自的 shell 都活着", async ({ page }) => {
   await openSession(page, "e2e-alpha");
   await page.locator('[data-testid="new-terminal"]').click();
