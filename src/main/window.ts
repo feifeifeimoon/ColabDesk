@@ -1,6 +1,7 @@
 import { app, BrowserWindow, shell } from "electron";
 import { join } from "node:path";
 import { watchWindowState } from "./ipc/handlers/window";
+import { installPageZoomShortcuts } from "./page-zoom";
 
 const isMac = process.platform === "darwin";
 
@@ -70,6 +71,7 @@ export function createWindow(): BrowserWindow {
   });
 
   watchWindowState(window);
+  installPageZoomShortcuts(window);
   if (isMac) {
     window.webContents.on("dom-ready", () => {
       syncTrafficLightPosition(window, window.webContents.getZoomFactor());
