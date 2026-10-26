@@ -33,7 +33,12 @@ export function TopBar() {
   const sidebarOpen = useAppStore((state) => state.sidebarOpen);
   const filesOpen = useAppStore((state) => state.filesOpen);
   const settingsOpen = useAppStore((state) => state.settingsOpen);
+  const creationOpen = useAppStore((state) => state.creation.open);
   const hasWorkSurface = useHasWorkSurface();
+  // Settings and runtime setup are layers over the work surface, so the files
+  // panel's toggle and seam would act on a layout nobody can see. The rail
+  // toggle stays: the rail is still on screen beside the layer.
+  const filesControlsLive = hasWorkSurface && !settingsOpen && !creationOpen;
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
   const openSettings = useAppStore((state) => state.openSettings);
   const signedOut = useAppStore((state) => state.env?.authenticated === false);
@@ -101,7 +106,7 @@ export function TopBar() {
       {/* The file panel's edge, continued up through the bar: the line that
           divides the bar where it divides the window. Drawn rather than given
           to a section, because the controls to its right are their own width. */}
-      {filesOpen && hasWorkSurface && !settingsOpen && (
+      {filesOpen && filesControlsLive && (
         <span className="topbar__seam" data-testid="seam-files" aria-hidden="true" />
       )}
 
@@ -109,7 +114,7 @@ export function TopBar() {
         {/* The file panel belongs to the selected session's shells: with none
             there is no panel for this button to act on, so it stands down — the
             rule the panel toggles already follow while settings is up. */}
-        {!settingsOpen && hasWorkSurface && (
+        {filesControlsLive && (
           <Button
             variant="ghost"
             icon

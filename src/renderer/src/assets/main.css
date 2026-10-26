@@ -240,7 +240,7 @@ kbd {
   position: fixed;
   top: 0;
   right: 0;
-  z-index: 11;
+  z-index: var(--layer-window-chrome);
   display: flex;
   align-items: center;
   gap: var(--space-1);
@@ -361,6 +361,7 @@ kbd {
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
+  /* Local to the rail's list; the sync wash never leaves the rail. */
   z-index: 4;
   pointer-events: auto;
   user-select: none;
@@ -629,7 +630,7 @@ kbd {
   position: absolute;
   top: calc(100% + 2px);
   left: 0;
-  z-index: 30;
+  z-index: var(--layer-menu);
   min-width: 168px;
   padding: var(--space-1);
   display: flex;
@@ -651,7 +652,7 @@ kbd {
   position: fixed;
   top: auto;
   left: auto;
-  z-index: 60;
+  z-index: var(--layer-context-menu);
   max-width: calc(100vw - 16px);
   max-height: calc(100vh - 16px);
   overflow-y: auto;
@@ -920,7 +921,9 @@ kbd {
   --setup-wash: color-mix(in srgb, var(--terminal-fg) 9%, transparent);
   position: absolute;
   inset: 0;
-  z-index: 1;
+  /* The console covers the workbench, not one of its panes: it sits in the app
+     layer ladder while every pane-local z-index stays inside its own surface. */
+  z-index: var(--layer-workbench-overlay);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -1278,6 +1281,23 @@ kbd {
   background: var(--canvas);
 }
 
+/* The strips and dividers are chrome, not tab content: they paint above the
+   tabs but are a local layer of their own. `isolation` is what stops their
+   z-indexes escaping into the app — a surface that covers the workbench then
+   wins without having to out-guess how many panes are open. */
+.pane-chrome {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  isolation: isolate;
+  /* Empty chrome must not eat the terminal's pointer events. */
+  pointer-events: none;
+}
+
+.pane-chrome > * {
+  pointer-events: auto;
+}
+
 .pane-slot {
   position: absolute;
   display: flex;
@@ -1308,6 +1328,7 @@ kbd {
   overflow: hidden;
   background: var(--chrome);
   border-bottom: 1px solid var(--hairline);
+  /* Local to `.pane-chrome`; this number never competes with the app's layers. */
   z-index: 3;
 }
 
@@ -1406,6 +1427,7 @@ kbd {
    draws nothing of its own at rest beyond that line. */
 .pane-divider {
   position: absolute;
+  /* Local to `.pane-chrome`; this number never competes with the app's layers. */
   z-index: 4;
   touch-action: none;
 }
@@ -1455,7 +1477,7 @@ kbd {
    use the app's primary. */
 .tab-drop-overlay {
   position: fixed;
-  z-index: 10;
+  z-index: var(--layer-drag);
   pointer-events: none;
   background: color-mix(in srgb, var(--pane-accent) 12%, transparent);
   box-shadow: inset 0 0 0 1px var(--pane-accent);
@@ -1499,6 +1521,10 @@ kbd {
   display: flex;
   flex-direction: column;
   background: var(--terminal-bg);
+  /* xterm paints its helpers and scrollbar with z-index 1–11. Those numbers are
+     local to this surface; without `isolation` they would join the app's stack
+     and paint over a layer that covers the workbench. */
+  isolation: isolate;
   /* A pane paints its own surface and nothing else. xterm asks for its grid in
      rows of a fixed height and rounds up against a box it measures itself, so a
      disagreement used to put its last row on the status bar — outside the pane,
@@ -1648,6 +1674,7 @@ kbd {
   top: 0;
   bottom: 0;
   width: 9px;
+  /* Local to the column it separates; below every app layer. */
   z-index: 2;
   cursor: col-resize;
   /* A drag must not scroll or zoom the surface underneath it. */
@@ -1843,10 +1870,10 @@ kbd {
   right: var(--space-3);
   /* Clear of the status bar, which is 26px of machine state and speaks quietly. */
   bottom: calc(26px + var(--space-3));
-  /* Over the workbench, the settings layer (12) and the dialog (20): a result
-     belongs on top of the thing that produced it. Under the status bar's own
-     popover (50), which the pointer is already inside when it is open. */
-  z-index: 40;
+  /* Over the workbench, the settings layer and dialogs: a result belongs on top
+     of the thing that produced it. Under the status bar's own popover, which
+     the pointer is already inside when it is open. */
+  z-index: var(--layer-toast);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -1998,7 +2025,7 @@ kbd {
   position: fixed;
   bottom: 32px;
   left: var(--space-3);
-  z-index: 50;
+  z-index: var(--layer-statusbar-popover);
   min-width: 380px;
   max-width: 440px;
   padding: var(--space-2) var(--space-3);
@@ -2137,7 +2164,7 @@ kbd {
   align-items: center;
   justify-content: center;
   padding: var(--space-5);
-  z-index: 20;
+  z-index: var(--layer-dialog);
 }
 
 .dialog {
@@ -2286,6 +2313,10 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  /* The editor's own tooltips, panels and sticky rows stack inside the body.
+     The unsaved-changes dialog is deliberately *outside* this context: a
+     question still owns the screen when a covering layer is open behind it. */
+  isolation: isolate;
 }
 
 /* Notices are inset; the text surface is not. The editor's scrollbar belongs on
@@ -2661,7 +2692,7 @@ kbd {
 .settings {
   position: absolute;
   inset: 0;
-  z-index: 12;
+  z-index: var(--layer-settings);
   display: flex;
   background: var(--page);
   animation: settings-enter 180ms ease-out;

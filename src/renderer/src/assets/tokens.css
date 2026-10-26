@@ -101,6 +101,21 @@
     0 24px 32px -8px #0000000f;
 
   --focus-ring: 0 0 0 3px color-mix(in srgb, var(--hairline-strong) 40%, transparent);
+
+  /* ---- layers: floating surfaces, bottom to top -------------------------
+     Pane-local stacking is isolated at its boundary (`isolation: isolate`) and
+     never participates in this ladder; these order the surfaces that float
+     over whole regions. Gaps are deliberate: a new layer can sit between two
+     without renumbering the rest. */
+  --layer-workbench-overlay: 10; /* runtime setup over the middle column */
+  --layer-drag: 20; /* tab drag preview and drop highlight */
+  --layer-window-chrome: 30; /* fixed top-right controls of a workspace */
+  --layer-settings: 40; /* the settings page over the workbench */
+  --layer-dialog: 50; /* a question that owns the screen */
+  --layer-menu: 60; /* an action list anchored in a page */
+  --layer-toast: 70; /* a result over the surface that made it */
+  --layer-statusbar-popover: 80; /* the status bar's quota popover */
+  --layer-context-menu: 90; /* a pointer-positioned action list */
 }
 
 /* The polarity flip. `[data-theme]` is set from the OS by `lib/theme.ts`; the

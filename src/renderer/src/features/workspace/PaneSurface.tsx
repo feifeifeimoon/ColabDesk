@@ -184,44 +184,49 @@ export function PaneSurface({
         );
       })}
 
-      {shown &&
-        leaves.map((groupId, index) => {
-          const group = groups[groupId];
-          const rect = rects.get(groupId);
-          if (!group || !rect) return null;
-          const groupTabs = group.tabOrder
-            .map((tabId) => tabById.get(tabId))
-            .filter((tab): tab is WorkspaceTab => Boolean(tab));
-          return (
-            <GroupStrip
-              key={groupId}
-              group={group}
-              tabs={groupTabs}
-              index={index + 1}
-              focused={groupId === focusedGroupId}
-              style={stripStyle(rect)}
-              visible={shown}
-              titlebar={workspaceChrome && topLeaves.includes(groupId)}
-              leading={workspaceChrome && !sidebarOpen && groupId === firstTop}
-              trailing={
-                workspaceChrome && !filesOpen && groupId === lastTop
-                  ? "calc(var(--window-controls-width, 0px) + 40px)"
-                  : undefined
-              }
-            />
-          );
-        })}
+      {/* Strips and dividers are chrome, not tab content. They are one local
+          stack (isolated in the stylesheet), so a pane's z-indexes can never
+          paint over a layer that covers the workbench. */}
+      <div className="pane-chrome">
+        {shown &&
+          leaves.map((groupId, index) => {
+            const group = groups[groupId];
+            const rect = rects.get(groupId);
+            if (!group || !rect) return null;
+            const groupTabs = group.tabOrder
+              .map((tabId) => tabById.get(tabId))
+              .filter((tab): tab is WorkspaceTab => Boolean(tab));
+            return (
+              <GroupStrip
+                key={groupId}
+                group={group}
+                tabs={groupTabs}
+                index={index + 1}
+                focused={groupId === focusedGroupId}
+                style={stripStyle(rect)}
+                visible={shown}
+                titlebar={workspaceChrome && topLeaves.includes(groupId)}
+                leading={workspaceChrome && !sidebarOpen && groupId === firstTop}
+                trailing={
+                  workspaceChrome && !filesOpen && groupId === lastTop
+                    ? "calc(var(--window-controls-width, 0px) + 40px)"
+                    : undefined
+                }
+              />
+            );
+          })}
 
-      {shown &&
-        splits.map((split, index) => (
-          <PaneDivider
-            key={split.id}
-            split={split}
-            label={`${t("workspace.resizePanes", "调整分屏大小")} ${index + 1}`}
-            onPreview={(ratio) => paint({ [split.id]: ratio })}
-            onCommit={(ratio) => setGroupRatio(session, split.id, ratio)}
-          />
-        ))}
+        {shown &&
+          splits.map((split, index) => (
+            <PaneDivider
+              key={split.id}
+              split={split}
+              label={`${t("workspace.resizePanes", "调整分屏大小")} ${index + 1}`}
+              onPreview={(ratio) => paint({ [split.id]: ratio })}
+              onCommit={(ratio) => setGroupRatio(session, split.id, ratio)}
+            />
+          ))}
+      </div>
     </div>
   );
 }

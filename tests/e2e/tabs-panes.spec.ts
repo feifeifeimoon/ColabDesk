@@ -9,7 +9,7 @@
  */
 
 import type { Locator, Page } from "@playwright/test";
-import { expect, focusTerminal, openSession, terminalRows, test } from "./app-launch";
+import { expect, focusTerminal, MOD, openSession, terminalRows, test } from "./app-launch";
 
 /** The visible pane showing a particular shell. */
 function paneWithShell(page: Page, ordinal: number): Locator {
@@ -352,4 +352,56 @@ test("拖拽途中按 Escape 不改变布局", async ({ page }) => {
   await expect(page.locator(".group-strip")).toHaveCount(1);
   await expect(page.locator(".pane-slot:visible")).toHaveCount(1);
   await expect(terminalRows(page)).toContainText("shell #2");
+});
+
+// 新建运行时的设置面是盖住整个工作台的一层：分屏之后，面板自己的标签栏和分隔线
+// 不能再画在它上面；文件面板同样被盖住，它在顶栏里的开关和接缝也一起让位。
+// Chromium 把 inert 子树排除在命中测试之外，所以先摘掉 inert 再问
+// elementFromPoint，问到的才是真实的绘制顺序。
+test("新建运行时盖住分屏、文件面板和它们的顶栏控件", async ({ page }) => {
+  await openSession(page, "e2e-alpha");
+  await page.locator('[data-testid="new-terminal"]').click();
+  const secondTab = page.getByRole("tab", { name: "终端 2" });
+  const activePane = page.locator(".pane-slot:visible").first();
+  await dragTabTo(page, secondTab, await rightEdgeOf(activePane), "right");
+  await expect(page.locator(".pane-divider")).toHaveCount(1);
+  // The drop's state settles in an effect after pointer-up. A click that lands
+  // while dnd-kit still has an overlay up belongs to the drag, not to the
+  // button underneath it — wait for that state to clear before opening setup.
+  await expect(page.locator(".tab-drag-chip")).toHaveCount(0);
+  await expect(page.locator(".tab-drop-overlay")).toHaveCount(0);
+
+  // The rail button is covered by workbench.spec; this case is about the layer,
+  // and the shortcut is the same openNewSession action. It also keeps the test
+  // out of the post-drag pointer state, where the headless Linux runner can
+  // leave a rail click waiting for tens of seconds without firing it.
+  await page.keyboard.press(`${MOD}+Shift+N`);
+  await expect(page.locator('[data-testid="runtime-setup"]')).toBeVisible();
+  // The files panel is still open underneath, but its toggle and its seam
+  // belong to a layout the console covers: they stand down with the console.
+  await expect(page.locator('[data-testid="toggle-files"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="seam-files"]')).toHaveCount(0);
+  // The global bar comes back with the setup and pushes the workbench down a
+  // row; wait for that layout before measuring where the chrome used to be.
+  await expect(page.locator('[data-testid="topbar-middle"]')).toBeVisible();
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+
+  const points = [
+    await centerOf(groupStrip(page, 0)),
+    await centerOf(page.locator(".pane-divider")),
+    await centerOf(page.locator(".files-panel:visible")),
+  ];
+  for (const point of points) {
+    const topmost = await page.evaluate(({ x, y }) => {
+      for (const element of document.querySelectorAll("[inert]")) {
+        element.removeAttribute("inert");
+      }
+      const hit = document.elementFromPoint(x, y);
+      if (hit?.closest(".setup")) return "setup";
+      if (hit?.closest(".group-strip")) return "group-strip";
+      if (hit?.closest(".pane-divider")) return "pane-divider";
+      return hit?.className || "none";
+    }, point);
+    expect(topmost, `(${Math.round(point.x)}, ${Math.round(point.y)}) 的顶层元素`).toBe("setup");
+  }
 });

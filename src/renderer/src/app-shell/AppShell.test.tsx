@@ -38,6 +38,7 @@ function render(extra: Record<string, unknown> = {}): string {
     sidebarOpen: true,
     filesOpen: true,
     settingsOpen: false,
+    creation: { open: false },
     env: null,
     tabs: [shell],
     selectedSession: "alpha",
@@ -68,6 +69,15 @@ describe("the window bar", () => {
     expect(markup).not.toContain('data-testid="new-terminal"');
     // The session name is not a title-bar label: the rail already names it.
     expect(markup).not.toContain("alpha");
+  });
+
+  it("文件面板的开关和接缝只对看得见的工作台出现", () => {
+    for (const covered of [{}, { settingsOpen: true }, { creation: { open: true } }]) {
+      const markup = render(covered);
+      const visible = Object.keys(covered).length === 0;
+      expect(markup.includes('data-testid="toggle-files"')).toBe(visible);
+      expect(markup.includes('data-testid="seam-files"')).toBe(visible);
+    }
   });
 });
 
