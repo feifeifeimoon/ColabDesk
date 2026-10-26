@@ -28,6 +28,7 @@ import { UsageTrendPanel } from "../features/usage/UsageTrendPanel";
 import { ShortcutsSettings } from "./ShortcutsSettings";
 import { GROUPS_DEF } from "./settings-sections";
 import { TerminalSettings } from "./TerminalSettings";
+import { ZoomSetting } from "./ZoomSetting";
 import { UI_LANGUAGE_CHOICES } from "../i18n/supported-languages";
 import { messageOf, sshGenerateKey, sshRemove, sshSetup } from "../lib/api";
 import { formatExpiry } from "../lib/format";
@@ -320,6 +321,7 @@ export function SettingsPage() {
             />
           }
         />
+        <ZoomSetting />
       </Panel>
     );
   }

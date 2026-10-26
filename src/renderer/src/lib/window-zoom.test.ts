@@ -88,4 +88,33 @@ describe("watchWindowZoom", () => {
     stop();
     expect(env.listenerCount()).toBe(0);
   });
+
+  it("reports the level on start and after a zoom change, but not on a plain resize", () => {
+    const env = fakeEnv();
+    let factor = 1;
+    let level = 0;
+    const levels: number[] = [];
+
+    const stop = watchWindowZoom({
+      readZoomFactor: () => factor,
+      readZoomLevel: () => level,
+      onLevel: (next) => levels.push(next),
+      syncButtons: vi.fn(),
+      isMac: false,
+      target: env.target,
+    });
+
+    expect(levels).toEqual([0]);
+
+    factor = 1.2;
+    level = 1;
+    env.emitResize();
+    expect(levels).toEqual([0, 1]);
+
+    // A plain window resize moves neither the factor nor the level.
+    env.emitResize();
+    expect(levels).toEqual([0, 1]);
+
+    stop();
+  });
 });

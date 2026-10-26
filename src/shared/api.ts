@@ -181,6 +181,9 @@ export interface ColabDeskApi {
   closeWindow(): Promise<void>;
   onWindowMaximized(listener: (maximized: boolean) => void): () => void;
   zoomFactor(): number;
+  /** The Chromium page-zoom level; 0 is 100%. The Appearance stepper writes it. */
+  zoomLevel(): number;
+  setZoomLevel(level: number): void;
   syncTrafficLights(zoomFactor: number): void;
 
   /**

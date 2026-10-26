@@ -3231,6 +3231,14 @@ textarea.input {
   align-items: stretch;
 }
 
+/* The interface-zoom stepper: the percentage keeps a fixed footprint so the
+   buttons beside it do not walk sideways as the number changes. */
+.ui-zoom__value {
+  min-width: 52px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---------- table ---------- */
 
 /* One user: the shortcut reference in settings → terminal. It is not the

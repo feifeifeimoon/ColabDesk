@@ -75,6 +75,8 @@ const api: ColabDeskApi = {
   closeWindow: () => invoke(IPC.windowClose),
   onWindowMaximized: (listener) => subscribe(EVENTS.windowMaximized, listener),
   zoomFactor: () => webFrame.getZoomFactor(),
+  zoomLevel: () => webFrame.getZoomLevel(),
+  setZoomLevel: (level) => webFrame.setZoomLevel(level),
   syncTrafficLights: (zoomFactor) => ipcRenderer.send(IPC.windowSyncTrafficLights, zoomFactor),
 
   updateStatus: () => invoke(IPC.updateStatus),

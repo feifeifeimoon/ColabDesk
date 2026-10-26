@@ -41,7 +41,7 @@ export const GROUPS_DEF: { id: string; titleKey: string; defaultTitle: string; s
         titleKey: "settings.sectionAppearanceTitle",
         defaultTitle: "外观",
         descKey: "settings.sectionAppearanceDesc",
-        defaultDesc: "自定义界面主题与显示语言。",
+        defaultDesc: "自定义界面主题、显示语言与缩放。",
         icon: ContrastIcon,
       },
       {

@@ -15,9 +15,7 @@
  */
 
 import type { BrowserWindow } from "electron";
-
-/** The default menu's own zoom items step by half a level; match them. */
-const ZOOM_STEP = 0.5;
+import { UI_ZOOM_STEP, clampUiZoomLevel } from "@shared/zoom";
 
 /** The subset of Electron's `Input` this decision needs. */
 export interface PageZoomInput {
@@ -48,9 +46,9 @@ export function pageZoomDelta(
   // `+` is unshifted on some layouts (German, for one), where the physical
   // code is not `Equal`. The shifted chord was already excluded above, so this
   // cannot take the terminal's font-size key.
-  if (input.code === "Equal" || input.key === "=" || input.key === "+") return ZOOM_STEP;
-  if (input.code === "NumpadAdd") return ZOOM_STEP;
-  if (input.code === "NumpadSubtract") return -ZOOM_STEP;
+  if (input.code === "Equal" || input.key === "=" || input.key === "+") return UI_ZOOM_STEP;
+  if (input.code === "NumpadAdd") return UI_ZOOM_STEP;
+  if (input.code === "NumpadSubtract") return -UI_ZOOM_STEP;
   return null;
 }
 
@@ -64,6 +62,8 @@ export function installPageZoomShortcuts(
     const delta = pageZoomDelta(input, platform);
     if (delta === null) return;
     event.preventDefault();
-    contents.setZoomLevel(contents.getZoomLevel() + delta);
+    // The stepper and the chords share one range; a chord that ran past the
+    // end would leave the stepper showing a face it could not step back to.
+    contents.setZoomLevel(clampUiZoomLevel(contents.getZoomLevel() + delta));
   });
 }
