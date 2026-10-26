@@ -116,7 +116,7 @@ Three choices belong to a desktop console in particular:
 
 | Concern | Where it lives |
 | --- | --- |
-| Design tokens (colour, type, spacing, radius, elevation) | `src/renderer/src/assets/tokens.css` |
+| Design tokens (colour, type, spacing, radius, elevation, layers) | `src/renderer/src/assets/tokens.css` |
 | Terminal palettes (ten × 21 channels) | `src/renderer/src/assets/terminal-themes.css`; the contract and clamping in `lib/terminal-appearance.ts`, the reading and resolution in `lib/terminal-theme.ts`, the OSC replies in `lib/terminal-color-reply.ts` |
 | Base styles and component classes | `src/renderer/src/assets/main.css` |
 | UI primitives | `src/renderer/src/components/ui/` (`Button` / `Card`·`Panel`·`PanelRow` / `Badge`·`Status` / `SegmentedControl` / `Dialog` / `Field` / `Callout`·`EmptyState` / `Menu` / `PanelDivider` / `ProgressBar` / `RawOutput` / `icons`) |
@@ -377,6 +377,28 @@ With no terminal in the middle, the area is not blank — it is this app's **fro
 - **Leaving does not cancel.** Escape, or "Keep it in the background", closes the view; the request lives in the store and keeps running, and a failure that lands while the view is closed surfaces as a toast. The CLI cannot be cancelled safely, and this screen does not pretend it can. The wake-up is deliberate: `setup → provisioning → failed` is app state, not component state, which is also what lets reopening mid-request show the true elapsed time.
 - **No runtime is allocated without a key that can reach it.** Colab's `/colab/ssh` gateway only accepts `id_ed25519` or `id_ecdsa` and rejects `id_rsa` server-side; finding that out *after* `colab new` has allocated a machine means paying compute units for a runtime this window cannot open. When `env.ssh_identity` is known to be `null` — no key, or one this client cannot use without a passphrase — an inset gate at the top of the form states that Colab rule, prints the `ssh-keygen -t ed25519` command, takes the screen's single primary action (`Generate Ed25519 key`, with `Copy ssh-keygen command` and `Re-check` beside it), and disables `Create` until a key exists. While `env` itself is still unread the gate is not drawn (no false warning), but `Create` is disabled rather than armed on a guess. **Generate never overwrites an existing private key**: an `id_ed25519` that cannot be parsed is reported and left where it is.
 - Motion follows the ordinary rule: the spinner stills under `prefers-reduced-motion`.
+
+### Layers
+
+Floating surfaces are ordered once in `tokens.css` (`--layer-*`); a component never invents a number:
+
+| Token | Value | What sits there |
+| --- | --- | --- |
+| `--layer-workbench-overlay` | 10 | the runtime-setup console over the middle column |
+| `--layer-drag` | 20 | a tab drag preview and its drop highlight |
+| `--layer-window-chrome` | 30 | the fixed top-right controls of a live workspace |
+| `--layer-settings` | 40 | the settings page |
+| `--layer-dialog` | 50 | a modal question |
+| `--layer-menu` | 60 | an action list anchored in a page |
+| `--layer-toast` | 70 | a result, over the surface that produced it |
+| `--layer-statusbar-popover` | 80 | the quota popover |
+| `--layer-context-menu` | 90 | a pointer-positioned action list |
+
+**A pane is not part of that ladder.** Its tab strip, divider, terminal internals (xterm uses z-index 1–11) and editor internals are a local stack, isolated at their boundary (`isolation: isolate` on `.pane-chrome`, `.terminal-area` and `.file-area__body`). A surface that covers the workbench therefore wins without knowing how many panes are open, and a pane-local z-index can never be raised above one. Dialogs stay outside the isolated bodies on purpose: a question owns the screen even when a covering layer is open behind it.
+
+**A covering layer takes the covered surface's controls with it.** While the settings page or the runtime-setup console is open, the top bar's files toggle and its seam stand down — they act on a layout nobody can see; the rail toggle stays, because the rail is still on screen beside the layer. The rule is the same one the settings page already followed; setup now follows it too.
+
+The rule for a new surface: if it floats over a region, give it a `--layer-*` token and place it in the ladder; if it belongs to a pane, stack it locally and isolate its boundary. "It happened to be later in the DOM" is not a layer.
 
 ### Density and hit areas
 
