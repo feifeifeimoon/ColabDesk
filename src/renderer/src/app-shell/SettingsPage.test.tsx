@@ -58,6 +58,8 @@ function baseState(update: UpdateStatus) {
     setTheme: noop,
     setLanguage: noop,
     setPanelWidth: noop,
+    zoomLevel: 0,
+    setZoomLevel: noop,
     refreshEnvironment: noop,
     refreshSshIdentity: noop,
     update,
@@ -79,6 +81,36 @@ const render = (section: SectionId): string => {
   return renderToStaticMarkup(createElement(SettingsPage));
 };
 const text = (html: string): string => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
+
+describe("the appearance section", () => {
+  it("shows the interface zoom with its current percentage and a reset", () => {
+    const html = render("appearance");
+
+    expect(text(html)).toContain("界面缩放");
+    expect(text(html)).toContain("调整整个窗口的显示比例。");
+    expect(text(html)).toContain("100%");
+    expect(html).toContain('data-testid="ui-zoom-value"');
+    expect(html).toContain("放大界面");
+    expect(html).toContain("缩小界面");
+    expect(html).toContain("重置");
+  });
+
+  it("disables only the step that would leave the range, and Reset at 100%", () => {
+    const disabledCount = (): number => (render("appearance").match(/disabled/g) ?? []).length;
+
+    store.current = { ...baseState({ state: "idle" }), zoomLevel: 0 };
+    expect(disabledCount()).toBe(1); // Reset
+
+    store.current = { ...baseState({ state: "idle" }), zoomLevel: -3 };
+    expect(disabledCount()).toBe(1); // Zoom out
+
+    store.current = { ...baseState({ state: "idle" }), zoomLevel: 5 };
+    expect(disabledCount()).toBe(1); // Zoom in
+
+    store.current = { ...baseState({ state: "idle" }), zoomLevel: 1 };
+    expect(disabledCount()).toBe(0);
+  });
+});
 
 describe("the account section", () => {
   it("shows the application version and the CLI version, distinguishably", () => {

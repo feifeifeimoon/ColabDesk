@@ -10,6 +10,7 @@
  */
 
 import type { StateCreator } from "zustand";
+import { normalizeStoredZoomLevel } from "@shared/zoom";
 import { PANEL_WIDTH, clampPanelWidth, type PanelSide } from "../../lib/panel-width";
 import {
   applyTheme,
@@ -24,6 +25,7 @@ import {
   saveTerminalAppearance,
 } from "../../lib/terminal-appearance";
 import { applyTerminalThemeAttribute, resolveTerminalThemeId } from "../../lib/terminal-theme";
+import { applyZoomLevel, readStoredZoomLevel, saveZoomLevel } from "../../lib/ui-zoom";
 import { normalizeUiLanguage, type UiLanguage } from "@shared/ui-language";
 import type { AppState, PreferencesSlice } from "../types";
 
@@ -75,6 +77,9 @@ export const createPreferencesSlice: StateCreator<AppState, [], [], PreferencesS
     filesOpen: true,
     panelWidths: { sidebar: readPanelWidth("sidebar"), files: readPanelWidth("files") },
     showFileSizes: readShowFileSizes(),
+    // The page can carry a Chromium zoom level from before this setting
+    // existed; the zoom watcher adopts it into the store on the first resize.
+    zoomLevel: readStoredZoomLevel() ?? 0,
 
     /** An explicit choice, which from then on outranks the OS. */
     setTheme: (preference) => {
@@ -132,6 +137,28 @@ export const createPreferencesSlice: StateCreator<AppState, [], [], PreferencesS
         // ignore storage quota/disabled errors
       }
       set({ showFileSizes: show });
+    },
+
+    setZoomLevel: (level) => {
+      // The stepper's buttons enforce its ends; a page already outside them
+      // may still step toward them, so only the page's range normalizes here.
+      const next = normalizeStoredZoomLevel(level);
+      saveZoomLevel(next);
+      applyZoomLevel(next);
+      set({ zoomLevel: next });
+    },
+
+    /**
+     * A zoom chord moved the page; it is already applied, only remember it.
+     * The page also has the last word at startup: the stored level is applied
+     * before the watcher's first reading, so a value the platform clamped is
+     * corrected to the level actually in effect rather than left stale.
+     */
+    syncZoomLevel: (level) => {
+      const next = normalizeStoredZoomLevel(level);
+      if (next === get().zoomLevel) return;
+      saveZoomLevel(next);
+      set({ zoomLevel: next });
     },
   };
 };

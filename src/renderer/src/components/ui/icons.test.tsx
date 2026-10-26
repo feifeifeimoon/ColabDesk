@@ -22,9 +22,14 @@ const SIZE = 16;
  * An X is an X: the tab's close and the window's close are the same glyph at
  * different sizes, and they never sit side by side, so they cannot be mistaken
  * for each other. The rule this file defends is about icons sharing a context —
- * the top bar, where a gear once read as the theme toggle's sun.
+ * the top bar, where a gear once read as the theme toggle's sun. A minus is a
+ * minus: the window's minimize is a horizontal stroke and so is zoom-out, but
+ * one belongs to window chrome and the other to a settings stepper.
  */
-const DELIBERATE_TWINS: string[][] = [["CloseIcon", "CloseWindowIcon"]];
+const DELIBERATE_TWINS: string[][] = [
+  ["CloseIcon", "CloseWindowIcon"],
+  ["MinimizeIcon", "MinusIcon"],
+];
 
 const drawings = Object.entries(icons)
   .filter(([name]) => name.endsWith("Icon"))

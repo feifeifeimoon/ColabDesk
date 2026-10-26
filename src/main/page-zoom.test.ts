@@ -59,29 +59,71 @@ describe("pageZoomDelta", () => {
   });
 });
 
+type Listener = (event: { preventDefault(): void }, input: PageZoomInput) => void;
+
+/** A window whose zoom level the test can move between presses. */
+function harness(initialLevel: number) {
+  let level = initialLevel;
+  let listener: Listener | null = null;
+  const setZoomLevel = vi.fn();
+  const contents = {
+    on: vi.fn((name: string, handler: Listener) => {
+      if (name === "before-input-event") listener = handler;
+    }),
+    getZoomLevel: () => level,
+    setZoomLevel,
+  };
+  installPageZoomShortcuts({ webContents: contents } as unknown as BrowserWindow, "win32");
+
+  return {
+    setZoomLevel,
+    setLevel: (next: number) => {
+      level = next;
+    },
+    press: (patch: Partial<PageZoomInput>) => {
+      const preventDefault = vi.fn();
+      listener!({ preventDefault }, input(patch));
+      return preventDefault;
+    },
+  };
+}
+
 describe("installPageZoomShortcuts", () => {
   it("applies the step to the window and swallows the key", () => {
-    type Listener = (event: { preventDefault(): void }, input: PageZoomInput) => void;
-    let listener: Listener | null = null;
-    const setZoomLevel = vi.fn();
-    const contents = {
-      on: vi.fn((name: string, handler: Listener) => {
-        if (name === "before-input-event") listener = handler;
-      }),
-      getZoomLevel: () => 1,
-      setZoomLevel,
-    };
-    installPageZoomShortcuts({ webContents: contents } as unknown as BrowserWindow, "win32");
+    const h = harness(1);
 
-    const preventDefault = vi.fn();
-    listener!({ preventDefault }, input({ control: true, key: "=", code: "Equal" }));
+    const preventDefault = h.press({ control: true, key: "=", code: "Equal" });
     expect(preventDefault).toHaveBeenCalledTimes(1);
-    expect(setZoomLevel).toHaveBeenCalledWith(1.5);
+    expect(h.setZoomLevel).toHaveBeenCalledWith(1.5);
 
     // A chord that belongs to the terminal must reach it untouched.
-    const untouched = vi.fn();
-    listener!({ preventDefault: untouched }, input({ control: true, code: "Equal", shift: true }));
+    const untouched = h.press({ control: true, code: "Equal", shift: true });
     expect(untouched).not.toHaveBeenCalled();
-    expect(setZoomLevel).toHaveBeenCalledTimes(1);
+    expect(h.setZoomLevel).toHaveBeenCalledTimes(1);
+  });
+
+  it("steps toward the range from outside it, and ignores the chord past the end", () => {
+    const h = harness(7);
+
+    // Zoom-in at 7 must not clamp to 5 (which would shrink the page).
+    h.press({ control: true, key: "=", code: "Equal" });
+    expect(h.setZoomLevel).not.toHaveBeenCalled();
+
+    h.press({ control: true, code: "NumpadSubtract" });
+    expect(h.setZoomLevel).toHaveBeenLastCalledWith(6.5);
+    h.setZoomLevel.mockClear();
+
+    h.setLevel(5);
+    h.press({ control: true, key: "=", code: "Equal" });
+    expect(h.setZoomLevel).not.toHaveBeenCalled();
+    h.press({ control: true, code: "NumpadSubtract" });
+    expect(h.setZoomLevel).toHaveBeenLastCalledWith(4.5);
+    h.setZoomLevel.mockClear();
+
+    h.setLevel(-8);
+    h.press({ control: true, code: "NumpadSubtract" });
+    expect(h.setZoomLevel).not.toHaveBeenCalled();
+    h.press({ control: true, key: "=", code: "Equal" });
+    expect(h.setZoomLevel).toHaveBeenLastCalledWith(-7.5);
   });
 });

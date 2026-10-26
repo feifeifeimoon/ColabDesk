@@ -6,9 +6,13 @@ import App from "./App";
 import { initTheme } from "./lib/theme";
 import { readTerminalAppearance } from "./lib/terminal-appearance";
 import { applyTerminalThemeAttribute, resolveTerminalThemeId } from "./lib/terminal-theme";
+import { applyStoredZoomLevel } from "./lib/ui-zoom";
 import { I18nProvider } from "./i18n/I18nProvider";
 
 initTheme();
+// Before the first render: the page's scale is part of the window's layout, and
+// the top bar's macOS inset divides out `--ui-zoom-factor`.
+applyStoredZoomLevel();
 // Before the first render: the terminal's palette is CSS, and a pane that mounted
 // ahead of its attribute would paint in the stylesheet's default. Which palette
 // that is depends on the polarity `initTheme` just wrote — by default the

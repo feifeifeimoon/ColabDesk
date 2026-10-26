@@ -279,6 +279,14 @@ export function PlusIcon({ size }: IconProps) {
   );
 }
 
+export function MinusIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M3.5 8h9" />
+    </Svg>
+  );
+}
+
 export function CloseIcon({ size = 12 }: IconProps) {
   return (
     <Svg size={size}>

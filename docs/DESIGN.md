@@ -118,6 +118,7 @@ Three choices belong to a desktop console in particular:
 | --- | --- |
 | Design tokens (colour, type, spacing, radius, elevation, layers) | `src/renderer/src/assets/tokens.css` |
 | Terminal palettes (ten × 21 channels) | `src/renderer/src/assets/terminal-themes.css`; the contract and clamping in `lib/terminal-appearance.ts`, the reading and resolution in `lib/terminal-theme.ts`, the OSC replies in `lib/terminal-color-reply.ts` |
+| Interface zoom (levels, step, range, percent) | `src/shared/zoom.ts`; persistence in `lib/ui-zoom.ts` |
 | Base styles and component classes | `src/renderer/src/assets/main.css` |
 | UI primitives | `src/renderer/src/components/ui/` (`Button` / `Card`·`Panel`·`PanelRow` / `Badge`·`Status` / `SegmentedControl` / `Dialog` / `Field` / `Callout`·`EmptyState` / `Menu` / `PanelDivider` / `ProgressBar` / `RawOutput` / `icons`) |
 | Application shell | `src/renderer/src/app-shell/AppShell.tsx` |
@@ -271,7 +272,7 @@ Settings is **a layer over the workbench**, not a place outside it (`app-shell/S
 ```
 ┌ Back to Workbench ──────────┬───────────────────────────────────────────┐
 │ Interface                   │  ✎ Appearance                             │
-│  · Appearance      ← here   │  Language, theme…                         │
+│  · Appearance      ← here   │  Language, theme, zoom…                   │
 │  · Terminal                 │ ───────────────────────────────────────── │
 │  · Shortcuts                │  ┌ Panel ────────────────────────────────┐│
 │ Connection & Workbench      │  └───────────────────────────────────────┘│
@@ -287,6 +288,7 @@ Settings is **a layer over the workbench**, not a place outside it (`app-shell/S
 - **Section rail (260px)**: the **same width, same ground, same hairline, same row style** as the left rail, so entering settings reads as "this rail changed its contents" rather than "a new window opened". The first row is **Back to Workbench** (a left-chevron like `PanelLeft` + text, a full-width ghost button), then grouped sections: a `{typography.micro}` uppercase group name (Interface / Connection & Workbench / Colab Engine / App), and under it "icon + title" rows, the active one on `{colors.canvas-soft}` with a hairline and ink at weight 500 — the same treatment as an active session row in the left rail.
 - **Body: one section at a time.** Rather than stacking every setting into one scrolling column, the section the rail has selected owns the body (`max-width: 760px`, centred). Each section brings its own `{typography.title}` heading + one `{typography.mute}` line + a hairline, and only then the content (`Card` or `Panel`). **There is no "Settings" page title** — every section talks about its own subject.
 - **It opens on Appearance.** The account is a status page, not a preference, and the status bar already carries the balance and spend rate; the first screen should be the thing people came to change. Account and the local CLI environment share one section because "what am I signed in as" is answered by both halves — the Google identity comes from the API, the binary that carries the token from the local machine. **The third-party disclaimer belongs to About, not Account**: "not affiliated with Google" is a fact about the app that does not change with who is signed in, while Account says only what this account can see and do. The shortcut reference is its own section rather than the bottom of Terminal: half its rows are global, and a table below a long settings page is a table nobody finds.
+- **Appearance also owns the interface zoom.** A stepper — minus, the current percentage, plus, Reset — not a free slider: each step is a scale the rest of the interface has a layout for, and the percentage is the fact being chosen. It uses Chromium's half-level steps (the stepper's range is about 58%–249%, the same steps the page-zoom chords use), is remembered with the other preferences, and follows the chords when they move the page; Reset is disabled at 100%. The stepper is the shape Orca's UI Zoom uses; the app's twist is that it is also the readout for the zoom chords.
 - **In and out**: in — the gear at the foot of the rail, `Ctrl+,`; out — the rail's first row or `Esc`. The pane strips are behind this layer, so the settings page's own Back to Workbench is the tab-free way back.
 - **Focus handoff**: opening the page takes focus up from the terminals below, and closing it gives focus back to the element it came from. Otherwise the user types into settings and the characters land in a terminal they cannot see. **Changing the terminal's appearance must not touch focus either**: the terminal pane is still alive under this layer, and calling `focus()` on it hands the keyboard back to an invisible pane — which is why the hot-update path does not focus, and only a real click on the terminal does.
 - **A section may contain a picture**: the "Terminal" section puts a read-only sandbox at the top (`features/workspace/TerminalPreview.tsx`) built from **the same xterm, the same options and the same palette**, not an imitation. It is still **one column**: the 760px body width and the one-section-at-a-time rule do not bend for a preview, and a two-column side-by-side layout would be a different page shape.
@@ -304,6 +306,7 @@ Terminal first: application shortcuts always carry `Shift` and never take a comb
 | Right-click | Copy if there is a selection, otherwise paste |
 | `Ctrl/Cmd+Shift+F` | Find in the terminal |
 | `Ctrl+Shift+=` / `-` | Terminal font size (remembered in localStorage) |
+| `Ctrl/Cmd+=` / `-` / `0` | Page zoom in / out / reset; the Appearance stepper shows the same level |
 | `Ctrl/Cmd+Shift+T` | New terminal in the focused pane (the `+` on that pane's strip) |
 | `Ctrl/Cmd+Shift+N` | New session (request a runtime) |
 | `Ctrl/Cmd+Shift+W` | Close the focused pane's active tab (the last tab of the last pane is what hangs up SSH; a file tab counts; unsaved edits are asked about first) |
