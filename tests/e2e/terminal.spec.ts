@@ -270,6 +270,15 @@ test.describe("剪贴板", () => {
       await page.getByRole("checkbox", { name: "自动复制" }).check();
       await page.locator('[data-testid="close-settings"]').click();
 
+      // Find moves the selection programmatically; it is not a copy.
+      await focusTerminal(page);
+      await page.keyboard.press("Control+Shift+F");
+      await page.keyboard.type("shell #1");
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(300);
+      expect(await app.evaluate(({ clipboard }) => clipboard.readText())).toBe("untouched");
+      await page.keyboard.press("Escape");
+
       await selectTerminalRow(page, "root@e2e-runtime");
       await expect
         .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()))

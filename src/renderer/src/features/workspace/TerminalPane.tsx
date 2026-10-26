@@ -274,21 +274,48 @@ export function TerminalPane({
     };
 
     /**
-     * Select-to-copy writes after the selection settles, not on every change: a
-     * drag fires per cell, and copying each intermediate selection churns the
-     * clipboard. The selection stays — it is the visual proof of what was copied.
+     * Select-to-copy copies a *mouse* selection when the gesture ends, not on
+     * every selection change: Find and select-all move the selection
+     * programmatically, and a slow drag can pause for longer than any timer.
+     * The selection stays — it is the visual proof of what was copied.
      */
-    let copyTimer: number | null = null;
-    const scheduleCopy = (): void => {
-      if (!latest.current.copyOnSelect) return;
-      if (copyTimer !== null) window.clearTimeout(copyTimer);
-      copyTimer = window.setTimeout(() => {
-        copyTimer = null;
-        if (!latest.current.copyOnSelect || !terminal.hasSelection()) return;
-        copySelection();
-      }, 120);
+    let gesture: { x: number; y: number; selection: string } | null = null;
+    let disposed = false;
+    const onMouseDown = (event: MouseEvent): void => {
+      const target = event.target as Element | null;
+      if (event.button !== 0 || !target?.closest(".xterm-screen")) return;
+      gesture = {
+        x: event.clientX,
+        y: event.clientY,
+        selection: terminal.getSelection(),
+      };
     };
-    const selectionDisposable = terminal.onSelectionChange(scheduleCopy);
+    const onMouseUp = (event: MouseEvent): void => {
+      if (event.button !== 0 || !gesture) return;
+      const started = gesture;
+      gesture = null;
+      if (!latest.current.copyOnSelect) return;
+
+      const moved = Math.hypot(event.clientX - started.x, event.clientY - started.y) > 2;
+      const multiClick = event.detail > 1;
+      // xterm finalizes the selection on mouseup; read it after its handler.
+      window.setTimeout(() => {
+        if (disposed || !latest.current.copyOnSelect) return;
+        const selection = terminal.getSelection();
+        if (!selection) return;
+        // A plain click that leaves an existing (e.g. Find) selection alone is
+        // not a copy gesture; a drag, a double/triple click, or a selection
+        // that changed during the click is.
+        if (!moved && !multiClick && selection === started.selection) return;
+        void writeClipboard(selection);
+      }, 0);
+    };
+    const cancelGesture = (): void => {
+      gesture = null;
+    };
+    host.addEventListener("mousedown", onMouseDown, true);
+    window.addEventListener("mouseup", onMouseUp, true);
+    window.addEventListener("blur", cancelGesture);
 
     /**
      * Through xterm's own paste, not straight into the shell: it normalizes the
@@ -355,22 +382,12 @@ export function TerminalPane({
     const onContextMenu = (event: MouseEvent) => {
       event.preventDefault();
       if (latest.current.copyOnSelect) {
-        if (copyTimer !== null) {
-          window.clearTimeout(copyTimer);
-          copyTimer = null;
-        }
         const selection = terminal.getSelection();
-        if (selection) {
-          // The selection may still be inside its debounce; write it before
-          // pasting so the paste is what the user just selected, not the
-          // clipboard's previous owner.
-          void writeClipboard(selection).then(
-            () => paste(),
-            () => paste(),
-          );
-        } else {
-          void paste();
-        }
+        // Paste the selection itself: a round trip through the clipboard could
+        // paste its previous owner if the write failed, and a Find selection
+        // was never copied at all.
+        if (selection) terminal.paste(withoutEscapes(selection));
+        else void paste();
         return;
       }
       if (!copySelection()) void paste();
@@ -396,9 +413,11 @@ export function TerminalPane({
     observer.observe(host);
 
     return () => {
+      disposed = true;
       observer.disconnect();
-      selectionDisposable.dispose();
-      if (copyTimer !== null) window.clearTimeout(copyTimer);
+      host.removeEventListener("mousedown", onMouseDown, true);
+      window.removeEventListener("mouseup", onMouseUp, true);
+      window.removeEventListener("blur", cancelGesture);
       host.removeEventListener("contextmenu", onContextMenu);
       window.removeEventListener("keydown", onMacCopy);
       if (ackTimer.current !== null) window.clearTimeout(ackTimer.current);
