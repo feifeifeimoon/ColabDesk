@@ -9,7 +9,7 @@
  */
 
 import type { Locator, Page } from "@playwright/test";
-import { expect, focusTerminal, openSession, terminalRows, test } from "./app-launch";
+import { expect, focusTerminal, MOD, openSession, terminalRows, test } from "./app-launch";
 
 /** The visible pane showing a particular shell. */
 function paneWithShell(page: Page, ordinal: number): Locator {
@@ -371,7 +371,11 @@ test("新建运行时盖住分屏、文件面板和它们的顶栏控件", async
   await expect(page.locator(".tab-drag-chip")).toHaveCount(0);
   await expect(page.locator(".tab-drop-overlay")).toHaveCount(0);
 
-  await page.locator('[aria-label="新建会话"]').click();
+  // The rail button is covered by workbench.spec; this case is about the layer,
+  // and the shortcut is the same openNewSession action. It also keeps the test
+  // out of the post-drag pointer state, where the headless Linux runner can
+  // leave a rail click waiting for tens of seconds without firing it.
+  await page.keyboard.press(`${MOD}+Shift+N`);
   await expect(page.locator('[data-testid="runtime-setup"]')).toBeVisible();
   // The files panel is still open underneath, but its toggle and its seam
   // belong to a layout the console covers: they stand down with the console.
