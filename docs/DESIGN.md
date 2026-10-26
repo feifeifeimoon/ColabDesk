@@ -125,7 +125,7 @@ Three choices belong to a desktop console in particular:
 | Settings page | `src/renderer/src/app-shell/SettingsPage.tsx` |
 | Theme preference | `src/renderer/src/lib/theme.ts` |
 | Feature pages | `src/renderer/src/features/*` |
-| Landing page (`site/`) | Static HTML, CSS and ES modules with no build step. `site/tokens.css` is a byte-for-byte copy of the app's tokens (`npm run site:tokens`, asserted by `site/tokens.test.mjs`); `site/i18n.js` is a separate marketing catalog; the English screenshots come from `npm run gallery` |
+| Landing page (`site/`) | Static HTML, CSS and ES modules with no build step. `site/tokens.css` is a byte-for-byte copy of the app's tokens (`npm run site:tokens`, asserted by `site/tokens.test.mjs`); `site/i18n.js` is a separate marketing catalog; its one picture is a curated shot of a real T4/vLLM session (the mock has no vLLM server) |
 | What the renderer looks like (for a person) | `npm run gallery`: runs the **real app** against the mock backend and writes pictures to `screenshots/`. **There is no image baseline** — pictures are evidence in a review, not tests |
 | The regression net for design rules | Render assertions: real components + `renderToStaticMarkup` (no DOM needed, runs under `npm test`). Examples: `components/ui/icons.test.tsx` (icons must be distinguishable from each other), `features/workspace/Workbench.test.tsx` (a parked panel must be `hidden` + `inert`) |
 
@@ -222,6 +222,8 @@ The marketing page (`site/`) is read at a distance rather than worked in, so it 
 Everything else on that page is `copy`, `caption` or `micro` from the table above. There is no third scale: a landing page that keeps inventing sizes stops looking like the product it is selling.
 
 **Downloads are one primary plus an "Also for…" menu.** The primary button names the visitor's own platform and points straight at that installer; beside it sits one secondary, `View on GitHub`, because the repository is the next thing a developer looks for; the alternative builds live behind a disclosure (`Also for macOS` → rows of platform, architecture and file format). Several equal download buttons make the visitor choose before they have read anything; a disclosure keeps one decision on screen and still lets the other builds be found. The same rule as the app's one-primary-per-flow applies to a page.
+
+**The footer is a sitemap, not a second hero.** The brand, its one-line claim and a capability line sit on the left; `Product` and `Resources` link columns sit on the right; the licence and the unofficial notice close the page under a second hairline. Group labels are `{typography.micro}` uppercase sans in `mute`; links are `{typography.label}` in `body`, turning `ink` on hover. No buttons and no second download CTA — the footer is for finding things, not for asking again.
 
 ## Layout
 

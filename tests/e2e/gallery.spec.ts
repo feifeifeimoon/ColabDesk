@@ -211,19 +211,17 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
 });
 
 /**
- * The four states the landing page shows, in English.
+ * The app's states in English, for review.
  *
  * The gate's fixture pins the interface to Chinese so assertions never read the
- * host locale; the site's pictures are for an English-reading audience, so this
- * run flips the language the way a user does and shoots the same states. Both
+ * host locale; these shots are for an English-reading audience, so this run
+ * flips the language the way a user does and shoots the same states. Both
  * galleries come out of the one command.
  *
- * The page does not read `screenshots/`, so after a run copy the four files it
- * uses: `01-workbench-en-dark` → `site/assets/hero.png`,
- * `02-focus-en-light` → `terminal.png`, `07-file-tree-en-light` → `files.png`,
- * `06-settings-usage-en-light` → `quota.png`.
+ * The site no longer reads `screenshots/`: its one picture is the curated
+ * T4/vLLM hero (`site/assets/hero.png`), which the mock cannot reproduce.
  */
-test("@gallery English shots for the landing page", async ({ app, page, sandbox }) => {
+test("@gallery English shots", async ({ app, page, sandbox }) => {
   test.slow();
   mkdirSync(directory, { recursive: true });
 
@@ -339,16 +337,15 @@ test("@gallery 十套终端配色", async ({ page }) => {
 });
 
 /**
- * The README's hero picture — the one image that is *tracked*
- * (`docs/assets/hero.png`), because it is part of the front page rather than
- * review evidence.
+ * The staged start screen, for review.
  *
- * Written from here so it cannot go stale silently: running the gallery
- * refreshes it, and a refresh shows up as a diff in the next review. The
- * sessions are renamed demo entries in the sandbox's own store — the rail is
- * staged, the screen is not painted over.
+ * The README's hero is a curated screenshot of a real T4/vLLM session
+ * (`docs/assets/hero.png`); the mock has no vLLM server or GPU, so it cannot
+ * reproduce that state, and this run must not overwrite it. What is checked
+ * here is the staging technique: two plausible sessions in the sandbox's own
+ * store, with the fixture's untracked row kept out of the rail.
  */
-test("@gallery README hero", async ({ app, page, sandbox }) => {
+test("@gallery staged start screen", async ({ app, page, sandbox }) => {
   const store = join(sandbox, ".config", "colab-cli", "sessions.json");
   const seeded = JSON.parse(readFileSync(store, "utf8")) as Record<string, Record<string, unknown>>;
   const entries = Object.values(seeded);
@@ -389,8 +386,8 @@ test("@gallery README hero", async ({ app, page, sandbox }) => {
   await expect(page.locator('[data-testid="sidebar-list"]')).toContainText("data-prep");
   await expect(page.locator('[data-testid="untracked-row"]')).toHaveCount(0);
 
-  const hero = join(process.cwd(), "docs", "assets");
-  mkdirSync(hero, { recursive: true });
-  await page.screenshot({ path: join(hero, "hero.png") });
-  console.log(join(hero, "hero.png"));
+  const output = join(directory, "00-start-page-staged.png");
+  mkdirSync(directory, { recursive: true });
+  await page.screenshot({ path: output });
+  console.log(output);
 });

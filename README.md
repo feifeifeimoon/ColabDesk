@@ -18,7 +18,7 @@
 <h3 align="center"><a href="https://github.com/feifeifeimoon/ColabDesk/releases"><ins>Download</ins></a></h3>
 
 <p align="center">
-  <img src="docs/assets/hero.png" alt="ColabDesk's start screen: the session rail with two runtimes on the left, the brand and its four capabilities in the middle, and the compute-unit status bar along the bottom" width="960" />
+  <img src="docs/assets/hero.png" alt="ColabDesk's workbench: the session rail on the left, a Qwen chat running in the terminal, vLLM server logs, an nvidia-smi GPU readout, and the compute-unit status bar along the bottom" width="960" />
 </p>
 
 ## What it does

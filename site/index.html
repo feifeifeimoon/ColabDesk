@@ -23,9 +23,12 @@
       content="SSH in, work in a real terminal, browse the runtime's files over SFTP, and watch the compute units it is spending — in one window."
     />
     <meta property="og:image" content="https://colabdesk.dev/assets/hero.png" />
-    <meta property="og:image:width" content="1180" />
-    <meta property="og:image:height" content="780" />
-    <meta property="og:image:alt" content="ColabDesk's workbench with a live terminal and the files panel" />
+    <meta property="og:image:width" content="1600" />
+    <meta property="og:image:height" content="805" />
+    <meta
+      property="og:image:alt"
+      content="ColabDesk's workbench: a Qwen chat in the terminal, vLLM server logs, an nvidia-smi GPU readout, and the compute-unit status bar"
+    />
     <meta property="og:url" content="https://colabdesk.dev/" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="ColabDesk — a desktop SSH console for Google Colab runtimes" />
@@ -190,101 +193,120 @@
       </section>
 
       <div class="shot">
-        <div class="shot__bar dark" aria-hidden="true">
-          <span class="shot__dot"></span><span class="shot__dot"></span><span class="shot__dot"></span>
-          <span class="shot__title">colabdesk — GPU runtime</span>
-        </div>
         <img
           src="assets/hero.png"
-          alt="ColabDesk's workbench: the session rail on the left, terminal in the middle, files panel on the right, and the compute-unit status bar along the bottom"
+          alt="ColabDesk's workbench: the session rail on the left, a Qwen chat running in the terminal, vLLM server logs, an nvidia-smi GPU readout, and the compute-unit status bar along the bottom"
           data-i18n-alt="hero.alt"
-          width="1180"
-          height="780"
+          width="1600"
+          height="805"
         />
       </div>
 
-      <section class="section">
-        <h2 class="section__title" data-i18n="features.title">What it does</h2>
-        <div class="feature">
-          <div class="feature__copy">
-            <h3 class="feature__title" data-i18n="features.terminal.title">Terminal</h3>
-            <p class="feature__body" data-i18n="features.terminal.body">
-              Many tabs per runtime over one SSH connection — search, clickable links, ten palettes that follow the
-              light/dark theme.
-            </p>
-          </div>
-          <div class="shot shot--small">
-            <div class="shot__bar dark" aria-hidden="true">
-              <span class="shot__dot"></span><span class="shot__dot"></span><span class="shot__dot"></span>
-              <span class="shot__title">colabdesk — terminal</span>
-            </div>
-            <img
-              src="assets/terminal.png"
-              alt="ColabDesk in focus mode: a full-window terminal on one runtime"
-              data-i18n-alt="features.terminal.alt"
-              width="1180"
-              height="780"
-              loading="lazy"
-              decoding="async"
-            />
-          </div>
-        </div>
-        <div class="feature feature--flip">
-          <div class="feature__copy">
-            <h3 class="feature__title" data-i18n="features.files.title">Files</h3>
-            <p class="feature__body" data-i18n="features.files.body">
-              The runtime's filesystem as a tree: drag to upload files or whole folders, download, delete, with progress,
-              and you can cancel.
-            </p>
-          </div>
-          <div class="shot shot--small">
-            <div class="shot__bar dark" aria-hidden="true">
-              <span class="shot__dot"></span><span class="shot__dot"></span><span class="shot__dot"></span>
-              <span class="shot__title">colabdesk — files</span>
-            </div>
-            <img
-              src="assets/files.png"
-              alt="ColabDesk's files panel: the runtime's filesystem as a tree"
-              data-i18n-alt="features.files.alt"
-              width="1180"
-              height="780"
-              loading="lazy"
-              decoding="async"
-            />
-          </div>
-        </div>
-        <div class="feature">
-          <div class="feature__copy">
-            <h3 class="feature__title" data-i18n="features.quota.title">Quota</h3>
-            <p class="feature__body" data-i18n="features.quota.body">
-              Balance, spend rate, projected hours, and a day/week/month trend built from readings the app records.
-            </p>
-          </div>
-          <div class="shot shot--small">
-            <div class="shot__bar dark" aria-hidden="true">
-              <span class="shot__dot"></span><span class="shot__dot"></span><span class="shot__dot"></span>
-              <span class="shot__title">colabdesk — quota</span>
-            </div>
-            <img
-              src="assets/quota.png"
-              alt="ColabDesk's quota trend: compute units spent per day, week or month"
-              data-i18n-alt="features.quota.alt"
-              width="1180"
-              height="780"
-              loading="lazy"
-              decoding="async"
-            />
-          </div>
-        </div>
-      </section>
     </main>
 
     <footer class="footer">
-      <span data-i18n="footer.rights">© ColabDesk · Apache-2.0</span>
-      <span>
-        <span data-i18n="footer.unofficial">Unofficial, not affiliated with Google.</span>
-        <a class="inline-link" href="https://github.com/feifeifeimoon/ColabDesk" data-i18n="footer.github">GitHub</a>
-      </span>
+      <div class="footer__main">
+        <div class="footer__brand">
+          <a class="footer__brand-link" href="./" aria-label="ColabDesk">
+            <img
+              class="footer__lockup only-light"
+              src="assets/lockup.svg"
+              alt="ColabDesk"
+              width="125"
+              height="24"
+            />
+            <img
+              class="footer__lockup only-dark"
+              src="assets/lockup-white.svg"
+              alt="ColabDesk"
+              width="125"
+              height="24"
+            />
+          </a>
+          <p class="footer__tagline" data-i18n="footer.tagline">
+            A desktop SSH console for Google Colab runtimes.
+          </p>
+          <p class="footer__capabilities" data-i18n="footer.capabilities">
+            Terminal · Files · Editor · Sessions · Usage · SSH
+          </p>
+        </div>
+        <nav class="footer__group" aria-label="Product" data-i18n-aria="footer.product">
+          <h2 class="footer__heading" data-i18n="footer.product">Product</h2>
+          <ul class="footer__list">
+            <li>
+              <a
+                href="https://github.com/feifeifeimoon/ColabDesk/releases/latest"
+                target="_blank"
+                rel="noreferrer"
+                data-i18n="footer.download"
+              >
+                Download
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://github.com/feifeifeimoon/ColabDesk/releases"
+                target="_blank"
+                rel="noreferrer"
+                data-i18n="footer.releases"
+              >
+                Releases
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://github.com/feifeifeimoon/ColabDesk/issues"
+                target="_blank"
+                rel="noreferrer"
+                data-i18n="footer.issues"
+              >
+                Issues
+              </a>
+            </li>
+          </ul>
+        </nav>
+        <nav class="footer__group" aria-label="Resources" data-i18n-aria="footer.resources">
+          <h2 class="footer__heading" data-i18n="footer.resources">Resources</h2>
+          <ul class="footer__list">
+            <li>
+              <a
+                href="https://github.com/feifeifeimoon/ColabDesk/blob/main/README.md"
+                target="_blank"
+                rel="noreferrer"
+                data-i18n="footer.readme"
+              >
+                README
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://github.com/feifeifeimoon/ColabDesk/blob/main/LICENSE"
+                target="_blank"
+                rel="noreferrer"
+                data-i18n="footer.license"
+              >
+                License
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://github.com/feifeifeimoon/ColabDesk"
+                target="_blank"
+                rel="noreferrer"
+                data-i18n="footer.github"
+              >
+                GitHub
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+      <div class="footer__bottom">
+        <span data-i18n="footer.rights">© ColabDesk · Apache-2.0</span>
+        <span data-i18n="footer.unofficial">
+          Unofficial, not affiliated with Google. Colab is a trademark of Google LLC.
+        </span>
+      </div>
     </footer>
 
     <script type="module" src="main.js"></script>
