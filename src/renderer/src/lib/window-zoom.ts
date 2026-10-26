@@ -53,7 +53,11 @@ export function watchWindowZoom(options?: {
   syncButtons?: (factor: number) => void;
   isMac?: boolean;
   target?: ZoomSyncTarget;
-  /** Called with the level on start and whenever a resize changes it. */
+  /**
+   * Called with the level on start and whenever a resize changes it. On start
+   * the page has the last word: the stored level was applied before this runs,
+   * so what is actually in effect is what the stepper must show.
+   */
   onLevel?: (level: number) => void;
 }): () => void {
   const target = options?.target ?? defaultTarget();

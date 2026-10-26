@@ -8,7 +8,13 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { UI_ZOOM_MAX, UI_ZOOM_MIN, UI_ZOOM_STEP, uiZoomPercent } from "@shared/zoom";
+import {
+  UI_ZOOM_MAX,
+  UI_ZOOM_MIN,
+  UI_ZOOM_STEP,
+  stepUiZoomLevel,
+  uiZoomPercent,
+} from "@shared/zoom";
 import { Button, IconButton } from "../components/ui/Button";
 import { MinusIcon, PlusIcon, RestartIcon } from "../components/ui/icons";
 import { PanelRow } from "../components/ui/Card";
@@ -33,7 +39,7 @@ export function ZoomSetting() {
             size="sm"
             label={t("settings.appearanceZoomOut", "缩小界面")}
             disabled={level <= UI_ZOOM_MIN}
-            onClick={() => setZoomLevel(level - UI_ZOOM_STEP)}
+            onClick={() => setZoomLevel(stepUiZoomLevel(level, -UI_ZOOM_STEP))}
           >
             <MinusIcon size={14} />
           </IconButton>
@@ -49,7 +55,7 @@ export function ZoomSetting() {
             size="sm"
             label={t("settings.appearanceZoomIn", "放大界面")}
             disabled={level >= UI_ZOOM_MAX}
-            onClick={() => setZoomLevel(level + UI_ZOOM_STEP)}
+            onClick={() => setZoomLevel(stepUiZoomLevel(level, UI_ZOOM_STEP))}
           >
             <PlusIcon size={14} />
           </IconButton>

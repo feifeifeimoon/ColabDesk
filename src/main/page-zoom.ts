@@ -15,7 +15,7 @@
  */
 
 import type { BrowserWindow } from "electron";
-import { UI_ZOOM_STEP, clampUiZoomLevel } from "@shared/zoom";
+import { UI_ZOOM_STEP, stepUiZoomLevel } from "@shared/zoom";
 
 /** The subset of Electron's `Input` this decision needs. */
 export interface PageZoomInput {
@@ -62,8 +62,10 @@ export function installPageZoomShortcuts(
     const delta = pageZoomDelta(input, platform);
     if (delta === null) return;
     event.preventDefault();
-    // The stepper and the chords share one range; a chord that ran past the
-    // end would leave the stepper showing a face it could not step back to.
-    contents.setZoomLevel(clampUiZoomLevel(contents.getZoomLevel() + delta));
+    // A step at the stepper's end is swallowed but does not move the page: at
+    // level 7, clamping 7.5 to 5 would make zoom-in shrink the page.
+    const current = contents.getZoomLevel();
+    const next = stepUiZoomLevel(current, delta);
+    if (next !== current) contents.setZoomLevel(next);
   });
 }

@@ -6,6 +6,7 @@ import {
   UI_ZOOM_MIN,
   clampUiZoomLevel,
   normalizeStoredZoomLevel,
+  stepUiZoomLevel,
   uiZoomPercent,
 } from "./zoom";
 
@@ -41,5 +42,25 @@ describe("normalizeStoredZoomLevel", () => {
     expect(normalizeStoredZoomLevel(PAGE_ZOOM_MIN - 2)).toBe(PAGE_ZOOM_MIN);
     expect(normalizeStoredZoomLevel(PAGE_ZOOM_MAX + 2)).toBe(PAGE_ZOOM_MAX);
     expect(normalizeStoredZoomLevel(Number.NaN)).toBe(0);
+  });
+});
+
+describe("stepUiZoomLevel", () => {
+  it("steps inside the range and stops at its ends", () => {
+    expect(stepUiZoomLevel(0, 0.5)).toBe(0.5);
+    expect(stepUiZoomLevel(0, -0.5)).toBe(-0.5);
+    expect(stepUiZoomLevel(UI_ZOOM_MAX, 0.5)).toBe(UI_ZOOM_MAX);
+    expect(stepUiZoomLevel(UI_ZOOM_MIN, -0.5)).toBe(UI_ZOOM_MIN);
+  });
+
+  it("moves a page outside the range toward it, not across it", () => {
+    // Zoom-in at 7 must not jump to 5 (which would shrink the page).
+    expect(stepUiZoomLevel(7, 0.5)).toBe(7);
+    expect(stepUiZoomLevel(7, -0.5)).toBe(6.5);
+    expect(stepUiZoomLevel(-8, -0.5)).toBe(-8);
+    expect(stepUiZoomLevel(-8, 0.5)).toBe(-7.5);
+    // The step that reaches the boundary lands on it.
+    expect(stepUiZoomLevel(5.2, -0.5)).toBe(UI_ZOOM_MAX);
+    expect(stepUiZoomLevel(-3.2, 0.5)).toBe(UI_ZOOM_MIN);
   });
 });
