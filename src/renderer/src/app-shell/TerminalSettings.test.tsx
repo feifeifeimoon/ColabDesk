@@ -35,7 +35,12 @@ import { TerminalSettings } from "./TerminalSettings";
 const noop = () => {};
 
 beforeEach(() => {
-  store.current = { terminal: DEFAULT_TERMINAL_APPEARANCE, setTerminalAppearance: noop };
+  store.current = {
+    terminal: DEFAULT_TERMINAL_APPEARANCE,
+    setTerminalAppearance: noop,
+    copyOnSelect: false,
+    setCopyOnSelect: noop,
+  };
 });
 
 const render = (): string => renderToStaticMarkup(createElement(TerminalSettings));
@@ -80,6 +85,8 @@ describe("the terminal section", () => {
     store.current = {
       terminal: { ...DEFAULT_TERMINAL_APPEARANCE, followAppTheme: false },
       setTerminalAppearance: noop,
+      copyOnSelect: false,
+      setCopyOnSelect: noop,
     };
     const markup = render();
 
@@ -110,11 +117,31 @@ describe("the terminal section", () => {
     expect(render()).toContain("Ctrl+Shift+= / -");
   });
 
-  it("names the three groups it splits into", () => {
+  it("names the four groups it splits into", () => {
     const markup = render();
-    for (const heading of ["配色", "排版", "光标与视口"]) {
+    for (const heading of ["配色", "排版", "光标与视口", "复制与粘贴"]) {
       expect(markup, heading).toContain(heading);
     }
+  });
+
+  it("offers select-to-copy, off by default and checked when chosen", () => {
+    // The last checkbox in the section is the copy-on-select one; the follow
+    // switch above it is checked by default, so the whole markup cannot answer.
+    const copyCheckbox = (markup: string): string => markup.slice(markup.lastIndexOf('class="checkbox"'));
+
+    const off = render();
+    expect(text(off)).toContain("选中即复制");
+    expect(text(off)).toContain("自动复制");
+    expect(copyCheckbox(off)).toContain('type="checkbox"');
+    expect(copyCheckbox(off)).not.toContain('checked=""');
+
+    store.current = {
+      terminal: DEFAULT_TERMINAL_APPEARANCE,
+      setTerminalAppearance: noop,
+      copyOnSelect: true,
+      setCopyOnSelect: noop,
+    };
+    expect(copyCheckbox(render())).toContain('checked=""');
   });
 });
 

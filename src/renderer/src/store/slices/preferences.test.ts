@@ -122,3 +122,17 @@ describe("the zoom preference", () => {
     expect(state.getState().zoomLevel).toBe(0);
   });
 });
+
+describe("copy on select", () => {
+  it("is off until chosen, and is remembered", () => {
+    const state = store();
+    expect(state.getState().copyOnSelect).toBe(false);
+
+    state.getState().setCopyOnSelect(true);
+    expect(storage.get("colabdesk.terminal.copyOnSelect")).toBe("true");
+    expect(state.getState().copyOnSelect).toBe(true);
+
+    storage.set("colabdesk.terminal.copyOnSelect", "true");
+    expect(store().getState().copyOnSelect).toBe(true);
+  });
+});

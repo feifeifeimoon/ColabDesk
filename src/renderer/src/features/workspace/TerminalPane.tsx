@@ -67,7 +67,8 @@ function withoutEscapes(text: string): string {
  *
  * The keys follow terminal convention rather than app convention: copy and
  * paste need a modifier (plain Ctrl+C must stay SIGINT), a right click copies
- * the selection or pastes, and Ctrl+Shift+± resizes the font.
+ * the selection or pastes — with select-to-copy on it always pastes, because
+ * the selection is already on the clipboard — and Ctrl+Shift+± resizes the font.
  *
  * How it looks is a global preference the pane subscribes to itself: colours,
  * type, cursor and buffer are read from the store here rather than threaded down
@@ -88,6 +89,7 @@ export function TerminalPane({
   const { t } = useTranslation();
   const appearance = useAppStore((state) => state.terminal);
   const terminalThemeId = useAppStore((state) => state.terminalThemeId);
+  const copyOnSelect = useAppStore((state) => state.copyOnSelect);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
@@ -112,9 +114,9 @@ export function TerminalPane({
   const [attempt, setAttempt] = useState(0);
 
   /** What the handlers below need, read when they run rather than when they were made. */
-  const latest = useRef({ visible, focused, appearance });
+  const latest = useRef({ visible, focused, appearance, copyOnSelect });
   useEffect(() => {
-    latest.current = { visible, focused, appearance };
+    latest.current = { visible, focused, appearance, copyOnSelect };
   });
 
   // Stable on purpose: this is a dependency of the shell effect, and a new
@@ -272,6 +274,23 @@ export function TerminalPane({
     };
 
     /**
+     * Select-to-copy writes after the selection settles, not on every change: a
+     * drag fires per cell, and copying each intermediate selection churns the
+     * clipboard. The selection stays — it is the visual proof of what was copied.
+     */
+    let copyTimer: number | null = null;
+    const scheduleCopy = (): void => {
+      if (!latest.current.copyOnSelect) return;
+      if (copyTimer !== null) window.clearTimeout(copyTimer);
+      copyTimer = window.setTimeout(() => {
+        copyTimer = null;
+        if (!latest.current.copyOnSelect || !terminal.hasSelection()) return;
+        copySelection();
+      }, 120);
+    };
+    const selectionDisposable = terminal.onSelectionChange(scheduleCopy);
+
+    /**
      * Through xterm's own paste, not straight into the shell: it normalizes the
      * line endings and, when the program asked for bracketed paste, wraps the
      * text so that the program can tell a paste from typing. Escape sequences
@@ -335,6 +354,25 @@ export function TerminalPane({
 
     const onContextMenu = (event: MouseEvent) => {
       event.preventDefault();
+      if (latest.current.copyOnSelect) {
+        if (copyTimer !== null) {
+          window.clearTimeout(copyTimer);
+          copyTimer = null;
+        }
+        const selection = terminal.getSelection();
+        if (selection) {
+          // The selection may still be inside its debounce; write it before
+          // pasting so the paste is what the user just selected, not the
+          // clipboard's previous owner.
+          void writeClipboard(selection).then(
+            () => paste(),
+            () => paste(),
+          );
+        } else {
+          void paste();
+        }
+        return;
+      }
       if (!copySelection()) void paste();
     };
     host.addEventListener("contextmenu", onContextMenu);
@@ -359,6 +397,8 @@ export function TerminalPane({
 
     return () => {
       observer.disconnect();
+      selectionDisposable.dispose();
+      if (copyTimer !== null) window.clearTimeout(copyTimer);
       host.removeEventListener("contextmenu", onContextMenu);
       window.removeEventListener("keydown", onMacCopy);
       if (ackTimer.current !== null) window.clearTimeout(ackTimer.current);

@@ -132,6 +132,8 @@ export function TerminalSettings() {
   const { t } = useTranslation();
   const terminal = useAppStore((state) => state.terminal);
   const setTerminalAppearance = useAppStore((state) => state.setTerminalAppearance);
+  const copyOnSelect = useAppStore((state) => state.copyOnSelect);
+  const setCopyOnSelect = useAppStore((state) => state.setCopyOnSelect);
   const missingFonts = useMissingFonts();
 
   const label = (value: number | string, table: Record<string, [string, string]>): string => {
@@ -311,6 +313,23 @@ export function TerminalSettings() {
                 </option>
               ))}
             </Select>
+          }
+        />
+      </Panel>
+
+      <Panel title={t("settings.terminalPanelClipboard", "复制与粘贴")}>
+        <PanelRow
+          label={t("settings.terminalCopyOnSelectLabel", "选中即复制")}
+          description={t(
+            "settings.terminalCopyOnSelectDesc",
+            "在终端中选中文本后自动复制到剪贴板；开启后右键直接粘贴。",
+          )}
+          actions={
+            <Checkbox
+              checked={copyOnSelect}
+              onChange={(event) => setCopyOnSelect(event.target.checked)}
+              label={t("settings.terminalCopyOnSelectOn", "自动复制")}
+            />
           }
         />
       </Panel>
