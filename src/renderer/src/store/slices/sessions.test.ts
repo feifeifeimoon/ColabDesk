@@ -13,9 +13,10 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createStore } from "zustand/vanilla";
-import type { EnvironmentSlice, SessionsSlice, WorkspaceSlice } from "../types";
+import type { EnvironmentSlice, SessionsSlice, SurfacesSlice, WorkspaceSlice } from "../types";
 import { createEnvironmentSlice } from "./environment";
 import { createSessionsSlice } from "./sessions";
+import { createSurfacesSlice } from "./surfaces";
 import { createWorkspaceSlice } from "./workspace";
 
 vi.mock("../../lib/api", () => ({
@@ -25,13 +26,14 @@ vi.mock("../../lib/api", () => ({
 }));
 import { listSessions } from "../../lib/api";
 
-type TestState = WorkspaceSlice & SessionsSlice & EnvironmentSlice;
+type TestState = WorkspaceSlice & SessionsSlice & EnvironmentSlice & SurfacesSlice;
 
 function appStore() {
   return createStore<TestState>()((set, get, api) => ({
     ...createWorkspaceSlice(set as never, get as never, api as never),
     ...createSessionsSlice(set as never, get as never, api as never),
     ...createEnvironmentSlice(set as never, get as never, api as never),
+    ...createSurfacesSlice(set as never, get as never, api as never),
   }));
 }
 
@@ -69,5 +71,26 @@ describe("loadSessions", () => {
     expect(store.getState().tabs).toHaveLength(1);
     expect(store.getState().selectedSession).toBe("alpha");
     expect(store.getState().error).toContain("解析 sessions.json 失败");
+  });
+});
+
+describe("runSessionAction", () => {
+  it("关闭全部标签先问，取消就不动，确认才关", async () => {
+    const store = appStore();
+    store.getState().openFileTab("alpha", "/content/notes.txt", "notes.txt");
+    const tab = store.getState().tabs[0]!;
+    store.getState().setTabDirty(tab.id, true);
+
+    const asked = store.getState().runSessionAction("alpha", "close-all");
+    expect(store.getState().confirmation?.title).toBe("关闭「alpha」的全部标签？");
+
+    store.getState().resolveConfirmation(false);
+    await asked;
+    expect(store.getState().tabs).toHaveLength(1);
+
+    const confirmed = store.getState().runSessionAction("alpha", "close-all");
+    store.getState().resolveConfirmation(true);
+    await confirmed;
+    expect(store.getState().tabs).toHaveLength(0);
   });
 });

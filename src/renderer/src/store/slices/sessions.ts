@@ -104,13 +104,14 @@ export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> 
       // Closing every tab is how the session's connection is let go — and a
       // file tab can be holding edits. Asked once, the way stopping asks:
       // nothing else in this app can lose work without a question.
-      if (
-        hasUnsavedEdits(get, name) &&
-        !globalThis.confirm?.(
-          translate("sessions.closeAllConfirm", `「${name}」有未保存的文件修改，全部关闭会丢失它们。`, { name }),
-        )
-      ) {
-        return;
+      if (hasUnsavedEdits(get, name)) {
+        const confirmed = await get().requestConfirmation({
+          title: translate("sessions.closeAllTitle", `关闭「${name}」的全部标签？`, { name }),
+          body: translate("sessions.closeAllBody", "有未保存的文件修改，关闭会丢失它们。"),
+          confirmLabel: translate("sessions.closeAllAction", "关闭全部标签"),
+          destructive: true,
+        });
+        if (!confirmed) return;
       }
       get().closeSessionTabs(name);
       return;
@@ -123,13 +124,17 @@ export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> 
       });
       return;
     }
-    // Outside a window there is nobody to ask, so the answer is no.
     if (action === "stop") {
       const unsaved = hasUnsavedEdits(get, name);
-      const question = unsaved
-        ? translate("sessions.stopConfirmDirty", `停止会话「${name}」？未保存的运行时数据与文件修改都会丢失。`, { name })
-        : translate("sessions.stopConfirm", `停止会话「${name}」？未保存的运行时数据会丢失。`, { name });
-      if (!globalThis.confirm?.(question)) return;
+      const confirmed = await get().requestConfirmation({
+        title: translate("sessions.stopTitle", `停止「${name}」？`, { name }),
+        body: unsaved
+          ? translate("sessions.stopBodyDirty", "未保存的运行时数据与文件修改都会丢失。")
+          : translate("sessions.stopBody", "未保存的运行时数据会丢失。"),
+        confirmLabel: translate("sessions.stopAction", "停止会话"),
+        destructive: true,
+      });
+      if (!confirmed) return;
     }
 
     set({ busyAction: `${name}:${action}` });
