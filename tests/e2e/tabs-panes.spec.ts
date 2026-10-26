@@ -365,6 +365,11 @@ test("新建运行时盖住分屏、文件面板和它们的顶栏控件", async
   const activePane = page.locator(".pane-slot:visible").first();
   await dragTabTo(page, secondTab, await rightEdgeOf(activePane), "right");
   await expect(page.locator(".pane-divider")).toHaveCount(1);
+  // The drop's state settles in an effect after pointer-up. A click that lands
+  // while dnd-kit still has an overlay up belongs to the drag, not to the
+  // button underneath it — wait for that state to clear before opening setup.
+  await expect(page.locator(".tab-drag-chip")).toHaveCount(0);
+  await expect(page.locator(".tab-drop-overlay")).toHaveCount(0);
 
   await page.locator('[aria-label="新建会话"]').click();
   await expect(page.locator('[data-testid="runtime-setup"]')).toBeVisible();
