@@ -438,7 +438,7 @@ a {
   font-size: var(--text-micro);
 }
 
-/* ---- screenshots: the terminal is dark in both polarities ---------------- */
+/* ---- screenshots -------------------------------------------------------- */
 
 .shot {
   max-width: min(980px, calc(100% - var(--space-6)));
@@ -450,114 +450,99 @@ a {
   box-shadow: var(--shadow-4);
 }
 
-.shot__bar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: var(--space-2) var(--space-3);
-  background: var(--canvas);
-  border-bottom: 1px solid var(--canvas-soft-2);
-}
-
-.shot__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-full);
-  background: var(--hairline-strong);
-}
-
-.shot__title {
-  margin-left: var(--space-2);
-  color: var(--mute);
-  font-family: var(--font-mono);
-  font-size: var(--text-micro);
-}
-
 .shot img {
   display: block;
   width: 100%;
   height: auto;
 }
 
-.shot--small {
-  max-width: none;
-  margin: 0;
-  box-shadow: var(--shadow-3);
-}
-
-/* ---- sections ----------------------------------------------------------- */
-
-.section {
-  max-width: 920px;
-  margin: 0 auto;
-  padding: clamp(64px, 8vw, 96px) var(--space-6) 0;
-}
-
-.section__title {
-  margin: 0 0 var(--space-6);
-  text-align: center;
-  font-size: 24px;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  text-wrap: balance;
-}
-
-/* ---- features: three rows, image alternating ---------------------------- */
-
-.feature {
-  display: grid;
-  grid-template-columns: 1fr 1.25fr;
-  align-items: center;
-  gap: var(--space-8);
-  margin-bottom: var(--space-8);
-}
-
-.feature:last-child {
-  margin-bottom: 0;
-}
-
-.feature--flip {
-  grid-template-columns: 1.25fr 1fr;
-}
-
-.feature--flip .shot {
-  order: -1;
-}
-
-.feature__title {
-  margin: 0 0 var(--space-2);
-  font-size: var(--text-title-sm);
-  font-weight: 600;
-  letter-spacing: -0.4px;
-}
-
-.feature__body {
-  max-width: 40ch;
-  margin: 0;
-  color: var(--body);
-  font-size: 16px;
-  line-height: 1.65;
-  text-wrap: pretty;
-}
-
-/* ---- footer ------------------------------------------------------------- */
+/* ---- footer: a sitemap, not a second hero ------------------------------- */
 
 .footer {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: var(--space-3);
   max-width: 1080px;
   margin: var(--space-8) auto 0;
-  padding: var(--space-5) var(--space-6) var(--space-7);
+  padding: var(--space-6) var(--space-6) var(--space-7);
   border-top: 1px solid var(--hairline);
   color: var(--body);
   font-size: var(--text-caption);
 }
 
-.footer .inline-link {
-  margin-left: var(--space-2);
-  color: var(--link-deep);
+.footer__main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) 1fr 1fr;
+  gap: var(--space-8);
+}
+
+.footer__brand-link {
+  display: inline-flex;
+  align-items: center;
+}
+
+.footer__lockup {
+  display: block;
+  width: auto;
+  height: 24px;
+}
+
+.footer__tagline {
+  max-width: 40ch;
+  margin: var(--space-3) 0 0;
+  color: var(--body);
+  font-size: var(--text-label);
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.footer__capabilities {
+  margin: var(--space-2) 0 0;
+  color: var(--mute);
+  font-size: var(--text-caption);
+  line-height: 1.6;
+}
+
+.footer__group {
+  min-width: 0;
+}
+
+.footer__heading {
+  margin: 0 0 var(--space-3);
+  color: var(--mute);
+  font-size: var(--text-micro);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.footer__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.footer__list li + li {
+  margin-top: var(--space-2);
+}
+
+.footer__list a {
+  color: var(--body);
+  font-size: var(--text-label);
+}
+
+.footer__list a:hover {
+  color: var(--ink);
+}
+
+.footer__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--hairline);
+  color: var(--mute);
+  font-size: var(--text-caption);
+  line-height: 1.6;
 }
 
 /* ---- polarity ----------------------------------------------------------- */
@@ -583,14 +568,13 @@ a {
 }
 
 @media (max-width: 860px) {
-  .feature,
-  .feature--flip {
-    grid-template-columns: 1fr;
-    gap: var(--space-4);
+  .footer__main {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6) var(--space-4);
   }
 
-  .feature--flip .shot {
-    order: 0;
+  .footer__brand {
+    grid-column: 1 / -1;
   }
 }
 
@@ -607,11 +591,16 @@ a {
     flex: 1 1 100%;
   }
 
-  .section {
-    padding: var(--space-7) var(--space-4) 0;
-  }
-
   .footer {
     padding: var(--space-5) var(--space-4) var(--space-7);
+  }
+
+  .footer__bottom {
+    display: block;
+  }
+
+  .footer__bottom span + span {
+    display: block;
+    margin-top: var(--space-1);
   }
 }
