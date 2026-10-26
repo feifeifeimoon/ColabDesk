@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { StatusBar } from "./app-shell/AppShell";
 import { Banners } from "./app-shell/Banners";
+import { ConfirmationDialog } from "./app-shell/ConfirmationDialog";
 import { SettingsPage } from "./app-shell/SettingsPage";
 import { ShellBar } from "./app-shell/ShellBar";
 import { Toasts } from "./app-shell/Toasts";
@@ -51,6 +52,7 @@ export default function App() {
       <WorkspaceWindowChrome />
       <StatusBar />
       <Toasts />
+      <ConfirmationDialog />
     </div>
   );
 }

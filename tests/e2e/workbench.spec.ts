@@ -521,12 +521,29 @@ test("会话没了之后，工作台回到前门，不会停在「还没有终�
   await expect(page.locator(".startpage")).toContainText("「e2e-alpha」还没有终端。");
 
   // 停止会话：桩把它从 sessions.json 里删掉，和真机上「删除运行时后同步」是同一条路。
-  page.on("dialog", (dialog) => void dialog.accept());
   const row = page.locator(".session-row", { hasText: "e2e-alpha" });
   // 行上的动作指向它才出现，所以先移过去——人也得先指到那一行。
   await row.hover();
   await row.locator(".menu__trigger").click();
   await page.getByRole("menuitem", { name: "停止会话" }).click();
+
+  // 问的是应用自己的对话框，不是系统 confirm()。
+  const confirm = page.getByRole("dialog");
+  await expect(confirm).toBeVisible();
+  await expect(confirm).toContainText("停止「e2e-alpha」？");
+  await expect(confirm).toContainText("未保存的运行时数据会丢失。");
+
+  // 取消：只关掉问题，会话还在。
+  await confirm.getByRole("button", { name: "取消" }).click();
+  await expect(confirm).toHaveCount(0);
+  await expect(row).toBeVisible();
+
+  // 再来一次并确认：这次才真的停止。
+  await row.hover();
+  await row.locator(".menu__trigger").click();
+  await page.getByRole("menuitem", { name: "停止会话" }).click();
+  await expect(confirm).toBeVisible();
+  await confirm.getByRole("button", { name: "停止会话" }).click();
 
   await expect(page.locator('[data-testid="session-row"]')).toHaveCount(1);
   await expect(page.locator(".startpage")).toContainText("选一个会话，或新建一个运行时。");

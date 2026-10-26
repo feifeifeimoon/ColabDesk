@@ -273,16 +273,38 @@ export type SectionId =
   | "usage"
   | "about";
 
+/**
+ * A question the app is waiting on. It lives in the store rather than in the
+ * component that asked, so an async action can await the answer across renders.
+ */
+export interface ConfirmationRequest {
+  title: string;
+  /** One sentence under the title; the title carries the question itself. */
+  body: string;
+  confirmLabel: string;
+  /** Paints the affirmative action as the irreversible one. */
+  destructive?: boolean;
+}
+
+export interface PendingConfirmation extends ConfirmationRequest {
+  resolve(confirmed: boolean): void;
+}
+
 export interface SurfacesSlice {
   settingsOpen: boolean;
   /** Survives closing and reopening, so settings comes back where you left it. */
   settingsSection: SectionId;
+  /** The question on screen, if any. One at a time; a second request cancels the first. */
+  confirmation: PendingConfirmation | null;
 
   /** `section` is how a caller elsewhere in the app deep-links into settings. */
   openSettings(section?: SectionId): void;
   closeSettings(): void;
   toggleSettings(): void;
   setSettingsSection(section: SectionId): void;
+  /** Resolves false when another question replaces it, so no caller is left waiting. */
+  requestConfirmation(request: ConfirmationRequest): Promise<boolean>;
+  resolveConfirmation(confirmed: boolean): void;
 }
 
 /** What `colab new` is asked for — the same shape the IPC call takes. */
