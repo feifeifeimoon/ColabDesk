@@ -209,7 +209,7 @@ export function PaneSurface({
                 leading={workspaceChrome && !sidebarOpen && groupId === firstTop}
                 trailing={
                   workspaceChrome && !filesOpen && groupId === lastTop
-                    ? "calc(var(--window-controls-width, 0px) + 44px)"
+                    ? "var(--workspace-chrome-width)"
                     : undefined
                 }
               />

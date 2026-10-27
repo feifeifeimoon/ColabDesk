@@ -148,12 +148,12 @@ test("工作区的窗口控制浮在右上角，文件面板开关和它同一�
       rightInset: window.innerWidth - rect.right,
     };
   });
-  // Standard 32px icon button, with at least an 8px right inset on macOS (or
-  // the 132px window-controls run on Windows/Linux) so it never sits on the
-  // window's rounded corner or resize border.
+  // Standard 32px icon button, with an 8px right inset on macOS (or the 132px
+  // window-controls run on Windows/Linux) so it never sits on the window's
+  // rounded corner or resize border.
   expect(toggleMetrics.width).toBe(32);
   expect(toggleMetrics.height).toBe(32);
-  expect(toggleMetrics.rightInset).toBeGreaterThanOrEqual(8);
+  expect(toggleMetrics.rightInset).toBe(process.platform === "darwin" ? 8 : 132);
   await filesToggle.click();
   await expect(page.locator(".files-panel")).toBeHidden();
   // Closed: the top strip reserves room for the toggle and the window controls.

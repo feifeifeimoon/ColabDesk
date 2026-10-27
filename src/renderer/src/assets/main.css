@@ -128,12 +128,14 @@ kbd {
   overflow: hidden;
   background: var(--page);
   position: relative;
-  /* The three 44px controls. The top-right files toggle sits to their left. */
-  --window-controls-width: 132px;
+  /* Width of `.workspace-window-chrome`: 4px left padding + 32px files toggle +
+     the three 44px window controls (whose negative margin cancels the right
+     padding). On macOS the controls are absent and the 8px right padding stays. */
+  --workspace-chrome-width: calc(var(--space-1) + 32px + 132px);
 }
 
 .app[data-mac="true"] {
-  --window-controls-width: 0px;
+  --workspace-chrome-width: calc(var(--space-1) + 32px + var(--space-2));
 }
 
 /* The only chrome row above the work surface, and the window's title bar too:
