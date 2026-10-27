@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { IconButton } from "../components/ui/Button";
+import { Button } from "../components/ui/Button";
 import { PanelRightIcon } from "../components/ui/icons";
 import { IS_MAC } from "../lib/platform";
 import { useAppStore } from "../store";
@@ -7,7 +7,7 @@ import { useWorkspaceChrome } from "../store/selectors";
 import { WindowControls } from "./WindowControls";
 
 /**
- * The top-right corner of a live workspace. It sits over the top-right 32px of
+ * The top-right corner of a live workspace. It sits over the top-right 40px of
  * the window: the files toggle always, and the window controls on Windows and
  * Linux. When the files panel is open this row is above its head; when it is
  * closed the top pane strip carries a matching trailing reserve.
@@ -22,18 +22,19 @@ export function WorkspaceWindowChrome() {
 
   return (
     <div className="workspace-window-chrome">
-      <IconButton
+      <Button
         variant="ghost"
-        size="sm"
+        icon
         data-testid="toggle-files"
-        label={filesOpen ? t("topbar.filesCollapse", "收起文件面板") : t("topbar.filesExpand", "展开文件面板")}
+        aria-pressed={filesOpen}
+        aria-label={filesOpen ? t("topbar.filesCollapse", "收起文件面板") : t("topbar.filesExpand", "展开文件面板")}
         title={t("topbar.filesTooltip", "{{action}}文件面板（Ctrl+Shift+B）", {
           action: filesOpen ? t("topbar.actionCollapse", "收起") : t("topbar.actionExpand", "展开"),
         })}
         onClick={toggleFiles}
       >
-        <PanelRightIcon size={14} />
-      </IconButton>
+        <PanelRightIcon />
+      </Button>
       {!IS_MAC && <WindowControls />}
     </div>
   );

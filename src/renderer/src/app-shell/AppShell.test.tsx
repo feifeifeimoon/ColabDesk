@@ -21,6 +21,7 @@ vi.mock("../store", () => ({
 
 import { MAC_INSET } from "../lib/platform";
 import { TopBar } from "./AppShell";
+import { WorkspaceWindowChrome } from "./WorkspaceWindowChrome";
 
 const noop = () => {};
 
@@ -39,6 +40,9 @@ function render(extra: Record<string, unknown> = {}): string {
     filesOpen: true,
     settingsOpen: false,
     creation: { open: false },
+    error: null,
+    update: { state: "idle", version: null },
+    dismissedVersion: null,
     env: null,
     tabs: [shell],
     selectedSession: "alpha",
@@ -48,6 +52,26 @@ function render(extra: Record<string, unknown> = {}): string {
     ...extra,
   };
   return renderToStaticMarkup(createElement(TopBar));
+}
+
+function renderWorkspaceChrome(extra: Record<string, unknown> = {}): string {
+  store.current = {
+    sidebarOpen: true,
+    filesOpen: true,
+    settingsOpen: false,
+    creation: { open: false },
+    error: null,
+    update: { state: "idle", version: null },
+    dismissedVersion: null,
+    env: null,
+    tabs: [shell],
+    selectedSession: "alpha",
+    toggleSidebar: noop,
+    toggleFiles: noop,
+    openSettings: noop,
+    ...extra,
+  };
+  return renderToStaticMarkup(createElement(WorkspaceWindowChrome));
 }
 
 /** The bar's left section, where the rail toggle and its stand-ins live. */
@@ -78,6 +102,18 @@ describe("the window bar", () => {
       expect(markup.includes('data-testid="toggle-files"')).toBe(visible);
       expect(markup.includes('data-testid="seam-files"')).toBe(visible);
     }
+  });
+
+  it("工作区右上角的文件面板开关与顶栏及左侧栏保持相同尺寸和按下态", () => {
+    const openMarkup = renderWorkspaceChrome({ filesOpen: true });
+    expect(openMarkup).toContain('data-testid="toggle-files"');
+    expect(openMarkup).toContain('aria-pressed="true"');
+    expect(openMarkup).toContain('class="btn btn--ghost btn--icon"');
+    expect(openMarkup).not.toContain("btn--sm");
+    expect(openMarkup).toContain('width="16" height="16"');
+
+    const closedMarkup = renderWorkspaceChrome({ filesOpen: false });
+    expect(closedMarkup).toContain('aria-pressed="false"');
   });
 });
 

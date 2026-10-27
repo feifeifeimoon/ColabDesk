@@ -140,6 +140,20 @@ test("工作区的窗口控制浮在右上角，文件面板开关和它同一�
 
   const filesToggle = chrome.locator('[data-testid="toggle-files"]');
   await expect(filesToggle).toBeVisible();
+  const toggleMetrics = await filesToggle.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      width: rect.width,
+      height: rect.height,
+      rightInset: window.innerWidth - rect.right,
+    };
+  });
+  // Standard 32px icon button, with at least an 8px right inset on macOS (or
+  // the 132px window-controls run on Windows/Linux) so it never sits on the
+  // window's rounded corner or resize border.
+  expect(toggleMetrics.width).toBe(32);
+  expect(toggleMetrics.height).toBe(32);
+  expect(toggleMetrics.rightInset).toBeGreaterThanOrEqual(8);
   await filesToggle.click();
   await expect(page.locator(".files-panel")).toBeHidden();
   // Closed: the top strip reserves room for the toggle and the window controls.

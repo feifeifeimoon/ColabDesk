@@ -235,7 +235,10 @@ kbd {
 
 /* The top-right corner of a live workspace. It is fixed over the top row: the
    pane strip reaches the window edge when the files panel is closed, and the
-   files panel's own 40px titlebar sits under it when it is open. */
+   files panel's own 40px titlebar sits under it when it is open. Its right
+   inset matches `.topbar` so the files toggle clears the macOS rounded corner
+   and resize border, while `.window-controls` keeps its negative margin to sit
+   flush against the edge on Windows and Linux. */
 .workspace-window-chrome {
   position: fixed;
   top: 0;
@@ -243,13 +246,12 @@ kbd {
   z-index: var(--layer-window-chrome);
   display: flex;
   align-items: center;
-  gap: var(--space-1);
   height: 40px;
+  padding: 0 var(--space-2) 0 var(--space-1);
   -webkit-app-region: no-drag;
 }
 
 .workspace-window-chrome .window-controls {
-  margin-right: 0;
   /* The chrome centers the files toggle, but the control group is a flex item
      and the buttons only get their height from stretching. Left centered it
      collapses to the icons' line box and the hover targets float mid-row. */
