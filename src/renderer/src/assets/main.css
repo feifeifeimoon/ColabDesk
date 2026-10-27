@@ -2285,6 +2285,12 @@ kbd {
   overflow: hidden;
 }
 
+/* A tool dialog's content is an artifact to read and copy, not a form's bands:
+   it may use the window's height, because the code block is the subject. */
+.dialog--tool {
+  max-height: min(760px, calc(100vh - 48px));
+}
+
 /* A confirmation is a card, not a form: one sentence, then the decision. The
    hairlines that keep a form's bands apart would cut a card that has only two
    lines to show into three strips. */
@@ -3717,40 +3723,263 @@ textarea.input {
   box-shadow: var(--shadow-2);
 }
 
-/* ---------- raw output ---------- */
+/* ---------- code block ---------- */
 
-.raw {
-  border-top: 1px solid var(--hairline);
-  padding-top: var(--space-3);
-}
-
-.raw-toggle {
-  background: none;
-  border: none;
-  color: var(--mute);
-  font: inherit;
-  font-size: var(--text-caption);
-  padding: 0;
-  cursor: pointer;
-}
-
-.raw-toggle:hover {
-  color: var(--ink);
-}
-
-.raw-body {
-  margin: var(--space-2) 0 0;
-  padding: var(--space-3);
-  background: var(--canvas-soft-2);
+.code-block {
+  /* The dialog body is a flex column with a max-height; without this the
+     block is the item that gives way, and its own overflow:hidden cuts the
+     ProxyCommand off. The body scrolls instead. */
+  flex: 0 0 auto;
   border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
+  background: var(--canvas-soft-2);
+  overflow: hidden;
+}
+
+.code-block__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--canvas-soft);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.code-block__label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--body);
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.code-block__body {
+  margin: 0;
+  padding: var(--space-3);
+  overflow-x: auto;
+  color: var(--body);
   font-family: var(--font-mono);
   font-size: var(--text-caption);
   line-height: 1.6;
-  max-height: 280px;
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
+  white-space: pre;
+}
+
+/* ---------- SSH connect dialog ---------- */
+
+.ssh-lead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.ssh-lead__text {
+  margin: 0;
+  color: var(--body);
+  font-size: var(--text-copy);
+  line-height: 1.5;
+}
+
+.ssh-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ssh-steps__title {
+  margin: 0;
+  color: var(--body);
+  font-size: var(--text-label);
+  font-weight: 600;
+}
+
+.ssh-steps__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: ssh-step;
+}
+
+.ssh-steps__list > li {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: start;
+  counter-increment: ssh-step;
+}
+
+.ssh-steps__list > li::before {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-full);
+  background: var(--canvas-soft-2);
+  color: var(--mute);
+  content: counter(ssh-step);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.ssh-steps__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ssh-steps__text {
+  margin: 0;
+  color: var(--body);
+  font-size: var(--text-copy);
+  line-height: 1.5;
+}
+
+.ssh-copy-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--canvas-soft-2);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color 120ms ease;
+}
+
+.ssh-copy-chip:hover {
+  border-color: var(--hairline-strong);
+}
+
+.ssh-copy-chip code {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ssh-copy-chip__action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 0 0 auto;
+  color: var(--mute);
+  font-size: var(--text-caption);
+}
+
+.ssh-copy-chip:hover .ssh-copy-chip__action {
+  color: var(--ink);
+}
+
+.ssh-notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ssh-notes li {
+  position: relative;
+  padding-left: var(--space-3);
+  color: var(--mute);
+  font-size: var(--text-caption);
+  line-height: 1.5;
+}
+
+.ssh-notes li::before {
+  position: absolute;
+  left: 0;
+  color: var(--mute);
+  content: "·";
+}
+
+.ssh-advanced {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--hairline);
+}
+
+.ssh-advanced summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--mute);
+  cursor: pointer;
+  font-size: var(--text-caption);
+  list-style: none;
+}
+
+.ssh-advanced summary::-webkit-details-marker {
+  display: none;
+}
+
+.ssh-advanced summary::before {
+  content: "▸";
+}
+
+.ssh-advanced[open] summary::before {
+  content: "▾";
+}
+
+.ssh-advanced summary:hover {
+  color: var(--ink);
+}
+
+.ssh-advanced__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+}
+
+.ssh-advanced__row {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.ssh-advanced dt {
+  color: var(--mute);
+  font-size: var(--text-caption);
+}
+
+.ssh-advanced dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--body);
+  font-size: var(--text-caption);
+}
+
+.ssh-advanced dd code {
+  color: var(--body);
+  font-family: var(--font-mono);
+  font-size: inherit;
+}
+
+.ssh-loading {
+  margin: 0;
+  color: var(--mute);
+  font-size: var(--text-copy);
 }
 
 /* ---------- feature: sessions ---------- */

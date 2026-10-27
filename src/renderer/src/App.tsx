@@ -9,6 +9,7 @@ import { WorkspaceWindowChrome } from "./app-shell/WorkspaceWindowChrome";
 import { useAppShortcuts } from "./app-shell/shortcuts";
 import { Sidebar } from "./app-shell/Sidebar";
 import { IS_MAC } from "./lib/platform";
+import { SshDialog } from "./features/ssh/SshDialog";
 import { Workbench } from "./features/workspace/Workbench";
 import { startAppEvents } from "./store";
 import "./assets/main.css";
@@ -52,6 +53,7 @@ export default function App() {
       <WorkspaceWindowChrome />
       <StatusBar />
       <Toasts />
+      <SshDialog />
       <ConfirmationDialog />
     </div>
   );

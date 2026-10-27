@@ -116,14 +116,6 @@ export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> 
       get().closeSessionTabs(name);
       return;
     }
-    if (action === "copy-ssh") {
-      await api.writeClipboard(`ssh colabdesk-${name}`);
-      get().notify({
-        tone: "info",
-        text: translate("sessions.copiedSsh", `已复制：ssh colabdesk-${name}`, { command: `ssh colabdesk-${name}` }),
-      });
-      return;
-    }
     if (action === "stop") {
       const unsaved = hasUnsavedEdits(get, name);
       const confirmed = await get().requestConfirmation({
@@ -159,16 +151,6 @@ export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> 
         else if (!report.ok)
           get().notify({ tone: "danger", text: `${failureLabel(report.code)}${failureHint(report.output) ?? ""}` });
         else get().notify({ tone: "info", text: translate("sessions.restartedSuccess", `已重启「${name}」的内核。`, { name }) });
-      } else if (action === "ssh-config") {
-        const setup = await api.sshSetup(name);
-        get().notify({
-          tone: "info",
-          text: translate("sessions.sshConfigWritten", `已写入 ${setup.config_path}：别名 ${setup.alias}（${setup.ssh_command}）`, {
-            path: setup.config_path,
-            alias: setup.alias,
-            command: setup.ssh_command,
-          }),
-        });
       }
     } catch (cause) {
       get().notify({ tone: "danger", text: api.messageOf(cause) });

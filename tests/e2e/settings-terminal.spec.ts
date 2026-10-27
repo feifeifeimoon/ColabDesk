@@ -240,9 +240,17 @@ test("字号调大后，预览仍从第一行开始，不被截断", async ({ pa
   const cursor = preview.locator(".xterm-cursor");
   await expect(cursor).toBeVisible();
   const frame = await preview.boundingBox();
-  const cell = await cursor.boundingBox();
   expect(frame).not.toBeNull();
-  expect(cell).not.toBeNull();
+
+  // A font-size change makes xterm replace its cursor row; visibility can pass
+  // on one node while the next boundingBox() lands between nodes. Wait for a
+  // laid-out box, then keep the one that was measured.
+  let cell = await cursor.boundingBox();
+  await expect(async () => {
+    cell = await cursor.boundingBox();
+    expect(cell).not.toBeNull();
+  }).toPass({ timeout: 5_000 });
+
   expect(cell!.y + cell!.height).toBeLessThanOrEqual(frame!.y + frame!.height + 1);
 });
 

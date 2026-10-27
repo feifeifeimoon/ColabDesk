@@ -1,4 +1,4 @@
-/** Session, quota, login and `~/.ssh/config` commands — the CLI-facing surface. */
+/** Session, quota, login and SSH snippet commands — the CLI-facing surface. */
 
 import { app, ipcMain } from "electron";
 import { EVENTS, IPC } from "@shared/ipc";
@@ -80,8 +80,7 @@ export function registerColabHandlers({ service, usageHistory, bundledDir, log }
     broadcast(EVENTS.authDone, { code: 0 });
   });
 
-  ipcMain.handle(IPC.sshSetup, (_event, name: string) => service.sshSetup(name));
-  ipcMain.handle(IPC.sshRemove, (_event, name: string) => service.sshRemove(name));
+  ipcMain.handle(IPC.sshSnippet, (_event, name: string) => service.sshSnippet(name));
   // A local read: the setup surface re-checks on open, which must not wait
   // behind a tokeninfo or quota round trip.
   ipcMain.handle(IPC.sshIdentity, () => findIdentity()?.privateKeyPath ?? null);

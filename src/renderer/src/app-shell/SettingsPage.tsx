@@ -11,12 +11,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { SshSetup } from "@shared/types";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Card, Panel, PanelRow } from "../components/ui/Card";
 import { PanelDivider } from "../components/ui/PanelDivider";
-import { RawOutput } from "../components/ui/RawOutput";
 import { SegmentedControl } from "../components/ui/SegmentedControl";
 import { PANEL_WIDTH } from "../lib/panel-width";
 import { ChevronLeftIcon } from "../components/ui/icons";
@@ -30,7 +28,7 @@ import { GROUPS_DEF } from "./settings-sections";
 import { TerminalSettings } from "./TerminalSettings";
 import { ZoomSetting } from "./ZoomSetting";
 import { UI_LANGUAGE_CHOICES } from "../i18n/supported-languages";
-import { messageOf, sshGenerateKey, sshRemove, sshSetup } from "../lib/api";
+import { messageOf, sshGenerateKey } from "../lib/api";
 import { formatExpiry } from "../lib/format";
 import type { ThemePreference } from "../lib/theme";
 import { useAppStore } from "../store";
@@ -45,7 +43,6 @@ export function SettingsPage() {
   const setSectionId = useAppStore((state) => state.setSettingsSection);
   const env = useAppStore((state) => state.env);
   const usage = useAppStore((state) => state.usage);
-  const activeSession = useAppStore((state) => state.selectedSession);
   const theme = useAppStore((state) => state.theme);
   const language = useAppStore((state) => state.language);
   const width = useAppStore((state) => state.panelWidths.sidebar);
@@ -55,8 +52,6 @@ export function SettingsPage() {
   const refreshEnvironment = useAppStore((state) => state.refreshEnvironment);
   const refreshSshIdentity = useAppStore((state) => state.refreshSshIdentity);
 
-  const [setup, setSetup] = useState<SshSetup | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [keyError, setKeyError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -99,32 +94,6 @@ export function SettingsPage() {
   const sections = GROUPS_DEF.flatMap((group) => group.sections);
   const section = sections.find((candidate) => candidate.id === sectionId) ?? sections[0];
   const Icon = section.icon;
-
-  async function writeConfig() {
-    if (!activeSession) return;
-    setPending(true);
-    try {
-      setSetup(await sshSetup(activeSession));
-      setError(null);
-    } catch (cause) {
-      setError(messageOf(cause));
-    } finally {
-      setPending(false);
-    }
-  }
-
-  async function removeConfig() {
-    if (!activeSession) return;
-    setPending(true);
-    try {
-      setSetup(await sshRemove(activeSession));
-      setError(null);
-    } catch (cause) {
-      setError(messageOf(cause));
-    } finally {
-      setPending(false);
-    }
-  }
 
   async function generateSshKey() {
     setPending(true);
@@ -326,58 +295,6 @@ export function SettingsPage() {
     );
   }
 
-  function externalBody() {
-    return (
-      <div className="settings__block">
-        <Panel>
-          <PanelRow
-            label={t("settings.externalSshLabel", "SSH 主机配置")}
-            description={
-              activeSession
-                ? t("settings.externalSshDescActive", "为当前会话「{{session}}」生成并写入 SSH 别名配置，供外部终端或 VS Code 使用。", {
-                    session: activeSession,
-                  })
-                : t("settings.externalSshDescInactive", "请先选择或连接一个会话，再写入对应的 SSH 配置。")
-            }
-            actions={
-              <div className="row">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  disabled={!activeSession || pending}
-                  onClick={() => void writeConfig()}
-                >
-                  {t("settings.externalWrite", "写入")}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!activeSession || pending}
-                  onClick={() => void removeConfig()}
-                >
-                  {t("settings.externalRemove", "移除")}
-                </Button>
-              </div>
-            }
-          />
-        </Panel>
-        {error && <Callout tone="danger">{error}</Callout>}
-        {setup && (
-          <Callout>
-            <p>{setup.block ? t("settings.externalWritten", "已写入 SSH 配置。") : t("settings.externalRemoved", "已移除 SSH 配置。")}</p>
-            <p className="hint">
-              {t("settings.externalAliasHint", "别名 {{alias}} · {{path}}", {
-                alias: setup.alias,
-                path: setup.config_path,
-              })}
-            </p>
-            <RawOutput text={setup.block} label={t("settings.externalRawOutputLabel", "写入的配置块")} />
-          </Callout>
-        )}
-      </div>
-    );
-  }
-
   function aboutBody() {
     return (
       <div className="settings__block">
@@ -415,8 +332,6 @@ export function SettingsPage() {
         return <TerminalSettings />;
       case "shortcuts":
         return <ShortcutsSettings />;
-      case "external":
-        return externalBody();
       case "account":
         return accountBody();
       default:

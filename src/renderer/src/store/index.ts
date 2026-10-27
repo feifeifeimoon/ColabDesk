@@ -17,6 +17,7 @@ import { createCreationSlice } from "./slices/creation";
 import { createEnvironmentSlice } from "./slices/environment";
 import { createPreferencesSlice } from "./slices/preferences";
 import { createSessionsSlice } from "./slices/sessions";
+import { createSshSlice } from "./slices/ssh";
 import { createSurfacesSlice } from "./slices/surfaces";
 import { createToastsSlice } from "./slices/toasts";
 import { createUpdateSlice } from "./slices/update";
@@ -32,6 +33,7 @@ export const useAppStore = create<AppState>()((...args) => ({
   ...createEnvironmentSlice(...args),
   ...createPreferencesSlice(...args),
   ...createSurfacesSlice(...args),
+  ...createSshSlice(...args),
   ...createCreationSlice(...args),
   ...createToastsSlice(...args),
   ...createUpdateSlice(...args),

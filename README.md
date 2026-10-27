@@ -28,7 +28,7 @@
 - **Edit in place** — open a log or a config beside the terminal. Text up to 2 MiB saves with a conflict check; a half-written file never appears.
 - **Sessions** — create a runtime, stop it, restart its kernel — and see whether it is still allocated, and what it is costing.
 - **Quota** — balance, spend rate, projected hours, and a day/week/month trend built from readings this app records.
-- **SSH** — one click writes `colabdesk-<session>` into `~/.ssh/config`, so any SSH client can attach to the same runtime.
+- **SSH** — copy a ready-to-paste `colabdesk-<session>` block for `~/.ssh/config`, so any SSH client can attach to the same runtime.
 
 ## How to use
 

@@ -1,155 +1,134 @@
 /**
- * `~/.ssh/config` management: the escape hatch that makes a runtime reachable
- * from any terminal, `scp`/`sftp`, or VS Code Remote-SSH.
+ * The SSH snippet a person pastes into `~/.ssh/config`.
  *
- * Each entry points OpenSSH's `ProxyCommand` at the resolved CLI's `ssh
- * --proxy-mode -s <name>`. Editing a user's SSH config is the riskiest thing
- * here, so every entry lives inside a marked managed block: writing replaces
- * only that session's block, never touching or reordering anything else in the
- * file.
+ * The app does not write that file: it generates text, says where it goes, and
+ * lets the person paste it. A generated block that is wrong is then a paste the
+ * user can reject, not a broken configuration the app performed on them.
+ *
+ * Two rules make the text safe to paste:
+ *   - every path and argument is quoted, because both Windows homes and macOS
+ *     account names can contain spaces, and OpenSSH terminates the whole file
+ *     on a `keyword extra arguments` parse error;
+ *   - the block names the stable launcher (`ssh-proxy.ts`), never the bundled
+ *     interpreter, so it survives the app moving or updating.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
+import type { SshSnippet } from "@shared/types";
 
-const BEGIN = "# >>> ColabDesk managed block";
-const END = "# <<< ColabDesk managed block";
+const ALIAS_PREFIX = "colabdesk-";
 
-export interface SshSetup {
-  alias: string;
-  config_path: string;
-  block: string;
-  ssh_command: string;
-  replaced: boolean;
+/** Shortest host label that still reads like the session; safe names keep it. */
+const SAFE_LABEL = /^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$/;
+
+export function configPath(home: string = homedir()): string {
+  return join(home, ".ssh", "config");
 }
 
-export function alias(name: string): string {
-  return `colabdesk-${name}`;
+/** A deterministic host label safe for the `Host` line. */
+export function sshHostAlias(name: string): string {
+  return `${ALIAS_PREFIX}${hostLabel(name)}`;
 }
 
-export function configPath(): string {
-  return join(homedir(), ".ssh", "config");
+function hostLabel(name: string): string {
+  if (SAFE_LABEL.test(name)) return name;
+  const slug =
+    name
+      .replace(/[^A-Za-z0-9._-]+/g, "-")
+      .replace(/^[-.]+|[-.]+$/g, "")
+      .slice(0, 48) || "session";
+  return `${slug}-${hash(name)}`;
 }
 
-/**
- * The private key the Colab backend will authorize. `colab ssh` sends the
- * matching public key in its `X-Colab-Ssh-Pubkey` header and rejects RSA, so
- * only these two are considered — the same order the CLI uses.
- */
-export function identityFile(): string | null {
-  const dir = join(homedir(), ".ssh");
-  for (const name of ["id_ed25519", "id_ecdsa"]) {
-    const candidate = join(dir, name);
-    if (existsSync(candidate)) return candidate;
+/** FNV-1a, only to keep two different unsafe names apart in a short label. */
+function hash(value: string): string {
+  let result = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    result ^= value.charCodeAt(index);
+    result = Math.imul(result, 0x01000193) >>> 0;
   }
-  return null;
-}
-
-/** OpenSSH wants forward slashes; both Windows OpenSSH and Git-for-Windows accept `C:/...`. */
-function toPosix(path: string): string {
-  return path.replace(/\\/g, "/");
-}
-
-/** Windows OpenSSH does not understand `/dev/null`; it wants `NUL`. */
-function nullDevice(): string {
-  return process.platform === "win32" ? "NUL" : "/dev/null";
+  return result.toString(16).padStart(8, "0").slice(0, 6);
 }
 
 /**
- * Builds the managed block for one session.
- *
- * `proxyCommand` is executed by OpenSSH as a command line, so it arrives fully
- * quoted (paths with spaces are common on Windows).
+ * A session name travels inside a quoted ProxyCommand argument. A newline ends
+ * the config line, and a quote or backslash changes what OpenSSH parses; the
+ * CLI can be handed a user-chosen name, so this is checked before generation.
  */
-export function buildBlock(name: string, proxyCommand: string): string {
-  const host = alias(name);
+function assertCarriable(name: string): void {
+  if (/[\r\n"\\]/.test(name)) {
+    throw new Error(`会话名「${name}」包含引号、反斜杠或换行，无法写入 SSH 配置。`);
+  }
+}
+
+/**
+ * OpenSSH expands `%` tokens (`%h`, `%p`, `%d`, `%%`, …) in config values.
+ * `%%` is the literal-percent escape. Windows paths are written with forward
+ * slashes because that is the form ssh_config and Windows OpenSSH both accept;
+ * the launcher integration test executes the generated `.cmd` written this way.
+ */
+function quoted(value: string): string {
+  return `"${value.replace(/\\/g, "/").replace(/%/g, "%%")}"`;
+}
+
+export interface SshSnippetInput {
+  session: string;
+  launcherPath: string;
+  identity: string | null;
+  home?: string;
+  platform?: NodeJS.Platform;
+}
+
+/**
+ * Builds the complete block, including the comments that tell a person what it
+ * is. `identity` is null when no key this client can use exists: the block is
+ * still generated (the dialog can show the shape), but it is not copyable
+ * because the CLI proxy would have no key to advertise.
+ */
+export function buildSshSnippet({
+  session,
+  launcherPath,
+  identity,
+  home = homedir(),
+  platform = process.platform,
+}: SshSnippetInput): SshSnippet {
+  assertCarriable(session);
+
+  const alias = sshHostAlias(session);
+  const proxy = [
+    quoted(launcherPath),
+    "ssh",
+    "--proxy-mode",
+    "-s",
+    quoted(session),
+  ];
+  if (identity) proxy.push("--identity", quoted(identity));
+
   const lines = [
-    `${BEGIN}: ${host} >>>`,
-    `Host ${host}`,
+    `# ColabDesk: ${session}`,
+    `Host ${alias}`,
     "    HostName colab-runtime",
     "    User root",
-    `    ProxyCommand ${proxyCommand}`,
-    // The runtime's host key is generated per VM, so pinning it would break on
-    // every new session.
-    "    StrictHostKeyChecking no",
-    `    UserKnownHostsFile ${nullDevice()}`,
+    `    ProxyCommand ${proxy.join(" ")}`,
   ];
-  const identity = identityFile();
-  if (identity) lines.push(`    IdentityFile ${toPosix(identity)}`);
-  lines.push("    LogLevel ERROR", `${END}: ${host} <<<`);
-  return `${lines.join("\n")}\n`;
-}
-
-/** Removes one managed block, leaving every other line byte-for-byte intact. */
-export function stripBlock(existing: string, hostAlias: string): { text: string; found: boolean } {
-  const begin = `${BEGIN}: ${hostAlias} >>>`;
-  const end = `${END}: ${hostAlias} <<<`;
-
-  const kept: string[] = [];
-  let inside = false;
-  let found = false;
-  for (const line of existing.split(/\r?\n/)) {
-    if (line.trim() === begin) {
-      inside = true;
-      found = true;
-      continue;
-    }
-    if (inside && line.trim() === end) {
-      inside = false;
-      continue;
-    }
-    if (!inside) kept.push(line);
-  }
-
-  // Drop the blank separator lines that were added before the block, so
-  // repeatedly writing and removing does not accumulate whitespace.
-  while (kept.length > 0 && kept[kept.length - 1].trim() === "") kept.pop();
-
-  const text = kept.length > 0 ? `${kept.join("\n")}\n` : "";
-  return { text, found };
-}
-
-export function writeEntry(name: string, proxyCommand: string): SshSetup {
-  const path = configPath();
-  mkdirSync(dirname(path), { recursive: true });
-
-  let existing = "";
-  if (existsSync(path)) existing = readFileSync(path, "utf8");
-
-  const host = alias(name);
-  const { text: remaining, found } = stripBlock(existing, host);
-  const block = buildBlock(name, proxyCommand);
-
-  const separator = remaining ? "\n" : "";
-  writeFileSync(path, `${remaining}${separator}${block}`, "utf8");
+  if (identity) lines.push(`    IdentityFile ${quoted(identity)}`);
+  lines.push(
+    // The runtime's host key is generated per VM. This is the same trade the
+    // CLI's own `_ssh_base_args` and the app's ssh2 connection make.
+    "    StrictHostKeyChecking no",
+    `    UserKnownHostsFile ${platform === "win32" ? "NUL" : "/dev/null"}`,
+    "    LogLevel ERROR",
+  );
 
   return {
-    alias: host,
-    config_path: path,
-    block,
-    ssh_command: `ssh ${host}`,
-    replaced: found,
-  };
-}
-
-export function removeEntry(name: string): SshSetup {
-  const path = configPath();
-  const host = alias(name);
-  let removed = false;
-
-  if (existsSync(path)) {
-    const existing = readFileSync(path, "utf8");
-    const stripped = stripBlock(existing, host);
-    removed = stripped.found;
-    if (removed) writeFileSync(path, stripped.text, "utf8");
-  }
-
-  return {
-    alias: host,
-    config_path: path,
-    block: "",
-    ssh_command: `ssh ${host}`,
-    replaced: removed,
+    session,
+    alias,
+    command: `ssh ${alias}`,
+    block: `${lines.join("\n")}\n`,
+    config_path: configPath(home),
+    identity,
+    launcher_path: launcherPath,
+    alias_mapped: alias !== `${ALIAS_PREFIX}${session}`,
   };
 }
