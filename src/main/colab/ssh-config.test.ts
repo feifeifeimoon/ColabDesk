@@ -1,42 +1,62 @@
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildBlock, stripBlock } from "./ssh-config";
+import { buildSshSnippet, sshHostAlias } from "./ssh-config";
 
-const CLI = "C:/tools/colab.exe";
+const HOME = "C:\\Users\\John Doe";
+const LAUNCHER = "C:\\Users\\John Doe\\.colabdesk\\bin\\colabdesk-proxy.cmd";
+const IDENTITY = "C:\\Users\\John Doe\\.ssh\\id_ed25519";
 
-describe("managed blocks", () => {
-  it("writes a host with the given proxy command", () => {
-    const block = buildBlock("abc123", `"${CLI}" ssh --proxy-mode -s abc123`);
-    expect(block).toContain("Host colabdesk-abc123");
-    expect(block).toContain(`ProxyCommand "${CLI}" ssh --proxy-mode -s abc123`);
-    expect(block).toContain("StrictHostKeyChecking no");
+const build = (session: string, identity: string | null = IDENTITY, platform: NodeJS.Platform = "win32") =>
+  buildSshSnippet({ session, launcherPath: LAUNCHER, identity, home: HOME, platform });
+
+describe("the SSH snippet", () => {
+  it("quotes every path and argument, so a home with spaces cannot break the file", () => {
+    const snippet = build("alpha");
+
+    expect(snippet.block).toContain("Host colabdesk-alpha");
+    expect(snippet.block).toContain(
+      'ProxyCommand "C:/Users/John Doe/.colabdesk/bin/colabdesk-proxy.cmd" ssh --proxy-mode -s "alpha" --identity "C:/Users/John Doe/.ssh/id_ed25519"',
+    );
+    expect(snippet.block).toContain('IdentityFile "C:/Users/John Doe/.ssh/id_ed25519"');
+    expect(snippet.block).toContain("StrictHostKeyChecking no");
+    expect(snippet.block).toContain("UserKnownHostsFile NUL");
+    expect(snippet.config_path).toBe(join(HOME, ".ssh", "config"));
+    expect(snippet.command).toBe("ssh colabdesk-alpha");
+    expect(snippet.alias_mapped).toBe(false);
   });
 
-  it("preserves unrelated config when stripping", () => {
-    const existing = "Host github.com\n    User git\n    IdentityFile ~/.ssh/id_ed25519\n";
-    const { text, found } = stripBlock(existing, "colabdesk-abc123");
-    expect(found).toBe(false);
-    expect(text).toContain("Host github.com");
-    expect(text).toContain("IdentityFile ~/.ssh/id_ed25519");
+  it("uses /dev/null on POSIX", () => {
+    expect(build("alpha", IDENTITY, "linux").block).toContain("UserKnownHostsFile /dev/null");
   });
 
-  it("replaces only our block and leaves no blank-line buildup", () => {
-    const existing =
-      "Host keep-me\n    User someone\n\n" +
-      "# >>> ColabDesk managed block: colabdesk-old >>>\n" +
-      "Host colabdesk-old\n    User root\n" +
-      "# <<< ColabDesk managed block: colabdesk-old <<<\n";
-    const { text, found } = stripBlock(existing, "colabdesk-old");
-    expect(found).toBe(true);
-    expect(text).toBe("Host keep-me\n    User someone\n");
-    expect(text).not.toContain("colabdesk-old");
+  it("keeps a plain session name in the alias", () => {
+    expect(sshHostAlias("e2e-alpha")).toBe("colabdesk-e2e-alpha");
   });
 
-  it("does not touch another session's block", () => {
-    const existing =
-      "# >>> ColabDesk managed block: colabdesk-one >>>\nHost colabdesk-one\n" +
-      "# <<< ColabDesk managed block: colabdesk-one <<<\n";
-    const { text, found } = stripBlock(existing, "colabdesk-two");
-    expect(found).toBe(false);
-    expect(text).toContain("colabdesk-one");
+  it("maps an unsafe name to a stable alias and keeps the real name for -s", () => {
+    const first = build("my session");
+    const second = build("my session");
+
+    expect(first.alias).toMatch(/^colabdesk-my-session-[0-9a-f]{6}$/);
+    expect(first.alias).toBe(second.alias);
+    expect(first.alias_mapped).toBe(true);
+    expect(first.block).toContain('Host colabdesk-my-session-');
+    // The CLI still has to be told the session it actually knows.
+    expect(first.block).toContain('-s "my session"');
+  });
+
+  it("omits the identity lines when no usable key exists", () => {
+    const snippet = build("alpha", null);
+
+    expect(snippet.identity).toBeNull();
+    expect(snippet.block).not.toContain("IdentityFile");
+    expect(snippet.block).not.toContain("--identity");
+    expect(snippet.block).toContain('-s "alpha"');
+  });
+
+  it("refuses a name that cannot travel in a quoted config line", () => {
+    for (const session of ['a"b', "a\\b", "a\nb"]) {
+      expect(() => build(session)).toThrow(/无法写入 SSH 配置/);
+    }
   });
 });

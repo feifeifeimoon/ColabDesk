@@ -17,7 +17,7 @@ import type { Page } from "@playwright/test";
 import { expect, focusTerminal, openSession, reloadWorkbench, terminalRows, test } from "./app-launch";
 
 const directory = join(process.cwd(), "screenshots");
-const SECTIONS = ["外观", "终端", "快捷键", "外部连接", "账号与环境", "用量趋势", "关于"];
+const SECTIONS = ["外观", "终端", "快捷键", "账号与环境", "用量趋势", "关于"];
 
 /** Named by the theme actually on screen, never by what the harness meant. */
 async function capture(page: Page, name: string): Promise<void> {
@@ -98,13 +98,23 @@ test("@gallery 工作台与设置页截图", async ({ app, page }) => {
   await capture(page, "03-session-menu");
   await page.keyboard.press("Escape");
 
-  // The result of that menu's least destructive item: a message in the corner
-  // that leaves on its own. Nothing else on screen changes, which is the point
-  // of it — the workbench underneath is a live terminal.
+  // The SSH dialog: a block for an external client, shown where the session is.
   await firstRow.hover();
   await firstRow.locator(".menu__trigger").click();
-  await page.getByRole("menuitem", { name: "复制 ssh 命令" }).click();
-  await expect(page.locator(".toasts .toast")).toContainText("已复制");
+  await page.getByRole("menuitem", { name: "SSH 配置…" }).click();
+  const sshDialog = page.getByRole("dialog");
+  await expect(sshDialog).toContainText("Host colabdesk-e2e-alpha");
+  await page.waitForTimeout(400);
+  await capture(page, "03-ssh-dialog");
+  await sshDialog.locator(".dialog__actions").getByRole("button", { name: "关闭" }).click();
+
+  // The result of the menu's restart action: a message in the corner that
+  // leaves on its own. Nothing else on screen changes, which is the point of
+  // it — the workbench underneath is a live terminal.
+  await firstRow.hover();
+  await firstRow.locator(".menu__trigger").click();
+  await page.getByRole("menuitem", { name: "重启内核" }).click();
+  await expect(page.locator(".toasts .toast")).toContainText("已重启");
   await page.waitForTimeout(400);
   await capture(page, "03-toast");
   await page.locator('[data-testid="toast-dismiss"]').click();

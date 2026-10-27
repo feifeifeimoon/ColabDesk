@@ -122,8 +122,8 @@ test("会话菜单只留不重复的操作，每项都有图标", async ({ page 
   await row.locator(".menu__trigger").click();
 
   const items = page.getByRole("menuitem");
-  await expect(items).toHaveCount(5);
-  for (const label of ["重启内核", "写入 SSH 配置", "复制 ssh 命令", "关闭全部标签", "停止会话"]) {
+  await expect(items).toHaveCount(4);
+  for (const label of ["重启内核", "SSH 配置…", "关闭全部标签", "停止会话"]) {
     await expect(page.getByRole("menuitem", { name: label })).toBeVisible();
   }
   // Clicking the row and + already do these; the menu does not repeat them.
@@ -131,7 +131,7 @@ test("会话菜单只留不重复的操作，每项都有图标", async ({ page 
   await expect(page.getByRole("menuitem", { name: "打开终端" })).toHaveCount(0);
   await expect(page.getByRole("menuitem", { name: "新建终端" })).toHaveCount(0);
   await expect(page.locator(".menu__separator")).toHaveCount(1);
-  await expect(items.locator("svg")).toHaveCount(5);
+  await expect(items.locator("svg")).toHaveCount(4);
 });
 
 test("两栏都拖到最宽时，终端还在、仍可用且不横向溢出", async ({ page }) => {

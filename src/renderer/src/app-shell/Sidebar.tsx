@@ -5,7 +5,6 @@ import { Button, IconButton } from "../components/ui/Button";
 import {
   ChipIcon,
   CloseIcon,
-  CopyIcon,
   GpuIcon,
   KeyIcon,
   PanelLeftIcon,
@@ -91,6 +90,7 @@ export function Sidebar() {
   const connections = useAppStore((state) => state.connections);
   const busyAction = useAppStore((state) => state.busyAction);
   const runSessionAction = useAppStore((state) => state.runSessionAction);
+  const openSshDialog = useAppStore((state) => state.openSshDialog);
   const syncSessions = useAppStore((state) => state.syncSessions);
   const syncing = useAppStore((state) => state.sessionsSyncing);
   const openNewSession = useAppStore((state) => state.openNewSession);
@@ -295,15 +295,9 @@ export function Sidebar() {
               onSelect: () => void runSessionAction(session.name, "restart-kernel"),
             },
             {
-              label: t("sidebar.menuSshConfig", "写入 SSH 配置"),
+              label: t("sidebar.menuSsh", "SSH 配置…"),
               icon: <KeyIcon size={14} />,
-              disabled: busy,
-              onSelect: () => void runSessionAction(session.name, "ssh-config"),
-            },
-            {
-              label: t("sidebar.menuCopySsh", "复制 ssh 命令"),
-              icon: <CopyIcon size={14} />,
-              onSelect: () => void runSessionAction(session.name, "copy-ssh"),
+              onSelect: () => openSshDialog(session.name),
             },
             // Closing every tab is what hangs up — a file tab holds the
             // connection too — and one tab on its own leaves it up for the

@@ -10,14 +10,15 @@ import { existsSync } from "node:fs";
 import { fetchUsage } from "./usage";
 import type { RuntimeList } from "@shared/api";
 import { createSessionArgs } from "@shared/create-session";
-import type { ColabEnvironment, CommandReport, EnvStatus, Session, SshSetup, UsageReport } from "@shared/types";
+import type { ColabEnvironment, CommandReport, EnvStatus, Session, SshSnippet, UsageReport } from "@shared/types";
 import type { LogSink } from "../log-file";
 import { accountStatus } from "./account";
 import { fetchAssignments, type Assignment } from "./assignments";
 import { combined, parseVersion, readManifestVersion, resolveCli, runCli, runCliStreaming, type ResolvedCli } from "./cli";
 import { isTransientNetworkFailure } from "./network-retry";
 import { authState, configDir, findRawSession, loadRawSessions, loadSessions, sessionsFile } from "./sessions";
-import { removeEntry, writeEntry } from "./ssh-config";
+import { buildSshSnippet } from "./ssh-config";
+import { ensureProxyLauncher } from "./ssh-proxy";
 import type { SshTarget } from "../ssh/connection";
 import { findIdentity } from "../ssh/identity";
 
@@ -271,22 +272,32 @@ export class Service {
   }
 
   /**
-   * The command OpenSSH should run for a session. Uses the resolved CLI's
-   * `ssh --proxy-mode -s <name>`.
+   * The text for `~/.ssh/config` for one session.
+   *
+   * A snippet, not a write: the user's SSH configuration belongs to the user.
+   * The launcher is refreshed first because the block names it, and an identity
+   * this client cannot use is returned as null so the dialog can offer to make
+   * one instead of handing over a block that cannot authenticate.
    */
-  proxyCommand(name: string): string {
+  sshSnippet(name: string): SshSnippet {
+    const session = findRawSession(name);
+    if (!session) throw new Error(`会话 ${name} 不在本地记录中，请先同步或创建会话。`);
+
     const cli = resolveCli(this.bundledDir);
-    if (cli) {
-      return `"${cli.exe}" ${[...cli.prefix, "ssh", "--proxy-mode", "-s", name].join(" ")}`;
-    }
-    throw new Error("没有可用的 SSH 代理命令：未找到 colab 命令。");
+    if (!cli) throw new Error("没有可用的 SSH 代理命令：未找到 colab 命令。");
+
+    const launcher = ensureProxyLauncher(cli);
+    const identity = findIdentity();
+    return buildSshSnippet({
+      session: session.name,
+      launcherPath: launcher,
+      identity: identity?.privateKeyPath ?? null,
+    });
   }
 
-  sshSetup(name: string): SshSetup {
-    return writeEntry(name, this.proxyCommand(name));
-  }
-
-  sshRemove(name: string): SshSetup {
-    return removeEntry(name);
+  /** Keeps the launcher current across app updates; failures are the caller's to log. */
+  refreshSshLauncher(): void {
+    const cli = resolveCli(this.bundledDir);
+    if (cli) ensureProxyLauncher(cli);
   }
 }

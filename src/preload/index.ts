@@ -33,8 +33,7 @@ const api: ColabDeskApi = {
   onAuthUrl: (listener) => subscribe(EVENTS.authUrl, listener),
   onAuthDone: (listener) => subscribe(EVENTS.authDone, listener),
 
-  sshSetup: (name) => invoke(IPC.sshSetup, name),
-  sshRemove: (name) => invoke(IPC.sshRemove, name),
+  sshSnippet: (name) => invoke(IPC.sshSnippet, name),
   sshIdentity: () => invoke(IPC.sshIdentity),
   sshGenerateKey: () => invoke(IPC.sshGenerateKey),
   sshDisconnect: (name) => invoke(IPC.sshDisconnect, name),

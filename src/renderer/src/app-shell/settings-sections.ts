@@ -14,7 +14,6 @@ import {
   ChartIcon,
   ContrastIcon,
   KeyboardIcon,
-  PlugIcon,
   SyncIcon,
   TerminalIcon,
 } from "../components/ui/icons";
@@ -59,21 +58,6 @@ export const GROUPS_DEF: { id: string; titleKey: string; defaultTitle: string; s
         descKey: "settings.sectionShortcutsDesc",
         defaultDesc: "应用内的键盘与鼠标操作，按生效场景分组。",
         icon: KeyboardIcon,
-      },
-    ],
-  },
-  {
-    id: "workbench",
-    titleKey: "settings.groupWorkbench",
-    defaultTitle: "连接与工作台",
-    sections: [
-      {
-        id: "external",
-        titleKey: "settings.sectionExternalTitle",
-        defaultTitle: "外部连接",
-        descKey: "settings.sectionExternalDesc",
-        defaultDesc: "配置本地 ~/.ssh/config，支持通过外部终端或 VS Code 远程连接。",
-        icon: PlugIcon,
       },
     ],
   },

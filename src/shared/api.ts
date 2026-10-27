@@ -14,7 +14,7 @@ import type {
   RemoteTextRead,
   RemoteTextWrite,
   Session,
-  SshSetup,
+  SshSnippet,
   SshState,
   TransferProgress,
   UpdateStatus,
@@ -86,8 +86,12 @@ export interface ColabDeskApi {
   onAuthUrl(listener: (payload: AuthUrlEvent) => void): () => void;
   onAuthDone(listener: (payload: AuthDoneEvent) => void): () => void;
 
-  sshSetup(name: string): Promise<SshSetup>;
-  sshRemove(name: string): Promise<SshSetup>;
+  /**
+   * The text for `~/.ssh/config`, plus where it goes and which launcher it
+   * names. The main process also refreshes that launcher, so the returned
+   * block is usable when the dialog shows it.
+   */
+  sshSnippet(name: string): Promise<SshSnippet>;
   /** The usable identity's private-key path, read locally (no network). */
   sshIdentity(): Promise<string | null>;
   sshGenerateKey(): Promise<string>;

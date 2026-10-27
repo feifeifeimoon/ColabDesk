@@ -38,6 +38,14 @@ installProcessErrorGuards(log);
 const bundledDir = bundledCliDir();
 const service = new Service(bundledDir, log);
 const ssh = new SshManager((name) => service.sshTarget(name));
+// The copied Host block names this stable launcher; keep it current before the
+// window can ask for a snippet. A failure is not fatal — the dialog surfaces
+// the same reason when it tries to generate one.
+try {
+  service.refreshSshLauncher();
+} catch (error) {
+  log.write("ssh", `无法刷新 SSH 代理启动器：${(error as Error).message}`);
+}
 // The CLI's own config directory belongs to the CLI; our history lives beside
 // the app's other state. Its debug log is read only, as a backfill.
 const usageHistory = new UsageHistory(

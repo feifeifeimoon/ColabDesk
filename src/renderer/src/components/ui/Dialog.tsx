@@ -1,10 +1,10 @@
 /**
- * A mid-way fork the person has to answer.
+ * An overlay that owns the screen: a question with a decision, or a read-only
+ * tool whose content is copied elsewhere (the session's SSH snippet).
  *
- * A dialog, not an inline callout: the decision is the only thing that can
- * happen next, and the surface underneath stays visible so the file it is
- * about is still on screen. Escape, the backdrop and the close button all
- * mean "cancel" — they call the same `onClose`.
+ * A dialog, not an inline callout: the surface underneath stays visible so the
+ * terminal or file it is about is still on screen. Escape, the backdrop and the
+ * close button all mean "leave" — they call the same `onClose`.
  */
 
 import { useEffect, useId, useRef, type ReactNode } from "react";
@@ -23,8 +23,9 @@ export function Dialog({
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
-  /** A confirmation is a narrow card; a form gets the wider surface. */
-  size?: "form" | "confirm";
+  /** A confirmation is a narrow card; a form gets the wider surface; a tool
+      dialog may use the window's height because its artifact is read in place. */
+  size?: "form" | "confirm" | "tool";
 }) {
   const { t } = useTranslation();
   const titleId = useId();
@@ -55,7 +56,7 @@ export function Dialog({
       }}
     >
       <div
-        className={`dialog ${size === "confirm" ? "dialog--confirm" : ""}`.trim()}
+        className={`dialog ${size === "confirm" ? "dialog--confirm" : size === "tool" ? "dialog--tool" : ""}`.trim()}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

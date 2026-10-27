@@ -158,8 +158,6 @@ export type SessionAction =
   | "new-terminal"
   | "close-all"
   | "restart-kernel"
-  | "ssh-config"
-  | "copy-ssh"
   | "stop";
 
 export interface SessionsSlice {
@@ -276,7 +274,6 @@ export type SectionId =
   | "appearance"
   | "terminal"
   | "shortcuts"
-  | "external"
   | "account"
   | "usage"
   | "about";
@@ -313,6 +310,18 @@ export interface SurfacesSlice {
   /** Resolves false when another question replaces it, so no caller is left waiting. */
   requestConfirmation(request: ConfirmationRequest): Promise<boolean>;
   resolveConfirmation(confirmed: boolean): void;
+}
+
+/**
+ * The session-scoped SSH dialog. It lives here rather than in the rail row
+ * that opens it because the dialog is rendered at the window root, above the
+ * panes, and only one can be open.
+ */
+export interface SshSlice {
+  /** The session whose SSH snippet is on screen, or null. */
+  sshDialogSession: string | null;
+  openSshDialog(session: string): void;
+  closeSshDialog(): void;
 }
 
 /** What `colab new` is asked for — the same shape the IPC call takes. */
@@ -368,6 +377,7 @@ export type AppState = WorkspaceSlice &
   EnvironmentSlice &
   PreferencesSlice &
   SurfacesSlice &
+  SshSlice &
   CreationSlice &
   ToastsSlice &
   UpdateSlice;

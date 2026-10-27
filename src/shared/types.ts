@@ -112,12 +112,27 @@ export interface UsageTrend {
   last_sample: string | null;
 }
 
-export interface SshSetup {
+/**
+ * One session rendered as text a person pastes into `~/.ssh/config`.
+ *
+ * This is a read-only contract on purpose: the app never writes the user's SSH
+ * configuration. `block` is the exact text to copy; `alias`/`command` are what
+ * the block will answer to once it is pasted.
+ */
+export interface SshSnippet {
+  session: string;
   alias: string;
-  config_path: string;
+  /** `ssh <alias>`, ready to copy. */
+  command: string;
   block: string;
-  ssh_command: string;
-  replaced: boolean;
+  /** The file the block belongs in, resolved for this machine. */
+  config_path: string;
+  /** The usable private key, or null when the dialog must offer to generate one. */
+  identity: string | null;
+  /** The stable launcher the block runs; shown so the mechanism is not a mystery. */
+  launcher_path: string;
+  /** True when the session name was not a plain host label and the alias was derived. */
+  alias_mapped: boolean;
 }
 
 export type SshStatus = "idle" | "connecting" | "ready" | "closed" | "error";
