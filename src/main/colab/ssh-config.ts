@@ -62,9 +62,14 @@ function assertCarriable(name: string): void {
   }
 }
 
-/** OpenSSH accepts forward slashes on every platform; quoting keeps spaces. */
+/**
+ * OpenSSH expands `%` tokens (`%h`, `%p`, `%d`, `%%`, …) in config values.
+ * `%%` is the literal-percent escape. Windows paths are written with forward
+ * slashes because that is the form ssh_config and Windows OpenSSH both accept;
+ * the launcher integration test executes the generated `.cmd` written this way.
+ */
 function quoted(value: string): string {
-  return `"${value.replace(/\\/g, "/")}"`;
+  return `"${value.replace(/\\/g, "/").replace(/%/g, "%%")}"`;
 }
 
 export interface SshSnippetInput {

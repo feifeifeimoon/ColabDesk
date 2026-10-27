@@ -307,7 +307,7 @@ The dialog is a **connection card**, in the order a person needs it:
 5. **Two muted notes** — VS Code reads the same file; a runtime accepts one SSH connection, so external and in-app terminals are alternatives.
 6. **One disclosure, `高级信息`** — the alias, the endpoint, the absolute config path and the launcher path. These are facts about the implementation, not steps, so they start folded.
 
-The app never writes `~/.ssh/config`; the dialog never says "written" because it cannot know whether the paste happened. The block names the stable launcher, never the bundled interpreter; every path and argument is quoted; the session name is checked for characters a quoted line cannot carry, and an unsafe name is mapped to `colabdesk-<slug>-<hash>` (the alias is shown in the advanced rows). The dialog uses the same `findIdentity()` as the terminal; with no usable key the block is still shown but the copy is disabled.
+The app never writes `~/.ssh/config`; the dialog never says "written" because it cannot know whether the paste happened. The block names the stable launcher, never the bundled interpreter; every path and argument is quoted, `%` is escaped as `%%` because ssh_config expands tokens, and the session name is checked for characters a quoted line cannot carry. An unsafe name is mapped to `colabdesk-<slug>-<hash>` (the alias is shown in the advanced rows). The dialog uses the same `findIdentity()` as the terminal; with no usable key the block is still shown but the copy is disabled.
 
 ### Keyboard
 

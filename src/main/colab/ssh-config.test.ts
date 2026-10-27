@@ -54,6 +54,21 @@ describe("the SSH snippet", () => {
     expect(snippet.block).toContain('-s "alpha"');
   });
 
+  it("escapes percent tokens so OpenSSH does not expand them", () => {
+    const percent = buildSshSnippet({
+      session: "100%",
+      launcherPath: "C:\\Users\\100%\\colabdesk-proxy.cmd",
+      identity: "C:\\Users\\100%\\id_ed25519",
+      home: HOME,
+      platform: "win32",
+    });
+
+    expect(percent.block).toContain('-s "100%%"');
+    expect(percent.block).toContain('ProxyCommand "C:/Users/100%%/colabdesk-proxy.cmd"');
+    expect(percent.block).toContain('IdentityFile "C:/Users/100%%/id_ed25519"');
+    expect(percent.block).toContain('--identity "C:/Users/100%%/id_ed25519"');
+  });
+
   it("refuses a name that cannot travel in a quoted config line", () => {
     for (const session of ['a"b', "a\\b", "a\nb"]) {
       expect(() => build(session)).toThrow(/无法写入 SSH 配置/);

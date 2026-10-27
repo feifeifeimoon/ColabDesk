@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { resolveCli, type ResolvedCli } from "./cli";
 import { ensureProxyLauncher, proxyLauncherContent, proxyLauncherPath } from "./ssh-proxy";
@@ -70,8 +70,11 @@ describe("the proxy launcher", () => {
       ensureProxyLauncher(cli, home);
       expect(readFileSync(path, "utf8")).toBe(first);
 
+      // No temp file is left behind by the atomic write.
+      expect(readdirSync(join(home, ".colabdesk", "bin"))).toEqual([basename(path)]);
+
       if (process.platform !== "win32") {
-        expect(statSync(path).mode & 0o777).toBe(0o755);
+        expect(statSync(path).mode & 0o777).toBe(0o700);
       }
     } finally {
       rmSync(home, { recursive: true, force: true });

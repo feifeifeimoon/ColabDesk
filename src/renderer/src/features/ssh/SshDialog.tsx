@@ -94,12 +94,18 @@ export function SshDialog() {
   }
 
   async function generate(): Promise<void> {
-    if (!session) return;
+    const target = session;
+    if (!target) return;
     setGenerating(true);
     try {
       await sshGenerateKey();
       await refreshSshIdentity();
-      setSnippet(await sshSnippet(session));
+      const result = await sshSnippet(target);
+      // The dialog can be closed or retargeted while the key is generated.
+      // Only the session still on screen may receive the result; otherwise a
+      // stale snippet would be shown under the next session's title.
+      if (useAppStore.getState().sshDialogSession !== target) return;
+      setSnippet(result);
     } catch (cause) {
       notify({ tone: "danger", text: messageOf(cause) });
     } finally {

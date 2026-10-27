@@ -102,18 +102,29 @@ export function ensureProxyLauncher(cli: ResolvedCli, home: string = homedir()):
   }
 
   if (current !== content) {
-    const temporary = `${path}.${process.pid}.${Date.now()}.tmp`;
-    writeFileSync(temporary, content, { mode: 0o700 });
+    const temporary = `${path}.${process.pid}.${Date.now()}.${Math.random()
+      .toString(36)
+      .slice(2, 8)}.tmp`;
+    // Windows can refuse to replace a file while another process has it open.
+    // There is deliberately no rm-then-rename fallback: that window could take
+    // away a launcher an external ssh is about to run. The old file stays, the
+    // error reaches the caller, and the next launch retries.
     try {
+      writeFileSync(temporary, content, { mode: 0o700 });
       renameSync(temporary, path);
-    } catch {
-      // Windows can refuse to replace a file while another process has it open.
-      // Removing first is not atomic, but the next launch rewrites it anyway.
-      rmSync(path, { force: true });
-      renameSync(temporary, path);
+    } finally {
+      rmSync(temporary, { force: true });
     }
   }
 
-  if (process.platform !== "win32") chmodSync(path, 0o755);
+  if (process.platform !== "win32") {
+    try {
+      chmodSync(path, 0o700);
+    } catch {
+      // A launcher owned by somebody else may refuse the mode change. The
+      // existing file is still what ssh will run; do not turn a snippet into
+      // an error because a permission could not be re-applied.
+    }
+  }
   return path;
 }
