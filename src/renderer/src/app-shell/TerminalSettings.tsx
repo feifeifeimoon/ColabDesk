@@ -1,10 +1,18 @@
 /**
- * The terminal section: a sandbox at the top, the knobs that drive it below.
+ * The terminal section: the palette, the typography controls, the sandbox, then
+ * the viewport.
  *
  * One section, one column, the width the rest of settings uses — a preview
  * beside its own controls would need a second column no other section has, and
- * the sandbox reads fine stacked. Every control writes the whole record through
- * one action, so what the sandbox shows and what the panes get cannot drift.
+ * the sandbox reads fine stacked. It sits **between the two panels it serves**:
+ * type above, the viewport's padding below. The palette needs no sandbox because
+ * every row carries its own strip.
+ *
+ * Every control writes the whole record through one action. The palette is the
+ * exception the sandbox is built for: settings edits one of two slots at a time
+ * and hands that slot's palette to the sandbox, so a choice for the mode the app
+ * is not in is still visible — the live panes keep the slot they are actually
+ * wearing.
  *
  * Themes and fonts carry their own product names and are not translated; the
  * words that describe a position or a shape are.
@@ -13,8 +21,11 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../components/ui/Button";
+import { Badge } from "../components/ui/Badge";
 import { Card, CardHead, Panel, PanelRow } from "../components/ui/Card";
-import { Checkbox, Select } from "../components/ui/Field";
+import { Switch, Select } from "../components/ui/Field";
+import { CheckIcon } from "../components/ui/icons";
+import { SegmentedControl } from "../components/ui/SegmentedControl";
 import {
   TERMINAL_CURSOR_STYLES,
   TERMINAL_FONTS,
@@ -29,6 +40,12 @@ import {
 } from "../lib/terminal-appearance";
 import { TerminalPreview } from "../features/workspace/TerminalPreview";
 import { useAppStore } from "../store";
+
+/** Which of the two slots the section is showing: what the mode segments pick. */
+type ThemeMode = "dark" | "light";
+
+/** The eight channels a theme row shows; the strip is the choice. */
+const THEME_DOTS = ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "white"] as const;
 
 /** A label per value, kept beside the values rather than inside the contract. */
 const LINE_HEIGHT_LABELS: Record<number, [string, string]> = {
@@ -78,8 +95,6 @@ function Choices<T extends string | number>({
   values,
   current,
   text,
-  theme,
-  disabled,
   chosen,
 }: {
   label: string;
@@ -87,14 +102,6 @@ function Choices<T extends string | number>({
   values: readonly T[];
   current: T;
   text: (value: T) => string;
-  /** Renders a chip in the value's own palette; only themes have one. */
-  theme?: boolean;
-  /**
-   * For a row that is simply not this row's turn yet. Disabled rather than
-   * taken away: "these exist, the switch above is what turns them on" is the
-   * fact worth reading, and an absent row says nothing.
-   */
-  disabled?: boolean;
   chosen: (value: T) => void;
 }) {
   return (
@@ -109,16 +116,8 @@ function Choices<T extends string | number>({
               size="sm"
               variant={value === current ? "primary" : "outline"}
               aria-pressed={value === current}
-              disabled={disabled}
               onClick={() => chosen(value)}
             >
-              {theme ? (
-                <span
-                  className="terminal-swatch"
-                  data-terminal-theme={String(value)}
-                  aria-hidden="true"
-                />
-              ) : null}
               {text(value)}
             </Button>
           ))}
@@ -134,7 +133,21 @@ export function TerminalSettings() {
   const setTerminalAppearance = useAppStore((state) => state.setTerminalAppearance);
   const copyOnSelect = useAppStore((state) => state.copyOnSelect);
   const setCopyOnSelect = useAppStore((state) => state.setCopyOnSelect);
+  const resolvedTheme = useAppStore((state) => state.resolvedTheme);
+  // The set the app is wearing is the one worth opening on; the segments let
+  // the other be edited without leaving the section.
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() =>
+    resolvedTheme === "light" ? "light" : "dark",
+  );
   const missingFonts = useMissingFonts();
+
+  const modeLabel =
+    themeMode === "dark"
+      ? t("settings.terminalThemeDarkLabel", "深色")
+      : t("settings.terminalThemeLightLabel", "浅色");
+  const chosenTheme = themeMode === "dark" ? terminal.themeDark : terminal.themeLight;
+  const chooseTheme = (id: TerminalThemeId): void =>
+    setTerminalAppearance(themeMode === "dark" ? { themeDark: id } : { themeLight: id });
 
   const label = (value: number | string, table: Record<string, [string, string]>): string => {
     const [key, fallback] = table[value] ?? ["", String(value)];
@@ -143,57 +156,61 @@ export function TerminalSettings() {
 
   return (
     <>
-      <Card>
-        <CardHead
-          title={t("settings.terminalPreviewTitle", "预览")}
-          description={t(
-            "settings.terminalPreviewDesc",
-            "即时预览终端渲染效果，修改将实时应用于所有终端。",
-          )}
-        />
-        <TerminalPreview />
-      </Card>
-
       <Panel title={t("settings.terminalPanelTheme", "配色")}>
         <PanelRow
-          label={t("settings.terminalThemeFollowLabel", "跟随界面深浅")}
+          label={t("settings.terminalThemeModeLabel", "配色模式")}
           description={t(
-            "settings.terminalThemeFollowDesc",
-            "开启后按界面深浅使用对应配色；关闭后始终使用深色配色。",
+            "settings.terminalThemeModeDesc",
+            "深色与浅色界面各有一套配色，随界面深浅自动切换。",
           )}
           actions={
-            <Checkbox
-              checked={terminal.followAppTheme}
-              onChange={(event) =>
-                setTerminalAppearance({ followAppTheme: event.target.checked })
-              }
-              label={t("settings.terminalThemeFollowOn", "跟随")}
+            <SegmentedControl
+              label={t("settings.terminalThemeModeLabel", "配色模式")}
+              value={themeMode}
+              options={[
+                {
+                  value: "dark" as const,
+                  label: t("settings.terminalThemeDarkLabel", "深色"),
+                },
+                {
+                  value: "light" as const,
+                  label: t("settings.terminalThemeLightLabel", "浅色"),
+                },
+              ]}
+              onChange={setThemeMode}
             />
           }
         />
-        <Choices
-          label={t("settings.terminalThemeDarkLabel", "深色时用")}
-          description={t("settings.terminalThemeDarkDesc", "界面是深色时终端的 ANSI 调色板。")}
-          values={terminalThemesOf("dark")}
-          current={terminal.themeDark}
-          text={(id) => themeLabel(id)}
-          theme
-          chosen={(themeDark) => setTerminalAppearance({ themeDark })}
-        />
-        <Choices
-          label={t("settings.terminalThemeLightLabel", "浅色时用")}
-          description={
-            terminal.followAppTheme
-              ? t("settings.terminalThemeLightDesc", "界面是浅色时终端的 ANSI 调色板。")
-              : t("settings.terminalThemeLightNeedsFollow", "需先开启「跟随界面深浅」。")
-          }
-          values={terminalThemesOf("light")}
-          current={terminal.themeLight}
-          text={(id) => themeLabel(id)}
-          theme
-          disabled={!terminal.followAppTheme}
-          chosen={(themeLight) => setTerminalAppearance({ themeLight })}
-        />
+        <div className="theme-list" role="radiogroup" aria-label={modeLabel}>
+          {terminalThemesOf(themeMode).map((id) => {
+            const selected = id === chosenTheme;
+            return (
+              <label
+                key={id}
+                className={`theme-option ${selected ? "theme-option--selected" : ""}`.trim()}
+                data-terminal-theme={id}
+              >
+                <input
+                  type="radio"
+                  className="visually-hidden"
+                  name={`terminal-theme-${themeMode}`}
+                  value={id}
+                  checked={selected}
+                  onChange={() => chooseTheme(id)}
+                />
+                <span className="theme-option__preview" aria-hidden="true">
+                  {THEME_DOTS.map((dot) => (
+                    <span key={dot} className={`theme-option__dot theme-option__dot--${dot}`} />
+                  ))}
+                </span>
+                <span className="theme-option__name">{themeLabel(id)}</span>
+                <span className="theme-option__mark" aria-hidden="true">
+                  {selected ? <CheckIcon size={14} /> : null}
+                </span>
+              </label>
+            );
+          })}
+        </div>
       </Panel>
 
       <Panel title={t("settings.terminalPanelType", "排版")}>
@@ -265,6 +282,23 @@ export function TerminalSettings() {
         />
       </Panel>
 
+      {/* Between the two panels whose settings it shows: type above, the
+          viewport's padding below. The palette previews itself with its strips,
+          so it does not need the sandbox at the top of the section. */}
+      <Card>
+        <CardHead
+          title={t("settings.terminalPreviewTitle", "预览")}
+          actions={
+            <Badge>
+              {themeMode === "dark"
+                ? t("settings.terminalPreviewDark", "深色配色")
+                : t("settings.terminalPreviewLight", "浅色配色")}
+            </Badge>
+          }
+        />
+        <TerminalPreview themeId={chosenTheme} />
+      </Card>
+
       <Panel title={t("settings.terminalPanelViewport", "光标与视口")}>
         <Choices
           label={t("settings.terminalCursorLabel", "光标样式")}
@@ -278,10 +312,10 @@ export function TerminalSettings() {
           label={t("settings.terminalCursorBlinkLabel", "光标闪烁")}
           description={t("settings.terminalCursorBlinkDesc", "设置终端光标是否闪烁。")}
           actions={
-            <Checkbox
+            <Switch
               checked={terminal.cursorBlink}
-              onChange={(event) => setTerminalAppearance({ cursorBlink: event.target.checked })}
-              label={t("settings.terminalCursorBlinkOn", "闪烁")}
+              onChange={(cursorBlink) => setTerminalAppearance({ cursorBlink })}
+              label={t("settings.terminalCursorBlinkLabel", "光标闪烁")}
             />
           }
         />
@@ -325,10 +359,10 @@ export function TerminalSettings() {
             "在终端中选中文本后自动复制到剪贴板；开启后右键直接粘贴。",
           )}
           actions={
-            <Checkbox
+            <Switch
               checked={copyOnSelect}
-              onChange={(event) => setCopyOnSelect(event.target.checked)}
-              label={t("settings.terminalCopyOnSelectOn", "自动复制")}
+              onChange={setCopyOnSelect}
+              label={t("settings.terminalCopyOnSelectLabel", "选中即复制")}
             />
           }
         />

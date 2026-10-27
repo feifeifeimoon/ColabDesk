@@ -30,14 +30,33 @@ export function Select({ className, ...rest }: SelectHTMLAttributes<HTMLSelectEl
   return <select className={`input ${className ?? ""}`.trim()} {...rest} />;
 }
 
-export function Checkbox({
+/**
+ * A boolean row's control. It draws no text of its own — the row's label is the
+ * name — and states itself through `aria-checked`, so the switch is readable
+ * without the row around it.
+ */
+export function Switch({
+  checked,
+  onChange,
   label,
-  ...rest
-}: InputHTMLAttributes<HTMLInputElement> & { label: ReactNode }) {
+  disabled,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+  disabled?: boolean;
+}) {
   return (
-    <label className="checkbox">
-      <input type="checkbox" {...rest} />
-      {label}
-    </label>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      className="switch"
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+    >
+      <span className="switch__thumb" aria-hidden="true" />
+    </button>
   );
 }

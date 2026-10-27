@@ -304,27 +304,41 @@ test("@gallery 十套终端配色", async ({ page }) => {
   await page.locator('[data-testid="open-settings"]').click();
   await page.locator(".settings__nav-item").filter({ hasText: "终端" }).click();
 
-  const palettes = [
-    "Titanium",
-    "Tokyo Night",
-    "Catppuccin Mocha",
-    "One Dark",
-    "Dracula",
-    "Nord",
-    "Monokai",
-    "Catppuccin Latte",
-    "One Half Light",
-    "Tokyo Night Light",
-  ];
+  // One set at a time, the way the section edits them; the preview is forced to
+  // the set being edited, so each shot shows the palette even when the app's
+  // own polarity is the other one. The sandbox sits below the type panel, so the
+  // shot scrolls to it: the palette itself is what the file is named for.
+  const sets = [
+    {
+      mode: "深色",
+      palettes: [
+        "Titanium",
+        "Tokyo Night",
+        "Catppuccin Mocha",
+        "One Dark",
+        "Dracula",
+        "Nord",
+        "Monokai",
+      ],
+    },
+    {
+      mode: "浅色",
+      palettes: ["Catppuccin Latte", "One Half Light", "Tokyo Night Light"],
+    },
+  ] as const;
 
-  for (const palette of palettes) {
-    await page.getByRole("button", { name: palette, exact: true }).click();
-    await page.waitForTimeout(500);
-    // The whole name: "Catppuccin Latte" and "Catppuccin Mocha" would otherwise
-    // land on one file, and a shot that silently overwrites another is worse
-    // than no shot.
-    const slug = palette.toLowerCase().replace(/\s+/g, "-");
-    await capture(page, `05-terminal-${slug}`);
+  for (const set of sets) {
+    await page.getByRole("button", { name: set.mode, exact: true }).click();
+    for (const palette of set.palettes) {
+      await page.getByText(palette, { exact: true }).click();
+      await page.waitForTimeout(500);
+      await page.locator(".terminal-preview").scrollIntoViewIfNeeded();
+      // The whole name: "Catppuccin Latte" and "Catppuccin Mocha" would otherwise
+      // land on one file, and a shot that silently overwrites another is worse
+      // than no shot.
+      const slug = palette.toLowerCase().replace(/\s+/g, "-");
+      await capture(page, `05-terminal-${slug}`);
+    }
   }
 
   // And the combination the feature exists for: a light app with the light
@@ -333,7 +347,15 @@ test("@gallery 十套终端配色", async ({ page }) => {
   await page.locator('[data-testid="theme-choice-light"]').click();
   await page.locator(".settings__nav-item").filter({ hasText: "终端" }).click();
   await page.waitForTimeout(500);
+  await page.locator(".terminal-preview").scrollIntoViewIfNeeded();
   await capture(page, "06-terminal-light-following");
+
+  // The sample is chosen by the grid: at the largest type it switches to the
+  // short variant from the dots line instead of scrolling the top away.
+  const increase = page.getByRole("button", { name: "增大字号" });
+  while (!(await increase.isDisabled())) await increase.click();
+  await page.locator(".terminal-preview").scrollIntoViewIfNeeded();
+  await capture(page, "06-terminal-large-type");
 });
 
 /**

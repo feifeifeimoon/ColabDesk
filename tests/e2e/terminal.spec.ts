@@ -267,7 +267,9 @@ test.describe("剪贴板", () => {
         .locator('[data-testid="settings-page"]')
         .getByRole("button", { name: "终端", exact: true })
         .click();
-      await page.getByRole("checkbox", { name: "自动复制" }).check();
+      const copyOnSelect = page.getByRole("switch", { name: "选中即复制" });
+      await copyOnSelect.click();
+      await expect(copyOnSelect).toHaveAttribute("aria-checked", "true");
       await page.locator('[data-testid="close-settings"]').click();
 
       // Find moves the selection programmatically; it is not a copy.

@@ -89,19 +89,11 @@ describe("resolving which palette the app's polarity asks for", () => {
   const slots = {
     themeDark: "titanium",
     themeLight: "catppuccin-latte",
-    followAppTheme: true,
   } as const;
 
   it("hands the light slot to a light app and the dark slot to a dark one", () => {
     expect(resolveTerminalThemeId(slots, "light")).toBe("catppuccin-latte");
     expect(resolveTerminalThemeId(slots, "dark")).toBe("titanium");
-  });
-
-  it("stays on the dark slot when following is off, whatever the app is", () => {
-    const fixed = { ...slots, followAppTheme: false };
-
-    expect(resolveTerminalThemeId(fixed, "light")).toBe("titanium");
-    expect(resolveTerminalThemeId(fixed, "dark")).toBe("titanium");
   });
 });
 

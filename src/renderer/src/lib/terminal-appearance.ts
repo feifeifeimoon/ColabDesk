@@ -121,13 +121,6 @@ export interface TerminalAppearance {
   themeDark: TerminalThemeId;
   /** …and while it is light. */
   themeLight: TerminalThemeId;
-  /**
-   * Whether the palette follows the app's polarity. Off means "always the dark
-   * slot", which is the honest way to say "I want Monokai in a light window" —
-   * the alternative, letting the light slot hold a dark palette, is the same
-   * setting with two names.
-   */
-  followAppTheme: boolean;
   fontId: TerminalFontId;
   fontSize: number;
   lineHeight: number;
@@ -143,14 +136,13 @@ export interface TerminalAppearance {
  * would reflow every existing terminal on the first launch after an upgrade, and
  * the grid of a running session is not ours to move.
  *
- * Following the app's polarity is on by default: a light window with a black
- * terminal is the complaint this feature answers. Anyone who wants the dark
- * palette in a light window has one switch to flip.
+ * The palette follows the app's polarity: a light window uses the light slot, a
+ * dark one the dark slot. There is no override — a dark terminal in a light
+ * window is the complaint this axis answers, not a preference it offers.
  */
 export const DEFAULT_TERMINAL_APPEARANCE: TerminalAppearance = {
   themeDark: "titanium",
   themeLight: "catppuccin-latte",
-  followAppTheme: true,
   fontId: "geist-mono",
   fontSize: TERMINAL_FONT_SIZE.initial,
   lineHeight: 1,
@@ -177,23 +169,29 @@ function numberIn(value: unknown, min: number, max: number, fallback: number): n
  * nearest legal value instead of on a terminal nobody can read. Exported because
  * the test for this is the only cheap way to hold the fields to their limits.
  *
- * `themeId` is what the single-slot record stored before the palette learned to
- * follow the polarity: it becomes the dark slot, and the light slot and the
- * switch take their defaults.
+ * Each slot is held to its own polarity: following is unconditional, so a light
+ * slot pointing at a dark palette would be a palette nobody can read on that
+ * surface. `themeId` is what the single-slot record stored before the palette
+ * split: it goes to the slot its own polarity belongs to, so a light palette
+ * someone chose is still the one their light window follows into.
  */
 export function normalizeTerminalAppearance(raw: unknown): TerminalAppearance {
   const value = (raw ?? {}) as Partial<Record<keyof TerminalAppearance | "themeId", unknown>>;
+  const legacy =
+    typeof value.themeId === "string" && (TERMINAL_THEME_IDS as readonly string[]).includes(value.themeId)
+      ? (value.themeId as TerminalThemeId)
+      : null;
   return {
     themeDark: pick(
-      TERMINAL_THEME_IDS,
-      value.themeDark ?? value.themeId,
+      terminalThemesOf("dark"),
+      value.themeDark ?? legacy,
       DEFAULT_TERMINAL_APPEARANCE.themeDark,
     ),
-    themeLight: pick(TERMINAL_THEME_IDS, value.themeLight, DEFAULT_TERMINAL_APPEARANCE.themeLight),
-    followAppTheme:
-      typeof value.followAppTheme === "boolean"
-        ? value.followAppTheme
-        : DEFAULT_TERMINAL_APPEARANCE.followAppTheme,
+    themeLight: pick(
+      terminalThemesOf("light"),
+      value.themeLight ?? (legacy && isLightPalette(legacy) ? legacy : undefined),
+      DEFAULT_TERMINAL_APPEARANCE.themeLight,
+    ),
     fontId: pick(
       TERMINAL_FONTS.map((font) => font.id),
       value.fontId,
