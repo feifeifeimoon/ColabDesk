@@ -112,12 +112,19 @@ describe("upgrading from the record that held one palette", () => {
     expect(appearance.cursorStyle).toBe("bar");
   });
 
-  it("fills the light slot and the switch with the defaults", () => {
+  it("fills the light slot with the default", () => {
     storage({ [STORAGE_KEY]: JSON.stringify(legacy) });
     const appearance = readTerminalAppearance();
 
     expect(appearance.themeLight).toBe(DEFAULT_TERMINAL_APPEARANCE.themeLight);
-    expect(appearance.followAppTheme).toBe(DEFAULT_TERMINAL_APPEARANCE.followAppTheme);
+  });
+
+  it("puts a light palette someone chose into the light slot, where following uses it", () => {
+    storage({ [STORAGE_KEY]: JSON.stringify({ ...legacy, themeId: "one-half-light" }) });
+    const appearance = readTerminalAppearance();
+
+    expect(appearance.themeLight).toBe("one-half-light");
+    expect(appearance.themeDark).toBe(DEFAULT_TERMINAL_APPEARANCE.themeDark);
   });
 });
 
@@ -140,13 +147,24 @@ describe("upgrading from the font size that used to live alone", () => {
     expect(readTerminalAppearance().fontSize).toBe(11);
   });
 
+  it("keeps each slot on its own side of the polarity", () => {
+    // Following is unconditional now, so a slot pointing at the other polarity
+    // would be a palette nobody can read on that surface.
+    const normalized = normalizeTerminalAppearance({
+      themeDark: "one-half-light",
+      themeLight: "dracula",
+    });
+
+    expect(normalized.themeDark).toBe(DEFAULT_TERMINAL_APPEARANCE.themeDark);
+    expect(normalized.themeLight).toBe(DEFAULT_TERMINAL_APPEARANCE.themeLight);
+  });
+
   it("round-trips through storage", () => {
     const map = storage();
     const chosen = {
       ...DEFAULT_TERMINAL_APPEARANCE,
       themeDark: "dracula" as const,
       themeLight: "one-half-light" as const,
-      followAppTheme: false,
       padding: "spacious" as const,
     };
     saveTerminalAppearance(chosen);
@@ -226,8 +244,8 @@ describe("applying to a live terminal", () => {
   });
 
   it("has palettes on both sides of the polarity, or following the app is a lie", () => {
-    // The switch hands the light slot to a light window: with no light palette
-    // that slot would hold a dark one and "following" would change nothing.
+    // A light window follows into the light slot: with no light palette that
+    // slot would hold a dark one and following would change nothing.
     expect(terminalThemesOf("light").length).toBeGreaterThan(0);
     expect(terminalThemesOf("dark").length).toBeGreaterThan(0);
     expect(isLightPalette(DEFAULT_TERMINAL_APPEARANCE.themeLight)).toBe(true);

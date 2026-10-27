@@ -54,16 +54,13 @@ export const TERMINAL_THEME_VARIABLES: readonly string[] = PALETTE.map(([, varia
  * One function because the answer needs two preferences — the slots and the
  * app's polarity — and every writer of the attribute has to agree on it: the
  * first frame, an app-theme change, and a change to the terminal's own settings.
- * Following is what makes the light palettes reachable at all; turning it off
- * means the dark slot, always.
+ * The light slot is what makes the light palettes reachable at all.
  */
 export function resolveTerminalThemeId(
-  appearance: Pick<TerminalAppearance, "themeDark" | "themeLight" | "followAppTheme">,
+  appearance: Pick<TerminalAppearance, "themeDark" | "themeLight">,
   appTheme: Theme,
 ): TerminalThemeId {
-  return appearance.followAppTheme && appTheme === "light"
-    ? appearance.themeLight
-    : appearance.themeDark;
+  return appTheme === "light" ? appearance.themeLight : appearance.themeDark;
 }
 
 /** Where the palette is switched. Read by the stylesheet, so it switches there too. */

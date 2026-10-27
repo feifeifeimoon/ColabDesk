@@ -1563,7 +1563,7 @@ kbd {
   background: var(--terminal-bg);
 }
 
-/* The settings sandbox: the same surface, small enough to sit above the controls
+/* The settings sandbox: the same surface, small enough to sit among the controls
    that change it. It is a terminal, not a picture of one — same xterm, same
    palette, same ring. */
 .terminal-preview {
@@ -1576,25 +1576,131 @@ kbd {
   overflow: hidden;
 }
 
-/* A palette in miniature, for the theme buttons: the theme's own background with
-   its cursor colour drawn across the bottom, so the choice is made by looking.
-   The attribute is what makes the chip read *another* theme's variables. */
-.terminal-swatch {
-  width: 14px;
-  height: 14px;
-  border-radius: var(--radius-xs);
-  background: var(--terminal-bg);
-  box-shadow: inset 0 0 0 1px var(--hairline-strong);
-  position: relative;
+/* xterm only blinks a cursor while the terminal has focus, and this sandbox is
+   inert by design — without these rules the blink switch would show nothing.
+   The keyframes mirror the renderer's own: the block swaps the glyph colour,
+   the bar and underline drop their mark. The shape itself comes from
+   `cursorInactiveStyle`, set by the component. */
+.terminal-preview[data-terminal-cursor-blink="true"] .xterm-cursor.xterm-cursor-block {
+  animation: terminal-preview-blink-block 1s step-end infinite;
 }
 
-.terminal-swatch::after {
-  content: "";
-  position: absolute;
-  inset: auto 2px 3px 2px;
-  height: 2px;
-  border-radius: 1px;
-  background: var(--terminal-cursor);
+.terminal-preview[data-terminal-cursor-blink="true"] .xterm-cursor.xterm-cursor-bar {
+  animation: terminal-preview-blink-bar 1s step-end infinite;
+}
+
+.terminal-preview[data-terminal-cursor-blink="true"] .xterm-cursor.xterm-cursor-underline {
+  animation: terminal-preview-blink-underline 1s step-end infinite;
+}
+
+@keyframes terminal-preview-blink-block {
+  0% {
+    background-color: var(--terminal-cursor);
+    color: var(--terminal-cursor-accent);
+  }
+  50% {
+    background-color: inherit;
+    color: var(--terminal-cursor);
+  }
+}
+
+@keyframes terminal-preview-blink-bar {
+  50% {
+    box-shadow: none;
+  }
+}
+
+@keyframes terminal-preview-blink-underline {
+  50% {
+    border-bottom-style: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal-preview[data-terminal-cursor-blink="true"] .xterm-cursor {
+    animation: none;
+  }
+}
+
+/* The theme picker: one row per palette, wearing the palette it offers. The row
+   carries `data-terminal-theme`, so the strip resolves that theme's own
+   variables while the surface around it keeps the app's. The palette is chosen
+   by looking, the same way the panes will look once it is chosen. */
+.theme-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-5);
+  cursor: pointer;
+}
+
+.theme-option + .theme-option {
+  border-top: 1px solid var(--hairline);
+}
+
+.theme-option:hover {
+  background: var(--canvas-soft);
+}
+
+.theme-option--selected {
+  background: var(--canvas-soft-2);
+}
+
+/* The radio is visually hidden, so the row draws the focus: the same inset bar
+   the session rows use for "this is the one", not a ring that would spill over
+   the hairline of the next row. */
+.theme-option:has(input:focus-visible) {
+  background: var(--canvas-soft-2);
+  box-shadow: inset 2px 0 0 var(--primary);
+}
+
+.theme-option__preview {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  width: 64px;
+  height: 24px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--terminal-bg);
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+}
+
+.theme-option__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+}
+
+.theme-option__dot--black { background: var(--terminal-ansi-black); }
+.theme-option__dot--red { background: var(--terminal-ansi-red); }
+.theme-option__dot--green { background: var(--terminal-ansi-green); }
+.theme-option__dot--yellow { background: var(--terminal-ansi-yellow); }
+.theme-option__dot--blue { background: var(--terminal-ansi-blue); }
+.theme-option__dot--magenta { background: var(--terminal-ansi-magenta); }
+.theme-option__dot--cyan { background: var(--terminal-ansi-cyan); }
+.theme-option__dot--white { background: var(--terminal-ansi-white); }
+
+.theme-option__name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-copy);
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-option__mark {
+  flex-shrink: 0;
+  width: 14px;
+  color: var(--ink);
 }
 
 /* The ring around the canvas is the terminal's own breathing room, and how much
@@ -3096,18 +3202,59 @@ textarea.input {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--error) 20%, transparent);
 }
 
-.checkbox {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-copy);
-  color: var(--body);
+/* The pill switch: the track is the state (ink when on), the knob is the mark.
+   Off keeps the second inset ground, so the control reads as "not set" rather
+   than as a second affirmative action. */
+.switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 36px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--canvas-soft-2);
+  box-shadow: var(--shadow-1);
+  cursor: pointer;
+  transition: background 120ms ease;
 }
 
-.checkbox input {
+.switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
   width: 16px;
   height: 16px;
-  accent-color: var(--primary);
+  border-radius: var(--radius-full);
+  background: var(--canvas);
+  box-shadow: var(--shadow-2);
+  transition: transform 120ms ease;
+}
+
+.switch[aria-checked="true"] {
+  background: var(--primary);
+  box-shadow: none;
+}
+
+.switch[aria-checked="true"] .switch__thumb {
+  background: var(--on-primary);
+  transform: translateX(16px);
+}
+
+.switch:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+.switch:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch,
+  .switch__thumb {
+    transition: none;
+  }
 }
 
 .create-form {
