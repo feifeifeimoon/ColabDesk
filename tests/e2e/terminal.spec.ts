@@ -50,6 +50,17 @@ async function occurrences(page: Page, needle: string): Promise<number> {
   return (await terminalText(page)).split(needle).length - 1;
 }
 
+/** Selects a whole rendered row with the mouse, the way a reader would. */
+async function selectTerminalRow(page: Page, text: string): Promise<void> {
+  const row = page.locator(".terminal-host:visible .xterm-rows > div", { hasText: text }).first();
+  const box = await row.boundingBox();
+  if (!box) throw new Error(`没有找到包含「${text}」的终端行`);
+  await page.mouse.move(box.x + 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width - 2, box.y + box.height / 2, { steps: 10 });
+  await page.mouse.up();
+}
+
 test("打开会话就连上运行时，按键走到远端再回来", async ({ page }) => {
   await openSession(page, "e2e-alpha");
 
@@ -234,6 +245,48 @@ test.describe("剪贴板", () => {
 
       // U+241B 是 ESC 的可见替身：它被当作普通字符打进命令行，而不是被解释。
       await expect(terminalRows(page)).toContainText("␛DANGER");
+    });
+  });
+
+  test("选中即复制默认关闭，开启后选区落到剪贴板，右键改为粘贴", async ({ app, page }) => {
+    await openSession(page, "e2e-alpha");
+    await waitForPrompts(page, 1);
+    await expect(terminalRows(page)).toContainText("shell #1");
+
+    await withClipboardLock(async () => {
+      await app.evaluate(({ clipboard }) => clipboard.writeText("untouched"));
+
+      // 关闭时，选中只是选中。
+      await selectTerminalRow(page, "shell #1");
+      await page.waitForTimeout(300);
+      expect(await app.evaluate(({ clipboard }) => clipboard.readText())).toBe("untouched");
+
+      // 开启：设置 → 终端 → 选中即复制。
+      await page.locator('[data-testid="open-settings"]').click();
+      await page
+        .locator('[data-testid="settings-page"]')
+        .getByRole("button", { name: "终端", exact: true })
+        .click();
+      await page.getByRole("checkbox", { name: "自动复制" }).check();
+      await page.locator('[data-testid="close-settings"]').click();
+
+      // Find moves the selection programmatically; it is not a copy.
+      await focusTerminal(page);
+      await page.keyboard.press("Control+Shift+F");
+      await page.keyboard.type("shell #1");
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(300);
+      expect(await app.evaluate(({ clipboard }) => clipboard.readText())).toBe("untouched");
+      await page.keyboard.press("Escape");
+
+      await selectTerminalRow(page, "root@e2e-runtime");
+      await expect
+        .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()))
+        .toContain("root@e2e-runtime");
+
+      // 选区已经进剪贴板，右键的下一步是粘贴，而不是再复制一次。
+      await page.locator(".terminal-host:visible").click({ button: "right" });
+      await expect(terminalRows(page)).toContainText("[paste-start]");
     });
   });
 });

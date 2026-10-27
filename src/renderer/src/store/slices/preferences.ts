@@ -31,6 +31,7 @@ import type { AppState, PreferencesSlice } from "../types";
 
 const LANGUAGE_KEY = "colabdesk.language";
 const FILE_SIZES_KEY = "colabdesk.files.showSizes";
+const COPY_ON_SELECT_KEY = "colabdesk.terminal.copyOnSelect";
 
 const PANEL_WIDTH_KEYS: Record<PanelSide, string> = {
   sidebar: "colabdesk.panel.sidebarWidth",
@@ -60,6 +61,15 @@ function readShowFileSizes(): boolean {
   }
 }
 
+/** Select-to-copy is opt-in: X11 expects it, Windows and macOS usually do not. */
+function readCopyOnSelect(): boolean {
+  try {
+    return localStorage.getItem(COPY_ON_SELECT_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
 export const createPreferencesSlice: StateCreator<AppState, [], [], PreferencesSlice> = (set, get) => {
   const theme = readThemePreference();
   const terminal = readTerminalAppearance();
@@ -77,6 +87,7 @@ export const createPreferencesSlice: StateCreator<AppState, [], [], PreferencesS
     filesOpen: true,
     panelWidths: { sidebar: readPanelWidth("sidebar"), files: readPanelWidth("files") },
     showFileSizes: readShowFileSizes(),
+    copyOnSelect: readCopyOnSelect(),
     // The page can carry a Chromium zoom level from before this setting
     // existed; the zoom watcher adopts it into the store on the first resize.
     zoomLevel: readStoredZoomLevel() ?? 0,
@@ -137,6 +148,15 @@ export const createPreferencesSlice: StateCreator<AppState, [], [], PreferencesS
         // ignore storage quota/disabled errors
       }
       set({ showFileSizes: show });
+    },
+
+    setCopyOnSelect: (enabled) => {
+      try {
+        localStorage.setItem(COPY_ON_SELECT_KEY, String(enabled));
+      } catch {
+        // ignore storage quota/disabled errors
+      }
+      set({ copyOnSelect: enabled });
     },
 
     setZoomLevel: (level) => {

@@ -248,6 +248,8 @@ export interface PreferencesSlice {
   panelWidths: Record<PanelSide, number>;
   /** Whether a file row shows its size; off by default, the name is the point. */
   showFileSizes: boolean;
+  /** Selected terminal text goes to the clipboard as it is selected. */
+  copyOnSelect: boolean;
   /** Chromium page-zoom level; 0 is 100%, and the Appearance stepper writes it. */
   zoomLevel: number;
 
@@ -263,6 +265,7 @@ export interface PreferencesSlice {
   /** Clamped here, so every caller gets the same limits. */
   setPanelWidth(side: PanelSide, width: number): void;
   setShowFileSizes(show: boolean): void;
+  setCopyOnSelect(enabled: boolean): void;
   setZoomLevel(level: number): void;
   /** A zoom chord moved the page: remember it without applying it again. */
   syncZoomLevel(level: number): void;

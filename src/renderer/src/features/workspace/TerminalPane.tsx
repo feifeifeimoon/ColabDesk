@@ -67,7 +67,8 @@ function withoutEscapes(text: string): string {
  *
  * The keys follow terminal convention rather than app convention: copy and
  * paste need a modifier (plain Ctrl+C must stay SIGINT), a right click copies
- * the selection or pastes, and Ctrl+Shift+± resizes the font.
+ * the selection or pastes — with select-to-copy on it always pastes, because
+ * the selection is already on the clipboard — and Ctrl+Shift+± resizes the font.
  *
  * How it looks is a global preference the pane subscribes to itself: colours,
  * type, cursor and buffer are read from the store here rather than threaded down
@@ -88,6 +89,7 @@ export function TerminalPane({
   const { t } = useTranslation();
   const appearance = useAppStore((state) => state.terminal);
   const terminalThemeId = useAppStore((state) => state.terminalThemeId);
+  const copyOnSelect = useAppStore((state) => state.copyOnSelect);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
@@ -112,9 +114,9 @@ export function TerminalPane({
   const [attempt, setAttempt] = useState(0);
 
   /** What the handlers below need, read when they run rather than when they were made. */
-  const latest = useRef({ visible, focused, appearance });
+  const latest = useRef({ visible, focused, appearance, copyOnSelect });
   useEffect(() => {
-    latest.current = { visible, focused, appearance };
+    latest.current = { visible, focused, appearance, copyOnSelect };
   });
 
   // Stable on purpose: this is a dependency of the shell effect, and a new
@@ -272,6 +274,50 @@ export function TerminalPane({
     };
 
     /**
+     * Select-to-copy copies a *mouse* selection when the gesture ends, not on
+     * every selection change: Find and select-all move the selection
+     * programmatically, and a slow drag can pause for longer than any timer.
+     * The selection stays — it is the visual proof of what was copied.
+     */
+    let gesture: { x: number; y: number; selection: string } | null = null;
+    let disposed = false;
+    const onMouseDown = (event: MouseEvent): void => {
+      const target = event.target as Element | null;
+      if (event.button !== 0 || !target?.closest(".xterm-screen")) return;
+      gesture = {
+        x: event.clientX,
+        y: event.clientY,
+        selection: terminal.getSelection(),
+      };
+    };
+    const onMouseUp = (event: MouseEvent): void => {
+      if (event.button !== 0 || !gesture) return;
+      const started = gesture;
+      gesture = null;
+      if (!latest.current.copyOnSelect) return;
+
+      const moved = Math.hypot(event.clientX - started.x, event.clientY - started.y) > 2;
+      const multiClick = event.detail > 1;
+      // xterm finalizes the selection on mouseup; read it after its handler.
+      window.setTimeout(() => {
+        if (disposed || !latest.current.copyOnSelect) return;
+        const selection = terminal.getSelection();
+        if (!selection) return;
+        // A plain click that leaves an existing (e.g. Find) selection alone is
+        // not a copy gesture; a drag, a double/triple click, or a selection
+        // that changed during the click is.
+        if (!moved && !multiClick && selection === started.selection) return;
+        void writeClipboard(selection);
+      }, 0);
+    };
+    const cancelGesture = (): void => {
+      gesture = null;
+    };
+    host.addEventListener("mousedown", onMouseDown, true);
+    window.addEventListener("mouseup", onMouseUp, true);
+    window.addEventListener("blur", cancelGesture);
+
+    /**
      * Through xterm's own paste, not straight into the shell: it normalizes the
      * line endings and, when the program asked for bracketed paste, wraps the
      * text so that the program can tell a paste from typing. Escape sequences
@@ -335,6 +381,15 @@ export function TerminalPane({
 
     const onContextMenu = (event: MouseEvent) => {
       event.preventDefault();
+      if (latest.current.copyOnSelect) {
+        const selection = terminal.getSelection();
+        // Paste the selection itself: a round trip through the clipboard could
+        // paste its previous owner if the write failed, and a Find selection
+        // was never copied at all.
+        if (selection) terminal.paste(withoutEscapes(selection));
+        else void paste();
+        return;
+      }
       if (!copySelection()) void paste();
     };
     host.addEventListener("contextmenu", onContextMenu);
@@ -358,7 +413,11 @@ export function TerminalPane({
     observer.observe(host);
 
     return () => {
+      disposed = true;
       observer.disconnect();
+      host.removeEventListener("mousedown", onMouseDown, true);
+      window.removeEventListener("mouseup", onMouseUp, true);
+      window.removeEventListener("blur", cancelGesture);
       host.removeEventListener("contextmenu", onContextMenu);
       window.removeEventListener("keydown", onMacCopy);
       if (ackTimer.current !== null) window.clearTimeout(ackTimer.current);
