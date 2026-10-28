@@ -257,6 +257,54 @@ a {
   margin-top: var(--space-2);
 }
 
+/* The count is a tag, not a third call to action: the app's badge recipe with
+   no hover, pointer or focus, because it is a fact rather than a control. It
+   is hidden until GitHub answers, so a blocked call leaves a button and no
+   empty number. */
+.hero__downloads {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  margin: var(--space-3) 0 0;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-full);
+  background: var(--canvas-soft);
+  color: var(--body);
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+  animation: downloads-in 180ms ease-out;
+}
+
+.hero__downloads[hidden] {
+  display: none;
+}
+
+.hero__downloads-icon {
+  width: 13px;
+  height: 13px;
+  color: var(--mute);
+}
+
+.hero__downloads-count {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+@keyframes downloads-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__downloads {
+    animation: none;
+  }
+}
+
 .noscript-note {
   margin: var(--space-3) 0 0;
   color: var(--body);
