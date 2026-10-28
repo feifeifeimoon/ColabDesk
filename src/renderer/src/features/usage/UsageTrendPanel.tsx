@@ -14,7 +14,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { Usage, UsageBucket, UsageGranularity, UsageTrend as UsageTrendData } from "@shared/types";
+import type { UsageBucket, UsageGranularity, UsageTrend as UsageTrendData } from "@shared/types";
 import { Button } from "../../components/ui/Button";
 import { Card, CardHead, Panel } from "../../components/ui/Card";
 import { Callout, EmptyState } from "../../components/ui/Notice";
@@ -45,13 +45,13 @@ export function UsageTrend({
   trend,
   granularity,
   onGranularity,
-  snapshot,
+  balance = null,
 }: {
   trend: UsageTrendData;
   granularity: UsageGranularity;
   onGranularity: (granularity: UsageGranularity) => void;
-  /** The live balance/rate reading, if one has landed. */
-  snapshot?: Usage | null;
+  /** The live balance reading, if one has landed. */
+  balance?: number | null;
 }) {
   const { t } = useTranslation();
 
@@ -87,7 +87,6 @@ export function UsageTrend({
   const ceiling = chartCeiling(peak);
   // At a month's width a label per bucket collides; every fifth one reads fine.
   const step = buckets.length > 14 ? 5 : 1;
-  const balance = snapshot?.balance ?? null;
   // The window ends now; that bar is the live one and takes the single accent.
   const currentKey = buckets[buckets.length - 1]?.key ?? null;
   // The breakdown lists spend, not the calendar: an interval with neither a
@@ -239,7 +238,9 @@ export function UsageTrendPanel() {
   const [trend, setTrend] = useState<UsageTrendData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [granularity, setGranularity] = useState<UsageGranularity>("day");
-  const usage = useAppStore((state) => state.usage);
+  // Only the balance is on screen here; selecting the whole report would
+  // re-render the chart whenever rate or assignment counts refresh.
+  const balance = useAppStore((state) => state.usage?.usage.balance ?? null);
 
   useEffect(() => {
     let live = true;
@@ -270,7 +271,7 @@ export function UsageTrendPanel() {
       trend={trend}
       granularity={granularity}
       onGranularity={setGranularity}
-      snapshot={usage?.usage ?? null}
+      balance={balance}
     />
   );
 }

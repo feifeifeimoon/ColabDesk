@@ -44,7 +44,7 @@ const render = (data: UsageTrend): string =>
       trend: data,
       granularity: "day",
       onGranularity: () => {},
-      snapshot: { balance: 42.5, rate: 1.25, assignments: 1 },
+      balance: 42.5,
     }),
   );
 

@@ -33,17 +33,34 @@ interface UsageChartProps {
   ariaLabel: string;
 }
 
+/** A bucket with the two chart-only fields the shape and tooltip read. */
+interface UsageChartDatum extends UsageBucket {
+  label: string;
+  isCurrent: boolean;
+}
+
 /** Axis labels drop trailing zeros without losing a meaningful decimal. */
 function formatAxis(value: number): string {
   return value === 0 ? "0" : String(Number(value.toFixed(2)));
 }
 
 /**
- * A rounded-top bar, with the live bucket taking the single link accent.
+ * Recharts hands the shape and tooltip a loosely typed payload; narrow it once
+ * so a library change cannot silently drop the current-bar accent.
  */
-function UsageBar({ currentKey, x, y, width, height, payload }: BarShapeProps & { currentKey: string | null }) {
-  const bucket = payload as UsageBucket | undefined;
-  const current = bucket?.key === currentKey;
+function isUsageDatum(value: unknown): value is UsageChartDatum {
+  if (!value || typeof value !== "object") return false;
+  const datum = value as Partial<UsageChartDatum>;
+  return typeof datum.key === "string" && typeof datum.units === "number" && typeof datum.isCurrent === "boolean";
+}
+
+/**
+ * A rounded-top bar; the live bucket carries the single link accent. The shape
+ * is module-level so Recharts does not remount every bar on a parent render.
+ */
+function UsageBar({ x, y, width, height, payload }: BarShapeProps) {
+  const bucket = isUsageDatum(payload) ? payload : null;
+  const current = bucket?.isCurrent === true;
   const radius = Math.min(4, width / 2, height);
   const path =
     height > 0
@@ -72,30 +89,24 @@ export function UsageChart({
   ariaLabel,
 }: UsageChartProps) {
   const { t } = useTranslation();
-  const data = buckets.map((bucket) => ({
+  const data: UsageChartDatum[] = buckets.map((bucket) => ({
     ...bucket,
     label: formatBucketLabel(bucket.key, granularity),
+    isCurrent: bucket.key === currentKey,
   }));
-
-  function describe(bucket: UsageBucket): string {
-    const span = granularity === "week" ? t("usage.weekSpan", "{{start}} 起的一周", { start: bucket.key }) : bucket.key;
-    const units = t("usage.unitsDesc", "{{units}} 计算单元", { units: bucket.units.toFixed(2) });
-    return `${span} · ${units}`;
-  }
 
   const renderTooltip = (props: TooltipContentProps) => {
     if (!props.active || !props.payload?.length) return null;
-    const bucket = props.payload[0]?.payload as (UsageBucket & { label: string }) | undefined;
-    if (!bucket) return null;
+    const payload = props.payload[0]?.payload;
+    if (!isUsageDatum(payload)) return null;
+    const span = granularity === "week"
+      ? t("usage.weekSpan", "{{start}} 起的一周", { start: payload.key })
+      : payload.key;
+    const units = t("usage.unitsDesc", "{{units}} 计算单元", { units: payload.units.toFixed(2) });
     return (
       <div className="trend__tooltip">
-        {describe(bucket)
-          .split(" · ")
-          .map((line, index) => (
-            <span key={index} className="trend__tooltip-line">
-              {line}
-            </span>
-          ))}
+        <span className="trend__tooltip-line">{span}</span>
+        <span className="trend__tooltip-line">{units}</span>
       </div>
     );
   };
@@ -157,7 +168,7 @@ export function UsageChart({
             isAnimationActive={false}
             minPointSize={1}
             maxBarSize={28}
-            shape={(props: BarShapeProps) => <UsageBar {...props} currentKey={currentKey} />}
+            shape={UsageBar}
           />
         </BarChart>
       </ResponsiveContainer>
