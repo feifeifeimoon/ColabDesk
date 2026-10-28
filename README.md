@@ -38,16 +38,6 @@
 
 The app bundles its own Python and `google-colab-cli`, so there is nothing else to install.
 
-## Install
-
-| Platform | File |
-| --- | --- |
-| Windows x64 | `colabdesk-setup-<version>-x64.exe` |
-| macOS, Apple silicon | `colabdesk-<version>-arm64.dmg` |
-| macOS, Intel | `colabdesk-<version>-x64.dmg` |
-
-The builds are unsigned: Windows SmartScreen asks once — *More info* → *Run anyway*; on macOS, right-click the app → *Open*.
-
 ## Build
 
 Requires Node 22.
@@ -56,10 +46,6 @@ Requires Node 22.
 npm install
 npm run dev
 ```
-
-`npm run package:win` / `npm run package:mac` build an installer with the runtime bundled. The gates are `npm test`, `npm run e2e` (no account or Python needed), `npm run lint` and `npm run typecheck`.
-
-The interface's rules live in [docs/DESIGN.md](docs/DESIGN.md); the engineering conventions in [AGENTS.md](AGENTS.md).
 
 ## License
 
