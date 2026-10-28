@@ -111,7 +111,9 @@ test("工作区的窗口控制浮在右上角，文件面板开关和它同一�
   await expect(page.locator(".topbar")).toHaveCount(0);
   const chrome = page.locator(".workspace-window-chrome");
   await expect(chrome).toBeVisible();
-  expect((await chrome.boundingBox())?.y).toBe(0);
+  const chromeBox = await chrome.boundingBox();
+  if (!chromeBox) throw new Error("the workspace chrome has no box");
+  expect(chromeBox.y).toBe(0);
 
   if (process.platform === "darwin") {
     // The native traffic lights are at the other corner.
@@ -122,31 +124,43 @@ test("工作区的窗口控制浮在右上角，文件面板开关和它同一�
     // The hover target is the shape the reader sees: the buttons fill the
     // titlebar row here exactly as they do in the global bar, rather than
     // collapsing to the icons' line box and floating mid-row.
-    const chromeBox = await chrome.boundingBox();
     const buttonBoxes = await buttons.evaluateAll((elements) =>
       elements.map((element) => {
         const rect = element.getBoundingClientRect();
         return { top: rect.top, height: rect.height };
       }),
     );
-    expect(chromeBox).not.toBeNull();
-    if (chromeBox) {
-      for (const box of buttonBoxes) {
-        expect(box.top).toBe(chromeBox.y);
-        expect(box.height).toBe(chromeBox.height);
-      }
+    for (const box of buttonBoxes) {
+      expect(box.top).toBe(chromeBox.y);
+      expect(box.height).toBe(chromeBox.height);
     }
   }
 
   const filesToggle = chrome.locator('[data-testid="toggle-files"]');
   await expect(filesToggle).toBeVisible();
+  const toggleMetrics = await filesToggle.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      width: rect.width,
+      height: rect.height,
+      rightInset: window.innerWidth - rect.right,
+    };
+  });
+  // Standard 32px icon button, with an 8px right inset on macOS (or the 132px
+  // window-controls run on Windows/Linux) so it never sits on the window's
+  // rounded corner or resize border.
+  expect(toggleMetrics.width).toBe(32);
+  expect(toggleMetrics.height).toBe(32);
+  expect(toggleMetrics.rightInset).toBe(process.platform === "darwin" ? 8 : 132);
   await filesToggle.click();
   await expect(page.locator(".files-panel")).toBeHidden();
-  // Closed: the top strip reserves room for the toggle and the window controls.
-  const padding = await page
+  // Closed: the top strip reserves exactly the chrome's rendered width — the
+  // same `--workspace-chrome-width` the fixed corner is laid out from, so a
+  // wrong variable shows up as a gap or as tabs sliding under the controls.
+  const reserve = await page
     .locator('.group-strip[data-titlebar="true"]')
-    .evaluate((element) => getComputedStyle(element).paddingRight);
-  expect(padding).not.toBe("0px");
+    .evaluate((element) => parseFloat(getComputedStyle(element).paddingRight));
+  expect(reserve).toBe(chromeBox.width);
 
   await filesToggle.click();
   await expect(page.locator(".files-panel")).toBeVisible();

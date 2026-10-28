@@ -866,7 +866,7 @@ export function FilePane({
         onCommit={(next) => setPanelWidth("files", next)}
       />
       {/* In a live workspace the window controls and files toggle sit above this
-          panel's head; this 32px band is the titlebar they share. */}
+          panel's head; this 40px band is the titlebar they share. */}
       {workspaceChrome && (
         <div
           className="files-panel__titlebar"
