@@ -115,4 +115,8 @@ describe("the static fallback", () => {
     expect(html).toMatch(/id="download-primary"[\s\S]*?>\s*Download\s*</);
     expect(html).toMatch(/id="platform-label">All platforms</);
   });
+
+  it("keeps the download count hidden until the script has a number", () => {
+    expect(html).toMatch(/id="download-meta"\s+hidden/);
+  });
 });

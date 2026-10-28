@@ -257,6 +257,15 @@ a {
   margin-top: var(--space-2);
 }
 
+/* A courtesy like the star badge: hidden until GitHub answers, so a blocked
+   call leaves a button and no empty caption. */
+.hero__downloads {
+  margin: var(--space-3) 0 0;
+  color: var(--body);
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+}
+
 .noscript-note {
   margin: var(--space-3) 0 0;
   color: var(--body);

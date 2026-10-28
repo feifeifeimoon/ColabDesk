@@ -5,13 +5,15 @@
 
 import { I18N, initialLanguage, readStoredLanguage, saveLanguage } from "./i18n.js";
 import { detectPlatform, downloadPlan, pickReleaseAsset } from "./platform.js";
-import { GITHUB, formatStars } from "./github.js";
+import { GITHUB, formatCount, totalDownloads } from "./github.js";
 
 const $ = (selector) => document.querySelector(selector);
 
 const langOptions = Array.from(document.querySelectorAll("[data-lang]"));
 const starMeta = $("#star-meta");
 const starCount = $("#star-count");
+const downloadMeta = $("#download-meta");
+const downloadCount = $("#download-count");
 const primary = $("#download-primary");
 const platformToggle = $("#platform-toggle");
 const platformLabel = $("#platform-label");
@@ -120,20 +122,34 @@ async function loadGitHub() {
   applyLanguage();
 }
 
-async function loadStars() {
+/** A GitHub API answer, or null when the visitor's network or the rate limit says no. */
+async function githubJson(path) {
   try {
-    const response = await fetch(`${GITHUB.api}/repos/${GITHUB.repo}`, {
+    const response = await fetch(`${GITHUB.api}${path}`, {
       headers: { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
     });
-    if (!response.ok) return;
-    const repo = await response.json();
-    const label = formatStars(repo.stargazers_count);
-    if (!label) return;
-    starCount.textContent = label;
-    starMeta.hidden = false;
+    return response.ok ? await response.json() : null;
   } catch {
-    // The badge stays hidden — a missing number beats a wrong one.
+    return null;
   }
+}
+
+async function loadStars() {
+  const repo = await githubJson(`/repos/${GITHUB.repo}`);
+  const label = formatCount(repo?.stargazers_count);
+  if (!label) return;
+  starCount.textContent = label;
+  starMeta.hidden = false;
+}
+
+async function loadDownloads() {
+  // One page holds every release this project can plausibly have, and the sum
+  // matches the README badge's definition.
+  const releases = await githubJson(`/repos/${GITHUB.repo}/releases?per_page=100`);
+  const label = formatCount(totalDownloads(releases));
+  if (!label) return;
+  downloadCount.textContent = label;
+  downloadMeta.hidden = false;
 }
 
 for (const option of langOptions) {
@@ -180,3 +196,4 @@ resolvePlatform()
     loadGitHub();
   });
 loadStars();
+loadDownloads();
