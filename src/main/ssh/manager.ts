@@ -151,6 +151,14 @@ export class SshManager extends EventEmitter {
     // connection yet. Leaving it behind makes every later acquire join a
     // promise that nothing will settle.
     this.pending.delete(name);
+
+    for (const [channelId, record] of this.terminals) {
+      if (record.session === name || (connection && record.connection === connection)) {
+        this.terminals.delete(channelId);
+        this.emit("exit", channelId, record.session);
+      }
+    }
+
     if (!connection) return;
     this.connections.delete(name);
     connection.end();

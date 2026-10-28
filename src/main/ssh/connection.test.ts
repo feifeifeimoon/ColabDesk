@@ -1,3 +1,4 @@
+import { EventEmitter } from "node:events";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { WebSocketServer, type WebSocket } from "ws";
@@ -171,4 +172,47 @@ describe("ColabSshConnection handshake settlement", () => {
       await server.stop();
     }
   }, 20_000);
+
+  it("emits exit for remaining shells on end()", () => {
+    const connection = new ColabSshConnection({ name: "e2e", url: "http://127.0.0.1:0", token: "token" });
+    const exited: number[] = [];
+    connection.on("exit", (id) => exited.push(id));
+    const fakeChannel = { end: vi.fn() };
+    (connection as unknown as { shells: Map<number, unknown> }).shells.set(101, fakeChannel);
+
+    connection.end();
+
+    expect(fakeChannel.end).toHaveBeenCalled();
+    expect(exited).toEqual([101]);
+    expect((connection as unknown as { shells: Map<number, unknown> }).shells.size).toBe(0);
+  });
+
+  it("emits exit once when the channel close lands after end()", async () => {
+    const connection = new ColabSshConnection({ name: "e2e", url: "http://127.0.0.1:0", token: "token" });
+    const channel = Object.assign(new EventEmitter(), {
+      stderr: new EventEmitter(),
+      write: vi.fn(),
+      setWindow: vi.fn(),
+      isPaused: () => false,
+      pause: vi.fn(),
+      end: vi.fn(),
+    });
+    const internals = connection as unknown as {
+      client: {
+        shell: (_options: unknown, callback: (error: Error | null, stream: unknown) => void) => void;
+        end: () => void;
+      };
+    };
+    internals.client = { shell: (_options, callback) => callback(null, channel), end: vi.fn() };
+    connection.status = "ready";
+
+    const id = await connection.openShell({ cols: 80, rows: 24 });
+    const exited: number[] = [];
+    connection.on("exit", (shellId) => exited.push(shellId));
+
+    connection.end();
+    channel.emit("close");
+
+    expect(exited).toEqual([id]);
+  });
 });
