@@ -432,6 +432,7 @@ export class ColabSshConnection extends EventEmitter {
     for (const [id, channel] of this.shells) {
       channel.end();
       this.shells.delete(id);
+      this.emit("exit", id);
     }
     this.unacked.clear();
     this.client?.end();

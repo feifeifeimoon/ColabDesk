@@ -171,4 +171,18 @@ describe("ColabSshConnection handshake settlement", () => {
       await server.stop();
     }
   }, 20_000);
+
+  it("emits exit for remaining shells on end()", () => {
+    const connection = new ColabSshConnection({ name: "e2e", url: "http://127.0.0.1:0", token: "token" });
+    const exited: number[] = [];
+    connection.on("exit", (id) => exited.push(id));
+    const fakeChannel = { end: vi.fn() };
+    (connection as unknown as { shells: Map<number, unknown> }).shells.set(101, fakeChannel);
+
+    connection.end();
+
+    expect(fakeChannel.end).toHaveBeenCalled();
+    expect(exited).toEqual([101]);
+    expect((connection as unknown as { shells: Map<number, unknown> }).shells.size).toBe(0);
+  });
 });

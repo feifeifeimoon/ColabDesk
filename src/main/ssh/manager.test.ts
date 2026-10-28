@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ColabSshConnection, ConnectionStatus, SshTarget } from "./connection";
 import { SshManager } from "./manager";
 
@@ -12,6 +12,12 @@ class FakeConnection extends EventEmitter {
   error: string | null = null;
   ended = false;
   resolveConnect: (() => void) | null = null;
+  nextShellId = 1;
+
+  writeShell = vi.fn();
+  resizeShell = vi.fn();
+  ackShell = vi.fn();
+  closeShell = vi.fn();
 
   constructor(readonly target: SshTarget) {
     super();
@@ -24,6 +30,10 @@ class FakeConnection extends EventEmitter {
         resolve();
       };
     });
+  }
+
+  openShell(): Promise<number> {
+    return Promise.resolve(this.nextShellId++);
   }
 
   end(): void {
@@ -64,5 +74,36 @@ describe("SshManager drop", () => {
 
     fakes[1].resolveConnect?.();
     await expect(second).resolves.toBe(fakes[1]);
+  });
+
+  it("unregisters terminals and emits exit when a session is dropped", async () => {
+    const { manager, fakes } = setup();
+
+    const acquirePromise = manager.acquire("alpha");
+    fakes[0].resolveConnect?.();
+    await acquirePromise;
+
+    const terminal1 = await manager.openTerminal("alpha", 80, 24);
+    const terminal2 = await manager.openTerminal("alpha", 80, 24);
+
+    const exited: Array<{ channelId: number; session: string }> = [];
+    manager.on("exit", (channelId, session) => {
+      exited.push({ channelId, session });
+    });
+
+    manager.drop("alpha");
+
+    expect(exited).toEqual([
+      { channelId: terminal1.channelId, session: "alpha" },
+      { channelId: terminal2.channelId, session: "alpha" },
+    ]);
+    expect(fakes[0].ended).toBe(true);
+
+    // Subsequent write/resize on old channelIds should safely no-op
+    manager.write(terminal1.channelId, "hello");
+    expect(fakes[0].writeShell).not.toHaveBeenCalled();
+
+    manager.resize(terminal1.channelId, 100, 30);
+    expect(fakes[0].resizeShell).not.toHaveBeenCalled();
   });
 });
