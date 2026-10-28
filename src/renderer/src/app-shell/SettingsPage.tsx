@@ -19,6 +19,7 @@ import { SegmentedControl } from "../components/ui/SegmentedControl";
 import { PANEL_WIDTH } from "../lib/panel-width";
 import { ChevronLeftIcon } from "../components/ui/icons";
 import { Callout } from "../components/ui/Notice";
+import { Metric } from "../components/ui/Metric";
 import { LoginPanel } from "../features/login/LoginPanel";
 import { LogPanel } from "../features/logs/LogPanel";
 import { UpdatePanel } from "../features/updates/UpdatePanel";
@@ -152,26 +153,26 @@ export function SettingsPage() {
       <div className="settings__block">
         <Card>
           <div className="metrics">
-            <div className="metric">
-              <span className="metric__value">{balance === null ? "—" : balance.toFixed(2)}</span>
-              <span className="metric__label">{t("settings.metricBalance", "计算单元余额")}</span>
-            </div>
-            <div className="metric">
-              <span className="metric__value">
-                {usage?.usage.rate === null || usage?.usage.rate === undefined
+            <Metric
+              value={balance === null ? "—" : balance.toFixed(2)}
+              label={t("settings.metricBalance", "计算单元余额")}
+            />
+            <Metric
+              value={
+                usage?.usage.rate === null || usage?.usage.rate === undefined
                   ? "—"
-                  : usage.usage.rate.toFixed(2)}
-              </span>
-              <span className="metric__label">{t("settings.metricRate", "消耗速率 / 小时")}</span>
-            </div>
-            <div className="metric">
-              <span className="metric__value">
-                {usage?.usage.assignments === null || usage?.usage.assignments === undefined
+                  : usage.usage.rate.toFixed(2)
+              }
+              label={t("settings.metricRate", "消耗速率 / 小时")}
+            />
+            <Metric
+              value={
+                usage?.usage.assignments === null || usage?.usage.assignments === undefined
                   ? "—"
-                  : usage.usage.assignments}
-              </span>
-              <span className="metric__label">{t("settings.metricActiveRuntimes", "活跃运行时")}</span>
-            </div>
+                  : usage.usage.assignments
+              }
+              label={t("settings.metricActiveRuntimes", "活跃运行时")}
+            />
           </div>
           <LoginPanel onFinished={refreshEnvironment} authenticated={env?.authenticated ?? false} />
         </Card>
@@ -399,7 +400,10 @@ export function SettingsPage() {
         <div className="settings__scroll">
           {/* One section at a time: the rail says what else is here, the pane
               never makes you scroll past what you did not ask for. */}
-          <section className="settings__section" key={section.id}>
+          <section
+            className={`settings__section ${section.id === "usage" ? "settings__section--wide" : ""}`.trim()}
+            key={section.id}
+          >
             <header className="settings__head">
               <h1 className="settings__title">
                 <Icon />

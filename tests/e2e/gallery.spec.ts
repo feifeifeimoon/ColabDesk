@@ -295,6 +295,38 @@ test("@gallery English shots", async ({ app, page, sandbox }) => {
   await page.locator(".settings__nav-item").filter({ hasText: "Usage Trend" }).click();
   await page.waitForTimeout(500);
   await capture(page, "06-settings-usage-en");
+  // The chart's ink bars and canvas-soft well both flip with the polarity, so
+  // the one screen with a chart is worth the second picture.
+  await toggleTheme(page);
+  await capture(page, "06-settings-usage-en");
+});
+
+/** The populated usage page in Chinese: summary strip, full-width chart and
+ *  the breakdown table — the state the empty gallery run cannot show. */
+test("@gallery 用量趋势：有消耗", async ({ page, sandbox }) => {
+  test.slow();
+  mkdirSync(directory, { recursive: true });
+
+  const day = 24 * 60 * 60 * 1000;
+  const balances = [46, 42.5];
+  const times = [Date.now() - 6 * day, Date.now() - 60 * 60 * 1000];
+  const samples = balances.map((balance, index) =>
+    JSON.stringify({
+      at: new Date(times[index]).toISOString(),
+      balance,
+      rate: 1.25,
+      assignments: 1,
+    }),
+  );
+  mkdirSync(join(sandbox, "user-data"), { recursive: true });
+  writeFileSync(join(sandbox, "user-data", "usage-history.jsonl"), `${samples.join("\n")}\n`);
+
+  await page.locator('[data-testid="open-settings"]').click();
+  await page.locator(".settings__nav-item").filter({ hasText: "用量趋势" }).click();
+  await page.waitForTimeout(500);
+  await capture(page, "06-settings-usage-sample");
+  await toggleTheme(page);
+  await capture(page, "06-settings-usage-sample");
 });
 
 /**
