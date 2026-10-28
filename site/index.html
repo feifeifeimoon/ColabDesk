@@ -184,8 +184,21 @@
           </div>
         </div>
         <p class="hero__downloads" id="download-meta" hidden>
-          <span id="download-count"></span>
-          <span data-i18n="hero.downloads">downloads</span>
+          <svg
+            class="hero__downloads-icon"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.4"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <path d="M8 2v8m0 0 3-3M8 10 5 7M3 12.5h10" />
+          </svg>
+          <span class="hero__downloads-text">
+            <span id="download-count" class="hero__downloads-count"></span>
+            <span data-i18n="hero.downloads">downloads</span>
+          </span>
         </p>
         <noscript>
           <p class="noscript-note">
