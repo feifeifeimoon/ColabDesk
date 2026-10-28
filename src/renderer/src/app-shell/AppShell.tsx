@@ -4,7 +4,6 @@ import { Button, IconButton } from "../components/ui/Button";
 import {
   ActivityIcon,
   PanelLeftIcon,
-  PanelRightIcon,
   SettingsIcon,
   SyncIcon,
   TerminalIcon,
@@ -15,6 +14,7 @@ import { acceleratorLabel, sessionRate, sessionRateText } from "../features/sess
 import { useAppStore } from "../store";
 import { useHasWorkSurface } from "../store/selectors";
 import { BrandMark } from "./BrandMark";
+import { FilesPanelToggle } from "./FilesPanelToggle";
 import { balanceMeterTone, computeBalanceRatio, soleBilledSession } from "./status-bar";
 import { WindowControls } from "./WindowControls";
 
@@ -42,7 +42,6 @@ export function TopBar() {
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
   const openSettings = useAppStore((state) => state.openSettings);
   const signedOut = useAppStore((state) => state.env?.authenticated === false);
-  const toggleFiles = useAppStore((state) => state.toggleFiles);
 
   return (
     <header
@@ -114,21 +113,7 @@ export function TopBar() {
         {/* The file panel belongs to the selected session's shells: with none
             there is no panel for this button to act on, so it stands down — the
             rule the panel toggles already follow while settings is up. */}
-        {filesControlsLive && (
-          <Button
-            variant="ghost"
-            icon
-            data-testid="toggle-files"
-            aria-pressed={filesOpen}
-            aria-label={filesOpen ? t("topbar.filesCollapse", "收起文件面板") : t("topbar.filesExpand", "展开文件面板")}
-            title={t("topbar.filesTooltip", "{{action}}文件面板（Ctrl+Shift+B）", {
-              action: filesOpen ? t("topbar.actionCollapse", "收起") : t("topbar.actionExpand", "展开"),
-            })}
-            onClick={toggleFiles}
-          >
-            <PanelRightIcon />
-          </Button>
-        )}
+        {filesControlsLive && <FilesPanelToggle />}
       </div>
 
       {!IS_MAC && <WindowControls />}

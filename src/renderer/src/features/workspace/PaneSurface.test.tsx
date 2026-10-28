@@ -236,8 +236,9 @@ describe("two panes", () => {
     expect(strips![0]).toContain('data-leading="true"');
     expect(strips![1]).toContain('data-titlebar="true"');
     expect(strips![1]).not.toContain('data-leading="true"');
-    // The rightmost top strip reserves room for the files toggle and controls.
-    expect(strips![1]).toContain("data-trailing=");
+    // The rightmost top strip reserves the chrome's published width, so the
+    // reserve cannot drift from the fixed corner that draws the controls.
+    expect(strips![1]).toContain('data-trailing="var(--workspace-chrome-width)"');
   });
 
   it("renders one divider for the split", () => {

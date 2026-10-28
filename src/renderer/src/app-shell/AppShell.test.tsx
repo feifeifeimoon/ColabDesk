@@ -79,6 +79,13 @@ function leftSection(markup: string): string {
   return markup.slice(markup.indexOf('class="topbar__side"'), markup.indexOf('class="topbar__middle"'));
 }
 
+/** The files toggle's own markup, so its icon is not confused with another control's. */
+function filesToggle(markup: string): string {
+  const marker = markup.indexOf('data-testid="toggle-files"');
+  const start = markup.lastIndexOf("<button", marker);
+  return markup.slice(start, markup.indexOf("</button>", marker));
+}
+
 beforeEach(async () => {
   await setRendererUiLanguage("zh");
 });
@@ -106,11 +113,12 @@ describe("the window bar", () => {
 
   it("工作区右上角的文件面板开关与顶栏及左侧栏保持相同尺寸和按下态", () => {
     const openMarkup = renderWorkspaceChrome({ filesOpen: true });
+    const toggle = filesToggle(openMarkup);
     expect(openMarkup).toContain('data-testid="toggle-files"');
     expect(openMarkup).toContain('aria-pressed="true"');
-    expect(openMarkup).toContain('class="btn btn--ghost btn--icon"');
-    expect(openMarkup).not.toContain("btn--sm");
-    expect(openMarkup).toContain('width="16" height="16"');
+    expect(toggle).toContain('class="btn btn--ghost btn--icon"');
+    expect(toggle).not.toContain("btn--sm");
+    expect(toggle).toContain('width="16" height="16"');
 
     const closedMarkup = renderWorkspaceChrome({ filesOpen: false });
     expect(closedMarkup).toContain('aria-pressed="false"');
