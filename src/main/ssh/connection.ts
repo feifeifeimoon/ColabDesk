@@ -362,7 +362,9 @@ export class ColabSshConnection extends EventEmitter {
     channel.on("data", forward);
     channel.stderr.on("data", forward);
     channel.on("close", () => {
-      this.shells.delete(id);
+      // end() and teardown() remove the shell and emit its exit themselves;
+      // this close arriving afterwards must not report the same shell twice.
+      if (!this.shells.delete(id)) return;
       this.unacked.delete(id);
       this.emit("exit", id);
     });

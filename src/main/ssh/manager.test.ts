@@ -13,6 +13,7 @@ class FakeConnection extends EventEmitter {
   ended = false;
   resolveConnect: (() => void) | null = null;
   nextShellId = 1;
+  private shells = new Set<number>();
 
   writeShell = vi.fn();
   resizeShell = vi.fn();
@@ -33,12 +34,18 @@ class FakeConnection extends EventEmitter {
   }
 
   openShell(): Promise<number> {
-    return Promise.resolve(this.nextShellId++);
+    const id = this.nextShellId++;
+    this.shells.add(id);
+    return Promise.resolve(id);
   }
 
   end(): void {
     this.ended = true;
     this.status = "closed";
+    // The real end() emits exit for every shell it closes; drop() must not let
+    // that second report reach a listener.
+    for (const id of this.shells) this.emit("exit", id);
+    this.shells.clear();
   }
 }
 
