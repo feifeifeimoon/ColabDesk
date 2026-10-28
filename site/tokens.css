@@ -33,6 +33,10 @@
   --hairline: #ebebeb; /* every 1px divider */
   --hairline-strong: #a1a1a1; /* hover borders, resize handles, focus ring */
   --border: var(--hairline);
+  /* A gridline has to sit over the canvas-soft chart well, where the ordinary
+     hairline all but disappears in light. Derived from the strong hairline so
+     it keeps the same relationship in both polarities. */
+  --grid-line: color-mix(in srgb, var(--hairline-strong) 35%, transparent);
 
   /* ---- text ----------------------------------------------------------- */
   --ink: #171717;
@@ -61,6 +65,7 @@
   --font-sans: Geist Variable, Geist, Inter, system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
   --font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
 
+  --text-hero: 34px; /* the usage page's single hero figure — a data display */
   --text-display: 26px; /* the headline figure — a usage total */
   --text-title: 19px; /* page title */
   --text-title-sm: 16px; /* dialog / card heading */
@@ -69,6 +74,7 @@
   --text-caption: 12px; /* badges, table headings, dense metadata */
   --text-micro: 11px; /* card meta: keys, counts, times */
 
+  --tracking-hero: -1.2px;
   --tracking-display: -0.96px;
   --tracking-title: -0.6px;
   --tracking-copy: -0.28px;
@@ -138,6 +144,7 @@
 
   --hairline: #ffffff14;
   --hairline-strong: #ffffff2e;
+  --grid-line: color-mix(in srgb, var(--hairline-strong) 75%, transparent);
 
   --primary: #ededed;
   --on-primary: #171717;

@@ -2937,6 +2937,12 @@ kbd {
   gap: var(--space-4);
 }
 
+/* The usage page is a dashboard, not a reading column: it uses the pane's
+   width so the summary and the chart can stand side by side. */
+.settings__section--wide {
+  max-width: 1120px;
+}
+
 .settings__head {
   padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--hairline);
@@ -3420,6 +3426,80 @@ textarea.input {
   background: var(--canvas-soft);
 }
 
+/* A table with a heading row: the header is an inset, and the machine columns
+   read right-aligned so figures line up on their decimal point. */
+.table th {
+  padding: var(--space-2) var(--space-5);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--canvas-soft);
+  color: var(--mute);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.table td.table__num,
+.table th.table__num {
+  text-align: right;
+}
+
+.table__num,
+.table__when {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The table's first row is the bucket the chart accents; the date says so in
+   the same colour. */
+.usage-table__now {
+  color: var(--link);
+}
+
+/* The summary row is a footer, not another body row: the stronger rule and
+   the inset fill say the series has ended. */
+.table tfoot td {
+  padding: var(--space-2) var(--space-5);
+  border-top: 1px solid var(--hairline-strong);
+  background: var(--canvas-soft);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.table tfoot td:first-child {
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+
+/* A share is a quantity, so it gets the same hairline-thin bar language as the
+   progress primitive — inside the cell, never replacing the cell box. */
+.usage-table__share {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.usage-table__share-track {
+  width: 56px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--canvas-soft-2);
+}
+
+.usage-table__share-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ink);
+}
+
 /* ---------- badge & status ---------- */
 
 .badge {
@@ -3605,78 +3685,157 @@ textarea.input {
   font-size: var(--text-caption);
 }
 
-/* ---------- usage trend (bars in a well) ---------- */
+/* ---------- usage page: a summary strip above the chart ---------- */
 
-.trend__plot {
+.usage-summary {
+  min-width: 0;
+}
+
+.usage-summary__head {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.usage-summary__eyebrow {
+  color: var(--mute);
+  font-size: var(--text-caption);
+}
+
+.usage-summary__body {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.6fr) minmax(0, 1.4fr);
+  align-items: end;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.usage-summary__label {
+  color: var(--mute);
+  font-size: var(--text-caption);
+}
+
+.usage-summary__value-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.usage-summary__value {
+  font-size: var(--text-hero);
+  font-weight: 600;
+  letter-spacing: var(--tracking-hero);
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-summary__unit {
+  color: var(--mute);
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+}
+
+.usage-summary__facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  padding: 0 0 0 var(--space-5);
+  border-top: none;
+  border-left: 1px solid var(--hairline);
+}
+
+.usage-summary__fact {
+  display: flex;
+  flex-direction: column;
   gap: 2px;
-  height: 132px;
-  padding: var(--space-3);
+  min-width: 0;
+}
+
+.usage-summary__fact-label {
+  color: var(--mute);
+  font-size: var(--text-caption);
+}
+
+.usage-summary__fact-value {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-copy);
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-chart {
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  /* On a narrow body the summary stacks: the hero, then the facts in two
+     columns, so the strip does not become a row of squeezed labels. */
+  .usage-summary__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .usage-summary__facts {
+    padding: var(--space-4) 0 0;
+    border-left: none;
+    border-top: 1px solid var(--hairline);
+  }
+}
+
+/* ---------- usage trend (Recharts) ---------- */
+
+/* The library draws the SVG; the well, the typography and the one accent are
+   still the design system's. */
+.trend__chart {
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-2) var(--space-2) var(--space-1);
   background: var(--canvas-soft);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
 }
 
-.trend__slot {
-  position: relative;
+/* Recharts positions this wrapper; the card is the floating surface. */
+.trend__tooltip {
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  flex: 1 1 0;
-  min-width: 0;
-  height: 100%;
-}
-
-/* Dashed baseline = the app was not running, so nothing was read there.
-   A solid bar can sit on it: the spend is real, the reading is not ours. */
-.trend__slot--unmeasured::after {
-  content: "";
-  position: absolute;
-  inset: auto 0 0 0;
-  border-top: 1px dashed var(--hairline-strong);
-}
-
-.trend__bar {
-  /* Proportional to the slot, so a six-bar month reads as bars rather than
-     slivers and a thirty-bar month keeps air between them. */
-  width: 62%;
-  background: var(--ink);
-  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
-}
-
-.trend__scale {
-  margin: 0 0 var(--space-2);
-  color: var(--mute);
-  font-size: var(--text-caption);
-}
-
-.trend__labels {
-  display: flex;
+  flex-direction: column;
   gap: 2px;
-  padding: var(--space-2) var(--space-3) 0;
+  max-width: 240px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--canvas);
+  box-shadow: var(--shadow-4);
+  color: var(--body);
+  font-size: var(--text-caption);
+  line-height: 1.4;
+  word-break: keep-all;
 }
 
-.trend__label {
-  flex: 1 1 0;
-  min-width: 0;
-  text-align: center;
-  white-space: nowrap;
+.trend__tooltip-line:first-child {
   color: var(--mute);
   font-family: var(--font-mono);
   font-size: var(--text-micro);
   font-variant-numeric: tabular-nums;
 }
 
-.trend__note {
-  margin: var(--space-3) 0 0;
-  color: var(--body);
-  font-size: var(--text-caption);
+/* No spend: there is no scale to draw, so the well says so in words. */
+.trend__flat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  padding: var(--space-3);
+  background: var(--canvas-soft);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
 }
 
-.trend__figure {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
+.trend__no-spend {
+  margin: 0;
+  color: var(--mute);
+  font-size: var(--text-caption);
 }
 
 /* ---------- panes (terminal, files) ---------- */
