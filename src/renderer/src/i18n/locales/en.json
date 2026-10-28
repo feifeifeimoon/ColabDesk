@@ -311,7 +311,6 @@
     "metricBalance": "Balance (CU)",
     "emptyTitle": "No balance readings yet",
     "emptyBody": "Balance checks record samples; once history exists, the spend curve appears here.",
-    "peakScale": "{{range}} · Peak {{peak}} CU ({{date}})",
     "noSpendInRange": "No spend recorded in this range.",
     "plotAriaLabel": "{{range}} consumed {{spent}} CU",
     "weekStart": "From {{start}}",

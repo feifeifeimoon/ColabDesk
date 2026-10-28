@@ -74,14 +74,15 @@ describe("the usage trend", () => {
     expect(rendered).toContain("42.50");
   });
 
-  it("mounts the chart and keeps the spend figures in the table", () => {
+  it("mounts the chart without a second peak caption", () => {
     const html = render(trend(DAY_BUCKETS));
-    const rendered = text(html);
 
     // Recharts owns the SVG internals; the wrapper and the card copy are what
     // this component can be held to without a DOM.
     expect(html).toContain('data-testid="usage-trend-plot"');
-    expect(rendered).toContain("近 30 天 · 峰值 2.00 CU");
+    // The peak is one fact in the summary strip; the chart card does not
+    // repeat it as a caption above the plot.
+    expect(text(html)).not.toContain("· 峰值");
   });
 
   it("carries every measured or inferred bucket into the breakdown and totals it", () => {

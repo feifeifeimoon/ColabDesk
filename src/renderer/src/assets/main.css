@@ -3838,12 +3838,6 @@ textarea.input {
   font-size: var(--text-caption);
 }
 
-.trend__scale {
-  margin: 0;
-  color: var(--mute);
-  font-size: var(--text-caption);
-}
-
 /* ---------- panes (terminal, files) ---------- */
 
 .pane {

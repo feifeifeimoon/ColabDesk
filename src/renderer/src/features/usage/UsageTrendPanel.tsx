@@ -81,10 +81,6 @@ export function UsageTrend({
   const buckets = trend.buckets[granularity];
   const spent = buckets.reduce((sum, bucket) => sum + bucket.units, 0);
   const peak = buckets.reduce((max, bucket) => Math.max(max, bucket.units), 0);
-  const peakBucket = buckets.reduce<UsageBucket | null>(
-    (best, bucket) => (best === null || bucket.units > best.units ? bucket : best),
-    null,
-  );
   const average = buckets.length > 0 ? spent / buckets.length : 0;
   // The axis top is a round number; the bars are a fraction of it, not of the
   // peak, so a quiet day still reads as quiet against the same scale.
@@ -169,16 +165,6 @@ export function UsageTrend({
 
         <Card className="usage-chart">
           <CardHead title={t("usage.chartTitle", "消耗走势")} />
-
-          <p className="trend__scale">
-            {peak > 0 && peakBucket
-              ? t("usage.peakScale", "{{range}} · 峰值 {{peak}} CU（{{date}}）", {
-                  range: rangeLabels[granularity],
-                  peak: peak.toFixed(2),
-                  date: shortBucketLabel(peakBucket),
-                })
-              : rangeLabels[granularity]}
-          </p>
 
           {ceiling > 0 ? (
             <UsageChart
