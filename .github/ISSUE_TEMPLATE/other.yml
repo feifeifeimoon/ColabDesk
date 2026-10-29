@@ -1,0 +1,17 @@
+name: Other
+description: Ask a question or report something that is neither a bug nor a feature.
+title: "[Other]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English or 中文 — whichever you write faster.
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: The question, setup problem, or other context.
+    validations:
+      required: true

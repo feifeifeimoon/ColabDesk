@@ -1,0 +1,75 @@
+name: Bug report
+description: Something in ColabDesk is broken, wrong, or crashes.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English or 中文 — whichever you write faster. Please search the existing
+        issues first, and try the latest release before filing.
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: ColabDesk version
+      description: Settings → About → App version (设置 → 关于 → 应用版本).
+      placeholder: x.y.z
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where it happens
+      options:
+        - Terminal
+        - Files or the editor
+        - Sessions and runtimes
+        - Usage and quota
+        - SSH connection
+        - Google sign-in
+        - Interface, theme, or shortcuts
+        - Somewhere else
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead. Steps that reproduce it are worth more than a description.
+      placeholder: |
+        Steps to reproduce:
+        1. ...
+        2. ...
+        3. ...
+
+        Expected:
+        ...
+
+        Actual:
+        ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Settings → About → Run log → Open log (设置 → 关于 → 运行日志) opens the file the app writes. Paste the lines around the failure, or attach the file to this issue after creating it.
+      render: text
+    validations:
+      required: false
