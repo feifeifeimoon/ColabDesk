@@ -13,6 +13,9 @@
 
 import type { RemoteEntry } from "@shared/types";
 
+/** Where the tree starts. The shell lands here too (`cd /content`). */
+export const TREE_ROOT = "/content";
+
 /** A directory's contents, and how that read is going. */
 export interface Listing {
   entries: RemoteEntry[];
