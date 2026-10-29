@@ -26,9 +26,9 @@ body:
     attributes:
       label: ColabDesk version
       description: Settings → About → App version (设置 → 关于 → 应用版本).
-      placeholder: 0.5.0
+      placeholder: x.y.z
     validations:
-      required: false
+      required: true
 
   - type: dropdown
     id: area
