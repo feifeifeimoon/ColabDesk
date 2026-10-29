@@ -1,0 +1,35 @@
+name: Feature request
+description: Suggest a new capability or an improvement to an existing one.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English or 中文 — whichever you write faster.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What are you trying to do, and what is missing or awkward today?
+      placeholder: I keep two runtimes open and want their file trees side by side, but a second panel always opens inside the same tab.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: The change you want to see. A rough sketch is enough.
+      placeholder: Let a file panel open in a split beside the terminal, keeping the current tab intact.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or additional context
+      description: Workarounds, related tools, mockups, or anything else that helps.
+    validations:
+      required: false
