@@ -49,6 +49,14 @@ body {
   box-shadow: var(--focus-ring);
 }
 
+@media (forced-colors: active) {
+  /* Forced colors removes box-shadow; the OS still needs a focus indicator. */
+  :focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 12px;
   height: 12px;
@@ -3069,7 +3077,7 @@ kbd {
 .btn--destructive {
   background: var(--error);
   border-color: var(--error);
-  color: #ffffff;
+  color: var(--on-error);
 }
 
 .btn--link {

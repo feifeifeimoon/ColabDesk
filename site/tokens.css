@@ -31,7 +31,7 @@
   --canvas-soft: #f5f5f5; /* wells and insets — never a card */
   --canvas-soft-2: #efefef; /* a second inset step, water table headers */
   --hairline: #ebebeb; /* every 1px divider */
-  --hairline-strong: #a1a1a1; /* hover borders, resize handles, focus ring */
+  --hairline-strong: #a1a1a1; /* hover borders, resize handles */
   --border: var(--hairline);
   /* A gridline has to sit over the canvas-soft chart well, where the ordinary
      hairline all but disappears in light. Derived from the strong hairline so
@@ -41,7 +41,8 @@
   /* ---- text ----------------------------------------------------------- */
   --ink: #171717;
   --body: #4d4d4d;
-  --mute: #888888;
+  /* Darker than the old #888 so an 11px hint still clears 4.5:1 on canvas-soft-2. */
+  --mute: #6b6b6b;
   --muted: var(--canvas-soft);
   --muted-foreground: var(--mute);
 
@@ -52,6 +53,7 @@
   --warning-deep: #ab570a;
   --error: #ee0000;
   --error-soft: #f7d4d6;
+  --on-error: #ffffff; /* text on an error fill; flips with the fill */
   --violet: #7928ca;
   --violet-soft: #d8ccf1;
   --cyan-deep: #29bc9b;
@@ -106,7 +108,9 @@
     inset 0 0 0 1px #00000014, 0 1px 1px #00000005, 0 8px 16px -4px #0000000a,
     0 24px 32px -8px #0000000f;
 
-  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--hairline-strong) 40%, transparent);
+  /* Still a soft ring, but 60% ink clears 3:1 on every surface in both
+     polarities; the old 40% hairline measured about 1.3:1. */
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--ink) 60%, transparent);
 
   /* ---- layers: floating surfaces, bottom to top -------------------------
      Pane-local stacking is isolated at its boundary (`isolation: isolate`) and
@@ -135,12 +139,15 @@
   --chrome: #0a0a0a;
   --page: #0f0f0f;
   --canvas: #171717;
-  --canvas-soft: #0a0a0a;
+  /* A well moves toward the light in dark, not into the chrome: at #0a0a0a it
+     was the chrome itself, so every hover and active fill on the frame vanished. */
+  --canvas-soft: #1f1f1f;
   --canvas-soft-2: #262626;
 
   --ink: #ededed;
   --body: #a1a1a1;
-  --mute: #888888;
+  /* Lighter than the old #888 so a mute badge on canvas-soft-2 still clears 4.5:1. */
+  --mute: #919191;
 
   --hairline: #ffffff14;
   --hairline-strong: #ffffff2e;
@@ -157,6 +164,7 @@
   --warning-deep: #f7b955;
   --error: #ff6166;
   --error-soft: #2c1215;
+  --on-error: #171717;
   --violet: #a970ff;
   --violet-soft: #241a33;
   --cyan-deep: #3dd9b6;
