@@ -454,4 +454,31 @@ test("@gallery staged start screen", async ({ app, page, sandbox }) => {
   mkdirSync(directory, { recursive: true });
   await page.screenshot({ path: output });
   console.log(output);
+
+  // The rail takes the middle's width: at the supported 900px floor the four
+  // capabilities step to a balanced 2×2. This is the arrangement the start-page
+  // e2e pins; the picture is for the eye.
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0].setSize(900, 740);
+  });
+  await page.waitForTimeout(500);
+  const narrow = join(directory, "00-start-page-narrow.png");
+  await page.screenshot({ path: narrow });
+  console.log(narrow);
+});
+
+/**
+ * The update prompt's two entry points: the banner and the bar's segment. The
+ * segment is a control inside a readout row, and that shape is what a person
+ * looks at; whether it opens About is the gate's job.
+ */
+test.describe("更新提示", () => {
+  test.use({ updateVersion: "9.9.9" });
+
+  test("@gallery 更新提示", async ({ page }) => {
+    await expect(page.locator('[data-testid="update-banner"]')).toBeVisible();
+    await expect(page.locator('[data-testid="statusbar-update"]')).toBeVisible();
+    await page.waitForTimeout(300);
+    await capture(page, "10-update-prompt");
+  });
 });

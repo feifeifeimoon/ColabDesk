@@ -110,7 +110,7 @@ export function UpdatePanel() {
       <PanelRow
         label={t("settings.updateLabel", "自动更新")}
         description={t("settings.updateDesc", "每天在后台检查一次；下载与重启需手动确认。")}
-        value={<span data-testid="update-status">{describe(status)}</span>}
+        value={<span className="update-status" data-testid="update-status">{describe(status)}</span>}
         actions={action()}
       />
       {(status.state === "available" || status.state === "unavailable") && (
