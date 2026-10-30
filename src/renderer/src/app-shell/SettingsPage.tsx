@@ -397,7 +397,9 @@ export function SettingsPage() {
       </nav>
 
       <div className="settings__pane" ref={paneRef} tabIndex={-1}>
-        <div className="settings__scroll">
+        {/* Keyed with the section: a new section arrives at its own top, not at
+            the offset the previous one was left at. */}
+        <div className="settings__scroll" key={section.id}>
           {/* One section at a time: the rail says what else is here, the pane
               never makes you scroll past what you did not ask for. */}
           <section

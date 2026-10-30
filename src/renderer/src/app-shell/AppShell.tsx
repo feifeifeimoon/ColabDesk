@@ -378,6 +378,14 @@ export function StatusBar() {
           type="button"
           className="statusbar__item statusbar__item--action"
           data-testid="statusbar-update"
+          // A bare version number is not a name; this says what it belongs to.
+          // The downloaded state's visible label is already an instruction, so
+          // it is reused as the name.
+          aria-label={
+            updateState === "downloaded"
+              ? t("statusbar.updateReady", "重启以更新")
+              : t("statusbar.updateAvailableTitle", "有新版本 {{version}}", { version: updateVersion })
+          }
           title={
             updateState === "downloaded"
               ? t("statusbar.updateReadyTitle", "{{version}} 已下载，重启后生效", { version: updateVersion })

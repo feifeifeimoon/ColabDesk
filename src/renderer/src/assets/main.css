@@ -354,7 +354,9 @@ kbd {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-3) var(--space-2);
+  /* The label starts on the rows' content column (gutter 8 + card inset 8),
+     while the controls end on the cards' action strip (gutter 8 + inset 4). */
+  padding: var(--space-3) var(--space-3) var(--space-2) var(--space-4);
   color: var(--mute);
   font-size: var(--text-micro);
   font-weight: 600;
@@ -615,9 +617,11 @@ kbd {
   cursor: default;
 }
 
+/* It is the row's name, so it stays on the caption rung rather than the micro
+   one. */
 .session-row__name--endpoint {
   font-family: var(--font-mono);
-  font-size: var(--text-micro);
+  font-size: var(--text-caption);
 }
 
 /* ---------- ui: menu ---------- */
@@ -1852,7 +1856,9 @@ kbd {
 
 /* `margin: auto` centres the column and still leaves its top reachable in a
    short window; `justify-content: center` would put the lockup out of the
-   scroll range instead. */
+   scroll range instead. The column is also the measure for its own grid: the
+   middle column changes width with the rails, so the capability count follows
+   the space it actually has rather than the window. */
 .startpage__column {
   margin: auto;
   display: flex;
@@ -1862,6 +1868,8 @@ kbd {
   max-width: 760px;
   padding: var(--space-6) var(--space-5);
   text-align: center;
+  container-type: inline-size;
+  container-name: startpage;
 }
 
 .startpage__lockup {
@@ -1873,17 +1881,27 @@ kbd {
   display: block;
 }
 
+/* The claim takes the title-sm rung and stands off from the next step: the
+   sentence says what this is, the line below says what to do about it. */
 .startpage__tagline {
   margin: var(--space-4) 0 0;
   color: var(--body);
-  font-size: var(--text-copy);
-  letter-spacing: var(--tracking-copy);
+  font-size: var(--text-title-sm);
+  font-weight: 500;
+  letter-spacing: var(--tracking-title-sm);
+}
+
+/* While the claim and the next step are held back, the panel is the step, so
+   it takes the distance the claim would have used instead of sitting under the
+   lockup. */
+.startpage__lockup + .startpage__actions {
+  margin-top: var(--space-5);
 }
 
 /* The empty state still speaks here: the hero says what this is, this says what
    to do about it. */
 .startpage__next {
-  margin: var(--space-2) 0 0;
+  margin: var(--space-4) 0 0;
   color: var(--mute);
   font-size: var(--text-label);
 }
@@ -1919,27 +1937,34 @@ kbd {
   flex-wrap: wrap;
   justify-content: center;
   gap: var(--space-2);
-  margin-top: var(--space-5);
+  /* The instruction belongs to this action, not to the claim above it. */
+  margin-top: var(--space-3);
 }
 
-/* A track per item while they fit, rather than a fixed count: the middle column
-   gives width back to the rails as the window narrows, and a strip that ran off
-   the edge would be worse than one that steps down. */
+/* A chapter break rather than a sibling step: the capabilities stand apart from
+   the action above and the footer below. Two tracks until the column can hold
+   all four at the 140px floor — at three tracks the fourth would sit alone
+   under the first, which reads as a broken row rather than a narrower one. */
 .startpage__features {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: var(--space-4) var(--space-5);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
   width: 100%;
-  margin: var(--space-7) 0 0;
+  margin: var(--space-8) 0 0;
   padding: 0;
   list-style: none;
+}
+
+@container startpage (min-width: 632px) {
+  .startpage__features {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 .startpage__feature {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-1);
   min-width: 0;
 }
 
@@ -1947,13 +1972,18 @@ kbd {
   color: var(--mute);
 }
 
+/* Icon → 8 → title → 4 → line: the title and its drawing are one group, and
+   the sentence is the note under it. The title takes the copy rung so it is
+   not one step from the caption below it. */
 .startpage__feature-title {
+  margin-top: var(--space-2);
   color: var(--ink);
-  font-size: var(--text-label);
+  font-size: var(--text-copy);
   font-weight: 500;
 }
 
 .startpage__feature-line {
+  margin-top: var(--space-1);
   color: var(--mute);
   font-size: var(--text-caption);
   /* Chinese breaks anywhere, so a 176px column leaves one-character lines
@@ -1963,7 +1993,7 @@ kbd {
 
 .startpage__footer {
   width: 100%;
-  margin-top: var(--space-7);
+  margin-top: var(--space-8);
   padding-top: var(--space-5);
   border-top: 1px solid var(--hairline);
 }
@@ -2112,6 +2142,38 @@ kbd {
   font-variant-numeric: tabular-nums;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/*
+  The update prompt is the bar's one control. It takes the bar's own mono type
+  instead of arriving as a browser button, and stretches to the bar's height so
+  its hit area is all 26px there is. The ring turns inward because the bar
+  clips its overflow — an outward ring would be cut in half.
+*/
+.statusbar__item--action {
+  align-self: stretch;
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  color: var(--body);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.statusbar__item--action:hover {
+  color: var(--ink);
+}
+
+.statusbar__item--action:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+
+@media (forced-colors: active) {
+  .statusbar__item--action:focus-visible {
+    outline-offset: -2px;
+  }
 }
 
 .statusbar__meter {
@@ -2951,12 +3013,14 @@ kbd {
   padding: var(--space-6) var(--space-5) var(--space-7);
 }
 
+/* The section head is a block of its own: one step more than the 16 the cards
+   inside the section stand apart by. */
 .settings__section {
   max-width: 760px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-5);
 }
 
 /* The usage page is a dashboard, not a reading column: it uses the pane's
@@ -3328,7 +3392,7 @@ textarea.input {
   margin: 0;
   font-size: var(--text-title-sm);
   font-weight: 600;
-  letter-spacing: -0.4px;
+  letter-spacing: var(--tracking-title-sm);
 }
 
 .card__desc {
@@ -3410,6 +3474,12 @@ textarea.input {
 .panel-row--stacked {
   flex-direction: column;
   align-items: stretch;
+}
+
+/* The updater reports in sentences, not machine values: a sentence in the
+   value slot keeps the sans voice. */
+.panel-row__value .update-status {
+  font-family: var(--font-sans);
 }
 
 /* The interface-zoom stepper: the percentage keeps a fixed footprint so the
