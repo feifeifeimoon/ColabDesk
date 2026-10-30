@@ -357,10 +357,13 @@ test("设置页面导航栏宽度与会话栏一致，支持拖拽拉伸且双�
 
 // 每一节有自己的滚动位置：从长的一节滚到底再点下一节，下一节要从自己的标题开始，
 // 而不是落在半截。断言放在标题是否可见上——那才是用户看到的结果。
+// 两端都用静态长页面：用量趋势的图表要等一次布局，在 macOS 上点进去就滚，可能还没有
+// 可滚的高度。
 test("切换设置分节时，下一节从顶部开始", async ({ page }) => {
   await page.locator('[data-testid="open-settings"]').click();
-  await page.locator(".settings__nav-item", { hasText: "用量趋势" }).click();
-  await expect(page.locator(".settings__title")).toContainText("用量趋势");
+  await page.locator(".settings__nav-item", { hasText: "终端" }).click();
+  await expect(page.locator(".settings__title")).toContainText("终端");
+  await expect(page.locator(".theme-list")).toBeVisible();
 
   const scroller = page.locator(".settings__scroll");
   await scroller.evaluate((element) => {
@@ -368,8 +371,8 @@ test("切换设置分节时，下一节从顶部开始", async ({ page }) => {
   });
   expect(await scroller.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 
-  await page.locator(".settings__nav-item", { hasText: "终端" }).click();
-  await expect(page.locator(".settings__title")).toContainText("终端");
+  await page.locator(".settings__nav-item", { hasText: "快捷键" }).click();
+  await expect(page.locator(".settings__title")).toContainText("快捷键");
   await expect(page.locator(".settings__title")).toBeInViewport();
 });
 
