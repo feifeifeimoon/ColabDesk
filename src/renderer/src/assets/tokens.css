@@ -146,7 +146,8 @@
 
   --ink: #ededed;
   --body: #a1a1a1;
-  --mute: #888888;
+  /* Lighter than the old #888 so a mute badge on canvas-soft-2 still clears 4.5:1. */
+  --mute: #919191;
 
   --hairline: #ffffff14;
   --hairline-strong: #ffffff2e;

@@ -160,7 +160,7 @@ In dark, a border becomes translucent white (`#ffffff14`) so that "a hairline on
 
 ### Text
 
-`{colors.ink}` for headings and primary text; `{colors.body}` for secondary text and table cells; `{colors.mute}` for hints, field descriptions and table headings (light `#6b6b6b` clears 4.5:1 on every light surface; dark `#888888` clears it on the page and canvas); `{colors.on-primary}` appears only on the ink primary button, `{colors.on-error}` only on an error fill.
+`{colors.ink}` for headings and primary text; `{colors.body}` for secondary text and table cells; `{colors.mute}` for hints, field descriptions and table headings (light `#6b6b6b` and dark `#919191` both clear 4.5:1 on every surface); `{colors.on-primary}` appears only on the ink primary button, `{colors.on-error}` only on an error fill.
 
 ### Accent and semantics
 

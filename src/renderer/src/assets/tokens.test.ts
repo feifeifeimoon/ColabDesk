@@ -9,8 +9,20 @@ function declarations(block: string): Record<string, string> {
   return tokens;
 }
 
-const light = declarations(css.match(/:root\s*\{([\s\S]*?)\n\}/)![1]);
-const dark = declarations(css.match(/:root\[data-theme="dark"\],\s*\.dark\s*\{([\s\S]*?)\n\}/)![1]);
+function block(selector: string): string {
+  const start = css.indexOf(selector);
+  if (start < 0) throw new Error(`tokens.css is missing ${selector}`);
+  const open = css.indexOf("{", start);
+  let depth = 0;
+  for (let index = open; index < css.length; index += 1) {
+    if (css[index] === "{") depth += 1;
+    else if (css[index] === "}" && --depth === 0) return css.slice(open + 1, index);
+  }
+  throw new Error(`tokens.css has an unterminated ${selector} block`);
+}
+
+const light = declarations(block(":root"));
+const dark = declarations(block(':root[data-theme="dark"]'));
 
 function channels(hex: string): [number, number, number] {
   const value = hex.trim().replace("#", "");
@@ -55,9 +67,10 @@ const surfaces = ["--chrome", "--page", "--canvas", "--canvas-soft", "--canvas-s
 
 describe("token contrast floor", () => {
   // The audit's regression net: these are the values that shipped below AA.
-  it("keeps mute readable on every light surface", () => {
+  it("keeps mute readable on every light and dark surface", () => {
     for (const surface of surfaces) {
-      expect(contrast(light["--mute"], light[surface]), `${surface}`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(light["--mute"], light[surface]), `light ${surface}`).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(dark["--mute"], dark[surface]), `dark ${surface}`).toBeGreaterThanOrEqual(4.5);
     }
   });
 
@@ -83,8 +96,8 @@ describe("token contrast floor", () => {
     }
   });
 
-  it("keeps the dark hover fill distinct from the chrome", () => {
+  it("keeps the dark hover fill visibly above the chrome", () => {
     // A well that collapses into chrome erases every hover and active fill on the frame.
-    expect(dark["--canvas-soft"]).not.toBe(dark["--chrome"]);
+    expect(contrast(dark["--canvas-soft"], dark["--chrome"]), "dark hover step").toBeGreaterThanOrEqual(1.1);
   });
 });
