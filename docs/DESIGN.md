@@ -6,6 +6,7 @@ colors:
   # Brand and accent
   primary: "#171717"          # the single ink primary: affirmative actions, the active nav indicator
   on-primary: "#ffffff"
+  on-error: "#ffffff"        # text on an error fill; dark switches to #171717
   link: "#0070f3"             # inline links, and the "info / healthy" semantic
   link-deep: "#0761d1"
   link-bg-soft: "#d3e5ff"
@@ -17,11 +18,11 @@ colors:
   canvas-soft: "#f5f5f5"      # wells and insets (table header rows, empty states, inline code) — never a card
   canvas-soft-2: "#efefef"    # the second inset step (raw-output blocks, progress tracks)
   hairline: "#ebebeb"         # every 1px divider and border
-  hairline-strong: "#a1a1a1"  # hover borders, focus rings, resize handles
+  hairline-strong: "#a1a1a1"  # hover borders, resize handles
   # Text
   ink: "#171717"
   body: "#4d4d4d"
-  mute: "#888888"
+  mute: "#6b6b6b"             # hints, field descriptions, table headings — clears 4.5:1 on every light surface
   # Semantics (each has a -soft background and a -deep readable text colour, used in pairs)
   warning: "#f5a623"
   warning-soft: "#ffefcf"
@@ -81,6 +82,7 @@ components:
     sizes: [md 32px, sm 28px, lg 36px, icon 32px]
     rounded: "{rounded.sm}"
     note: "one primary per flow; ghost for dense rows; destructive only for irreversible actions"
+  focus: { ring: "0 0 0 3px color-mix(in srgb, {colors.ink} 60%, transparent)", note: "a soft 3px ring, no hard outline; 60% ink clears 3:1 on every surface in both polarities, and forced-colors falls back to the system Highlight outline" }
   input: { height: 32px, rounded: "{rounded.sm}", backgroundColor: "{colors.canvas}", borderColor: "{colors.hairline}" }
   card: { backgroundColor: "{colors.canvas}", rounded: "{rounded.lg}", shadow: "Level 2", padding: "{spacing.5}" }
   panel: { note: "one card per section, rows divided by hairlines (not one card per row)" }
@@ -145,18 +147,20 @@ Five steps, back to front. A card (`{colors.canvas}`) sits on the page (`{colors
 | `{colors.chrome}` | `#ffffff` | `#0a0a0a` | Top bar, tab strip, panel heads |
 | `{colors.page}` | `#fafafa` | `#0f0f0f` | The plane content sits on (body) |
 | `{colors.canvas}` | `#ffffff` | `#171717` | Cards, panes, dialogs, inputs |
-| `{colors.canvas-soft}` | `#f5f5f5` | `#0a0a0a` | Wells and insets: header rows, empty states, metric blocks |
+| `{colors.canvas-soft}` | `#f5f5f5` | `#1f1f1f` | Wells and insets: header rows, empty states, metric blocks |
 | `{colors.canvas-soft-2}` | `#efefef` | `#262626` | The second inset step: raw-output blocks, progress tracks |
 | `{colors.hairline}` | `#ebebeb` | `#ffffff14` | Every 1px divider |
-| `{colors.hairline-strong}` | `#a1a1a1` | `#ffffff2e` | Hover borders, focus rings |
+| `{colors.hairline-strong}` | `#a1a1a1` | `#ffffff2e` | Hover borders, resize handles |
 
 In dark, a border becomes translucent white (`#ffffff14`) so that "a hairline on a card" and "a hairline on the page" read the same way.
+
+**The focus ring is ink-derived, not hairline-derived.** `--focus-ring` is a 3px ring of `{colors.ink}` at 60%: the old 40% `{colors.hairline-strong}` mix measured about 1.3:1, below the 3:1 a focus indicator needs. Because it derives from `{colors.ink}` it flips with the polarity on its own, and `forced-colors` falls back to the system `Highlight` outline because the shadow is removed there.
 
 **Chart gridlines are the one derived line colour.** The ordinary `{colors.hairline}` is 2.5% away from the `{colors.canvas-soft}` well and disappears in light, so the chart uses `--grid-line` (a mix of `{colors.hairline-strong}` at 35% in light, 75% in dark). It is defined in `tokens.css` beside the hairlines, not invented in a component.
 
 ### Text
 
-`{colors.ink}` for headings and primary text; `{colors.body}` for secondary text and table cells; `{colors.mute}` for hints, field descriptions and table headings; `{colors.on-primary}` appears only on the ink primary button.
+`{colors.ink}` for headings and primary text; `{colors.body}` for secondary text and table cells; `{colors.mute}` for hints, field descriptions and table headings (light `#6b6b6b` clears 4.5:1 on every light surface; dark `#888888` clears it on the page and canvas); `{colors.on-primary}` appears only on the ink primary button, `{colors.on-error}` only on an error fill.
 
 ### Accent and semantics
 
@@ -458,14 +462,14 @@ Two scales with distinct jobs: **controls are 6px, containers are 12px**. Do not
 - `secondary` — canvas fill + a Level 1 shadow; the non-committal action paired with a primary (re-read, sync, refresh, connect).
 - `outline` — canvas fill + a visible hairline border; for dense toolbars (SSH configuration, download).
 - `ghost` — no fill and no border, `{colors.canvas-soft}` on hover; the secondary actions of a table row or a file row (restart kernel, disconnect, delete a file).
-- `destructive` — `{colors.error}` fill with white text; irreversible actions only (stop session).
+- `destructive` — `{colors.error}` fill with `{colors.on-error}` text (white in light, ink in dark); irreversible actions only (stop session).
 - `link` — link-blue text, underlined on hover; inline jumps like "view environment".
 
-Every button sinks 1px on `active`, uses `--focus-ring` (a 3px translucent hairline-strong) for `:focus-visible`, and is 45% opacity when disabled but **stays visible** — the user needs to know an action is there.
+Every button sinks 1px on `active`, uses `--focus-ring` (a 3px 60%-ink ring) for `:focus-visible`, and is 45% opacity when disabled but **stays visible** — the user needs to know an action is there.
 
 ### Field / Input / Select / Switch
 
-Controls are 32px tall, canvas-filled, `{rounded.sm}`. The label sits above the control (13px/500 ink), an optional description follows it in `{typography.caption}` + `{colors.mute}`; inline cases use `field--inline`. The focus state is a `{colors.hairline-strong}` border plus a 3px translucent ring — no hard outline.
+Controls are 32px tall, canvas-filled, `{rounded.sm}`. The label sits above the control (13px/500 ink), an optional description follows it in `{typography.caption}` + `{colors.mute}`; inline cases use `field--inline`. The focus state is a `{colors.hairline-strong}` border plus the 3px 60%-ink ring — no hard outline.
 
 - **`Switch`** is the control for a boolean row: a 36×20 pill whose **track carries the state** — `{colors.primary}` with an `{colors.on-primary}` knob when on, `{colors.canvas-soft-2}` with a `{colors.canvas}` knob when off. The knob travels 16px over 120ms and stops under `prefers-reduced-motion`; `:focus-visible` uses `--focus-ring`; disabled is 45% opacity.
 - **It draws no text of its own.** In a `PanelRow` the row's label is the name (`aria-label` on the control); a word beside the switch would repeat the row it sits in. The state is `role="switch"` + `aria-checked`, so the control is readable without the row around it.
