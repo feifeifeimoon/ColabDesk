@@ -59,6 +59,15 @@
   --cyan-deep: #29bc9b;
   --cyan-soft: #aaffec;
 
+  /* ---- platform chrome --------------------------------------------------
+     The close button's hover is the platform's own gesture colour, not a
+     semantic: the red under that corner is read by position and fill before
+     any label, so it keeps the same value in both polarities. The backdrop is
+     a scrim, not a surface: the workbench stays visible under a dialog. */
+  --window-close: #e81123;
+  --on-window-close: #ffffff;
+  --backdrop: rgb(0 0 0 / 40%);
+
   /* ---- the terminal has its own axis ------------------------------------ */
   /* Its colours are a preference rather than a polarity, so they are not
      declared here at all: see `terminal-themes.css`. Nothing below flips them. */
@@ -170,6 +179,12 @@
   --violet-soft: #241a33;
   --cyan-deep: #3dd9b6;
   --cyan-soft: #0d2b26;
+
+  /* The platform gesture colour does not flip with the interface, and neither
+     does a scrim. */
+  --window-close: #e81123;
+  --on-window-close: #ffffff;
+  --backdrop: rgb(0 0 0 / 40%);
 
   --shadow-1: inset 0 0 0 1px #ffffff14;
   --shadow-2: inset 0 0 0 1px #ffffff14, 0 1px 1px #00000040, 0 2px 2px #00000033;

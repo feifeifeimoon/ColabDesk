@@ -13,12 +13,14 @@
  */
 
 import { useEffect, useRef } from "react";
-import { EditorState } from "@codemirror/state";
+import { useTranslation } from "react-i18next";
+import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers, type ViewUpdate } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { search, searchKeymap } from "@codemirror/search";
 import { bracketMatching, codeFolding, foldGutter, foldKeymap } from "@codemirror/language";
 import { editorHighlighting } from "./editor-highlight";
+import { editorPhrases } from "./editor-phrases";
 import { languageForPath } from "./editor-language";
 
 const surfaceTheme = EditorView.theme({
@@ -105,9 +107,20 @@ export function TextSurface({
 }) {
   const host = useRef<HTMLDivElement | null>(null);
   const latest = useRef({ onReady, onChange });
+  const viewRef = useRef<EditorView | null>(null);
+  // Reconfigured in place on a language change: the panel's labels are read
+  // when it opens, and rebuilding the view would take the undo history with it.
+  const phrases = useRef(new Compartment());
+  const { i18n } = useTranslation();
   useEffect(() => {
     latest.current = { onReady, onChange };
   });
+
+  useEffect(() => {
+    viewRef.current?.dispatch({
+      effects: phrases.current.reconfigure(EditorState.phrases.of(editorPhrases())),
+    });
+  }, [i18n.language]);
 
   useEffect(() => {
     const parent = host.current;
@@ -117,6 +130,7 @@ export function TextSurface({
       state: EditorState.create({
         doc: text,
         extensions: [
+          phrases.current.of(EditorState.phrases.of(editorPhrases())),
           // `readOnly` and not `EditorView.editable(false)`: both stop the
           // content from changing, but the latter also drops `contenteditable`,
           // which takes focus away from the DOM — and with it the caret, the
@@ -142,10 +156,12 @@ export function TextSurface({
       parent,
     });
     latest.current.onReady?.(view);
+    viewRef.current = view;
     return () => {
       // The pane must know the view is gone before the next read arrives: a
       // document left on this ref would be yesterday's file.
       latest.current.onReady?.(null);
+      viewRef.current = null;
       view.destroy();
     };
   }, [text, path, showLineNumbers, editable]);

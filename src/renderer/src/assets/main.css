@@ -296,8 +296,8 @@ kbd {
 }
 
 .window-controls__button--close:hover {
-  background: #e81123;
-  color: #ffffff;
+  background: var(--window-close);
+  color: var(--on-window-close);
 }
 
 .app-body {
@@ -942,7 +942,13 @@ kbd {
   too.
 */
 .setup {
-  --setup-mute: color-mix(in srgb, var(--terminal-fg) 58%, transparent);
+  /* Secondary text is the palette's foreground, not a mix toward its ground:
+     on the light palettes a mix cannot clear 4.5:1 (Tokyo Night Light's own
+     foreground is 4.52), and a hint nobody can read is not a quieter hint.
+     Hierarchy comes from size and weight, the way a terminal carries it. The
+     faint tone is left for rules, separators and disabled states, which have
+     no contrast floor. */
+  --setup-mute: var(--terminal-fg);
   --setup-faint: color-mix(in srgb, var(--terminal-fg) 34%, transparent);
   --setup-wash: color-mix(in srgb, var(--terminal-fg) 9%, transparent);
   position: absolute;
@@ -1063,7 +1069,7 @@ kbd {
 }
 
 .setup__option--off {
-  color: var(--setup-faint);
+  color: var(--setup-mute);
   cursor: default;
 }
 
@@ -1100,7 +1106,7 @@ kbd {
 
 .setup__index {
   width: 2ch;
-  color: var(--setup-faint);
+  color: var(--setup-mute);
 }
 
 .setup__name {
@@ -1112,7 +1118,7 @@ kbd {
 
 .setup__off-note {
   margin-left: var(--space-2);
-  color: var(--setup-faint);
+  color: var(--setup-mute);
   font-size: var(--text-micro);
 }
 
@@ -1124,7 +1130,7 @@ kbd {
 }
 
 .setup__row-note {
-  color: var(--setup-faint);
+  color: var(--setup-mute);
   font-size: var(--text-micro);
 }
 
@@ -1152,11 +1158,15 @@ kbd {
 }
 
 .setup__input::placeholder {
-  color: var(--setup-faint);
+  color: var(--setup-mute);
 }
 
 .setup__input:focus-visible {
+  /* The app's ink ring belongs to the interface's surfaces; here the terminal's
+     cursor is the focus cue, drawn as a thicker prompt underline so nothing
+     shifts. */
   outline: none;
+  box-shadow: inset 0 -2px 0 var(--terminal-cursor);
   border-bottom-color: var(--terminal-cursor);
 }
 
@@ -1184,19 +1194,21 @@ kbd {
 .setup__action:focus-visible {
   outline: 2px solid var(--terminal-cursor);
   outline-offset: 1px;
+  box-shadow: none;
 }
 
-/* The cursor colour is this palette's affirmative action — the block the
-   terminal puts where you are. */
+/* The palette's inverse block, not its cursor accent: the accent is chosen to
+   sit under a block cursor, and on Catppuccin Latte it measures 2.3:1 under a
+   13px label. Foreground on background is the pairing every palette publishes. */
 .setup__action--primary {
   border-color: transparent;
-  background: var(--terminal-cursor);
-  color: var(--terminal-cursor-accent);
+  background: var(--terminal-fg);
+  color: var(--terminal-bg);
 }
 
 .setup__action--primary:hover {
   opacity: 0.88;
-  background: var(--terminal-cursor);
+  background: var(--terminal-fg);
 }
 
 /* While the request runs the action is a record of what was pressed, not a
@@ -1215,7 +1227,7 @@ kbd {
 
 .setup__hint {
   margin: 0;
-  color: var(--setup-faint);
+  color: var(--setup-mute);
   font-size: var(--text-micro);
 }
 
@@ -2349,7 +2361,7 @@ kbd {
 .dialog-backdrop {
   position: fixed;
   inset: 0;
-  background: rgb(0 0 0 / 40%);
+  background: var(--backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
