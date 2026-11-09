@@ -79,8 +79,9 @@ describe("the Ports button and popover", () => {
     expect(body).toContain("0 个运行中");
     expect(html).toContain('data-testid="ports-remote"');
     expect(html).toContain('data-testid="ports-local"');
-    expect(html).toContain('placeholder="远程端口"');
-    expect(html).toContain('placeholder="本地（自动）"');
+    expect(html).toContain('placeholder="端口"');
+    expect(html).toContain('placeholder="自动"');
+    expect(html).toContain('aria-label="添加"');
     expect(html).toContain("<datalist");
     expect(html).toContain('value="7860"');
     expect(html).toContain("Gradio");

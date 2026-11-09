@@ -2379,6 +2379,25 @@ kbd {
   -moz-appearance: textfield;
 }
 
+.ports-form__field {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.ports-form__label {
+  color: var(--mute);
+  font-size: var(--text-micro);
+  white-space: nowrap;
+}
+
+.ports-form__field .input {
+  flex: 0 0 90px;
+  width: 90px;
+}
+
 .ports-form__row .input[type="number"]::-webkit-inner-spin-button,
 .ports-form__row .input[type="number"]::-webkit-outer-spin-button {
   margin: 0;

@@ -19,7 +19,7 @@ import type {
   PortForwardRequest,
   PortForwardStatus,
 } from "@shared/types";
-import { Button, IconButton } from "../../components/ui/Button";
+import { IconButton } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Field";
 import {
   ChevronRightIcon,
@@ -28,6 +28,7 @@ import {
   ExternalIcon,
   PlayIcon,
   PlugIcon,
+  PlusIcon,
   RestartIcon,
   StopIcon,
   SyncIcon,
@@ -322,43 +323,51 @@ export function PortsView({
             </div>
 
             <div className="ports-form__row">
-              <Input
-                data-testid="ports-remote"
-                value={remote}
-                onChange={(event) => setRemote(event.target.value)}
-                placeholder={t("ports.remotePort", "远程端口")}
-                aria-label={t("ports.remotePort", "远程端口")}
-                inputMode="numeric"
-                type="text"
-                list={commonPortsId}
-                autoFocus
-              />
-              <datalist id={commonPortsId}>
-                {COMMON_PORTS.map(({ port, name }) => (
-                  <option key={port} value={port}>{`${port} · ${name}`}</option>
-                ))}
-              </datalist>
+              <label className="ports-form__field">
+                <span className="ports-form__label">{t("ports.remoteLabel", "远程")}</span>
+                <Input
+                  data-testid="ports-remote"
+                  value={remote}
+                  onChange={(event) => setRemote(event.target.value)}
+                  placeholder={t("ports.portPlaceholder", "端口")}
+                  aria-label={t("ports.remotePort", "远程端口")}
+                  inputMode="numeric"
+                  type="text"
+                  list={commonPortsId}
+                  autoFocus
+                />
+                <datalist id={commonPortsId}>
+                  {COMMON_PORTS.map(({ port, name }) => (
+                    <option key={port} value={port}>{`${port} · ${name}`}</option>
+                  ))}
+                </datalist>
+              </label>
               <span className="ports-form__arrow" aria-hidden="true">→</span>
-              <Input
-                data-testid="ports-local"
-                value={local}
-                onChange={(event) => setLocal(event.target.value)}
-                placeholder={t("ports.localPortAuto", "本地（自动）")}
-                aria-label={t("ports.localPortAuto", "本地（自动）")}
-                inputMode="numeric"
-                type="number"
-                min={1024}
-                max={65535}
-              />
-              <Button
+              <label className="ports-form__field">
+                <span className="ports-form__label">{t("ports.localLabel", "本地")}</span>
+                <Input
+                  data-testid="ports-local"
+                  value={local}
+                  onChange={(event) => setLocal(event.target.value)}
+                  placeholder={t("ports.autoPlaceholder", "自动")}
+                  aria-label={t("ports.localPortAuto", "本地（自动）")}
+                  inputMode="numeric"
+                  type="number"
+                  min={1024}
+                  max={65535}
+                />
+              </label>
+              <IconButton
                 type="submit"
                 variant="primary"
                 size="sm"
+                className="ports-form__add"
                 data-testid="ports-add"
+                label={t("ports.add", "添加")}
                 disabled={busy || !selectedSession || !remote.trim()}
               >
-                {t("ports.add", "添加")}
-              </Button>
+                <PlusIcon size={14} />
+              </IconButton>
             </div>
 
             {advanced && (
