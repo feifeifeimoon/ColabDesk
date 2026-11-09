@@ -547,7 +547,6 @@
     "noSession": "No session selected",
     "selectSession": "Select a session before adding a port.",
     "remotePort": "Remote port",
-    "localHint": "Auto",
     "localPortAuto": "Local (auto)",
     "remoteHost": "Remote host",
     "remoteHostHint": "The runtime makes this connection; it is not a local proxy setting.",
@@ -560,8 +559,6 @@
     "retry": "Retry",
     "remove": "Remove",
     "empty": "Open a runtime port on this machine",
-    "emptyHint": "For example Gradio 7860, vLLM 8000, or any TCP service.",
-    "useExample": "Use {{port}}",
     "connectionHint": "Adding a port connects to the runtime first.",
     "error": {
       "session": "Select a session first.",

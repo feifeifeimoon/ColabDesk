@@ -78,11 +78,13 @@ describe("the Ports button and popover", () => {
     expect(body).toContain("添加到 alpha");
     expect(body).toContain("0 个运行中");
     expect(html).toContain('data-testid="ports-remote"');
+    expect(html).toContain('data-testid="ports-local"');
     expect(html).toContain('placeholder="远程端口"');
+    expect(html).toContain('placeholder="本地（自动）"');
+    expect(html).toContain("<datalist");
+    expect(html).toContain('value="7860"');
+    expect(html).toContain("Gradio");
     expect(body).toContain("在本机打开运行时的端口");
-    expect(body).toContain("Gradio 7860");
-    expect(html).toContain('aria-label="使用 7860"');
-    expect(html).toContain('aria-label="使用 8000"');
   });
 
   it("renders an active mapping with its local address and actions", () => {

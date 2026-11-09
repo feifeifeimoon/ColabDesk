@@ -55,6 +55,14 @@ function urlFor(forward: PortForward): string | null {
     : null;
 }
 
+/** The services a Colab session most often needs; the number is the input. */
+const COMMON_PORTS = [
+  { port: "7860", name: "Gradio" },
+  { port: "8000", name: "vLLM" },
+  { port: "8501", name: "Streamlit" },
+  { port: "8888", name: "Jupyter" },
+] as const;
+
 export function PortsControl() {
   // The status bar's own tests build a partial store; a missing ports slice is
   // an empty button, not a render failure.
@@ -124,6 +132,7 @@ export function PortsView({
   const root = useRef<HTMLDivElement | null>(null);
   const button = useRef<HTMLButtonElement | null>(null);
   const dialogId = useId();
+  const commonPortsId = useId();
   const [anchor, setAnchor] = useState({ right: 12, bottom: 32 });
   const [remote, setRemote] = useState("");
   const [local, setLocal] = useState("");
@@ -320,15 +329,27 @@ export function PortsView({
                 placeholder={t("ports.remotePort", "远程端口")}
                 aria-label={t("ports.remotePort", "远程端口")}
                 inputMode="numeric"
-                type="number"
-                min={1}
-                max={65535}
+                type="text"
+                list={commonPortsId}
                 autoFocus
               />
+              <datalist id={commonPortsId}>
+                {COMMON_PORTS.map(({ port, name }) => (
+                  <option key={port} value={port}>{`${port} · ${name}`}</option>
+                ))}
+              </datalist>
               <span className="ports-form__arrow" aria-hidden="true">→</span>
-              <span className="ports-form__auto">
-                {local.trim() || t("ports.localHint", "自动")}
-              </span>
+              <Input
+                data-testid="ports-local"
+                value={local}
+                onChange={(event) => setLocal(event.target.value)}
+                placeholder={t("ports.localPortAuto", "本地（自动）")}
+                aria-label={t("ports.localPortAuto", "本地（自动）")}
+                inputMode="numeric"
+                type="number"
+                min={1024}
+                max={65535}
+              />
               <Button
                 type="submit"
                 variant="primary"
@@ -343,17 +364,6 @@ export function PortsView({
             {advanced && (
               <>
                 <div className="ports-form__row ports-form__row--advanced">
-                  <Input
-                    data-testid="ports-local"
-                    value={local}
-                    onChange={(event) => setLocal(event.target.value)}
-                    placeholder={t("ports.localPortAuto", "本地（自动）")}
-                    aria-label={t("ports.localPortAuto", "本地（自动）")}
-                    inputMode="numeric"
-                    type="number"
-                    min={1024}
-                    max={65535}
-                  />
                   <Input
                     data-testid="ports-host"
                     value={host}
@@ -379,7 +389,7 @@ export function PortsView({
 
           <div className="ports-popover__body">
             {groups.length === 0 ? (
-              <PortsEmpty onUseExample={setRemote} />
+              <PortsEmpty />
             ) : (
               groups.map(([session, list]) => (
                 <section key={session} className="ports-group">
@@ -408,30 +418,14 @@ export function PortsView({
   );
 }
 
-function PortsEmpty({ onUseExample }: { onUseExample(port: string): void }) {
+function PortsEmpty() {
   const { t } = useTranslation();
   return (
     <div className="ports-empty">
       <span className="ports-empty__icon" aria-hidden="true">
         <PlugIcon size={16} />
       </span>
-      <p className="ports-empty__title">{t("ports.empty", "把运行时的端口映射到本机")}</p>
-      <p className="ports-empty__hint">
-        {t("ports.emptyHint", "例如 Gradio 7860、vLLM 8000，或任意 TCP 服务。")}
-      </p>
-      <div className="ports-empty__examples">
-        {["7860", "8000"].map((port) => (
-          <button
-            key={port}
-            type="button"
-            className="ports-empty__example"
-            aria-label={t("ports.useExample", "使用 {{port}}", { port })}
-            onClick={() => onUseExample(port)}
-          >
-            {port}
-          </button>
-        ))}
-      </div>
+      <p className="ports-empty__title">{t("ports.empty", "在本机打开运行时的端口")}</p>
     </div>
   );
 }
