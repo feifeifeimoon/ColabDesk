@@ -38,19 +38,20 @@ test("状态栏 Ports 按钮能新增映射，并在本机读到运行时端口"
   await expect(popover).toBeVisible();
 
   await popover.locator('[data-testid="ports-remote"]').fill("8000");
-  await popover.locator('[data-testid="ports-add"]').click();
+  await expect(popover.locator('[data-testid="ports-add"]')).toBeEnabled();
+  await popover.locator('[data-testid="ports-remote"]').press("Enter");
 
   const row = popover.locator('[data-testid^="port-row-"]').filter({ hasText: "8000" });
   await expect(row).toContainText("已映射");
   await expect(button).toContainText("1");
 
-  const local = await row.locator(".port-row__local").textContent();
-  const port = Number(local?.split(":")[1]);
+  const port = Number(await row.getAttribute("data-local-port"));
   expect(port).toBeGreaterThan(0);
 
   // The mock runtime writes back the destination it was asked to reach.
   expect(await readOnce(port)).toContain("remote:127.0.0.1:8000");
 
+  await row.hover();
   await row.getByRole("button", { name: "停止" }).click();
   await expect(row).toContainText("已停止");
   await expect(button).toContainText("0");
@@ -71,12 +72,12 @@ test("关掉最后一个终端后，映射仍活着并继续可达", async ({ pa
   await button.click();
   const popover = page.locator('[data-testid="ports-popover"]');
   await popover.locator('[data-testid="ports-remote"]').fill("8000");
-  await popover.locator('[data-testid="ports-add"]').click();
+  await expect(popover.locator('[data-testid="ports-add"]')).toBeEnabled();
+  await popover.locator('[data-testid="ports-remote"]').press("Enter");
 
   const row = popover.locator('[data-testid^="port-row-"]').filter({ hasText: "8000" });
   await expect(row).toContainText("已映射");
-  const local = await row.locator(".port-row__local").textContent();
-  const port = Number(local?.split(":")[1]);
+  const port = Number(await row.getAttribute("data-local-port"));
   expect(port).toBeGreaterThan(0);
 
   await page.keyboard.press("Escape");
@@ -92,6 +93,7 @@ test("关掉最后一个终端后，映射仍活着并继续可达", async ({ pa
 
   await button.click();
   await expect(row).toContainText("已映射");
+  await row.hover();
   await row.getByRole("button", { name: "停止" }).click();
   await expect(row).toContainText("已停止");
 

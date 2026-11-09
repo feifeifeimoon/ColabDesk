@@ -5,9 +5,14 @@
  * click is the only entry to the feature. The popover is non-modal — no
  * backdrop, no inert workbench — because the person is usually copying a local
  * URL or checking a port while a terminal keeps running behind it.
+ *
+ * The panel is a dense list, not a form with cards: the port number is the
+ * scan anchor, the local URL is the line people came for, and the row actions
+ * appear on hover or keyboard focus. This follows the same information rhythm
+ * as Orca's ports panel without borrowing its palette.
  */
 
-import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type {
   PortForward,
@@ -16,8 +21,18 @@ import type {
 } from "@shared/types";
 import { Button, IconButton } from "../../components/ui/Button";
 import { Input, Select } from "../../components/ui/Field";
-import { Callout } from "../../components/ui/Notice";
-import { CloseIcon, PlugIcon, SyncIcon } from "../../components/ui/icons";
+import {
+  ChevronRightIcon,
+  CloseIcon,
+  CopyIcon,
+  ExternalIcon,
+  PlayIcon,
+  PlugIcon,
+  RestartIcon,
+  StopIcon,
+  SyncIcon,
+  TrashIcon,
+} from "../../components/ui/icons";
 import * as api from "../../lib/api";
 import { useAppStore } from "../../store";
 
@@ -128,22 +143,26 @@ export function PortsView({
     return entries;
   }, [forwardsBySession, selectedSession]);
 
-  const count = useMemo(() => {
+  const totals = useMemo(() => {
+    let running = 0;
     let total = 0;
+    let failed = 0;
+    let starting = false;
     for (const list of Object.values(forwardsBySession)) {
       for (const forward of list) {
-        if (forward.status === "starting" || forward.status === "active") total += 1;
+        total += 1;
+        if (forward.status === "active") running += 1;
+        else if (forward.status === "starting") {
+          running += 1;
+          starting = true;
+        } else if (forward.status === "error") failed += 1;
       }
     }
-    return total;
+    return { running, total, failed, starting };
   }, [forwardsBySession]);
 
-  const failed = useMemo(
-    () => Object.values(forwardsBySession).some((list) =>
-      list.some((forward) => forward.status === "error"),
-    ),
-    [forwardsBySession],
-  );
+  const count = totals.running;
+  const failed = totals.failed > 0;
 
   // The warning dot is aria-hidden, so the accessible name has to carry the
   // failure too; a screen reader otherwise gets only the count.
@@ -238,7 +257,11 @@ export function PortsView({
         title={buttonLabel}
         onClick={() => onToggle(!open)}
       >
-        <PlugIcon size={13} />
+        {totals.starting ? (
+          <SyncIcon size={13} className="spin-sync" />
+        ) : (
+          <PlugIcon size={13} />
+        )}
         <span>{count}</span>
         {failed && <span className="ports-button__dot" aria-hidden="true" />}
       </button>
@@ -253,13 +276,19 @@ export function PortsView({
           style={{ right: anchor.right, bottom: anchor.bottom }}
         >
           <div className="ports-popover__head">
-            <span className="ports-popover__title">{t("ports.title", "端口转发")}</span>
-            <span className="ports-popover__count">
+            <span className="ports-popover__title">
+              <PlugIcon size={14} />
+              {t("ports.title", "端口转发")}
+            </span>
+            <span className="ports-popover__count" aria-live="polite">
               {t("ports.runningCount", "{{count}} 个运行中", { count })}
+              <span className="ports-popover__sep" aria-hidden="true">·</span>
+              {t("ports.totalCount", "{{count}} 个映射", { count: totals.total })}
             </span>
             <IconButton
               variant="ghost"
               size="sm"
+              className="ports-popover__close"
               label={t("dialog.close", "关闭")}
               onClick={() => {
                 onToggle(false);
@@ -272,9 +301,23 @@ export function PortsView({
 
           <form className="ports-form" onSubmit={add}>
             <div className="ports-form__target">
-              {t("ports.addTo", "添加到")}{" "}
-              <strong>{selectedSession ?? t("ports.noSession", "未选择会话")}</strong>
+              <span>
+                {t("ports.addTo", "添加到")}{" "}
+                <strong>{selectedSession ?? t("ports.noSession", "未选择会话")}</strong>
+              </span>
+              <button
+                type="button"
+                className="ports-form__advanced"
+                aria-expanded={advanced}
+                onClick={() => setAdvanced(!advanced)}
+              >
+                {t("ports.advanced", "更多选项")}
+                <span className="ports-form__twisty" aria-hidden="true">
+                  <ChevronRightIcon size={10} />
+                </span>
+              </button>
             </div>
+
             <div className="ports-form__row">
               <Input
                 data-testid="ports-remote"
@@ -288,12 +331,13 @@ export function PortsView({
                 max={65535}
                 autoFocus
               />
+              <span className="ports-form__arrow" aria-hidden="true">→</span>
               <Input
                 data-testid="ports-local"
                 value={local}
                 onChange={(event) => setLocal(event.target.value)}
-                placeholder={t("ports.localPortAuto", "本地端口（自动）")}
-                aria-label={t("ports.localPortAuto", "本地端口（自动）")}
+                placeholder={t("ports.localPortAuto", "本地（自动）")}
+                aria-label={t("ports.localPortAuto", "本地（自动）")}
                 inputMode="numeric"
                 type="number"
                 min={1024}
@@ -310,18 +354,9 @@ export function PortsView({
               </Button>
             </div>
 
-            <button
-              type="button"
-              className="ports-form__advanced"
-              aria-expanded={advanced}
-              onClick={() => setAdvanced(!advanced)}
-            >
-              {t("ports.advanced", "更多选项")}
-            </button>
-
             {advanced && (
               <>
-                <div className="ports-form__row">
+                <div className="ports-form__row ports-form__row--advanced">
                   <Input
                     data-testid="ports-host"
                     value={host}
@@ -351,22 +386,21 @@ export function PortsView({
               <p className="hint">{t("ports.selectSession", "先选择一个会话，再添加端口映射。")}</p>
             )}
             {selectedSession && !connectionReady && (
-              <Callout tone="info">
-                {t("ports.connectionHint", "启动映射会先连接运行时。")}
-              </Callout>
+              <p className="hint">{t("ports.connectionHint", "启动映射会先连接运行时。")}</p>
             )}
             {error && <p className="error">{error}</p>}
           </form>
 
           <div className="ports-popover__body">
             {groups.length === 0 ? (
-              <p className="ports-empty">
-                {t("ports.empty", "把运行时的端口映射到本机。例如 Gradio 7860、vLLM 8000。")}
-              </p>
+              <PortsEmpty onUseExample={setRemote} />
             ) : (
               groups.map(([session, list]) => (
                 <section key={session} className="ports-group">
-                  <h3 className="ports-group__title">{session}</h3>
+                  <h3 className="ports-group__head">
+                    <span className="ports-group__name" title={session}>{session}</span>
+                    <span className="ports-group__count">{list.length}</span>
+                  </h3>
                   {list.map((forward) => (
                     <PortRow
                       key={forward.id}
@@ -388,6 +422,56 @@ export function PortsView({
   );
 }
 
+function PortsEmpty({ onUseExample }: { onUseExample(port: string): void }) {
+  const { t } = useTranslation();
+  return (
+    <div className="ports-empty">
+      <span className="ports-empty__icon" aria-hidden="true">
+        <PlugIcon size={16} />
+      </span>
+      <p className="ports-empty__title">{t("ports.empty", "把运行时的端口映射到本机")}</p>
+      <p className="ports-empty__hint">
+        {t("ports.emptyHint", "例如 Gradio 7860、vLLM 8000，或任意 TCP 服务。")}
+      </p>
+      <div className="ports-empty__examples">
+        {["7860", "8000"].map((port) => (
+          <button
+            key={port}
+            type="button"
+            className="ports-empty__example"
+            aria-label={t("ports.useExample", "使用 {{port}}", { port })}
+            onClick={() => onUseExample(port)}
+          >
+            {port}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ActionButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string;
+  onClick(): void;
+  children: ReactNode;
+}) {
+  return (
+    <IconButton
+      variant="ghost"
+      size="sm"
+      className="port-row__action"
+      label={label}
+      onClick={onClick}
+    >
+      {children}
+    </IconButton>
+  );
+}
+
 function PortRow({
   forward,
   onStart,
@@ -405,60 +489,87 @@ function PortRow({
 }) {
   const { t } = useTranslation();
   const url = urlFor(forward);
+  const remote = `${forward.remote_host}:${forward.remote_port}`;
+
+  let actions: ReactNode = null;
+  if (forward.status === "active" && url) {
+    actions = (
+      <>
+        <ActionButton label={t("ports.open", "打开")} onClick={() => onOpen(url)}>
+          <ExternalIcon size={12} />
+        </ActionButton>
+        <ActionButton label={t("ports.copy", "复制")} onClick={() => onCopy(url)}>
+          <CopyIcon size={12} />
+        </ActionButton>
+        <ActionButton label={t("ports.stop", "停止")} onClick={() => onStop(forward.id)}>
+          <StopIcon size={12} />
+        </ActionButton>
+      </>
+    );
+  } else if (forward.status === "stopped") {
+    actions = (
+      <>
+        <ActionButton label={t("ports.start", "启动")} onClick={() => onStart(forward.id)}>
+          <PlayIcon size={12} />
+        </ActionButton>
+        <ActionButton label={t("ports.remove", "删除")} onClick={() => onRemove(forward.id)}>
+          <TrashIcon size={12} />
+        </ActionButton>
+      </>
+    );
+  } else if (forward.status === "error") {
+    actions = (
+      <>
+        <ActionButton label={t("ports.retry", "重试")} onClick={() => onStart(forward.id)}>
+          <RestartIcon size={12} />
+        </ActionButton>
+        <ActionButton label={t("ports.remove", "删除")} onClick={() => onRemove(forward.id)}>
+          <TrashIcon size={12} />
+        </ActionButton>
+      </>
+    );
+  }
+
   return (
-    <div className="port-row" data-testid={`port-row-${forward.id}`}>
-      <div className="port-row__line">
-        <span className="port-row__endpoints">
-          <span className="port-row__remote">
-            {forward.remote_host}:{forward.remote_port}
-          </span>
-          <span className="port-row__arrow" aria-hidden="true">→</span>
-          <code className="port-row__local">
-            {forward.local_port ? `${forward.local_host}:${forward.local_port}` : "—"}
-          </code>
-        </span>
+    <div
+      className="port-row"
+      data-testid={`port-row-${forward.id}`}
+      data-local-port={forward.local_port ?? ""}
+    >
+      <div className="port-row__lead">
+        <span className="port-row__port">{forward.remote_port}</span>
         <span className={`port-row__status port-row__status--${forward.status}`}>
-          {forward.status === "starting" && <SyncIcon size={12} className="spin-sync" />}
+          {forward.status === "starting" ? (
+            <SyncIcon size={11} className="spin-sync" />
+          ) : (
+            <span className="port-row__dot" aria-hidden="true" />
+          )}
           {t(portStatusKey(forward.status), forward.status)}
         </span>
       </div>
-
-      <div className="port-row__actions">
-        {forward.status === "active" && url && (
-          <>
-            <Button variant="link" size="sm" onClick={() => onOpen(url)}>
-              {t("ports.open", "打开")}
-            </Button>
-            <Button variant="link" size="sm" onClick={() => onCopy(url)}>
-              {t("ports.copy", "复制")}
-            </Button>
-            <Button variant="link" size="sm" onClick={() => onStop(forward.id)}>
-              {t("ports.stop", "停止")}
-            </Button>
-          </>
-        )}
-        {forward.status === "stopped" && (
-          <>
-            <Button variant="link" size="sm" onClick={() => onStart(forward.id)}>
-              {t("ports.start", "启动")}
-            </Button>
-            <Button variant="link" size="sm" onClick={() => onRemove(forward.id)}>
-              {t("ports.remove", "删除")}
-            </Button>
-          </>
-        )}
-        {forward.status === "error" && (
-          <>
-            <Button variant="link" size="sm" onClick={() => onStart(forward.id)}>
-              {t("ports.retry", "重试")}
-            </Button>
-            <Button variant="link" size="sm" onClick={() => onRemove(forward.id)}>
-              {t("ports.remove", "删除")}
-            </Button>
-          </>
-        )}
+      <div className="port-row__main">
+        <span className="port-row__url">
+          <span className="port-row__arrow" aria-hidden="true">
+            <ChevronRightIcon size={10} />
+          </span>
+          {url ? (
+            <button
+              type="button"
+              className="port-row__url-text"
+              title={url}
+              onClick={() => onOpen(url)}
+            >
+              {url}
+            </button>
+          ) : (
+            <span className="port-row__url-text port-row__url-text--idle">—</span>
+          )}
+        </span>
+        <span className="port-row__meta">
+          <span className="port-row__remote" title={remote}>{remote}</span>
+        </span>
       </div>
-
+      {actions && <div className="port-row__actions">{actions}</div>}
       {forward.error && <p className="port-row__error">{forward.error}</p>}
     </div>
   );

@@ -325,6 +325,26 @@ export function CopyIcon({ size }: IconProps) {
   );
 }
 
+/** Open the mapped address in the system browser: leaving the panel. */
+export function ExternalIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M9.5 2.5h4v4" />
+      <path d="M13.5 2.5 7.5 8.5" />
+      <path d="M12.5 9.5v3a1.5 1.5 0 0 1-1.5 1.5H3.5A1.5 1.5 0 0 1 2 12.5V5A1.5 1.5 0 0 1 3.5 3.5h3" />
+    </Svg>
+  );
+}
+
+/** Start a stopped mapping: a solid triangle, distinct from Restart's arrow. */
+export function PlayIcon({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M5 3.5 12 8 5 12.5Z" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
 /** Stop the runtime: a filled square, distinct from the close X. */
 export function StopIcon({ size }: IconProps) {
   return (

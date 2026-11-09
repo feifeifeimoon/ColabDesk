@@ -2246,10 +2246,9 @@ kbd {
   z-index: var(--layer-statusbar-popover);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  width: min(380px, calc(100vw - 16px));
-  max-height: min(60vh, 520px);
-  padding: var(--space-3);
+  width: min(384px, calc(100vw - 16px));
+  max-height: min(480px, calc(100vh - 48px));
+  overflow: hidden;
   border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
   background: var(--canvas);
@@ -2264,137 +2263,327 @@ kbd {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--hairline);
 }
 
 .ports-popover__title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   color: var(--ink);
   font-weight: 500;
+  white-space: nowrap;
+}
+
+.ports-popover__title svg {
+  color: var(--mute);
 }
 
 .ports-popover__count {
   margin-right: auto;
+  overflow: hidden;
   color: var(--mute);
   font-family: var(--font-mono);
   font-size: var(--text-micro);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ports-popover__sep {
+  margin: 0 var(--space-1);
+  color: var(--hairline-strong);
+}
+
+.ports-popover__head .ports-popover__close.btn {
+  width: 24px;
+  height: 24px;
 }
 
 .ports-form {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--canvas-soft);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  border-bottom: 1px solid var(--hairline);
 }
 
 .ports-form__target {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
   color: var(--mute);
   font-size: var(--text-micro);
 }
 
+.ports-form__target > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .ports-form__target strong {
-  color: var(--ink);
+  color: var(--body);
   font-weight: 500;
 }
 
-.ports-form__row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.ports-form__row .input {
-  flex: 1;
-  min-width: 0;
-}
-
 .ports-form__advanced {
-  align-self: flex-start;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
   padding: 0;
   border: 0;
   background: none;
-  color: var(--link);
+  color: var(--mute);
   font: inherit;
   font-size: var(--text-micro);
   cursor: pointer;
 }
 
 .ports-form__advanced:hover {
-  text-decoration: underline;
+  color: var(--ink);
+}
+
+.ports-form__twisty {
+  display: inline-flex;
+  transition: transform 120ms ease;
+}
+
+.ports-form__advanced[aria-expanded="true"] .ports-form__twisty {
+  transform: rotate(90deg);
+}
+
+.ports-form__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.ports-form__row .input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 var(--space-2);
+  font-size: var(--text-caption);
+}
+
+.ports-form__row .input[type="number"] {
+  font-family: var(--font-mono);
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.ports-form__row .input[type="number"]::-webkit-inner-spin-button,
+.ports-form__row .input[type="number"]::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.ports-form__row .btn {
+  flex-shrink: 0;
+}
+
+.ports-form__arrow {
+  flex-shrink: 0;
+  color: var(--hairline-strong);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+}
+
+.ports-form__row--advanced {
+  gap: var(--space-2);
+}
+
+.ports-form__row--advanced select.input {
+  flex: 0 0 76px;
+}
+
+.ports-form .hint {
+  line-height: 1.4;
+}
+
+.ports-form .error {
+  font-size: var(--text-caption);
+  line-height: 1.4;
 }
 
 .ports-popover__body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  overflow: auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-1) var(--space-2) var(--space-2);
 }
 
 .ports-group {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
 }
 
-.ports-group__title {
+.ports-group + .ports-group {
+  margin-top: var(--space-1);
+  border-top: 1px solid var(--hairline);
+}
+
+.ports-group__head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin: 0;
-  overflow: hidden;
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--canvas);
   color: var(--mute);
   font-family: var(--font-mono);
-  font-size: var(--text-micro);
+  font-size: var(--text-caption);
   font-weight: 500;
+}
+
+.ports-group__name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--body);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.ports-group__count {
+  margin-left: auto;
+  color: var(--mute);
+  font-size: var(--text-micro);
+  font-variant-numeric: tabular-nums;
+}
+
 .port-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: start;
   padding: var(--space-2);
   border-radius: var(--radius-sm);
+  transition: background-color 120ms ease;
+}
+
+.port-row:hover,
+.port-row:focus-within {
   background: var(--canvas-soft);
 }
 
-.port-row__line {
+.port-row__lead {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
 }
 
-.port-row__endpoints {
+.port-row__port {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+}
+
+.port-row__main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.port-row__url {
   display: flex;
   align-items: center;
   gap: var(--space-1);
   min-width: 0;
+}
+
+.port-row__arrow {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  color: var(--hairline-strong);
+}
+
+.port-row__url-text {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
   overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  line-height: 18px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.port-row__url-text:hover {
+  text-decoration: underline;
+}
+
+.port-row__url-text:focus-visible {
+  border-radius: var(--radius-xs);
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.port-row__url-text--idle {
+  color: var(--mute);
+  cursor: default;
+}
+
+.port-row__url-text--idle:hover {
+  text-decoration: none;
+}
+
+.port-row__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  color: var(--mute);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  line-height: 16px;
 }
 
 .port-row__remote {
   overflow: hidden;
-  color: var(--body);
-  font-family: var(--font-mono);
-  font-size: var(--text-micro);
   text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.port-row__arrow {
-  color: var(--hairline-strong);
-}
-
-.port-row__local {
-  color: var(--ink);
-  font-family: var(--font-mono);
-  font-size: var(--text-micro);
   white-space: nowrap;
 }
 
 .port-row__status {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   gap: var(--space-1);
   color: var(--mute);
+  font-family: var(--font-sans);
   font-size: var(--text-micro);
+  line-height: 16px;
   white-space: nowrap;
+}
+
+.port-row__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: var(--radius-full);
+  background: currentColor;
 }
 
 .port-row__status--active {
@@ -2410,25 +2599,122 @@ kbd {
 }
 
 .port-row__actions {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 1;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-1);
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--canvas);
+  box-shadow: var(--shadow-1);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.port-row:hover .port-row__actions,
+.port-row:focus-within .port-row__actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.port-row__actions .btn.port-row__action {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--mute);
+}
+
+.port-row__actions .btn.port-row__action:hover {
+  color: var(--ink);
+  background: var(--canvas-soft-2);
 }
 
 .port-row__error {
-  margin: var(--space-1) 0 0;
+  grid-column: 2;
+  margin: 2px 0 0;
   color: var(--error);
   font-size: var(--text-micro);
+  line-height: 1.35;
 }
 
 .ports-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-5) var(--space-4);
+  text-align: center;
+}
+
+.ports-empty__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-bottom: var(--space-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-full);
+  color: var(--mute);
+}
+
+.ports-empty__title {
   margin: 0;
-  padding: var(--space-3) var(--space-2);
+  color: var(--ink);
+  font-size: var(--text-label);
+  font-weight: 500;
+}
+
+.ports-empty__hint {
+  margin: var(--space-1) 0 0;
   color: var(--mute);
   font-size: var(--text-micro);
-  text-align: center;
+  line-height: 1.5;
+}
+
+.ports-empty__examples {
+  display: flex;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+}
+
+.ports-empty__example {
+  height: 28px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-full);
+  background: var(--canvas);
+  color: var(--body);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  cursor: pointer;
+}
+
+.ports-empty__example:hover {
+  border-color: var(--hairline-strong);
+  color: var(--ink);
+}
+
+@media (hover: none) {
+  .port-row__actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ports-popover {
+    animation: none;
+  }
+
+  .port-row,
+  .port-row__actions,
+  .ports-form__twisty {
+    transition: none;
+  }
 }
 
 .statusbar-popover {

@@ -76,9 +76,14 @@ describe("the Ports button and popover", () => {
     const body = text(html);
     expect(body).toContain("端口转发");
     expect(body).toContain("添加到 alpha");
+    expect(body).toContain("0 个运行中");
+    expect(body).toContain("0 个映射");
     expect(html).toContain('data-testid="ports-remote"');
     expect(html).toContain('placeholder="远程端口"');
     expect(body).toContain("把运行时的端口映射到本机");
+    expect(body).toContain("Gradio 7860");
+    expect(html).toContain('aria-label="使用 7860"');
+    expect(html).toContain('aria-label="使用 8000"');
   });
 
   it("renders an active mapping with its local address and actions", () => {
@@ -87,10 +92,13 @@ describe("the Ports button and popover", () => {
     expect(body).toContain("127.0.0.1:8000");
     expect(body).toContain("127.0.0.1:52431");
     expect(body).toContain("已映射");
-    expect(body).toContain("打开");
-    expect(body).toContain("复制");
-    expect(body).toContain("停止");
+    expect(body).toContain("1 个运行中");
+    expect(body).toContain("1 个映射");
+    expect(html).toContain('aria-label="打开"');
+    expect(html).toContain('aria-label="复制"');
+    expect(html).toContain('aria-label="停止"');
     expect(html).toContain('data-testid="port-row-p1"');
+    expect(html).toContain('data-local-port="52431"');
     expect(html).toContain("端口转发：1 个");
   });
 
@@ -102,9 +110,9 @@ describe("the Ports button and popover", () => {
     });
     const body = text(html);
     expect(body).toContain("失败");
-    expect(body).toContain("重试");
-    expect(body).toContain("删除");
     expect(body).toContain("本地端口 8080 已被占用");
+    expect(html).toContain('aria-label="重试"');
+    expect(html).toContain('aria-label="删除"');
     expect(html).toContain("ports-button__dot");
   });
 
@@ -138,7 +146,7 @@ describe("the Ports button and popover", () => {
     });
     const body = text(html);
     expect(body).toContain("分配中");
-    expect(body).not.toContain("停止");
+    expect(html).not.toContain('aria-label="停止"');
     expect(html).toContain("端口转发：1 个");
   });
 
@@ -149,10 +157,11 @@ describe("the Ports button and popover", () => {
 
   it("renders its labels in English", async () => {
     await setRendererUiLanguage("en");
-    const body = text(render());
+    const html = render();
+    const body = text(html);
     expect(body).toContain("Port forwards");
     expect(body).toContain("Mapped");
-    expect(body).toContain("Stop");
+    expect(html).toContain('aria-label="Stop"');
     expect(body).not.toContain("端口");
   });
 });
