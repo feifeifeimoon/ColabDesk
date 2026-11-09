@@ -11,6 +11,7 @@ import { registerColabHandlers, type LoginHandle } from "./handlers/colab";
 import { registerClipboardHandlers } from "./handlers/clipboard";
 import { registerLogHandlers } from "./handlers/logs";
 import { registerFileHandlers } from "./handlers/files";
+import { registerPortHandlers } from "./handlers/ports";
 import { registerTerminalHandlers } from "./handlers/terminal";
 import { registerWindowHandlers } from "./handlers/window";
 
@@ -23,7 +24,10 @@ export interface IpcContext {
 }
 
 export function registerIpc(context: IpcContext): LoginHandle {
-  const login = registerColabHandlers(context);
+  // Built first so a stopped session can tell the port manager to let go of
+  // its listeners before the runtime assignment disappears.
+  const ports = registerPortHandlers(context);
+  const login = registerColabHandlers(context, ports.forget);
   registerTerminalHandlers(context);
   registerFileHandlers(context);
   registerWindowHandlers(context);
@@ -47,5 +51,10 @@ export function registerIpc(context: IpcContext): LoginHandle {
     broadcast(EVENTS.sshStatus, { session, status, error });
   });
 
-  return login;
+  return {
+    cancel() {
+      login.cancel();
+      ports.cancel();
+    },
+  };
 }

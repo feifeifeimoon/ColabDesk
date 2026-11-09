@@ -299,8 +299,16 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       };
     });
     // A runtime accepts one SSH connection, so holding it is what having a
-    // shell means. The status stream reports the closure itself.
-    void api.sshDisconnect(session);
+    // shell means. The status stream reports the closure itself. An active
+    // port forward is a third consumer: it keeps the connection up even when
+    // the last tab is gone, so the local address it promised stays reachable.
+    // The optional access keeps this slice usable in its own unit tests, which
+    // build a store from the slices they need rather than the whole app.
+    const forwards = get().portsBySession?.[session] ?? [];
+    const forwarded = forwards.some(
+      (forward) => forward.status === "starting" || forward.status === "active",
+    );
+    if (!forwarded) void api.sshDisconnect(session);
   }
 
   return {
@@ -522,6 +530,12 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
     },
 
     closeSessionTabs: (session) => {
+      // Hanging up includes the forwards; clearing the list first is what lets
+      // `release` perform the disconnect instead of keeping the connection.
+      // The guard is for the workspace slice's own test store, which does not
+      // install the ports slice.
+      const stopAllPorts = get().stopAllPorts;
+      if (typeof stopAllPorts === "function") stopAllPorts(session);
       const state = get();
       const removed = state.tabs.filter((tab) => tab.session === session);
       if (removed.length === 0) return;

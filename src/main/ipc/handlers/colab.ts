@@ -15,7 +15,10 @@ export interface LoginHandle {
   cancel(): void;
 }
 
-export function registerColabHandlers({ service, usageHistory, bundledDir, log }: IpcContext): LoginHandle {
+export function registerColabHandlers(
+  { service, usageHistory, bundledDir, log }: IpcContext,
+  onSessionStopped?: (name: string) => void,
+): LoginHandle {
   let loginFlow: LoginFlow | null = null;
 
   // `app.getVersion()` is an Electron concern, so it is merged in here rather
@@ -46,7 +49,13 @@ export function registerColabHandlers({ service, usageHistory, bundledDir, log }
       // back from the invoke, so a failure is handled in one place.
       service.createSession(options, (line) => broadcast(EVENTS.sessionCreateOutput, { line })),
   );
-  ipcMain.handle(IPC.stopSession, (_event, name: string) => service.stopSession(name));
+  ipcMain.handle(IPC.stopSession, async (_event, name: string) => {
+    const report = await service.stopSession(name);
+    // A stopped runtime has no endpoints left; a listener that tried to reach
+    // one would sit on a dead connection.
+    if (report.ok) onSessionStopped?.(name);
+    return report;
+  });
   ipcMain.handle(IPC.restartKernel, (_event, name: string) => service.restartKernel(name));
   ipcMain.handle(IPC.syncSessions, () => service.syncSessions());
 

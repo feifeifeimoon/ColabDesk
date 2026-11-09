@@ -39,6 +39,14 @@ const api: ColabDeskApi = {
   sshDisconnect: (name) => invoke(IPC.sshDisconnect, name),
   onSshStatus: (listener) => subscribe(EVENTS.sshStatus, listener),
 
+  listPortForwards: (session) => invoke(IPC.portsList, session),
+  createPortForward: (request) => invoke(IPC.portsCreate, request),
+  startPortForward: (id) => invoke(IPC.portsStart, id),
+  stopPortForward: (id) => invoke(IPC.portsStop, id),
+  removePortForward: (id) => invoke(IPC.portsRemove, id),
+  stopAllPortForwards: (session) => invoke(IPC.portsStopAll, session),
+  onPortsChanged: (listener) => subscribe(EVENTS.portsChanged, listener),
+
   openTerminal: (session, cols, rows) => invoke(IPC.termOpen, { session, cols, rows }),
   writeTerminal: (channelId, data) => invoke(IPC.termWrite, { channelId, data }),
   resizeTerminal: (channelId, cols, rows) => invoke(IPC.termResize, { channelId, cols, rows }),

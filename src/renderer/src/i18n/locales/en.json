@@ -537,5 +537,40 @@
     "retry": "Retry",
     "generateKey": "Generate key",
     "generatingKey": "Generating…"
+  },
+  "ports": {
+    "buttonLabel": "Port forwards: {{count}}",
+    "title": "Port forwards",
+    "runningCount": "{{count}} running",
+    "addTo": "Add to",
+    "noSession": "No session selected",
+    "selectSession": "Select a session before adding a port forward.",
+    "remotePort": "Remote port",
+    "localPortAuto": "Local port (auto)",
+    "remoteHost": "Remote host",
+    "scheme": "Scheme",
+    "http": "http",
+    "https": "https",
+    "add": "Add",
+    "advanced": "More options",
+    "open": "Open",
+    "copy": "Copy",
+    "stop": "Stop",
+    "start": "Start",
+    "retry": "Retry",
+    "remove": "Remove",
+    "empty": "Expose a runtime port on this machine. For example Gradio 7860 or vLLM 8000.",
+    "connectionHint": "Starting a forward connects to the runtime first.",
+    "error": {
+      "session": "Select a session first.",
+      "remotePort": "The remote port must be between 1 and 65535.",
+      "localPort": "The local port must be between 1024 and 65535, or empty for automatic."
+    },
+    "status": {
+      "starting": "Assigning…",
+      "active": "Mapped",
+      "stopped": "Stopped",
+      "error": "Failed"
+    }
   }
 }

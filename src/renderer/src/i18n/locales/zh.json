@@ -537,5 +537,40 @@
     "retry": "重试",
     "generateKey": "生成密钥",
     "generatingKey": "生成中…"
+  },
+  "ports": {
+    "buttonLabel": "端口转发：{{count}} 个",
+    "title": "端口转发",
+    "runningCount": "{{count}} 个运行中",
+    "addTo": "添加到",
+    "noSession": "未选择会话",
+    "selectSession": "先选择一个会话，再添加端口映射。",
+    "remotePort": "远程端口",
+    "localPortAuto": "本地端口（自动）",
+    "remoteHost": "远程主机",
+    "scheme": "协议",
+    "http": "http",
+    "https": "https",
+    "add": "添加",
+    "advanced": "更多选项",
+    "open": "打开",
+    "copy": "复制",
+    "stop": "停止",
+    "start": "启动",
+    "retry": "重试",
+    "remove": "删除",
+    "empty": "把运行时的端口映射到本机。例如 Gradio 7860、vLLM 8000。",
+    "connectionHint": "启动映射会先连接运行时。",
+    "error": {
+      "session": "先选择一个会话。",
+      "remotePort": "远程端口必须在 1–65535 之间。",
+      "localPort": "本地端口必须在 1024–65535 之间，或留空自动分配。"
+    },
+    "status": {
+      "starting": "分配中…",
+      "active": "已映射",
+      "stopped": "已停止",
+      "error": "失败"
+    }
   }
 }

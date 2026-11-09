@@ -11,6 +11,7 @@ import {
 import { IS_MAC, MAC_INSET } from "../lib/platform";
 import { toggleMaximizeWindow } from "../lib/api";
 import { acceleratorLabel, sessionRate, sessionRateText } from "../features/sessions/accelerators";
+import { PortsControl } from "../features/ports/PortsControl";
 import { useAppStore } from "../store";
 import { useHasWorkSurface } from "../store/selectors";
 import { BrandMark } from "./BrandMark";
@@ -397,6 +398,8 @@ export function StatusBar() {
           <span>{updateState === "downloaded" ? t("statusbar.updateReady", "重启以更新") : updateVersion}</span>
         </button>
       )}
+
+      <PortsControl />
 
       <div
         className="statusbar__group"

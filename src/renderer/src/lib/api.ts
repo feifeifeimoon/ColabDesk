@@ -34,6 +34,15 @@ export const sshIdentity = () => bridge().sshIdentity();
 export const sshGenerateKey = () => bridge().sshGenerateKey();
 export const sshDisconnect = (name: string) => bridge().sshDisconnect(name);
 export const onSshStatus = (listener: Parameters<ColabDeskApi["onSshStatus"]>[0]) => bridge().onSshStatus(listener);
+export const listPortForwards = (session: string) => bridge().listPortForwards(session);
+export const createPortForward = (request: Parameters<ColabDeskApi["createPortForward"]>[0]) =>
+  bridge().createPortForward(request);
+export const startPortForward = (id: string) => bridge().startPortForward(id);
+export const stopPortForward = (id: string) => bridge().stopPortForward(id);
+export const removePortForward = (id: string) => bridge().removePortForward(id);
+export const stopAllPortForwards = (session: string) => bridge().stopAllPortForwards(session);
+export const onPortsChanged = (listener: Parameters<ColabDeskApi["onPortsChanged"]>[0]) =>
+  bridge().onPortsChanged(listener);
 export const onSessionCreateOutput = (listener: Parameters<ColabDeskApi["onSessionCreateOutput"]>[0]) =>
   bridge().onSessionCreateOutput(listener);
 

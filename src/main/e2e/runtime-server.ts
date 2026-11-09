@@ -66,6 +66,13 @@ export async function startMockRuntime(): Promise<MockRuntime> {
     // because what the tests exercise is everything after the handshake.
     client.on("authentication", (context) => context.accept());
     client.on("ready", () => {
+      // A port forward is a connection-level direct-tcpip request, not a
+      // session: answer it with the destination the app asked for.
+      client.on("tcpip", (accept, _reject, info) => {
+        const channel = accept();
+        channel.write(`remote:${info.destIP}:${info.destPort}\n`);
+        channel.end();
+      });
       client.on("session", (accept) => {
         attachSession(accept(), filesystem, () => {
           shellsOpened += 1;
