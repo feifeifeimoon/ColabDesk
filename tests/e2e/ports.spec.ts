@@ -42,7 +42,7 @@ test("状态栏 Ports 按钮能新增映射，并在本机读到运行时端口"
   await popover.locator('[data-testid="ports-remote"]').press("Enter");
 
   const row = popover.locator('[data-testid^="port-row-"]').filter({ hasText: "8000" });
-  await expect(row).toContainText("已映射");
+  await expect(row).toHaveAttribute("data-status", "active");
   await expect(button).toContainText("1");
 
   const port = Number(await row.getAttribute("data-local-port"));
@@ -53,7 +53,7 @@ test("状态栏 Ports 按钮能新增映射，并在本机读到运行时端口"
 
   await row.hover();
   await row.getByRole("button", { name: "停止" }).click();
-  await expect(row).toContainText("已停止");
+  await expect(row).toHaveAttribute("data-status", "stopped");
   await expect(button).toContainText("0");
 
   let refused = false;
@@ -76,7 +76,7 @@ test("关掉最后一个终端后，映射仍活着并继续可达", async ({ pa
   await popover.locator('[data-testid="ports-remote"]').press("Enter");
 
   const row = popover.locator('[data-testid^="port-row-"]').filter({ hasText: "8000" });
-  await expect(row).toContainText("已映射");
+  await expect(row).toHaveAttribute("data-status", "active");
   const port = Number(await row.getAttribute("data-local-port"));
   expect(port).toBeGreaterThan(0);
 
@@ -92,10 +92,10 @@ test("关掉最后一个终端后，映射仍活着并继续可达", async ({ pa
   expect(await readOnce(port)).toContain("remote:127.0.0.1:8000");
 
   await button.click();
-  await expect(row).toContainText("已映射");
+  await expect(row).toHaveAttribute("data-status", "active");
   await row.hover();
   await row.getByRole("button", { name: "停止" }).click();
-  await expect(row).toContainText("已停止");
+  await expect(row).toHaveAttribute("data-status", "stopped");
 
   let refused = false;
   try {

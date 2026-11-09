@@ -77,10 +77,9 @@ describe("the Ports button and popover", () => {
     expect(body).toContain("端口转发");
     expect(body).toContain("添加到 alpha");
     expect(body).toContain("0 个运行中");
-    expect(body).toContain("0 个映射");
     expect(html).toContain('data-testid="ports-remote"');
     expect(html).toContain('placeholder="远程端口"');
-    expect(body).toContain("把运行时的端口映射到本机");
+    expect(body).toContain("在本机打开运行时的端口");
     expect(body).toContain("Gradio 7860");
     expect(html).toContain('aria-label="使用 7860"');
     expect(html).toContain('aria-label="使用 8000"');
@@ -91,9 +90,10 @@ describe("the Ports button and popover", () => {
     const body = text(html);
     expect(body).toContain("127.0.0.1:8000");
     expect(body).toContain("127.0.0.1:52431");
-    expect(body).toContain("已映射");
     expect(body).toContain("1 个运行中");
-    expect(body).toContain("1 个映射");
+    expect(body).not.toContain("已映射");
+    expect(html).toContain('data-status="active"');
+    expect(html).toContain('aria-label="运行中"');
     expect(html).toContain('aria-label="打开"');
     expect(html).toContain('aria-label="复制"');
     expect(html).toContain('aria-label="停止"');
@@ -109,8 +109,10 @@ describe("the Ports button and popover", () => {
       },
     });
     const body = text(html);
-    expect(body).toContain("失败");
+    expect(body).not.toContain("失败");
     expect(body).toContain("本地端口 8080 已被占用");
+    expect(html).toContain('data-status="error"');
+    expect(html).toContain('aria-label="失败"');
     expect(html).toContain('aria-label="重试"');
     expect(html).toContain('aria-label="删除"');
     expect(html).toContain("ports-button__dot");
@@ -144,15 +146,15 @@ describe("the Ports button and popover", () => {
         alpha: [forward({ status: "starting", local_port: null })],
       },
     });
-    const body = text(html);
-    expect(body).toContain("分配中");
+    expect(html).toContain('data-status="starting"');
+    expect(html).toContain('aria-label="分配中…"');
     expect(html).not.toContain('aria-label="停止"');
     expect(html).toContain("端口转发：1 个");
   });
 
   it("mentions that starting a mapping connects to the runtime first", () => {
     const html = render({ connectionReady: false, forwardsBySession: {} });
-    expect(text(html)).toContain("启动映射会先连接运行时");
+    expect(text(html)).toContain("添加端口会先连接运行时");
   });
 
   it("renders its labels in English", async () => {
@@ -160,7 +162,7 @@ describe("the Ports button and popover", () => {
     const html = render();
     const body = text(html);
     expect(body).toContain("Port forwards");
-    expect(body).toContain("Mapped");
+    expect(html).toContain('aria-label="Active"');
     expect(html).toContain('aria-label="Stop"');
     expect(body).not.toContain("端口");
   });

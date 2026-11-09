@@ -2291,11 +2291,6 @@ kbd {
   white-space: nowrap;
 }
 
-.ports-popover__sep {
-  margin: 0 var(--space-1);
-  color: var(--hairline-strong);
-}
-
 .ports-popover__head .ports-popover__close.btn {
   width: 24px;
   height: 24px;
@@ -2395,12 +2390,15 @@ kbd {
   font-size: var(--text-micro);
 }
 
-.ports-form__row--advanced {
-  gap: var(--space-2);
+.ports-form__auto {
+  flex-shrink: 0;
+  color: var(--mute);
+  font-size: var(--text-micro);
+  white-space: nowrap;
 }
 
-.ports-form__row--advanced select.input {
-  flex: 0 0 76px;
+.ports-form__row--advanced {
+  gap: var(--space-2);
 }
 
 .ports-form .hint {
@@ -2478,8 +2476,9 @@ kbd {
 
 .port-row__lead {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-1);
   min-width: 0;
 }
 
@@ -2571,17 +2570,12 @@ kbd {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
-  gap: var(--space-1);
   color: var(--mute);
-  font-family: var(--font-sans);
-  font-size: var(--text-micro);
-  line-height: 16px;
-  white-space: nowrap;
 }
 
 .port-row__dot {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: var(--radius-full);
   background: currentColor;
 }

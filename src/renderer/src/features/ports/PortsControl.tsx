@@ -20,7 +20,7 @@ import type {
   PortForwardStatus,
 } from "@shared/types";
 import { Button, IconButton } from "../../components/ui/Button";
-import { Input, Select } from "../../components/ui/Field";
+import { Input } from "../../components/ui/Field";
 import {
   ChevronRightIcon,
   CloseIcon,
@@ -128,7 +128,6 @@ export function PortsView({
   const [remote, setRemote] = useState("");
   const [local, setLocal] = useState("");
   const [host, setHost] = useState("127.0.0.1");
-  const [scheme, setScheme] = useState<"http" | "https">("http");
   const [advanced, setAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -145,12 +144,10 @@ export function PortsView({
 
   const totals = useMemo(() => {
     let running = 0;
-    let total = 0;
     let failed = 0;
     let starting = false;
     for (const list of Object.values(forwardsBySession)) {
       for (const forward of list) {
-        total += 1;
         if (forward.status === "active") running += 1;
         else if (forward.status === "starting") {
           running += 1;
@@ -158,7 +155,7 @@ export function PortsView({
         } else if (forward.status === "error") failed += 1;
       }
     }
-    return { running, total, failed, starting };
+    return { running, failed, starting };
   }, [forwardsBySession]);
 
   const count = totals.running;
@@ -230,7 +227,6 @@ export function PortsView({
         remote_port: remotePort,
         local_port: localPort,
         remote_host: host.trim() || "127.0.0.1",
-        scheme,
       });
       if (created) {
         setRemote("");
@@ -282,8 +278,6 @@ export function PortsView({
             </span>
             <span className="ports-popover__count" aria-live="polite">
               {t("ports.runningCount", "{{count}} 个运行中", { count })}
-              <span className="ports-popover__sep" aria-hidden="true">·</span>
-              {t("ports.totalCount", "{{count}} 个映射", { count: totals.total })}
             </span>
             <IconButton
               variant="ghost"
@@ -332,17 +326,9 @@ export function PortsView({
                 autoFocus
               />
               <span className="ports-form__arrow" aria-hidden="true">→</span>
-              <Input
-                data-testid="ports-local"
-                value={local}
-                onChange={(event) => setLocal(event.target.value)}
-                placeholder={t("ports.localPortAuto", "本地（自动）")}
-                aria-label={t("ports.localPortAuto", "本地（自动）")}
-                inputMode="numeric"
-                type="number"
-                min={1024}
-                max={65535}
-              />
+              <span className="ports-form__auto">
+                {local.trim() || t("ports.localHint", "自动")}
+              </span>
               <Button
                 type="submit"
                 variant="primary"
@@ -358,23 +344,23 @@ export function PortsView({
               <>
                 <div className="ports-form__row ports-form__row--advanced">
                   <Input
+                    data-testid="ports-local"
+                    value={local}
+                    onChange={(event) => setLocal(event.target.value)}
+                    placeholder={t("ports.localPortAuto", "本地（自动）")}
+                    aria-label={t("ports.localPortAuto", "本地（自动）")}
+                    inputMode="numeric"
+                    type="number"
+                    min={1024}
+                    max={65535}
+                  />
+                  <Input
                     data-testid="ports-host"
                     value={host}
                     onChange={(event) => setHost(event.target.value)}
                     placeholder={t("ports.remoteHost", "远程主机")}
                     aria-label={t("ports.remoteHost", "远程主机")}
                   />
-                  <Select
-                    data-testid="ports-scheme"
-                    value={scheme}
-                    onChange={(event) =>
-                      setScheme(event.target.value === "https" ? "https" : "http")
-                    }
-                    aria-label={t("ports.scheme", "协议")}
-                  >
-                    <option value="http">{t("ports.http", "http")}</option>
-                    <option value="https">{t("ports.https", "https")}</option>
-                  </Select>
                 </div>
                 <p className="hint">
                   {t("ports.remoteHostHint", "连接由运行时发起，不是本机代理。")}
@@ -383,10 +369,10 @@ export function PortsView({
             )}
 
             {!selectedSession && (
-              <p className="hint">{t("ports.selectSession", "先选择一个会话，再添加端口映射。")}</p>
+              <p className="hint">{t("ports.selectSession", "先选择一个会话，再添加端口。")}</p>
             )}
             {selectedSession && !connectionReady && (
-              <p className="hint">{t("ports.connectionHint", "启动映射会先连接运行时。")}</p>
+              <p className="hint">{t("ports.connectionHint", "添加端口会先连接运行时。")}</p>
             )}
             {error && <p className="error">{error}</p>}
           </form>
@@ -535,16 +521,20 @@ function PortRow({
       className="port-row"
       data-testid={`port-row-${forward.id}`}
       data-local-port={forward.local_port ?? ""}
+      data-status={forward.status}
     >
       <div className="port-row__lead">
         <span className="port-row__port">{forward.remote_port}</span>
-        <span className={`port-row__status port-row__status--${forward.status}`}>
+        <span
+          className={`port-row__status port-row__status--${forward.status}`}
+          role="img"
+          aria-label={t(portStatusKey(forward.status), forward.status)}
+        >
           {forward.status === "starting" ? (
             <SyncIcon size={11} className="spin-sync" />
           ) : (
             <span className="port-row__dot" aria-hidden="true" />
           )}
-          {t(portStatusKey(forward.status), forward.status)}
         </span>
       </div>
       <div className="port-row__main">
