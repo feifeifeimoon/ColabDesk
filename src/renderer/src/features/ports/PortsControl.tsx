@@ -359,11 +359,11 @@ export function PortsView({
               </label>
               <IconButton
                 type="submit"
-                variant="primary"
+                variant="ghost"
                 size="sm"
                 className="ports-form__add"
                 data-testid="ports-add"
-                label={t("ports.add", "添加")}
+                label={selectedSession ? t("ports.add", "添加") : t("ports.selectSession", "先选择会话")}
                 disabled={busy || !selectedSession || !remote.trim()}
               >
                 <PlusIcon size={14} />
@@ -387,9 +387,6 @@ export function PortsView({
               </>
             )}
 
-            {!selectedSession && (
-              <p className="hint">{t("ports.selectSession", "先选择一个会话，再添加端口。")}</p>
-            )}
             {selectedSession && !connectionReady && (
               <p className="hint">{t("ports.connectionHint", "添加端口会先连接运行时。")}</p>
             )}

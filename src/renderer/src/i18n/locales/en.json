@@ -545,7 +545,7 @@
     "runningCount": "{{count}} running",
     "addTo": "Add to",
     "noSession": "No session selected",
-    "selectSession": "Select a session before adding a port.",
+    "selectSession": "Select a session first",
     "remotePort": "Remote port",
     "remoteLabel": "Remote",
     "localLabel": "Local",

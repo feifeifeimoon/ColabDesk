@@ -314,7 +314,7 @@ server.on("connection", (socket) => {
 
 - 弹层宽 384px；`max-height: min(480px, calc(100vh - 48px))`，列表内部滚动；右对齐到端口按钮。弹层自身 `padding: 0`，头部/表单/列表各有一条 hairline 分隔，不再把表单包成灰卡片。
 - 头部：插头图标 + 标题；右侧 mono 的“N 个运行中”；关闭按钮 24px。
-- 添加区是工具栏：第一行 `添加到 <session>` + `更多选项` 折叠箭头；最后一行是 `远程 [端口] → 本地 [自动]` 两个 90px 紧凑输入，前面各有一个 11px 标签，提交按钮是一个 primary 的 `+`（`aria-label="添加"`）。远程端口是带 datalist 的下拉输入，给出 7860 Gradio、8000 vLLM、8501 Streamlit、8888 Jupyter，也可以直接输入任意端口；本地端口留空就是自动分配，填了就固定。`更多选项` 里只剩远程主机；没有协议选择，本地 URL 固定 `http://`。
+- 添加区是工具栏：第一行 `添加到 <session>` + `更多选项` 折叠箭头；最后一行是 `远程 [端口] → 本地 [自动]` 两个 90px 紧凑输入，前面各有一个 11px 标签，提交按钮是一个无底色的 ghost `+`；有会话时它的 `aria-label` 是“添加”，没有会话时是“先选择会话”，不再在表单里写提示句。远程端口是带 datalist 的下拉输入，给出 7860 Gradio、8000 vLLM、8501 Streamlit、8888 Jupyter，也可以直接输入任意端口；本地端口留空就是自动分配，填了就固定。`更多选项` 里只剩远程主机；没有协议选择，本地 URL 固定 `http://`。
 - 分组标题是 session 名 + 该组端口数，`position: sticky`；当前 session 的分组排第一；没有当前 session 时按名字排序。
 - 行是扁平列表，不是卡片：左侧 4.5rem 一列放远程端口 + 一个状态圆点（绿=运行中、灰=已停止、黄=分配中、红=失败；圆点没有可见文字，`aria-label` 给辅助技术）；右侧第一行是本地 URL（mono，打开/复制的目标），第二行是 `remote_host:remote_port`。
 - 操作是 24px 图标条，悬停或 `:focus-within` 出现（也保留在 Tab 顺序里）：active = 打开/复制/停止，stopped = 启动/删除，error = 重试/删除；每个都有 `aria-label`/`title`。

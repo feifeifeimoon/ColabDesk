@@ -125,7 +125,8 @@ describe("the Ports button and popover", () => {
     const html = render({ selectedSession: null, forwardsBySession: {} });
     const body = text(html);
     expect(body).toContain("未选择会话");
-    expect(body).toContain("先选择一个会话");
+    expect(body).not.toContain("先选择一个会话");
+    expect(html).toContain('aria-label="先选择会话"');
     expect(html).toContain('data-testid="ports-add"');
     expect(html).toContain("disabled");
   });
