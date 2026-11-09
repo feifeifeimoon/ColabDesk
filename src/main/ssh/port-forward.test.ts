@@ -11,13 +11,16 @@ import {
 
 class FakeConnection extends EventEmitter implements ForwardingConnection {
   status = "ready" as const;
+  readonly channels: Transform[] = [];
 
   async forwardOut(): Promise<Transform> {
-    return new Transform({
+    const channel = new Transform({
       transform(chunk, _encoding, done) {
         done(null, chunk);
       },
     });
+    this.channels.push(channel);
+    return channel;
   }
 }
 
@@ -26,6 +29,21 @@ class FakeSsh implements ForwardingSsh {
 
   async acquire(): Promise<ForwardingConnection> {
     return this.connection;
+  }
+}
+
+class DelayedSsh implements ForwardingSsh {
+  private resolve!: (connection: ForwardingConnection) => void;
+  private readonly ready = new Promise<ForwardingConnection>((resolve) => {
+    this.resolve = resolve;
+  });
+
+  async acquire(): Promise<ForwardingConnection> {
+    return this.ready;
+  }
+
+  release(connection: ForwardingConnection): void {
+    this.resolve(connection);
   }
 }
 
@@ -57,6 +75,16 @@ function exchange(port: number, text: string): Promise<string> {
   });
 }
 
+/** Keeps a local connection open until the forward stops it. */
+function openConnection(port: number): Promise<{ closed: Promise<void> }> {
+  return new Promise((resolve, reject) => {
+    const socket = net.connect({ host: "127.0.0.1", port }, () => {
+      resolve({ closed: new Promise((done) => socket.once("close", () => done())) });
+    });
+    socket.once("error", reject);
+  });
+}
+
 describe("the port forward manager", () => {
   it("binds a local port and carries bytes both ways", async () => {
     const ssh = new FakeSsh(new FakeConnection());
@@ -69,6 +97,52 @@ describe("the port forward manager", () => {
       const active = await waitFor(manager, "alpha", "active");
       expect(active.local_port).toBeGreaterThan(0);
       expect(await exchange(active.local_port!, "hello\n")).toBe("hello\n");
+    } finally {
+      manager.dispose();
+    }
+  });
+
+  it("closes an open forwarded connection when the mapping stops", async () => {
+    const connection = new FakeConnection();
+    const manager = new PortForwardManager(new FakeSsh(connection), () => {});
+    try {
+      const created = manager.create({ session: "alpha", remote_port: 8000 });
+      const active = await waitFor(manager, "alpha", "active");
+      const { closed } = await openConnection(active.local_port!);
+      // Let the accept -> forwardOut callback create the channel.
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      const channel = connection.channels.at(-1);
+      expect(channel).toBeDefined();
+
+      manager.stop(created.id);
+      await closed;
+      // The server-side socket's close handler destroys the paired channel on
+      // the next turn; the client's close can arrive first.
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(channel?.destroyed).toBe(true);
+    } finally {
+      manager.dispose();
+    }
+  });
+
+  it("does not open a second attempt while the first is still pending", async () => {
+    const connection = new FakeConnection();
+    const ssh = new DelayedSsh();
+    const manager = new PortForwardManager(ssh, () => {});
+    try {
+      const created = manager.create({ session: "alpha", remote_port: 8000 });
+      manager.stop(created.id);
+      // The first attempt still owns the handshake; a start here must not race
+      // a second server/status listener over the same record.
+      expect(manager.start(created.id)?.status).toBe("stopped");
+
+      ssh.release(connection);
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      expect(manager.list("alpha")[0]?.status).toBe("stopped");
+
+      manager.start(created.id);
+      const active = await waitFor(manager, "alpha", "active");
+      expect(active.local_port).toBeGreaterThan(0);
     } finally {
       manager.dispose();
     }
@@ -99,10 +173,19 @@ describe("the port forward manager", () => {
     const manager = new PortForwardManager(new FakeSsh(connection), () => {});
     try {
       manager.create({ session: "alpha", remote_port: 8000 });
-      await waitFor(manager, "alpha", "active");
+      const active = await waitFor(manager, "alpha", "active");
+      const port = active.local_port!;
       connection.emit("status", "closed", null);
       const failed = await waitFor(manager, "alpha", "error");
       expect(failed.error).toMatch(/连接已断开/);
+
+      let refused = false;
+      try {
+        await exchange(port, "ping\n");
+      } catch {
+        refused = true;
+      }
+      expect(refused).toBe(true);
     } finally {
       manager.dispose();
     }
@@ -127,6 +210,18 @@ describe("the port forward manager", () => {
     expect(() =>
       manager.create({ session: "alpha", remote_port: 8000, local_port: 80 }),
     ).toThrow(/本地端口/);
+    expect(() =>
+      manager.create({ session: "alpha", remote_port: 8000, remote_host: ":" }),
+    ).toThrow(/远程主机/);
+    expect(() =>
+      manager.create({ session: "alpha", remote_port: 8000, remote_host: "999.1.1.1" }),
+    ).toThrow(/远程主机/);
+    expect(() =>
+      manager.create({ session: "alpha", remote_port: 8000, remote_host: 5 as never }),
+    ).toThrow(/远程主机/);
+    expect(() =>
+      manager.create({ session: "alpha", remote_port: 8000, remote_host: "localhost" }),
+    ).not.toThrow();
     manager.dispose();
   });
 });

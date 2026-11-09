@@ -2402,7 +2402,7 @@ kbd {
 }
 
 .port-row__status--starting {
-  color: var(--warning);
+  color: var(--warning-deep);
 }
 
 .port-row__status--error {

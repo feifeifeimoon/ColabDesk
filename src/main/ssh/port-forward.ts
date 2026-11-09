@@ -41,6 +41,8 @@ interface ForwardRecord {
   sockets: Set<net.Socket>;
   connection: ForwardingConnection | null;
   statusListener: ((status: ConnectionStatus, error: string | null) => void) | null;
+  /** One start attempt at a time; stop-then-start must not race two servers. */
+  starting: boolean;
 }
 
 export class PortForwardManager {
@@ -81,6 +83,7 @@ export class PortForwardManager {
       sockets: new Set(),
       connection: null,
       statusListener: null,
+      starting: false,
     };
     this.records.set(forward.id, record);
     this.publish(forward.session);
@@ -91,6 +94,10 @@ export class PortForwardManager {
   start(id: string): PortForward | null {
     const record = this.records.get(id);
     if (!record) return null;
+    // A previous attempt is still opening (possibly after a stop). Starting a
+    // second one would let two continuations overwrite `server`/`statusListener`
+    // and close each other's listener; let the first settle, then retry.
+    if (record.starting) return { ...record.forward };
     if (record.forward.status === "starting" || record.forward.status === "active") {
       return { ...record.forward };
     }
@@ -126,6 +133,26 @@ export class PortForwardManager {
     this.publish(session);
   }
 
+  /**
+   * Hang-up stop: every mapping of the session stops, but its definition stays
+   * so the rows can be restarted when the session is opened again. A session
+   * stop uses `forget` instead.
+   */
+  stopAll(session: string): void {
+    let changed = false;
+    for (const record of this.records.values()) {
+      if (record.forward.session !== session) continue;
+      // A starting record is left to `startRecord`, which sees the stopped
+      // status after the handshake/listen and closes what it built.
+      if (record.forward.status !== "starting") this.closeRecord(record);
+      record.forward.status = "stopped";
+      record.forward.local_port = null;
+      record.forward.error = null;
+      changed = true;
+    }
+    if (changed) this.publish(session);
+  }
+
   /** The session is gone: stop and forget everything under it. */
   forget(session: string): void {
     let changed = false;
@@ -151,6 +178,7 @@ export class PortForwardManager {
 
   private async startRecord(record: ForwardRecord): Promise<void> {
     const { forward } = record;
+    record.starting = true;
     try {
       const connection = await this.ssh.acquire(forward.session);
       // The user may have stopped or removed it while the handshake ran.
@@ -158,6 +186,9 @@ export class PortForwardManager {
 
       record.connection = connection;
       const listener = (status: ConnectionStatus, error: string | null): void => {
+        // A stop while the channel was opening must not turn the stopped row
+        // back into an error when the connection later drops.
+        if (forward.status !== "starting" && forward.status !== "active") return;
         if (status === "closed" || status === "error") {
           this.fail(record, error ?? "运行时连接已断开，端口转发已停止。");
         }
@@ -202,6 +233,8 @@ export class PortForwardManager {
         return;
       }
       this.fail(record, startError(cause, forward));
+    } finally {
+      record.starting = false;
     }
   }
 
@@ -209,29 +242,41 @@ export class PortForwardManager {
     const { forward } = record;
     socket.setNoDelay(true);
     record.sockets.add(socket);
-    socket.once("close", () => record.sockets.delete(socket));
+
+    let channel: Duplex | null = null;
+    let closed = false;
+    const close = (): void => {
+      if (closed) return;
+      closed = true;
+      record.sockets.delete(socket);
+      // Destroying a piped socket does not close the Duplex on the other side;
+      // without this the direct-tcpip channel outlives the listener and keeps
+      // the runtime-side socket open until the whole SSH connection ends.
+      channel?.destroy();
+      socket.destroy();
+    };
+    // This listener must exist before `forwardOut`: a client that resets while
+    // the channel is opening otherwise emits an unhandled 'error', and the
+    // process guard rethrows that into the whole main process.
+    socket.on("error", close);
+    socket.on("close", close);
 
     const connection = record.connection;
     if (!connection) {
-      socket.destroy();
+      close();
       return;
     }
 
     connection
       .forwardOut(forward.remote_host, forward.remote_port, socket.remotePort ?? 0)
-      .then((channel) => {
-        if (!record.sockets.has(socket) || !this.records.has(forward.id)) {
-          channel.destroy();
+      .then((opened) => {
+        channel = opened;
+        if (closed || !record.sockets.has(socket) || !this.records.has(forward.id)) {
+          opened.destroy();
           return;
         }
-        socket.pipe(channel).pipe(socket);
-        const close = (): void => {
-          record.sockets.delete(socket);
-          socket.destroy();
-          channel.destroy();
-        };
-        socket.on("error", close);
-        channel.on("error", (cause) => {
+        socket.pipe(opened).pipe(socket);
+        opened.on("error", (cause) => {
           // One refused connection does not take the listener down: the target
           // service may simply not be up yet.
           this.log?.write(
@@ -240,15 +285,14 @@ export class PortForwardManager {
           );
           close();
         });
-        channel.on("close", close);
+        opened.on("close", close);
       })
       .catch((cause) => {
         this.log?.write(
           "ports",
           `${forward.session} 打开转发通道失败：${errorMessage(cause)}`,
         );
-        record.sockets.delete(socket);
-        socket.destroy();
+        close();
       });
   }
 
@@ -300,9 +344,19 @@ function validate(request: PortForwardRequest): string | null {
   ) {
     return `本地端口必须在 ${MIN_LOCAL_PORT}–${MAX_PORT} 之间，或留空自动分配。`;
   }
-  const host = (request.remote_host ?? "").trim();
-  if (host && (!/^[A-Za-z0-9.:-]+$/.test(host) || host.length > 253)) {
+  if (typeof request.remote_host !== "string" && request.remote_host !== undefined) {
     return "远程主机格式无效。";
+  }
+  const host = (request.remote_host ?? "").trim();
+  if (host) {
+    // A dot-address that `net.isIP` rejects (e.g. 999.1.1.1) must not slip
+    // through as a hostname; `localhost`, DNS labels and IPv4/IPv6 are fine.
+    const ip = net.isIP(host) !== 0;
+    const dottedQuad = /^\d+(?:\.\d+){3}$/.test(host);
+    const name = /^(?=.{1,253}$)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/.test(
+      host,
+    );
+    if (!ip && (!name || dottedQuad)) return "远程主机格式无效。";
   }
   if (request.scheme !== undefined && request.scheme !== "http" && request.scheme !== "https") {
     return "协议无效。";

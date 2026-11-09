@@ -774,8 +774,15 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       });
       // A gone session's panes have nothing left to serve, and a runtime takes
       // one SSH connection at a time: a connection nobody can reach is what a
-      // later reconnect would run into.
-      for (const session of gone) release(session);
+      // later reconnect would run into. Its forwards go with it, including any
+      // stopped rows the rail can no longer explain.
+      for (const session of gone) {
+        const stopAllPorts = get().stopAllPorts;
+        if (typeof stopAllPorts === "function") stopAllPorts(session);
+        const clearPorts = get().clearPorts;
+        if (typeof clearPorts === "function") clearPorts(session);
+        release(session);
+      }
       reconcile();
     },
   };

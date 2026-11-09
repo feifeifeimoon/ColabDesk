@@ -146,4 +146,13 @@ describe("the Ports button and popover", () => {
     const html = render({ connectionReady: false, forwardsBySession: {} });
     expect(text(html)).toContain("启动映射会先连接运行时");
   });
+
+  it("renders its labels in English", async () => {
+    await setRendererUiLanguage("en");
+    const body = text(render());
+    expect(body).toContain("Port forwards");
+    expect(body).toContain("Mapped");
+    expect(body).toContain("Stop");
+    expect(body).not.toContain("端口");
+  });
 });

@@ -389,8 +389,9 @@ export interface PortsSlice {
   startPort(id: string): Promise<void>;
   stopPort(id: string): Promise<void>;
   removePort(id: string): Promise<void>;
-  /** Hangs up: clears the list first, then asks the main process to close them. */
+  /** Hangs up: marks the rows stopped (keeps them), then asks main to stop. */
   stopAllPorts(session: string): void;
+  /** Drops the rows; a session stop has no runtime to restart them against. */
   clearPorts(session: string): void;
 }
 

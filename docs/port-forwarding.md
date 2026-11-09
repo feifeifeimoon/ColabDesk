@@ -77,7 +77,7 @@ curl http://127.0.0.1:18000/
 - 每个 session 可建多个映射：`运行时 host:port` → `127.0.0.1:<local port>`。
 - 本地端口可自动分配，也可指定固定端口；冲突时给出可行动的提示。
 - 本地地址生成 `http://127.0.0.1:<port>` / `https://...`，可一键在系统浏览器打开、复制。
-- 映射在 app 运行期间保持；运行时连接断开时明确停止；会话停止/关闭全部标签时一并清理。
+- 映射在 app 运行期间保持；运行时连接断开时明确停止；关闭全部标签时停止（保留已停止的行），会话停止时删除。
 - 复用现有 SSH 连接，不增加第二个运行时连接。
 - 跨平台（Windows / macOS / Linux）；本地只监听 loopback。
 
@@ -246,7 +246,7 @@ server.on("connection", (socket) => {
   - 映射状态 `error`，detail “运行时连接已断开，重新连接后可重启映射”；
   - 不自动重连（和 SSH 的重连策略分开）。
 - 会话停止（`stopSession` 成功）：主进程 `forget(session)`，停止并删除该 session 的所有映射；渲染层同时清空。
-- 关闭全部标签：先停止该 session 的映射，再 `sshDisconnect`；这是显式挂断。
+- 关闭全部标签：先停止该 session 的映射（行保留为 `stopped`，再次打开会话可重启），再 `sshDisconnect`；这是显式挂断。
 - App 退出：`PortForwardManager.dispose()` 关闭所有 listener，端口释放。
 
 ### 5.5 连接消费者（需要拍板）
@@ -401,20 +401,21 @@ SPIKE_OK
 
 ### 8.2 单元测试（`src/main/ssh/port-forward.test.ts`）
 
-用一个假的 `ForwardingConnection`（`forwardOut` 返回一对 `PassThrough`，或回显 channel）驱动 `PortForwardManager`：
+用一个假的 `ForwardingConnection`（`forwardOut` 返回回显 channel）驱动 `PortForwardManager`：
 
-- 自动本地端口：两个映射拿到不同端口；`active` 状态。
+- 自动本地端口 + 双向字节：本地 `net.connect` → 写入 → 回显 → 读回。
 - 固定本地端口冲突：第二个映射 `error`，第一个不受影响。
-- 双向字节：本地 `net.connect` → 写入 → 假通道回显 → 读回。
-- 停止：`server.close` + 本地端口拒绝新连接；已有 socket 被 destroy。
-- 运行时连接关闭：所有映射进入 `error`，本地端口关闭。
-- 非法端口/主机被拒绝。
+- 停止：已打开的本地连接和它的 SSH channel 一起关闭；本地端口拒绝新连接。
+- `starting` 期间 stop-then-start：不开启第二个 attempt（`record.starting` 门），第一次落定后重试成功。
+- 运行时连接关闭：映射进入 `error`，本地端口关闭、拒绝新连接。
+- 非法端口/主机被拒绝（非字符串 host、`":"`、无效 dotted quad）。
 - `forget(session)` / `dispose()` 清理所有资源。
-- 真实 `ColabSshConnection.forwardOut` 的 `requireClient` 前置条件（未 ready 抛错）单元测试。
+
+渲染侧的连接消费者反向规则在 `src/renderer/src/store/slices/ports.test.ts`：最后一个映射停止且没有 tab 时 `sshDisconnect`；有 active 映射或有 tab 时不断开；`stopAllPorts` 停止但保留 stopped 行。
 
 ### 8.3 Render 断言（`PortsControl.test.tsx`）
 
-- 状态栏按钮：显示数量；0 时仍可见；error 时警示点；`aria-haspopup` / `aria-expanded`。
+- 状态栏按钮：显示数量；0 时仍可见；error 时警示点；`aria-haspopup` / `aria-expanded`；error 时无障碍名称带“有失败”。
 - 点击后弹层：空状态说明“把运行时的端口映射到本机”并给示例。
 - 弹层按 session 分组，当前 session 第一；没有选中 session 时新增区禁用并说明原因。
 - 一行 active：显示 remote → local、本地 URL、打开/复制/停止。
@@ -422,13 +423,14 @@ SPIKE_OK
 - 一行 starting：显示“分配中…”，操作禁用。
 - 连接未就绪：说明会先连接运行时。
 - 按钮上的数量只统计 starting/active；error 不改数字但加警示点。
+- 英文渲染守门：English catalog 下没有中文。
 
 ### 8.4 E2E（`tests/e2e/ports.spec.ts`）
 
-在 mock SSH server（`src/main/e2e/runtime-server.ts`）里加：
+在 mock SSH server（`src/main/e2e/runtime-server.ts`）的 `Connection` 上加：
 
 ```ts
-session.on("tcpip", (accept, _reject, info) => {
+client.on("tcpip", (accept, _reject, info) => {
   const channel = accept();
   // 证明目标端口确实传到了“服务端”
   channel.write(`remote:${info.destIP}:${info.destPort}\n`);
@@ -436,14 +438,14 @@ session.on("tcpip", (accept, _reject, info) => {
 });
 ```
 
-用例：
+MVP 用例（已实现）：
 
 1. 打开 `e2e-alpha`，点击状态栏右下角的 Ports 按钮，弹层打开。
 2. 在弹层里添加远程端口 `8000`，本地端口自动；添加；行变成“已映射”，显示 `127.0.0.1:<port>`；按钮数量变成 1。
 3. 测试进程用 `net.connect(<local port>, "127.0.0.1")` 连接，读到 `remote:127.0.0.1:8000`；证明本地监听、SSH `forwardOut`、mock `tcpip` 三段都通了。
 4. 停止；行变成“已停止”；再连接本地端口应被拒绝；按钮数量回到 0。
-5. 关闭弹层后映射仍在（连接仍可用）；关闭全部标签 / 停止会话：映射和本地端口清理。
-6. 固定端口冲突：种一个已占用的本地端口，断言错误文案（可在单元覆盖，e2e 可选）。
+
+Phase 2 e2e 补充：关闭最后一个 tab 后映射仍可用、关闭全部标签/停止会话的端口释放、固定端口冲突的 UI 文案。MVP 用 `ports.test.ts` 覆盖连接消费者的反向规则。
 
 跨平台：e2e 在 ubuntu/windows/macos 都跑；`net.connect` 是 Node 标准库。
 
@@ -495,7 +497,7 @@ session.on("tcpip", (accept, _reject, info) => {
 | 决策 | 推荐默认 | 备选 |
 | --- | --- | --- |
 | UI 入口 | 状态栏右下角 Ports 按钮 + 弹层（已按反馈定） | Ports tab / 右栏第二面板 / 对话框 |
-| 映射与连接 | 关闭弹层不停止；关闭全部标签才停止 | 关闭最后一个 tab 就停止 |
+| 映射与连接 | 关闭弹层不停止；关闭全部标签才停止（保留行） | 关闭最后一个 tab 就停止 |
 | 状态栏控件 | 更新提示（有版本时）+ 端口按钮 + 终端读数 | 端口只做只读计数 |
 | 远端主机 | 默认 `127.0.0.1`，高级字段可改 | MVP 固定 loopback |
 | 本地监听 | 仅 `127.0.0.1` | 提供局域网开关 |

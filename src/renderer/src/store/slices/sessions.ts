@@ -141,6 +141,9 @@ export const createSessionsSlice: StateCreator<AppState, [], [], SessionsSlice> 
         else {
           get().notify({ tone: "info", text: translate("sessions.stoppedSuccess", `会话「${name}」已停止。`, { name }) });
           get().closeSessionTabs(name);
+          // A stopped session has no runtime to restart a forward against; its
+          // rows are gone, not merely stopped.
+          get().clearPorts(name);
         }
         await Promise.all([loadRail(get), get().refreshEnvironment()]);
       } else if (action === "restart-kernel") {

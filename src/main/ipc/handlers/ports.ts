@@ -37,7 +37,10 @@ export function registerPortHandlers({ ssh, log }: IpcContext): PortHandle {
     manager.remove(id);
   });
   ipcMain.handle(IPC.portsStopAll, (_event, session: string) => {
-    manager.forget(session);
+    // Hang-up: stop the listeners but keep the definitions so the popover can
+    // restart them when the session is opened again. A session stop uses
+    // `forget` instead.
+    manager.stopAll(session);
   });
 
   return {

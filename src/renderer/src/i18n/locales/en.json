@@ -540,6 +540,7 @@
   },
   "ports": {
     "buttonLabel": "Port forwards: {{count}}",
+    "buttonLabelError": "Port forwards: {{count}}, with a failure",
     "title": "Port forwards",
     "runningCount": "{{count}} running",
     "addTo": "Add to",
@@ -548,6 +549,7 @@
     "remotePort": "Remote port",
     "localPortAuto": "Local port (auto)",
     "remoteHost": "Remote host",
+    "remoteHostHint": "The runtime makes this connection; it is not a local proxy setting.",
     "scheme": "Scheme",
     "http": "http",
     "https": "https",

@@ -145,6 +145,12 @@ export function PortsView({
     [forwardsBySession],
   );
 
+  // The warning dot is aria-hidden, so the accessible name has to carry the
+  // failure too; a screen reader otherwise gets only the count.
+  const buttonLabel = failed
+    ? t("ports.buttonLabelError", "端口转发：{{count}} 个，有失败", { count })
+    : t("ports.buttonLabel", "端口转发：{{count}} 个", { count });
+
   useEffect(() => {
     if (!open) return;
     const place = (): void => {
@@ -228,8 +234,8 @@ export function PortsView({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? dialogId : undefined}
-        aria-label={t("ports.buttonLabel", "端口转发：{{count}} 个", { count })}
-        title={t("ports.buttonLabel", "端口转发：{{count}} 个", { count })}
+        aria-label={buttonLabel}
+        title={buttonLabel}
         onClick={() => onToggle(!open)}
       >
         <PlugIcon size={13} />
@@ -255,7 +261,10 @@ export function PortsView({
               variant="ghost"
               size="sm"
               label={t("dialog.close", "关闭")}
-              onClick={() => onToggle(false)}
+              onClick={() => {
+                onToggle(false);
+                button.current?.focus();
+              }}
             >
               <CloseIcon />
             </IconButton>
@@ -311,26 +320,31 @@ export function PortsView({
             </button>
 
             {advanced && (
-              <div className="ports-form__row">
-                <Input
-                  data-testid="ports-host"
-                  value={host}
-                  onChange={(event) => setHost(event.target.value)}
-                  placeholder={t("ports.remoteHost", "远程主机")}
-                  aria-label={t("ports.remoteHost", "远程主机")}
-                />
-                <Select
-                  data-testid="ports-scheme"
-                  value={scheme}
-                  onChange={(event) =>
-                    setScheme(event.target.value === "https" ? "https" : "http")
-                  }
-                  aria-label={t("ports.scheme", "协议")}
-                >
-                  <option value="http">{t("ports.http", "http")}</option>
-                  <option value="https">{t("ports.https", "https")}</option>
-                </Select>
-              </div>
+              <>
+                <div className="ports-form__row">
+                  <Input
+                    data-testid="ports-host"
+                    value={host}
+                    onChange={(event) => setHost(event.target.value)}
+                    placeholder={t("ports.remoteHost", "远程主机")}
+                    aria-label={t("ports.remoteHost", "远程主机")}
+                  />
+                  <Select
+                    data-testid="ports-scheme"
+                    value={scheme}
+                    onChange={(event) =>
+                      setScheme(event.target.value === "https" ? "https" : "http")
+                    }
+                    aria-label={t("ports.scheme", "协议")}
+                  >
+                    <option value="http">{t("ports.http", "http")}</option>
+                    <option value="https">{t("ports.https", "https")}</option>
+                  </Select>
+                </div>
+                <p className="hint">
+                  {t("ports.remoteHostHint", "连接由运行时发起，不是本机代理。")}
+                </p>
+              </>
             )}
 
             {!selectedSession && (
