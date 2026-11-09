@@ -246,8 +246,9 @@ server.on("connection", (socket) => {
   - 映射状态 `error`，detail “运行时连接已断开，重新连接后可重启映射”；
   - 不自动重连（和 SSH 的重连策略分开）。
 - 会话停止（`stopSession` 成功）：主进程 `forget(session)`，停止并删除该 session 的所有映射；渲染层同时清空。
-- 会话从 rail 消失（`pruneTabs`）：渲染层调用 `forgetPortForwards(session)`，主进程删除定义。不能只在渲染层 `clearPorts`——主进程保留的定义会在下一次 `ports:changed` 里把 stopped 的幽灵行重新广播回来。
+- 会话从 rail 消失（`pruneTabs`）：渲染层调用 `forgetPortForwards(session)`，主进程删除定义。不能只在渲染层 `clearPorts`——主进程保留的定义会在下一次 `ports:changed` 里把 stopped 的幽灵行重新广播回来。`syncSessions` 成功后主进程也会按新的会话列表 `retain`，这样即使渲染层漏了 prune，监听器也不会留给一个已不存在的会话。
 - 关闭全部标签：先停止该 session 的映射（行保留为 `stopped`，再次打开会话可重启），再 `sshDisconnect`；这是显式挂断。
+- **主进程从不主动断开 SSH 连接**：它看不到 tab 和文件视图，无法判断连接是否还有别的消费者；`release` 只由渲染层在 stop/remove/stopAll/prune 这些真正移除消费者的动作里触发。握手期间被 stop 的映射由 `startRecord` 关闭自己建的东西，随后由同一个 stop 动作释放连接。
 - App 退出：`PortForwardManager.dispose()` 关闭所有 listener，端口释放。
 
 ### 5.5 连接消费者（需要拍板）
@@ -409,11 +410,13 @@ SPIKE_OK
 - 停止：已打开的本地连接和它的 SSH channel 一起关闭；本地端口拒绝新连接。
 - `starting` 期间 stop-then-start：不开启第二个 attempt（`record.starting` 门）；这次点击记在 `pendingStart`，第一次落定后自动执行。
 - accept 之后、`forwardOut` 返回之前客户端 reset：accepted socket 在打开通道前就有 `error` listener，不会成为主进程的未捕获异常。
+- 一个连接上 12 个映射只挂一个 `status` listener；全部停止后 listener 归零。
+- 只监听 `127.0.0.1`：`server.listen` 之后读 `server.address().address` 校验；不是 loopback 就直接让该映射失败，行里的 `local_host` 也来自这个实际地址而不是请求参数。
 - 运行时连接关闭：映射进入 `error`，本地端口关闭、拒绝新连接。
 - 非法端口/主机被拒绝（非字符串 host、`":"`、无效 dotted quad）。
-- `forget(session)` / `dispose()` 清理所有资源。
+- `forget(session)` / `retain(sessions)` / `dispose()` 清理对应资源。
 
-渲染侧的连接消费者规则在 `src/renderer/src/store/connection-consumers.ts`，由 workspace 的 `release` 与 ports 的 `releaseIfIdle` 共用。`ports.test.ts` 覆盖：最后一个映射停止且没有 tab 时 `sshDisconnect`；有 active 映射或有 tab 时不断开；`stopAllPorts` 停止但保留 stopped 行；`forgetPorts` 同时清空渲染层并调用主进程。
+渲染侧的连接消费者规则在 `src/renderer/src/store/connection-consumers.ts`，由 workspace 的 `release` 与 ports 的 `releaseIfIdle` 共用；`connecting` 状态的连接也算消费者。`ports.test.ts` 覆盖：状态同步（`setPorts`/`loadPorts`）不释放连接；最后一个映射被 stop/stopAll 且没有 tab、也不在握手时 `sshDisconnect`；有 active 映射、有 tab、或在握手时不断开；`forgetPorts` 同时清空渲染层并调用主进程。
 
 ### 8.3 Render 断言（`PortsControl.test.tsx`）
 
@@ -446,8 +449,9 @@ MVP 用例（已实现）：
 2. 在弹层里添加远程端口 `8000`，本地端口自动；添加；行变成“已映射”，显示 `127.0.0.1:<port>`；按钮数量变成 1。
 3. 测试进程用 `net.connect(<local port>, "127.0.0.1")` 连接，读到 `remote:127.0.0.1:8000`；证明本地监听、SSH `forwardOut`、mock `tcpip` 三段都通了。
 4. 停止；行变成“已停止”；再连接本地端口应被拒绝；按钮数量回到 0。
+5. 再建一个映射，关掉最后一个终端；按钮仍显示 1，本地端口仍读到 `remote:127.0.0.1:8000`；在弹层里停止后端口才拒绝。这证明映射本身是连接消费者，不被最后一个 tab 带走。
 
-Phase 2 e2e 补充：关闭最后一个 tab 后映射仍可用、关闭全部标签/停止会话的端口释放、固定端口冲突的 UI 文案。MVP 用 `ports.test.ts` 覆盖连接消费者的反向规则。
+Phase 2 e2e 补充：关闭全部标签/停止会话的端口释放、固定端口冲突的 UI 文案、app 退出后端口释放。
 
 跨平台：e2e 在 ubuntu/windows/macos 都跑；`net.connect` 是 Node 标准库。
 

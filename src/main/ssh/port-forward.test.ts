@@ -102,8 +102,34 @@ describe("the port forward manager", () => {
       expect(created.local_port).toBeNull();
 
       const active = await waitFor(manager, "alpha", "active");
+      // Read back from `server.address()` by the manager, not copied from the
+      // request: the listener really is on loopback.
+      expect(active.local_host).toBe("127.0.0.1");
       expect(active.local_port).toBeGreaterThan(0);
       expect(await exchange(active.local_port!, "hello\n")).toBe("hello\n");
+    } finally {
+      manager.dispose();
+    }
+  });
+
+  it("uses one status listener for every forward on one connection", async () => {
+    const connection = new FakeConnection();
+    const manager = new PortForwardManager(new FakeSsh(connection), () => {});
+    try {
+      for (let index = 0; index < 12; index += 1) {
+        manager.create({ session: "alpha", remote_port: 8000 + index });
+      }
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        const active = manager.list("alpha").filter((forward) => forward.status === "active");
+        if (active.length === 12) break;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      const active = manager.list("alpha").filter((forward) => forward.status === "active");
+      expect(active).toHaveLength(12);
+      expect(connection.listenerCount("status")).toBe(1);
+
+      manager.stopAll("alpha");
+      expect(connection.listenerCount("status")).toBe(0);
     } finally {
       manager.dispose();
     }
@@ -146,6 +172,23 @@ describe("the port forward manager", () => {
       ssh.release(connection);
       const active = await waitFor(manager, "alpha", "active");
       expect(active.local_port).toBeGreaterThan(0);
+    } finally {
+      manager.dispose();
+    }
+  });
+
+  it("leaves no status listener when a start is stopped mid-handshake", async () => {
+    const connection = new FakeConnection();
+    const ssh = new DelayedSsh();
+    const manager = new PortForwardManager(ssh, () => {});
+    try {
+      const created = manager.create({ session: "alpha", remote_port: 8000 });
+      manager.stop(created.id);
+      ssh.release(connection);
+      await new Promise((resolve) => setTimeout(resolve, 40));
+
+      expect(manager.list("alpha")[0]?.status).toBe("stopped");
+      expect(connection.listenerCount("status")).toBe(0);
     } finally {
       manager.dispose();
     }
@@ -230,6 +273,23 @@ describe("the port forward manager", () => {
       await waitFor(manager, "alpha", "active");
       manager.forget("alpha");
       expect(manager.list("alpha")).toEqual([]);
+    } finally {
+      manager.dispose();
+    }
+  });
+
+  it("forgets only the sessions a successful sync no longer lists", async () => {
+    const manager = new PortForwardManager(new FakeSsh(new FakeConnection()), () => {});
+    try {
+      manager.create({ session: "alpha", remote_port: 8000 });
+      manager.create({ session: "beta", remote_port: 8001 });
+      await waitFor(manager, "alpha", "active");
+      await waitFor(manager, "beta", "active");
+
+      manager.retain(["alpha"]);
+
+      expect(manager.list("alpha")).toHaveLength(1);
+      expect(manager.list("beta")).toEqual([]);
     } finally {
       manager.dispose();
     }

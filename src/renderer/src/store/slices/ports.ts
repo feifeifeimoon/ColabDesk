@@ -41,6 +41,12 @@ export const createPortsSlice: StateCreator<AppState, [], [], PortsSlice> = (set
     }
   },
 
+  /**
+   * The mirror, not a release point. A push can arrive for a session whose
+   * terminal is still handshaking, and `loadPorts` runs whenever the popover
+   * opens; treating either as "no consumer left" would hang up on the connect.
+   * Only the actions that actually stop or remove a forward release.
+   */
   setPorts: (session, forwards) => {
     set((state) => {
       const next = { ...state.portsBySession };
@@ -48,7 +54,6 @@ export const createPortsSlice: StateCreator<AppState, [], [], PortsSlice> = (set
       else next[session] = forwards;
       return { portsBySession: next };
     });
-    releaseIfIdle(get, session);
   },
 
   createPort: async (request) => {
@@ -71,6 +76,14 @@ export const createPortsSlice: StateCreator<AppState, [], [], PortsSlice> = (set
   stopPort: async (id) => {
     try {
       const forward = await api.stopPortForward(id);
+      const forwards = get().portsBySession[forward.session];
+      // Apply the answer before asking whether the connection is still needed:
+      // the ports:changed push may still be in flight.
+      if (!forwards) return;
+      get().setPorts(
+        forward.session,
+        forwards.map((row) => (row.id === forward.id ? forward : row)),
+      );
       releaseIfIdle(get, forward.session);
     } catch (cause) {
       get().notify({ tone: "danger", text: api.messageOf(cause) });
@@ -81,7 +94,14 @@ export const createPortsSlice: StateCreator<AppState, [], [], PortsSlice> = (set
     const session = sessionOf(get, id);
     try {
       await api.removePortForward(id);
-      if (session) releaseIfIdle(get, session);
+      if (!session) return;
+      const forwards = get().portsBySession[session];
+      if (!forwards) return;
+      get().setPorts(
+        session,
+        forwards.filter((forward) => forward.id !== id),
+      );
+      releaseIfIdle(get, session);
     } catch (cause) {
       get().notify({ tone: "danger", text: api.messageOf(cause) });
     }
@@ -106,6 +126,7 @@ export const createPortsSlice: StateCreator<AppState, [], [], PortsSlice> = (set
         })),
       );
     }
+    releaseIfIdle(get, session);
     void api.stopAllPortForwards(session).catch((cause) => {
       get().notify({ tone: "danger", text: api.messageOf(cause) });
     });

@@ -12,6 +12,8 @@ export interface PortHandle {
   cancel(): void;
   /** Session stopped: the forwards and their connection are no longer usable. */
   forget(session: string): void;
+  /** A successful sync: drop the forwards of sessions it no longer lists. */
+  retain(sessions: Iterable<string>): void;
 }
 
 export function registerPortHandlers({ ssh, log }: IpcContext): PortHandle {
@@ -49,5 +51,6 @@ export function registerPortHandlers({ ssh, log }: IpcContext): PortHandle {
   return {
     cancel: () => manager.dispose(),
     forget: (session) => manager.forget(session),
+    retain: (sessions) => manager.retain(sessions),
   };
 }

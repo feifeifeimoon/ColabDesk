@@ -27,7 +27,10 @@ export function registerIpc(context: IpcContext): LoginHandle {
   // Built first so a stopped session can tell the port manager to let go of
   // its listeners before the runtime assignment disappears.
   const ports = registerPortHandlers(context);
-  const login = registerColabHandlers(context, ports.forget);
+  const login = registerColabHandlers(context, {
+    stopped: ports.forget,
+    synced: ports.retain,
+  });
   registerTerminalHandlers(context);
   registerFileHandlers(context);
   registerWindowHandlers(context);

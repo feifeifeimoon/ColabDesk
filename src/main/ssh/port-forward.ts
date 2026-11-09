@@ -9,6 +9,11 @@
  * A forward is a connection consumer: the SSH layer is asked for the session's
  * connection when the forward starts, and the connection's own status closes the
  * listeners if it drops. The renderer is never trusted to keep that alive.
+ *
+ * The renderer owns the decision to hang up: main cannot see the tabs and file
+ * views that also use the connection, so it never closes it when the last
+ * forward stops. The action that stopped the forward releases it; a stop that
+ * lands mid-handshake is closed by `startRecord` and then released the same way.
  */
 
 import net from "node:net";
@@ -40,15 +45,25 @@ interface ForwardRecord {
   server: net.Server | null;
   sockets: Set<net.Socket>;
   connection: ForwardingConnection | null;
-  statusListener: ((status: ConnectionStatus, error: string | null) => void) | null;
   /** One start attempt at a time; stop-then-start must not race two servers. */
   starting: boolean;
   /** A start clicked while `starting`; re-run once that attempt settles. */
   pendingStart: boolean;
 }
 
+/**
+ * One connection can carry many forwards, so it gets one status listener that
+ * fans out. A listener per forward would hit Node's ten-listener warning as
+ * soon as the popover has more than ten rows.
+ */
+interface ConnectionWatch {
+  listener: (status: ConnectionStatus, error: string | null) => void;
+  records: Set<ForwardRecord>;
+}
+
 export class PortForwardManager {
   private readonly records = new Map<string, ForwardRecord>();
+  private readonly watches = new Map<ForwardingConnection, ConnectionWatch>();
   private nextId = 1;
 
   constructor(
@@ -84,7 +99,6 @@ export class PortForwardManager {
       server: null,
       sockets: new Set(),
       connection: null,
-      statusListener: null,
       starting: false,
       pendingStart: false,
     };
@@ -174,6 +188,24 @@ export class PortForwardManager {
     if (changed) this.publish(session);
   }
 
+  /**
+   * Reconciles against the sessions a successful sync left behind. A forward
+   * whose session is no longer listed cannot be restarted, and its listener
+   * would outlive the rail row; the renderer also forgets on prune, this is the
+   * main-side half for a sync that lands first.
+   */
+  retain(sessions: Iterable<string>): void {
+    const live = new Set(sessions);
+    const gone = new Set<string>();
+    for (const [id, record] of this.records) {
+      if (live.has(record.forward.session)) continue;
+      this.closeRecord(record);
+      this.records.delete(id);
+      gone.add(record.forward.session);
+    }
+    for (const session of gone) this.publish(session);
+  }
+
   dispose(): void {
     for (const record of this.records.values()) this.closeRecord(record);
     this.records.clear();
@@ -181,6 +213,39 @@ export class PortForwardManager {
 
   private publish(session: string): void {
     this.onChange(session);
+  }
+
+  private watch(connection: ForwardingConnection, record: ForwardRecord): void {
+    let watch = this.watches.get(connection);
+    if (!watch) {
+      const records = new Set<ForwardRecord>();
+      const listener = (status: ConnectionStatus, error: string | null): void => {
+        if (status !== "closed" && status !== "error") return;
+        // `fail` removes the current record from this set while it closes it;
+        // deleting the entry being visited is well-defined.
+        for (const candidate of records) {
+          // A stop while the channel was opening must not turn the stopped row
+          // back into an error when the connection later drops.
+          if (candidate.forward.status !== "starting" && candidate.forward.status !== "active") {
+            continue;
+          }
+          this.fail(candidate, error ?? "运行时连接已断开，端口转发已停止。");
+        }
+      };
+      watch = { listener, records };
+      this.watches.set(connection, watch);
+      connection.on("status", listener);
+    }
+    watch.records.add(record);
+  }
+
+  private unwatch(connection: ForwardingConnection, record: ForwardRecord): void {
+    const watch = this.watches.get(connection);
+    if (!watch) return;
+    watch.records.delete(record);
+    if (watch.records.size > 0) return;
+    connection.removeListener("status", watch.listener);
+    this.watches.delete(connection);
   }
 
   private async startRecord(record: ForwardRecord): Promise<void> {
@@ -192,16 +257,7 @@ export class PortForwardManager {
       if (!this.records.has(forward.id) || forward.status !== "starting") return;
 
       record.connection = connection;
-      const listener = (status: ConnectionStatus, error: string | null): void => {
-        // A stop while the channel was opening must not turn the stopped row
-        // back into an error when the connection later drops.
-        if (forward.status !== "starting" && forward.status !== "active") return;
-        if (status === "closed" || status === "error") {
-          this.fail(record, error ?? "运行时连接已断开，端口转发已停止。");
-        }
-      };
-      record.statusListener = listener;
-      connection.on("status", listener);
+      this.watch(connection, record);
 
       const server = net.createServer((socket) => this.accept(record, socket));
       record.server = server;
@@ -221,8 +277,16 @@ export class PortForwardManager {
       }
       const address = server.address();
       const localPort = typeof address === "object" && address !== null ? address.port : null;
+      const localHost = typeof address === "object" && address !== null ? address.address : null;
+      // Read the bound address back instead of trusting the options: if the OS
+      // ever put this on a non-loopback interface, the row must not claim it is
+      // local. `localHost` is narrowed to the literal by this check.
       if (!localPort) throw new Error("无法分配本地端口。");
+      if (localHost !== LOOPBACK) {
+        throw new Error(`本地监听地址不是 loopback（${localHost ?? "未知"}）。`);
+      }
 
+      forward.local_host = localHost;
       forward.local_port = localPort;
       forward.status = "active";
       forward.error = null;
@@ -318,10 +382,7 @@ export class PortForwardManager {
   }
 
   private closeRecord(record: ForwardRecord): void {
-    if (record.connection && record.statusListener) {
-      record.connection.removeListener("status", record.statusListener);
-    }
-    record.statusListener = null;
+    if (record.connection) this.unwatch(record.connection, record);
     record.connection = null;
     for (const socket of record.sockets) socket.destroy();
     record.sockets.clear();

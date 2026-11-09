@@ -7,7 +7,7 @@
  * nothing.
  */
 
-import type { PortForward } from "@shared/types";
+import type { PortForward, SshState } from "@shared/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createStore } from "zustand/vanilla";
 import type { PortsSlice, WorkspaceTab } from "../types";
@@ -16,19 +16,42 @@ vi.mock("../../lib/api", () => ({
   sshDisconnect: vi.fn(),
   stopAllPortForwards: vi.fn(() => Promise.resolve()),
   forgetPortForwards: vi.fn(() => Promise.resolve()),
+  stopPortForward: vi.fn((id: string) =>
+    Promise.resolve({
+      id,
+      session: "alpha",
+      remote_host: "127.0.0.1",
+      remote_port: 8000,
+      local_host: "127.0.0.1",
+      local_port: null,
+      requested_local_port: null,
+      scheme: "http",
+      status: "stopped",
+      error: null,
+    }),
+  ),
 }));
 
-import { forgetPortForwards, sshDisconnect, stopAllPortForwards } from "../../lib/api";
+import {
+  forgetPortForwards,
+  sshDisconnect,
+  stopAllPortForwards,
+} from "../../lib/api";
 import { createPortsSlice } from "./ports";
 
 type TestState = PortsSlice & {
   tabs: WorkspaceTab[];
+  connections: Record<string, SshState>;
   notify: (toast: { tone: string; text: string }) => void;
 };
 
-function testStore(tabs: WorkspaceTab[] = []) {
+function testStore(
+  tabs: WorkspaceTab[] = [],
+  connections: Record<string, SshState> = {},
+) {
   return createStore<TestState>()((set, get, api) => ({
     tabs,
+    connections,
     notify: vi.fn(),
     ...createPortsSlice(set as never, get as never, api as never),
   }));
@@ -57,10 +80,10 @@ beforeEach(() => {
 });
 
 describe("the ports connection-consumer rule", () => {
-  it("hangs up when the last forward is stopped and no tab is left", () => {
+  it("does not hang up just because a stopped row is loaded", () => {
     const store = testStore();
     store.getState().setPorts("alpha", [forward({ status: "stopped", local_port: null })]);
-    expect(sshDisconnect).toHaveBeenCalledWith("alpha");
+    expect(sshDisconnect).not.toHaveBeenCalled();
   });
 
   it("stays connected while a forward is active", () => {
@@ -73,6 +96,24 @@ describe("the ports connection-consumer rule", () => {
     const store = testStore([{ session: "alpha" } as never]);
     store.getState().setPorts("alpha", [forward({ status: "stopped", local_port: null })]);
     expect(sshDisconnect).not.toHaveBeenCalled();
+  });
+
+  it("stays connected while the session is still handshaking", () => {
+    const store = testStore([], {
+      alpha: { session: "alpha", status: "connecting", error: null },
+    });
+    store.getState().setPorts("alpha", [forward()]);
+    store.getState().stopAllPorts("alpha");
+    expect(sshDisconnect).not.toHaveBeenCalled();
+  });
+
+  it("hangs up when the last forward is stopped and no tab is left", async () => {
+    const store = testStore();
+    store.getState().setPorts("alpha", [forward()]);
+    await store.getState().stopPort("p1");
+
+    expect(store.getState().portsBySession.alpha?.[0]?.status).toBe("stopped");
+    expect(sshDisconnect).toHaveBeenCalledWith("alpha");
   });
 
   it("stops every mapping on hang-up but keeps the rows, then releases", () => {
