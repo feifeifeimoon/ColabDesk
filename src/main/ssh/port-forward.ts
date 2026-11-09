@@ -43,6 +43,8 @@ interface ForwardRecord {
   statusListener: ((status: ConnectionStatus, error: string | null) => void) | null;
   /** One start attempt at a time; stop-then-start must not race two servers. */
   starting: boolean;
+  /** A start clicked while `starting`; re-run once that attempt settles. */
+  pendingStart: boolean;
 }
 
 export class PortForwardManager {
@@ -84,6 +86,7 @@ export class PortForwardManager {
       connection: null,
       statusListener: null,
       starting: false,
+      pendingStart: false,
     };
     this.records.set(forward.id, record);
     this.publish(forward.session);
@@ -96,8 +99,12 @@ export class PortForwardManager {
     if (!record) return null;
     // A previous attempt is still opening (possibly after a stop). Starting a
     // second one would let two continuations overwrite `server`/`statusListener`
-    // and close each other's listener; let the first settle, then retry.
-    if (record.starting) return { ...record.forward };
+    // and close each other's listener. Remember the click instead; the first
+    // attempt's `finally` runs it once that attempt has settled.
+    if (record.starting) {
+      record.pendingStart = true;
+      return { ...record.forward };
+    }
     if (record.forward.status === "starting" || record.forward.status === "active") {
       return { ...record.forward };
     }
@@ -235,6 +242,10 @@ export class PortForwardManager {
       this.fail(record, startError(cause, forward));
     } finally {
       record.starting = false;
+      if (record.pendingStart) {
+        record.pendingStart = false;
+        this.start(forward.id);
+      }
     }
   }
 

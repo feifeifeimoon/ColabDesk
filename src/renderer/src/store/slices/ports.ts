@@ -9,19 +9,17 @@
 
 import type { StateCreator } from "zustand";
 import * as api from "../../lib/api";
+import { needsConnection } from "../connection-consumers";
 import type { AppState, PortsSlice } from "../types";
 
 /**
  * The inverse consumer rule: once the last tab is gone and no forward still
  * needs the connection, hang up. `release` in the workspace slice asks the same
- * question; this covers the other direction — stopping the last forward after
- * the last tab already closed.
+ * question through the same predicate; this covers the other direction —
+ * stopping the last forward after the last tab already closed.
  */
 function releaseIfIdle(get: () => AppState, session: string): void {
-  const state = get();
-  if (state.tabs.some((tab) => tab.session === session)) return;
-  const forwards = state.portsBySession[session] ?? [];
-  if (forwards.some((forward) => forward.status === "starting" || forward.status === "active")) return;
+  if (needsConnection(get(), session)) return;
   void api.sshDisconnect(session);
 }
 
@@ -119,6 +117,19 @@ export const createPortsSlice: StateCreator<AppState, [], [], PortsSlice> = (set
       const next = { ...state.portsBySession };
       delete next[session];
       return { portsBySession: next };
+    });
+  },
+
+  /**
+   * A session the rail no longer has. Its rows are dropped here, and the main
+   * process must drop its definitions too: `stopAllPorts` deliberately keeps
+   * them, and the next `ports:changed` would otherwise put permanent stopped
+   * ghost rows back under a session that cannot be opened.
+   */
+  forgetPorts: (session) => {
+    get().clearPorts(session);
+    void api.forgetPortForwards(session).catch((cause) => {
+      get().notify({ tone: "danger", text: api.messageOf(cause) });
     });
   },
 });

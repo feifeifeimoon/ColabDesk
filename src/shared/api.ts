@@ -108,8 +108,10 @@ export interface ColabDeskApi {
   startPortForward(id: string): Promise<PortForward>;
   stopPortForward(id: string): Promise<PortForward>;
   removePortForward(id: string): Promise<void>;
-  /** Stops and forgets every forward of one session; used when hanging up. */
+  /** Hangs up: stops every forward of a session but keeps its stopped rows. */
   stopAllPortForwards(session: string): Promise<void>;
+  /** A vanished session: stops and forgets its definitions in the main process. */
+  forgetPortForwards(session: string): Promise<void>;
   onPortsChanged(listener: (payload: PortsChangedEvent) => void): () => void;
 
   openTerminal(session: string, cols: number, rows: number): Promise<TerminalHandle>;

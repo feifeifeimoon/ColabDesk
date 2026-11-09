@@ -42,6 +42,9 @@ export function registerPortHandlers({ ssh, log }: IpcContext): PortHandle {
     // `forget` instead.
     manager.stopAll(session);
   });
+  ipcMain.handle(IPC.portsForget, (_event, session: string) => {
+    manager.forget(session);
+  });
 
   return {
     cancel: () => manager.dispose(),

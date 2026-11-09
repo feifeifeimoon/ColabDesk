@@ -41,6 +41,7 @@ export const startPortForward = (id: string) => bridge().startPortForward(id);
 export const stopPortForward = (id: string) => bridge().stopPortForward(id);
 export const removePortForward = (id: string) => bridge().removePortForward(id);
 export const stopAllPortForwards = (session: string) => bridge().stopAllPortForwards(session);
+export const forgetPortForwards = (session: string) => bridge().forgetPortForwards(session);
 export const onPortsChanged = (listener: Parameters<ColabDeskApi["onPortsChanged"]>[0]) =>
   bridge().onPortsChanged(listener);
 export const onSessionCreateOutput = (listener: Parameters<ColabDeskApi["onSessionCreateOutput"]>[0]) =>

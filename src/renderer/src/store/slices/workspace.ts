@@ -23,6 +23,7 @@ import {
   type TabGroup,
 } from "../../lib/tab-groups";
 import type { AppState, FileTab, TerminalTab, WorkspaceSlice, WorkspaceTab } from "../types";
+import { needsConnection } from "../connection-consumers";
 
 /** The record without one key; these maps are small, so rebuilding is cheap. */
 function dropKey<T>(record: Record<string, T>, key: string): Record<string, T> {
@@ -300,15 +301,9 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
     });
     // A runtime accepts one SSH connection, so holding it is what having a
     // shell means. The status stream reports the closure itself. An active
-    // port forward is a third consumer: it keeps the connection up even when
+    // port forward is a second consumer: it keeps the connection up even when
     // the last tab is gone, so the local address it promised stays reachable.
-    // The optional access keeps this slice usable in its own unit tests, which
-    // build a store from the slices they need rather than the whole app.
-    const forwards = get().portsBySession?.[session] ?? [];
-    const forwarded = forwards.some(
-      (forward) => forward.status === "starting" || forward.status === "active",
-    );
-    if (!forwarded) void api.sshDisconnect(session);
+    if (!needsConnection(get(), session)) void api.sshDisconnect(session);
   }
 
   return {
@@ -774,13 +769,12 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       });
       // A gone session's panes have nothing left to serve, and a runtime takes
       // one SSH connection at a time: a connection nobody can reach is what a
-      // later reconnect would run into. Its forwards go with it, including any
-      // stopped rows the rail can no longer explain.
+      // later reconnect would run into. Its forwards go with it — including
+      // the stopped rows — so the main process forgets the definitions instead
+      // of leaving a ghost group no rail row can explain.
       for (const session of gone) {
-        const stopAllPorts = get().stopAllPorts;
-        if (typeof stopAllPorts === "function") stopAllPorts(session);
-        const clearPorts = get().clearPorts;
-        if (typeof clearPorts === "function") clearPorts(session);
+        const forgetPorts = get().forgetPorts;
+        if (typeof forgetPorts === "function") forgetPorts(session);
         release(session);
       }
       reconcile();

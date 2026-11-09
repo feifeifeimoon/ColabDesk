@@ -24,6 +24,7 @@ export const IPC = {
   portsStop: "ports:stop",
   portsRemove: "ports:remove",
   portsStopAll: "ports:stopAll",
+  portsForget: "ports:forget",
   termOpen: "term:open",
   termWrite: "term:write",
   termResize: "term:resize",

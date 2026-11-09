@@ -391,7 +391,9 @@ export interface PortsSlice {
   removePort(id: string): Promise<void>;
   /** Hangs up: marks the rows stopped (keeps them), then asks main to stop. */
   stopAllPorts(session: string): void;
-  /** Drops the rows; a session stop has no runtime to restart them against. */
+  /** A vanished session: drops the rows and the main process's definitions. */
+  forgetPorts(session: string): void;
+  /** Drops the rows only; the caller owns the main process's copy. */
   clearPorts(session: string): void;
 }
 

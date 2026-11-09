@@ -45,6 +45,7 @@ const api: ColabDeskApi = {
   stopPortForward: (id) => invoke(IPC.portsStop, id),
   removePortForward: (id) => invoke(IPC.portsRemove, id),
   stopAllPortForwards: (session) => invoke(IPC.portsStopAll, session),
+  forgetPortForwards: (session) => invoke(IPC.portsForget, session),
   onPortsChanged: (listener) => subscribe(EVENTS.portsChanged, listener),
 
   openTerminal: (session, cols, rows) => invoke(IPC.termOpen, { session, cols, rows }),

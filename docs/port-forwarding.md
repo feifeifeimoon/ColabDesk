@@ -246,6 +246,7 @@ server.on("connection", (socket) => {
   - 映射状态 `error`，detail “运行时连接已断开，重新连接后可重启映射”；
   - 不自动重连（和 SSH 的重连策略分开）。
 - 会话停止（`stopSession` 成功）：主进程 `forget(session)`，停止并删除该 session 的所有映射；渲染层同时清空。
+- 会话从 rail 消失（`pruneTabs`）：渲染层调用 `forgetPortForwards(session)`，主进程删除定义。不能只在渲染层 `clearPorts`——主进程保留的定义会在下一次 `ports:changed` 里把 stopped 的幽灵行重新广播回来。
 - 关闭全部标签：先停止该 session 的映射（行保留为 `stopped`，再次打开会话可重启），再 `sshDisconnect`；这是显式挂断。
 - App 退出：`PortForwardManager.dispose()` 关闭所有 listener，端口释放。
 
@@ -406,12 +407,13 @@ SPIKE_OK
 - 自动本地端口 + 双向字节：本地 `net.connect` → 写入 → 回显 → 读回。
 - 固定本地端口冲突：第二个映射 `error`，第一个不受影响。
 - 停止：已打开的本地连接和它的 SSH channel 一起关闭；本地端口拒绝新连接。
-- `starting` 期间 stop-then-start：不开启第二个 attempt（`record.starting` 门），第一次落定后重试成功。
+- `starting` 期间 stop-then-start：不开启第二个 attempt（`record.starting` 门）；这次点击记在 `pendingStart`，第一次落定后自动执行。
+- accept 之后、`forwardOut` 返回之前客户端 reset：accepted socket 在打开通道前就有 `error` listener，不会成为主进程的未捕获异常。
 - 运行时连接关闭：映射进入 `error`，本地端口关闭、拒绝新连接。
 - 非法端口/主机被拒绝（非字符串 host、`":"`、无效 dotted quad）。
 - `forget(session)` / `dispose()` 清理所有资源。
 
-渲染侧的连接消费者反向规则在 `src/renderer/src/store/slices/ports.test.ts`：最后一个映射停止且没有 tab 时 `sshDisconnect`；有 active 映射或有 tab 时不断开；`stopAllPorts` 停止但保留 stopped 行。
+渲染侧的连接消费者规则在 `src/renderer/src/store/connection-consumers.ts`，由 workspace 的 `release` 与 ports 的 `releaseIfIdle` 共用。`ports.test.ts` 覆盖：最后一个映射停止且没有 tab 时 `sshDisconnect`；有 active 映射或有 tab 时不断开；`stopAllPorts` 停止但保留 stopped 行；`forgetPorts` 同时清空渲染层并调用主进程。
 
 ### 8.3 Render 断言（`PortsControl.test.tsx`）
 

@@ -15,9 +15,10 @@ import type { PortsSlice, WorkspaceTab } from "../types";
 vi.mock("../../lib/api", () => ({
   sshDisconnect: vi.fn(),
   stopAllPortForwards: vi.fn(() => Promise.resolve()),
+  forgetPortForwards: vi.fn(() => Promise.resolve()),
 }));
 
-import { sshDisconnect, stopAllPortForwards } from "../../lib/api";
+import { forgetPortForwards, sshDisconnect, stopAllPortForwards } from "../../lib/api";
 import { createPortsSlice } from "./ports";
 
 type TestState = PortsSlice & {
@@ -52,6 +53,7 @@ function forward(overrides: Partial<PortForward> = {}): PortForward {
 beforeEach(() => {
   vi.mocked(sshDisconnect).mockClear();
   vi.mocked(stopAllPortForwards).mockClear();
+  vi.mocked(forgetPortForwards).mockClear();
 });
 
 describe("the ports connection-consumer rule", () => {
@@ -82,5 +84,14 @@ describe("the ports connection-consumer rule", () => {
     expect(store.getState().portsBySession.alpha?.[0]?.status).toBe("stopped");
     expect(store.getState().portsBySession.alpha?.[0]?.local_port).toBeNull();
     expect(sshDisconnect).toHaveBeenCalledWith("alpha");
+  });
+
+  it("forgets a vanished session in the main process, not just the mirror", () => {
+    const store = testStore();
+    store.getState().setPorts("alpha", [forward({ status: "stopped", local_port: null })]);
+    store.getState().forgetPorts("alpha");
+
+    expect(forgetPortForwards).toHaveBeenCalledWith("alpha");
+    expect(store.getState().portsBySession.alpha).toBeUndefined();
   });
 });

@@ -47,6 +47,13 @@ class DelayedSsh implements ForwardingSsh {
   }
 }
 
+/** A connection whose `forwardOut` never answers, so `accept` stays pending. */
+class PendingChannelConnection extends FakeConnection {
+  override async forwardOut(): Promise<Transform> {
+    return new Promise<Transform>(() => undefined);
+  }
+}
+
 async function waitFor(
   manager: PortForwardManager,
   session: string,
@@ -125,22 +132,18 @@ describe("the port forward manager", () => {
     }
   });
 
-  it("does not open a second attempt while the first is still pending", async () => {
+  it("queues a start clicked while the first attempt is still pending", async () => {
     const connection = new FakeConnection();
     const ssh = new DelayedSsh();
     const manager = new PortForwardManager(ssh, () => {});
     try {
       const created = manager.create({ session: "alpha", remote_port: 8000 });
       manager.stop(created.id);
-      // The first attempt still owns the handshake; a start here must not race
-      // a second server/status listener over the same record.
+      // The first attempt still owns the handshake; this click is remembered
+      // rather than racing a second server/status listener over the record.
       expect(manager.start(created.id)?.status).toBe("stopped");
 
       ssh.release(connection);
-      await new Promise((resolve) => setTimeout(resolve, 40));
-      expect(manager.list("alpha")[0]?.status).toBe("stopped");
-
-      manager.start(created.id);
       const active = await waitFor(manager, "alpha", "active");
       expect(active.local_port).toBeGreaterThan(0);
     } finally {
@@ -189,6 +192,35 @@ describe("the port forward manager", () => {
     } finally {
       manager.dispose();
     }
+  });
+
+  it("survives a client reset while the direct-tcpip channel is opening", async () => {
+    const manager = new PortForwardManager(new FakeSsh(new PendingChannelConnection()), () => {});
+    try {
+      manager.create({ session: "alpha", remote_port: 8000 });
+      const active = await waitFor(manager, "alpha", "active");
+      const socket = net.connect({ host: "127.0.0.1", port: active.local_port! });
+      await new Promise<void>((resolve, reject) => {
+        socket.once("connect", () => resolve());
+        socket.once("error", reject);
+      });
+      // The accept is waiting on forwardOut. Without an error listener on the
+      // accepted socket, the reset was an unhandled 'error' the process guard
+      // turned into a crash.
+      socket.resetAndDestroy();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(manager.list("alpha")[0]?.status).toBe("active");
+    } finally {
+      manager.dispose();
+    }
+  });
+
+  it("closes and clears every mapping on dispose", async () => {
+    const manager = new PortForwardManager(new FakeSsh(new FakeConnection()), () => {});
+    manager.create({ session: "alpha", remote_port: 8000 });
+    await waitFor(manager, "alpha", "active");
+    manager.dispose();
+    expect(manager.list("alpha")).toEqual([]);
   });
 
   it("forgets a session's mappings when the session goes away", async () => {
