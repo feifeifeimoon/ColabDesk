@@ -297,3 +297,45 @@ export type UpdateStatus =
       userInitiated: boolean;
       version: string | null;
     };
+
+/** A local TCP forward's lifecycle, as the main process owns it. */
+export type PortForwardStatus = "starting" | "active" | "stopped" | "error";
+
+/**
+ * One runtime port exposed on this machine.
+ *
+ * `local_port` is the port actually bound; it is null until the listener is
+ * listening (and after it stops). `error` is a short, human-readable reason,
+ * not a stack: the full detail stays in the app's log.
+ */
+export interface PortForward {
+  id: string;
+  session: string;
+  /** Target inside the runtime; defaults to "127.0.0.1". */
+  remote_host: string;
+  remote_port: number;
+  /** The local listener is loopback-only in this release. */
+  local_host: "127.0.0.1";
+  local_port: number | null;
+  /** The user's port, or null for an operating-system-assigned one. */
+  requested_local_port: number | null;
+  /** Only used to build the URL the "open" action hands to the browser. */
+  scheme: "http" | "https";
+  status: PortForwardStatus;
+  error: string | null;
+}
+
+/** A request to create and start a forward. */
+export interface PortForwardRequest {
+  session: string;
+  remote_host?: string;
+  remote_port: number;
+  local_port?: number | null;
+  scheme?: "http" | "https";
+}
+
+/** The whole list for one session; the main process is the source of truth. */
+export interface PortsChangedEvent {
+  session: string;
+  forwards: PortForward[];
+}

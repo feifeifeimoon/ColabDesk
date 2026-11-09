@@ -168,6 +168,36 @@ describe("opening files", () => {
     store.getState().closeTab(file!.id);
     expect(sshDisconnect).toHaveBeenCalledWith("alpha");
   });
+
+  it("an active port forward is a reason to stay connected", () => {
+    const store = workspaceStore();
+    store.getState().openTab("alpha");
+    const [shell] = shells(store);
+
+    // The ports slice is not part of this test store; the workspace's `get`
+    // reads it defensively, and this is the state the full app would have.
+    store.setState({
+      portsBySession: {
+        alpha: [
+          {
+            id: "p1",
+            session: "alpha",
+            remote_host: "127.0.0.1",
+            remote_port: 8000,
+            local_host: "127.0.0.1",
+            local_port: 52431,
+            requested_local_port: null,
+            scheme: "http",
+            status: "active",
+            error: null,
+          },
+        ],
+      },
+    } as never);
+
+    store.getState().closeTab(shell!.id);
+    expect(sshDisconnect).not.toHaveBeenCalled();
+  });
 });
 
 describe("unsaved edits", () => {

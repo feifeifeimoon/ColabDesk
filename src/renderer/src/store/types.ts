@@ -9,7 +9,15 @@
  */
 
 import type { CreateSessionOptions } from "@shared/api";
-import type { EnvStatus, Session, SshState, UpdateStatus, UsageReport } from "@shared/types";
+import type {
+  EnvStatus,
+  PortForward,
+  PortForwardRequest,
+  Session,
+  SshState,
+  UpdateStatus,
+  UsageReport,
+} from "@shared/types";
 import type { PanelSide } from "../lib/panel-width";
 import type { GroupLayout, PaneZone, TabGroup } from "../lib/tab-groups";
 import type { Theme, ThemePreference } from "../lib/theme";
@@ -372,6 +380,23 @@ export interface UpdateSlice {
   installUpdate(): Promise<void>;
 }
 
+/** Local port forwards, mirrored per session; the main process owns the sockets. */
+export interface PortsSlice {
+  portsBySession: Record<string, PortForward[]>;
+  loadPorts(session: string): Promise<void>;
+  setPorts(session: string, forwards: PortForward[]): void;
+  createPort(request: PortForwardRequest): Promise<PortForward | null>;
+  startPort(id: string): Promise<void>;
+  stopPort(id: string): Promise<void>;
+  removePort(id: string): Promise<void>;
+  /** Hangs up: marks the rows stopped (keeps them), then asks main to stop. */
+  stopAllPorts(session: string): void;
+  /** A vanished session: drops the rows and the main process's definitions. */
+  forgetPorts(session: string): void;
+  /** Drops the rows only; the caller owns the main process's copy. */
+  clearPorts(session: string): void;
+}
+
 export type AppState = WorkspaceSlice &
   SessionsSlice &
   EnvironmentSlice &
@@ -380,4 +405,5 @@ export type AppState = WorkspaceSlice &
   SshSlice &
   CreationSlice &
   ToastsSlice &
-  UpdateSlice;
+  UpdateSlice &
+  PortsSlice;

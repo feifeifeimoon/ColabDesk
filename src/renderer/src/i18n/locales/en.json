@@ -537,5 +537,43 @@
     "retry": "Retry",
     "generateKey": "Generate key",
     "generatingKey": "Generating…"
+  },
+  "ports": {
+    "buttonLabel": "Port forwards: {{count}}",
+    "buttonLabelError": "Port forwards: {{count}}, with a failure",
+    "title": "Port forwards",
+    "runningCount": "{{count}} running",
+    "addTo": "Add to",
+    "noSession": "No session selected",
+    "selectSession": "Select a session first",
+    "remotePort": "Remote port",
+    "remoteLabel": "Remote",
+    "localLabel": "Local",
+    "portPlaceholder": "Port",
+    "autoPlaceholder": "Auto",
+    "localPortAuto": "Local (auto)",
+    "remoteHost": "Remote host",
+    "remoteHostHint": "The runtime makes this connection; it is not a local proxy setting.",
+    "add": "Add",
+    "advanced": "More options",
+    "open": "Open",
+    "copy": "Copy",
+    "stop": "Stop",
+    "start": "Start",
+    "retry": "Retry",
+    "remove": "Remove",
+    "empty": "Open a runtime port on this machine",
+    "connectionHint": "Adding a port connects to the runtime first.",
+    "error": {
+      "session": "Select a session first.",
+      "remotePort": "The remote port must be between 1 and 65535.",
+      "localPort": "The local port must be between 1024 and 65535, or empty for automatic."
+    },
+    "status": {
+      "starting": "Assigning…",
+      "active": "Active",
+      "stopped": "Stopped",
+      "error": "Failed"
+    }
   }
 }

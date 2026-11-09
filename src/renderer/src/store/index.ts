@@ -9,12 +9,13 @@
  */
 
 import { create } from "zustand";
-import { onSessionCreateOutput, onSshStatus, onUpdateStatus, updateStatus } from "../lib/api";
+import { onPortsChanged, onSessionCreateOutput, onSshStatus, onUpdateStatus, updateStatus } from "../lib/api";
 import { watchSystemTheme } from "../lib/theme";
 import { currentZoomLevel } from "../lib/ui-zoom";
 import { watchWindowZoom } from "../lib/window-zoom";
 import { createCreationSlice } from "./slices/creation";
 import { createEnvironmentSlice } from "./slices/environment";
+import { createPortsSlice } from "./slices/ports";
 import { createPreferencesSlice } from "./slices/preferences";
 import { createSessionsSlice } from "./slices/sessions";
 import { createSshSlice } from "./slices/ssh";
@@ -37,6 +38,7 @@ export const useAppStore = create<AppState>()((...args) => ({
   ...createCreationSlice(...args),
   ...createToastsSlice(...args),
   ...createUpdateSlice(...args),
+  ...createPortsSlice(...args),
 }));
 
 /**
@@ -55,6 +57,9 @@ export function startAppEvents(): () => void {
   });
   const usageTimer = window.setInterval(() => void store.getState().loadUsage(), USAGE_REFRESH_MS);
   const stopSshStatus = onSshStatus((state) => store.getState().setConnection(state));
+  const stopPortsChanged = onPortsChanged(({ session, forwards }) =>
+    store.getState().setPorts(session, forwards),
+  );
   // Read once as well as subscribed: the updater checks on a daily timer, so a
   // listener alone would leave the panel blank for up to a day.
   void updateStatus().then((status) => store.getState().setUpdateStatus(status));
@@ -74,6 +79,7 @@ export function startAppEvents(): () => void {
     stopWindowZoom();
     window.clearInterval(usageTimer);
     stopSshStatus();
+    stopPortsChanged();
     stopUpdateStatus();
     stopCreateOutput();
   };

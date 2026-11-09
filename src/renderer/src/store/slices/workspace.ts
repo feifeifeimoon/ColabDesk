@@ -23,6 +23,7 @@ import {
   type TabGroup,
 } from "../../lib/tab-groups";
 import type { AppState, FileTab, TerminalTab, WorkspaceSlice, WorkspaceTab } from "../types";
+import { needsConnection } from "../connection-consumers";
 
 /** The record without one key; these maps are small, so rebuilding is cheap. */
 function dropKey<T>(record: Record<string, T>, key: string): Record<string, T> {
@@ -299,8 +300,10 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       };
     });
     // A runtime accepts one SSH connection, so holding it is what having a
-    // shell means. The status stream reports the closure itself.
-    void api.sshDisconnect(session);
+    // shell means. The status stream reports the closure itself. An active
+    // port forward is a second consumer: it keeps the connection up even when
+    // the last tab is gone, so the local address it promised stays reachable.
+    if (!needsConnection(get(), session)) void api.sshDisconnect(session);
   }
 
   return {
@@ -522,6 +525,12 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
     },
 
     closeSessionTabs: (session) => {
+      // Hanging up includes the forwards; clearing the list first is what lets
+      // `release` perform the disconnect instead of keeping the connection.
+      // The guard is for the workspace slice's own test store, which does not
+      // install the ports slice.
+      const stopAllPorts = get().stopAllPorts;
+      if (typeof stopAllPorts === "function") stopAllPorts(session);
       const state = get();
       const removed = state.tabs.filter((tab) => tab.session === session);
       if (removed.length === 0) return;
@@ -760,8 +769,14 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       });
       // A gone session's panes have nothing left to serve, and a runtime takes
       // one SSH connection at a time: a connection nobody can reach is what a
-      // later reconnect would run into.
-      for (const session of gone) release(session);
+      // later reconnect would run into. Its forwards go with it — including
+      // the stopped rows — so the main process forgets the definitions instead
+      // of leaving a ghost group no rail row can explain.
+      for (const session of gone) {
+        const forgetPorts = get().forgetPorts;
+        if (typeof forgetPorts === "function") forgetPorts(session);
+        release(session);
+      }
       reconcile();
     },
   };

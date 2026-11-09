@@ -15,7 +15,17 @@ export interface LoginHandle {
   cancel(): void;
 }
 
-export function registerColabHandlers({ service, usageHistory, bundledDir, log }: IpcContext): LoginHandle {
+export interface SessionLifecycle {
+  /** The runtime was stopped here; its forwards have nothing left to reach. */
+  stopped(name: string): void;
+  /** A successful sync; these are the sessions that still exist. */
+  synced(sessions: readonly string[]): void;
+}
+
+export function registerColabHandlers(
+  { service, usageHistory, bundledDir, log }: IpcContext,
+  lifecycle?: SessionLifecycle,
+): LoginHandle {
   let loginFlow: LoginFlow | null = null;
 
   // `app.getVersion()` is an Electron concern, so it is merged in here rather
@@ -46,9 +56,25 @@ export function registerColabHandlers({ service, usageHistory, bundledDir, log }
       // back from the invoke, so a failure is handled in one place.
       service.createSession(options, (line) => broadcast(EVENTS.sessionCreateOutput, { line })),
   );
-  ipcMain.handle(IPC.stopSession, (_event, name: string) => service.stopSession(name));
+  ipcMain.handle(IPC.stopSession, async (_event, name: string) => {
+    const report = await service.stopSession(name);
+    // A stopped runtime has no endpoints left; a listener that tried to reach
+    // one would sit on a dead connection.
+    if (report.ok) lifecycle?.stopped(name);
+    return report;
+  });
   ipcMain.handle(IPC.restartKernel, (_event, name: string) => service.restartKernel(name));
-  ipcMain.handle(IPC.syncSessions, () => service.syncSessions());
+  ipcMain.handle(IPC.syncSessions, async () => {
+    const report = await service.syncSessions();
+    if (!report.ok) return report;
+    // The sync prunes local records. Reading them back here lets the main
+    // process drop forwards of runtimes that ended outside `stopSession` (idle
+    // timeout, deleted elsewhere) even if the renderer misses the prune. A
+    // local read error is not evidence that a session disappeared.
+    const { sessions, error } = service.listSessions();
+    if (!error) lifecycle?.synced(sessions.map((session) => session.name));
+    return report;
+  });
 
   ipcMain.handle(IPC.startLogin, () => {
     const cli = resolveCli(bundledDir);

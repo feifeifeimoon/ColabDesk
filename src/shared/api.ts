@@ -9,6 +9,9 @@ import type {
   AuthUrlEvent,
   CommandReport,
   EnvStatus,
+  PortForward,
+  PortForwardRequest,
+  PortsChangedEvent,
   RemoteEntry,
   RemotePathState,
   RemoteTextRead,
@@ -97,6 +100,19 @@ export interface ColabDeskApi {
   sshGenerateKey(): Promise<string>;
   sshDisconnect(name: string): Promise<void>;
   onSshStatus(listener: (payload: SshState) => void): () => void;
+
+  /** Local port forwards, one list per session. */
+  listPortForwards(session: string): Promise<PortForward[]>;
+  /** Creates and starts; the returned row is `starting` until the listener is up. */
+  createPortForward(request: PortForwardRequest): Promise<PortForward>;
+  startPortForward(id: string): Promise<PortForward>;
+  stopPortForward(id: string): Promise<PortForward>;
+  removePortForward(id: string): Promise<void>;
+  /** Hangs up: stops every forward of a session but keeps its stopped rows. */
+  stopAllPortForwards(session: string): Promise<void>;
+  /** A vanished session: stops and forgets its definitions in the main process. */
+  forgetPortForwards(session: string): Promise<void>;
+  onPortsChanged(listener: (payload: PortsChangedEvent) => void): () => void;
 
   openTerminal(session: string, cols: number, rows: number): Promise<TerminalHandle>;
   writeTerminal(channelId: number, data: string): Promise<void>;

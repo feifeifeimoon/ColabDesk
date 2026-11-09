@@ -420,6 +420,23 @@ export class ColabSshConnection extends EventEmitter {
     });
   }
 
+  /**
+   * One SSH `direct-tcpip` channel, for the local port-forward manager.
+   *
+   * The channel is a Duplex; the caller pipes it to a loopback socket and owns
+   * closing it. It rides the same connection as the terminals and SFTP, so no
+   * second runtime SSH session is opened.
+   */
+  forwardOut(dstHost: string, dstPort: number, srcPort = 0): Promise<ClientChannel> {
+    const client = this.requireClient();
+    return new Promise<ClientChannel>((resolve, reject) => {
+      client.forwardOut("127.0.0.1", srcPort, dstHost, dstPort, (error, channel) => {
+        if (error) reject(error);
+        else resolve(channel);
+      });
+    });
+  }
+
   get identityPath(): string | null {
     return this.identity?.privateKeyPath ?? null;
   }
