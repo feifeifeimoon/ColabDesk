@@ -176,6 +176,8 @@ a {
 }
 
 .lang-switch__option {
+  display: inline-flex;
+  align-items: center;
   height: 100%;
   padding: 0 8px;
   border: 0;
@@ -192,12 +194,14 @@ a {
   color: var(--ink);
 }
 
-.lang-switch__option[aria-pressed="true"] {
+.lang-switch__option[aria-pressed="true"],
+.lang-switch__option[aria-current="page"] {
   background: var(--primary);
   color: var(--on-primary);
 }
 
-.lang-switch__option[aria-pressed="true"]:hover {
+.lang-switch__option[aria-pressed="true"]:hover,
+.lang-switch__option[aria-current="page"]:hover {
   color: var(--on-primary);
   opacity: 0.86;
 }

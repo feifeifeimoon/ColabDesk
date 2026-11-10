@@ -34,7 +34,6 @@ const LABELS = {
     back: "All posts",
     switchLanguage: "中文",
     navBlog: "Blog",
-    navGithub: "GitHub",
     footerTagline: "A desktop SSH console for Google Colab runtimes.",
     footerProduct: "Product",
     footerDownload: "Download",
@@ -49,6 +48,7 @@ const LABELS = {
     feedDescription: "Notes, walkthroughs, and field reports from the ColabDesk workbench.",
     tag: "Tags",
     onThisPage: "On this page",
+    languageGroup: "Language",
   },
   zh: {
     htmlLang: "zh-CN",
@@ -59,7 +59,6 @@ const LABELS = {
     back: "全部文章",
     switchLanguage: "English",
     navBlog: "博客",
-    navGithub: "GitHub",
     footerTagline: "Google Colab 运行时的桌面 SSH 控制台。",
     footerProduct: "产品",
     footerDownload: "下载",
@@ -74,6 +73,7 @@ const LABELS = {
     feedDescription: "来自 ColabDesk 工作台的实践笔记、教程与踩坑记录。",
     tag: "标签",
     onThisPage: "目录",
+    languageGroup: "语言",
   },
 };
 
@@ -299,22 +299,41 @@ function renderHead({ lang, title, description, canonical, alternates = [], cove
   </head>`;
 }
 
-function renderNav({ lang, alternateHref, alternateLabel }) {
+function renderNav({ lang, alternateHref, current }) {
   const labels = LABELS[lang];
-  return `<nav class="nav">
-      <a class="nav__brand" href="/" aria-label="ColabDesk">
-        <img class="nav__lockup only-light" src="/assets/lockup.svg" alt="ColabDesk" width="125" height="24">
-        <img class="nav__lockup only-dark" src="/assets/lockup-white.svg" alt="ColabDesk" width="125" height="24">
-      </a>
-      <div class="nav__actions">
-        <a class="nav__link" href="${indexPath(lang)}">${labels.navBlog}</a>
-        <a class="github-badge" href="https://github.com/feifeifeimoon/ColabDesk" target="_blank" rel="noreferrer">
-          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-          <span>${labels.navGithub}</span>
-        </a>
-        <a class="nav__lang" href="${escapeHtml(alternateHref)}" hreflang="${lang === "zh" ? "en" : "zh-CN"}">${escapeHtml(alternateLabel)}</a>
+  const sectionCurrent = current === "index" ? ' aria-current="page"' : "";
+  const languageOptions =
+    lang === "zh"
+      ? `<span class="lang-switch__option" lang="zh-Hans" aria-current="page">中文</span>
+            <a class="lang-switch__option" href="${escapeHtml(alternateHref)}" hreflang="en" lang="en">EN</a>`
+      : `<a class="lang-switch__option" href="${escapeHtml(alternateHref)}" hreflang="zh-CN" lang="zh-Hans">中文</a>
+            <span class="lang-switch__option" lang="en" aria-current="page">EN</span>`;
+
+  return `<header class="blog-nav">
+      <div class="blog-nav__inner">
+        <div class="blog-nav__left">
+          <a class="blog-nav__brand" href="/" aria-label="ColabDesk">
+            <img class="blog-nav__lockup only-light" src="/assets/lockup.svg" alt="ColabDesk" width="125" height="24">
+            <img class="blog-nav__lockup only-dark" src="/assets/lockup-white.svg" alt="ColabDesk" width="125" height="24">
+          </a>
+          <span class="blog-nav__divider" aria-hidden="true"></span>
+          <a class="blog-nav__section" href="${indexPath(lang)}"${sectionCurrent}>${labels.navBlog}</a>
+        </div>
+        <div class="blog-nav__actions">
+          <a class="blog-nav__github" href="https://github.com/feifeifeimoon/ColabDesk" target="_blank" rel="noreferrer" aria-label="ColabDesk on GitHub">
+            <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+            <span class="blog-nav__github-label">GitHub</span>
+          </a>
+          <div class="lang-switch" role="group" aria-label="${labels.languageGroup}">
+            <svg class="lang-switch__globe" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">
+              <circle cx="8" cy="8" r="6.1" />
+              <path d="M1.9 8h12.2M8 1.9c1.9 1.9 1.9 10.3 0 12.2M8 1.9c-1.9 1.9-1.9 10.3 0 12.2" />
+            </svg>
+            ${languageOptions}
+          </div>
+        </div>
       </div>
-    </nav>`;
+    </header>`;
 }
 
 function renderFooter(lang) {
@@ -413,7 +432,7 @@ function renderArticle(group, post) {
     ${renderNav({
       lang,
       alternateHref: alternate ? postPath(group.slug, other) : indexPath(other),
-      alternateLabel: labels.switchLanguage,
+      current: "article",
     })}
     <main class="blog-main ${toc ? "post-layout" : "post-layout post-layout--single"}">
       <article class="post">
@@ -486,7 +505,7 @@ function renderIndex(lang, groups) {
     ${renderNav({
       lang,
       alternateHref: indexPath(other),
-      alternateLabel: labels.switchLanguage,
+      current: "index",
     })}
     <main class="blog-main">
       <header class="blog-index__header">

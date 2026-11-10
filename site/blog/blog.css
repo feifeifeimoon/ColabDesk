@@ -7,23 +7,105 @@
  * post list, which use the tokens already in `tokens.css`.
  */
 
+/* The header is sticky, so an anchored section has to stop below it and the
+   section rail has to start below it. */
+:root {
+  --blog-header-height: 60px;
+}
+
+html {
+  scroll-padding-top: calc(var(--blog-header-height) + var(--space-4));
+}
+
 .blog-main {
   max-width: 720px;
   margin: 0 auto;
   padding: var(--space-6) var(--space-6) 0;
 }
 
-/* The language switch is a link between two static pages, not the landing
-   page's localStorage toggle, so it sits at the nav link's scale. */
-.nav__lang {
-  padding: 0 var(--space-2);
+/* ---- header ------------------------------------------------------------- */
+
+/* A blog masthead, not the landing page's sales bar: brand, the section it
+   belongs to, then the two utilities a reader needs (the repository and the
+   language). The translucent ground keeps the page visible while scrolling
+   without turning the header into a second surface. */
+.blog-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: 1px solid var(--hairline);
+  background: color-mix(in srgb, var(--page) 86%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  backdrop-filter: saturate(180%) blur(12px);
+}
+
+.blog-nav__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  max-width: 1080px;
+  height: var(--blog-header-height);
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+}
+
+.blog-nav__left,
+.blog-nav__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.blog-nav__brand {
+  display: inline-flex;
+  align-items: center;
+}
+
+.blog-nav__lockup {
+  display: block;
+  width: auto;
+  height: 24px;
+}
+
+.blog-nav__divider {
+  width: 1px;
+  height: 16px;
+  background: var(--hairline-strong);
+}
+
+.blog-nav__section {
+  color: var(--ink);
+  font-size: var(--text-label);
+  font-weight: 500;
+}
+
+.blog-nav__section:hover {
+  color: var(--link);
+}
+
+.blog-nav__github {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--canvas);
+  box-shadow: inset 0 0 0 1px var(--hairline);
   color: var(--body);
   font-size: var(--text-caption);
   font-weight: 500;
 }
 
-.nav__lang:hover {
+.blog-nav__github:hover {
   color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+}
+
+.blog-nav__github svg {
+  width: 13px;
+  height: 13px;
 }
 
 /* ---- index -------------------------------------------------------------- */
@@ -365,8 +447,8 @@
 
 .post-toc {
   position: sticky;
-  top: var(--space-6);
-  max-height: calc(100vh - var(--space-8));
+  top: calc(var(--blog-header-height) + var(--space-5));
+  max-height: calc(100vh - var(--blog-header-height) - var(--space-8));
   overflow-y: auto;
   padding-top: var(--space-1);
 }
@@ -423,5 +505,24 @@
 @media (max-width: 640px) {
   .blog-main {
     padding: var(--space-5) var(--space-4) 0;
+  }
+
+  .blog-nav__inner {
+    padding: 0 var(--space-4);
+  }
+
+  .blog-nav__github {
+    padding: 0 7px;
+  }
+
+  .blog-nav__github-label {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .blog-nav__divider,
+  .blog-nav__section {
+    display: none;
   }
 }

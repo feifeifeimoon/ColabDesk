@@ -111,6 +111,23 @@ describe("buildBlog", () => {
     expect(read(root, "blog/zh/feed.xml")).toContain("<title>你好</title>");
   });
 
+  it("renders the masthead with the current section and language", () => {
+    const root = makeRoot({ "hello.en.md": EN, "hello.zh.md": ZH });
+    buildBlog({ root });
+
+    const article = read(root, "blog/hello/index.html");
+    expect(article).toContain('class="blog-nav"');
+    expect(article).toContain('class="lang-switch"');
+    expect(article).toContain('aria-current="page">EN</span>');
+    expect(article).toContain('href="/blog/zh/hello/"');
+
+    const index = read(root, "blog/index.html");
+    expect(index).toContain('class="blog-nav__section" href="/blog/" aria-current="page"');
+
+    const zhArticle = read(root, "blog/zh/hello/index.html");
+    expect(zhArticle).toContain('aria-current="page">中文</span>');
+  });
+
   it("renders a cover, a table of contents and body images", () => {
     const post = `---
 title: With assets
