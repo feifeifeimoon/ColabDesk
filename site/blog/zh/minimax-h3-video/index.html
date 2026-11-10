@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>用 ColabDesk + ComfyUI 生成带声音的 AI 视频 — ColabDesk 博客</title>
+    <meta name="description" content="从零创建 G4 会话、部署 ComfyUI、下载 MiniMax H3 官方权重，生成第一段带立体声的 MP4。">
+    <link rel="canonical" href="https://colabdesk.dev/blog/zh/minimax-h3-video/">
+    <link rel="alternate" hreflang="zh-CN" href="https://colabdesk.dev/blog/zh/minimax-h3-video/">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="ColabDesk">
+    <meta property="og:title" content="用 ColabDesk + ComfyUI 生成带声音的 AI 视频 — ColabDesk 博客">
+    <meta property="og:description" content="从零创建 G4 会话、部署 ComfyUI、下载 MiniMax H3 官方权重，生成第一段带立体声的 MP4。">
+    <meta property="og:url" content="https://colabdesk.dev/blog/zh/minimax-h3-video/">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="用 ColabDesk + ComfyUI 生成带声音的 AI 视频 — ColabDesk 博客">
+    <meta name="twitter:description" content="从零创建 G4 会话、部署 ComfyUI、下载 MiniMax H3 官方权重，生成第一段带立体声的 MP4。">
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+    <link rel="alternate" type="application/rss+xml" title="ColabDesk 博客" href="/blog/zh/feed.xml">
+    <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <script src="/theme.js"></script>
+    <link rel="stylesheet" href="/tokens.css">
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/blog/blog.css">
+  </head>
+  <body class="blog">
+    <nav class="nav">
+      <a class="nav__brand" href="/" aria-label="ColabDesk">
+        <img class="nav__lockup only-light" src="/assets/lockup.svg" alt="ColabDesk" width="125" height="24">
+        <img class="nav__lockup only-dark" src="/assets/lockup-white.svg" alt="ColabDesk" width="125" height="24">
+      </a>
+      <div class="nav__actions">
+        <a class="nav__link" href="/blog/zh/">博客</a>
+        <a class="github-badge" href="https://github.com/feifeifeimoon/ColabDesk" target="_blank" rel="noreferrer">
+          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>GitHub</span>
+        </a>
+        <a class="nav__lang" href="/blog/" hreflang="en">English</a>
+      </div>
+    </nav>
+    <main class="blog-main">
+      <article class="post">
+        <header class="post__header">
+          <p class="post__eyebrow"><a href="/blog/zh/">博客</a></p>
+          <h1 class="post__title">用 ColabDesk + ComfyUI 生成带声音的 AI 视频</h1>
+          <p class="post__description">从零创建 G4 会话、部署 ComfyUI、下载 MiniMax H3 官方权重，生成第一段带立体声的 MP4。</p>
+          <p class="post__meta">
+            <time datetime="2026-11-10">2026年11月10日</time>
+            <ul class="tag-list" aria-label="标签"><li>tutorial</li><li>comfyui</li><li>minimax</li></ul>
+          </p>
+        </header>
+        <div class="post__body"><blockquote>
+<p>一份面向首次使用者的完整教程：在 Colab G4 运行时上部署 ComfyUI 与 MiniMax H3 开源权重，生成第一段带立体声的 MP4。</p>
+<p>本文基于 ComfyUI 0.44 与 MiniMax H3 官方模板验证。全程不需要本地显卡。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>难度</td>
+<td>入门（会复制粘贴命令即可）</td>
+</tr>
+<tr>
+<td>首次耗时</td>
+<td>约 40–60 分钟，其中模型下载 5–15 分钟</td>
+</tr>
+<tr>
+<td>硬件</td>
+<td>Colab G4（NVIDIA RTX PRO 6000 Blackwell，96GB 显存）</td>
+</tr>
+<tr>
+<td>磁盘占用</td>
+<td>约 60GB（模型 39GB + ComfyUI 与依赖）</td>
+</tr>
+<tr>
+<td>费用</td>
+<td>G4 参考 8.9 CU/小时，以 ColabDesk 状态栏的实时读数为准</td>
+</tr>
+<tr>
+<td>产出</td>
+<td>1344×768 / 24fps / 约 5 秒 / 带立体声音轨的 MP4</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="你将用到什么">你将用到什么</h2>
+<ul>
+<li><strong>ColabDesk</strong>：桌面端 SSH 控制台。负责创建运行时、打开终端、浏览文件、查看算力消耗。</li>
+<li><strong>ComfyUI</strong>：节点式生成界面，在运行时里以网页形式运行。</li>
+<li><strong>MiniMax H3</strong>：开源的多模态视频模型，一次生成画面与声音。</li>
+<li><strong>Colab G4</strong>：提供 96GB 显存的云端 GPU。</li>
+</ul>
+<p>数据流：</p>
+<pre><code>你的电脑
+  └─ ColabDesk ──SSH──▶ Colab G4 运行时
+                          ├─ ComfyUI（127.0.0.1:8188）
+                          └─ MiniMax H3 权重
+                                │
+        浏览器 ◀── HTTPS 隧道 ───┘
+</code></pre>
+<blockquote>
+<p>Colab 运行时没有公网 SSH 端口，也不对外暴露任意端口。第五步会用一条临时 HTTPS 隧道把 ComfyUI 的界面带到你的浏览器。</p>
+</blockquote>
+<hr>
+<h2 id="第一步-创建-g4-会话">第一步：创建 G4 会话</h2>
+<ol>
+<li>打开 ColabDesk，使用 Google 账号登录。</li>
+<li>点击 <strong>New Session</strong>，加速器选择 <strong>G4</strong>，会话命名（例如 <code>minimax-h3</code>），点击创建。</li>
+<li>等待状态变为 READY。终端会自动打开，工作目录是 <code>/content</code>。</li>
+</ol>
+<p>在终端里确认硬件：</p>
+<pre><code class="language-bash">nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
+free -g
+df -h /content
+</code></pre>
+<p>应当看到 <code>NVIDIA RTX PRO 6000 Blackwell Server Edition</code> 与约 <code>96GB</code> 显存。</p>
+<blockquote>
+<p><strong>注意</strong>：<code>/content</code> 是临时磁盘。停止会话后，ComfyUI 与模型都会消失，下次需要重新执行第二、三步。生成结果请先下载到本地再停止会话。</p>
+</blockquote>
+<!-- 📷 截图：New Session 对话框，G4 选中状态 -->
+
+<hr>
+<h2 id="第二步-安装-comfyui">第二步：安装 ComfyUI</h2>
+<p>在 ColabDesk 的终端里执行：</p>
+<pre><code class="language-bash">cd /content
+git clone https://github.com/comfyanonymous/ComfyUI.git
+cd ComfyUI
+
+python3 -m venv venv
+source venv/bin/activate
+pip install -U pip
+
+# Blackwell 需要 CUDA 12.8 及以上的 PyTorch wheel
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+pip install -r requirements.txt
+</code></pre>
+<p>验证 PyTorch 与显卡：</p>
+<pre><code class="language-bash">python -c &quot;import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))&quot;
+</code></pre>
+<p>期望输出类似：</p>
+<pre><code>2.11.0+cu128 True NVIDIA RTX PRO 6000 Blackwell Server Edition
+</code></pre>
+<p>如果 <code>cuda.is_available()</code> 为 <code>False</code>，或出现 <code>no kernel image is available</code>，说明 PyTorch wheel 与显卡架构不匹配，重新安装 cu128 版本。</p>
+<hr>
+<h2 id="第三步-下载模型">第三步：下载模型</h2>
+<p>本教程只需要 5 个文件，合计约 <strong>39GB</strong>，全部来自官方 <code>Comfy-Org/MiniMax-H3</code> 仓库。</p>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th align="right">大小</th>
+<th>放置目录</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>minimax_h3_fl2va_pruned_int8_convrot.safetensors</code></td>
+<td align="right">19.53 GB</td>
+<td><code>models/diffusion_models/</code></td>
+</tr>
+<tr>
+<td><code>qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors</code></td>
+<td align="right">14.61 GB</td>
+<td><code>models/text_encoders/</code></td>
+</tr>
+<tr>
+<td><code>minimax_h3_video_vae_int8_convrot.safetensors</code></td>
+<td align="right">2.62 GB</td>
+<td><code>models/vae/</code></td>
+</tr>
+<tr>
+<td><code>minimax_h3_audio_vae_fp32.safetensors</code></td>
+<td align="right">0.56 GB</td>
+<td><code>models/vae/</code></td>
+</tr>
+<tr>
+<td><code>minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors</code></td>
+<td align="right">1.82 GB</td>
+<td><code>models/loras/</code></td>
+</tr>
+</tbody></table>
+<p>在终端里执行：</p>
+<pre><code class="language-bash">apt-get update -qq &amp;&amp; apt-get install -y -qq aria2
+
+cd /content/ComfyUI
+mkdir -p models/{diffusion_models,text_encoders,vae,loras}
+
+dl() {
+  aria2c -x 16 -s 16 -k 1M --continue=true --file-allocation=none \
+    --console-log-level=warn -d &quot;$(dirname &quot;$2&quot;)&quot; -o &quot;$(basename &quot;$2&quot;)&quot; &quot;$1&quot;
+}
+
+B=https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main
+
+dl $B/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors \
+   models/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors
+
+dl $B/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors \
+   models/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors
+
+dl $B/vae/minimax_h3_video_vae_int8_convrot.safetensors \
+   models/vae/minimax_h3_video_vae_int8_convrot.safetensors
+
+dl $B/vae/minimax_h3_audio_vae_fp32.safetensors \
+   models/vae/minimax_h3_audio_vae_fp32.safetensors
+
+dl $B/loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors \
+   models/loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors
+</code></pre>
+<p>校验：</p>
+<pre><code class="language-bash">find models -name &quot;*.safetensors&quot; -printf &quot;%10s  %p\n&quot; | sort -n
+</code></pre>
+<p>五个文件都应存在，且大小与上表一致。</p>
+<blockquote>
+<p><strong>国内网络</strong>：如果 HuggingFace 直连较慢，把命令里的 <code>https://huggingface.co</code> 整体替换为 <code>https://hf-mirror.com</code>，其它不变。</p>
+<p><strong>非 Blackwell 显卡</strong>：把文本编码器换成 <code>qwen3vl_32b_minimax_h3_int8_convrot.safetensors</code>（25.28GB），并在第六步模板的模型下拉框里选择它。NVFP4 权重需要 Blackwell 架构。</p>
+</blockquote>
+<hr>
+<h2 id="第四步-启动-comfyui">第四步：启动 ComfyUI</h2>
+<pre><code class="language-bash">cd /content/ComfyUI
+source venv/bin/activate
+
+nohup python main.py \
+  --listen 127.0.0.1 \
+  --port 8188 \
+  --highvram \
+  --disable-mmap \
+  &gt; /content/comfyui.log 2&gt;&amp;1 &amp;
+</code></pre>
+<p>等待就绪：</p>
+<pre><code class="language-bash">for i in $(seq 1 60); do
+  code=$(curl -s -o /dev/null -w &quot;%{http_code}&quot; http://127.0.0.1:8188/ || true)
+  [ &quot;$code&quot; = &quot;200&quot; ] &amp;&amp; echo &quot;ComfyUI ready&quot; &amp;&amp; break
+  sleep 2
+done
+</code></pre>
+<ul>
+<li><code>--highvram</code>：把权重尽量常驻显存，96GB 显卡推荐开启。</li>
+<li><code>nohup ... &amp;</code>：让 ComfyUI 脱离终端。关闭终端标签页或断开 ColabDesk 都不会中断生成。</li>
+</ul>
+<p>如果一直没有输出 <code>ready</code>，查看日志：</p>
+<pre><code class="language-bash">tail -50 /content/comfyui.log
+</code></pre>
+<hr>
+<h2 id="第五步-在浏览器里打开界面">第五步：在浏览器里打开界面</h2>
+<p>Colab 没有固定的公网 IP，也只有一个 SSH 通道。最省事的做法是在运行时里启动一条临时 HTTPS 隧道：</p>
+<pre><code class="language-bash">wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+  -O /usr/local/bin/cloudflared
+chmod +x /usr/local/bin/cloudflared
+
+pkill -f cloudflared 2&gt;/dev/null || true
+
+nohup cloudflared tunnel \
+  --protocol http2 \
+  --edge-ip-version 4 \
+  --no-autoupdate \
+  --url http://127.0.0.1:8188 \
+  &gt; /content/cloudflared.log 2&gt;&amp;1 &amp;
+
+sleep 12
+grep -oE &#39;https://[a-z0-9-]+\.trycloudflare\.com&#39; /content/cloudflared.log | tail -1
+</code></pre>
+<p>复制输出的 <code>https://....trycloudflare.com</code> 地址，在本地浏览器打开。如果 12 秒后还没有打印地址，查看隧道日志：</p>
+<pre><code class="language-bash">tail -20 /content/cloudflared.log
+</code></pre>
+<p>第一次打开可能需要十几秒。若页面一直转圈，先在运行时里测一下延迟：</p>
+<pre><code class="language-bash">curl -s -o /dev/null -w &quot;total=%{time_total}s\n&quot; https://你的地址/system_stats
+</code></pre>
+<p>正常情况下应在 0.3 秒以内。如果达到秒级，说明隧道线路较差：</p>
+<ul>
+<li>重新执行一次 <code>pkill -f cloudflared</code> 和上面的启动命令，换一个边缘节点；</li>
+<li>仍不理想时，改用下面「直连 SSH 转发」的方式。</li>
+</ul>
+<blockquote>
+<p><strong>安全提示</strong>：quick tunnel 的地址是公开的，任何拿到链接的人都能操作你的 ComfyUI。不要分享，用完执行 <code>pkill -f cloudflared</code> 关闭。</p>
+</blockquote>
+<h3 id="备选-直连-ssh-转发">备选：直连 SSH 转发</h3>
+<p>如果隧道延迟始终很高，可以让本地 <code>ssh</code> 直接转发端口。代价是这条连接会占用运行时唯一的 SSH 通道，ColabDesk 在此期间无法连接：</p>
+<ol>
+<li>关闭 ColabDesk 中该会话的工作区（释放 SSH 连接）。</li>
+<li>在本地终端执行（别名由 ColabDesk 的 SSH 配置生成）：</li>
+</ol>
+<pre><code class="language-bash">ssh -N -L 8188:127.0.0.1:8188 colabdesk-你的会话名
+</code></pre>
+<ol start="3">
+<li>浏览器打开 <code>http://127.0.0.1:8188</code>。</li>
+</ol>
+<!-- 📷 截图：ComfyUI 首页 / Template Library -->
+
+<hr>
+<h2 id="第六步-生成第一段视频">第六步：生成第一段视频</h2>
+<ol>
+<li>在 ComfyUI 左侧边栏打开 <strong>Workflows → Browse Templates</strong>（或顶部菜单 <strong>Workflow → Browse Templates</strong>）。</li>
+<li>搜索并打开 <strong>MiniMax H3: Text to Video</strong>。</li>
+<li>画布上会显示一个大的 <strong>Image to Video (MiniMax H3)</strong> 节点，外圈可直接修改：<ul>
+<li><code>prompt</code>：提示词；</li>
+<li><code>width / height</code>：分辨率，默认 <code>1344 × 768</code>；</li>
+<li>秒数：时长，默认 <code>5</code>（界面会自动吸附到模型允许的帧数）；</li>
+<li><code>noise_seed</code>：随机种子。</li>
+</ul>
+</li>
+<li>确认五个模型下拉框选中了第三步下载的文件。若模板弹窗提示缺少模型，也可以直接点击弹窗里的 <strong>Download</strong>。</li>
+<li>点击 <strong>Queue</strong>。</li>
+</ol>
+<p>第一次运行会把约 39GB 权重读入显存，进度条可能静止几十秒，这是正常现象。</p>
+<p>完成后，成片位于：</p>
+<pre><code>/content/ComfyUI/output/video/MiniMax_H3_*.mp4
+</code></pre>
+<p>文件自带立体声音轨，可以直接播放。</p>
+<!-- 📷 截图：生成完成后的 SaveVideo 节点与输出文件 -->
+
+<hr>
+<h2 id="第七步-把提示词写清楚">第七步：把提示词写清楚</h2>
+<p>MiniMax H3 对结构化描述响应最好。一段可用的提示词通常包含五部分：</p>
+<ol>
+<li><strong>画面与主体</strong>：地点、人物、服装、关键道具；</li>
+<li><strong>动作与时间轴</strong>：用 <code>[0s-2s]</code>、<code>[2s-4s]</code> 标出每个阶段发生什么；</li>
+<li><strong>镜头</strong>：固定机位、推近、摇镜、跟拍；</li>
+<li><strong>光线与质感</strong>：光源、色温、胶片或写实风格；</li>
+<li><strong>声音</strong>：环境音、动作音效、配乐或台词。</li>
+</ol>
+<p>示例：</p>
+<pre><code class="language-text">A quiet rainy street at night, neon signs reflecting on wet asphalt.
+A woman in a dark coat stands under a bus stop, holding a folded umbrella.
+
+Timeline:
+[0s-2s] She looks up as rain intensifies; droplets streak across the neon light.
+[2s-5s] She opens the umbrella and steps toward the curb as a taxi approaches.
+
+Camera: static medium shot, slight handheld breathing.
+Look: cinematic realism, cool blue and warm orange contrast, shallow depth of field, film grain.
+Audio: steady rain, distant traffic, footsteps on wet pavement, a low ambient drone.
+</code></pre>
+<p>几点经验：</p>
+<ul>
+<li>英文提示词的稳定性通常优于中文；</li>
+<li>时长越短，动作越容易做完整。5 秒内写 1–2 个动作即可；</li>
+<li>不想要画面里的文字，明确写 <code>no subtitles, no text, no watermarks</code>；</li>
+<li>想要特定运镜，写完整的「类型 + 幅度 + 速度」，例如 <code>pushes in with small amplitude at slow speed</code>。</li>
+</ul>
+<hr>
+<h2 id="第八步-取回结果并收尾">第八步：取回结果并收尾</h2>
+<ol>
+<li>在 ColabDesk 的文件面板进入 <code>/content/ComfyUI/output/video/</code>，右键下载 MP4。</li>
+<li>关闭隧道：</li>
+</ol>
+<pre><code class="language-bash">pkill -f cloudflared
+</code></pre>
+<ol start="3">
+<li>在 ColabDesk 中停止会话。</li>
+</ol>
+<blockquote>
+<p>停止会话后 <code>/content</code> 会被清空。模型、ComfyUI 和未下载的成片都不会保留。</p>
+</blockquote>
+<hr>
+<h2 id="常见问题">常见问题</h2>
+<table>
+<thead>
+<tr>
+<th>现象</th>
+<th>原因</th>
+<th>处理</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>本地 <code>ssh -L</code> 连不上</td>
+<td>运行时只接受一条 SSH 连接，ColabDesk 已占用</td>
+<td>关闭 ColabDesk 的工作区后再连，或改用 HTTPS 隧道</td>
+</tr>
+<tr>
+<td>隧道地址能打开但页面极慢</td>
+<td>Cloudflare quick tunnel 线路延迟高</td>
+<td>用 <code>--protocol http2 --edge-ip-version 4</code> 重启；或改用 SSH 转发</td>
+</tr>
+<tr>
+<td>页面一直转圈，日志正常</td>
+<td>前端资源较大，首次加载慢</td>
+<td>等待 1–2 分钟；按 F12 查看 Network 中哪个请求卡住</td>
+</tr>
+<tr>
+<td><code>CUDA out of memory</code></td>
+<td>分辨率或时长过高</td>
+<td>把分辨率降到 <code>1024×576</code>，或时长降到 <code>3</code> 秒</td>
+</tr>
+<tr>
+<td><code>torch.cuda.is_available()</code> 为 <code>False</code></td>
+<td>PyTorch 与显卡架构不匹配</td>
+<td>重新安装 cu128 wheel</td>
+</tr>
+<tr>
+<td><code>no kernel image is available</code></td>
+<td>同上</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>模板里找不到 MiniMax</td>
+<td>ComfyUI 版本过旧</td>
+<td><code>cd /content/ComfyUI &amp;&amp; git pull</code>，重启</td>
+</tr>
+<tr>
+<td>模型下拉框为空</td>
+<td>文件不在对应 <code>models/</code> 子目录</td>
+<td>按第三步的表格检查路径</td>
+</tr>
+<tr>
+<td>第一次 Queue 很久没动静</td>
+<td>正在把 39GB 权重读入显存</td>
+<td>等待；用 <code>nvidia-smi</code> 观察显存增长</td>
+</tr>
+<tr>
+<td>输出没有声音</td>
+<td>音频 VAE 未加载</td>
+<td>检查 <code>minimax_h3_audio_vae_fp32</code> 与 <code>VAEDecodeAudio</code> 连线</td>
+</tr>
+<tr>
+<td>会话重启后一切消失</td>
+<td><code>/content</code> 是临时磁盘</td>
+<td>重新执行第二、三步，或自行挂载 Google Drive 保存模型</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="进阶方向">进阶方向</h2>
+<p>跑通文字生成视频后，可以在同一套环境里继续：</p>
+<ul>
+<li><strong>图生视频</strong>：打开模板 <strong>MiniMax H3: Image to Video</strong>，把首帧图接到节点左侧；</li>
+<li><strong>参考生视频</strong>：打开 <strong>MiniMax H3: Reference to Video</strong>，用人物照片锁定长相；</li>
+<li><strong>更长、多镜头</strong>：把多段 5–8 秒的片段分别生成，再在本地用剪辑软件拼接；</li>
+<li><strong>更高分辨率</strong>：先生成 768p，再用单独的放大流程做 2K 输出。</li>
+</ul>
+<p>模型与模板的完整列表见 ComfyUI 的 Template Library 与 <a href="https://huggingface.co/Comfy-Org/MiniMax-H3">Comfy-Org/MiniMax-H3</a>。</p>
+<hr>
+<h2 id="附录-a-从零到启动的完整命令">附录 A：从零到启动的完整命令</h2>
+<pre><code class="language-bash"># 1. 安装 ComfyUI
+cd /content
+git clone https://github.com/comfyanonymous/ComfyUI.git
+cd ComfyUI
+python3 -m venv venv
+source venv/bin/activate
+pip install -U pip
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+pip install -r requirements.txt
+
+# 2. 下载模型
+apt-get update -qq &amp;&amp; apt-get install -y -qq aria2
+mkdir -p models/{diffusion_models,text_encoders,vae,loras}
+dl() { aria2c -x 16 -s 16 -k 1M --continue=true --file-allocation=none \
+  --console-log-level=warn -d &quot;$(dirname &quot;$2&quot;)&quot; -o &quot;$(basename &quot;$2&quot;)&quot; &quot;$1&quot;; }
+B=https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main
+dl $B/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors \
+   models/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors
+dl $B/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors \
+   models/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors
+dl $B/vae/minimax_h3_video_vae_int8_convrot.safetensors \
+   models/vae/minimax_h3_video_vae_int8_convrot.safetensors
+dl $B/vae/minimax_h3_audio_vae_fp32.safetensors \
+   models/vae/minimax_h3_audio_vae_fp32.safetensors
+dl $B/loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors \
+   models/loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors
+
+# 3. 启动
+nohup python main.py --listen 127.0.0.1 --port 8188 --highvram --disable-mmap \
+  &gt; /content/comfyui.log 2&gt;&amp;1 &amp;
+
+# 4. 隧道
+wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+  -O /usr/local/bin/cloudflared
+chmod +x /usr/local/bin/cloudflared
+nohup cloudflared tunnel --protocol http2 --edge-ip-version 4 --no-autoupdate \
+  --url http://127.0.0.1:8188 &gt; /content/cloudflared.log 2&gt;&amp;1 &amp;
+sleep 12
+grep -oE &#39;https://[a-z0-9-]+\.trycloudflare\.com&#39; /content/cloudflared.log | tail -1
+</code></pre>
+<h2 id="附录-b-使用须知">附录 B：使用须知</h2>
+<ul>
+<li>ColabDesk 是第三方工具，与 Google 无隶属关系；Colab 的可用机型与配额由你的账号决定。</li>
+<li>MiniMax H3 为开源权重，商用授权请以模型发布方与 Comfy 的条款为准。</li>
+<li>生成内容的使用与传播需遵守当地法律与平台规范。</li>
+</ul>
+<hr>
+<p><em>本文基于 ComfyUI 0.44、MiniMax H3 官方模板与 Colab G4 实机验证。</em></p>
+</div>
+        <footer class="post__footer">
+          <a class="post__back" href="/blog/zh/">← 全部文章</a>
+          
+        </footer>
+      </article>
+    </main>
+    <footer class="footer">
+      <div class="footer__main">
+        <div class="footer__brand">
+          <a class="footer__brand-link" href="/" aria-label="ColabDesk">
+            <img class="footer__lockup only-light" src="/assets/lockup.svg" alt="ColabDesk" width="125" height="24">
+            <img class="footer__lockup only-dark" src="/assets/lockup-white.svg" alt="ColabDesk" width="125" height="24">
+          </a>
+          <p class="footer__tagline">Google Colab 运行时的桌面 SSH 控制台。</p>
+        </div>
+        <nav class="footer__group" aria-label="产品">
+          <h2 class="footer__heading">产品</h2>
+          <ul class="footer__list">
+            <li><a href="/blog/zh/">博客</a></li>
+            <li><a href="https://github.com/feifeifeimoon/ColabDesk/releases/latest" target="_blank" rel="noreferrer">下载</a></li>
+            <li><a href="https://github.com/feifeifeimoon/ColabDesk/releases" target="_blank" rel="noreferrer">版本发布</a></li>
+          </ul>
+        </nav>
+        <nav class="footer__group" aria-label="资源">
+          <h2 class="footer__heading">资源</h2>
+          <ul class="footer__list">
+            <li><a href="https://github.com/feifeifeimoon/ColabDesk/blob/main/README.md" target="_blank" rel="noreferrer">说明文档</a></li>
+            <li><a href="https://github.com/feifeifeimoon/ColabDesk/blob/main/LICENSE" target="_blank" rel="noreferrer">许可证</a></li>
+            <li><a href="https://github.com/feifeifeimoon/ColabDesk" target="_blank" rel="noreferrer">GitHub</a></li>
+          </ul>
+        </nav>
+      </div>
+      <div class="footer__bottom">
+        <span>© ColabDesk · Apache-2.0</span>
+        <span>非官方产品，与 Google 无关。Colab 是 Google LLC 的商标。</span>
+      </div>
+    </footer>
+  </body>
+</html>

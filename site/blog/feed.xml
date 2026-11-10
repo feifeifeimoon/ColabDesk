@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>ColabDesk Blog</title>
+    <link>https://colabdesk.dev/blog/</link>
+    <description>Notes, walkthroughs, and field reports from the ColabDesk workbench.</description>
+    <language>en</language>
+    <item>
+      <title>Why a desktop console for Colab?</title>
+      <link>https://colabdesk.dev/blog/hello-colabdesk/</link>
+      <guid>https://colabdesk.dev/blog/hello-colabdesk/</guid>
+      <pubDate>Sun, 08 Nov 2026 00:00:00 GMT</pubDate>
+      <description>The terminal, files, sessions and quota of a Colab runtime in one window — and what this blog is for.</description>
+    </item>
+  </channel>
+</rss>

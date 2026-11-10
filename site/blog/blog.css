@@ -1,0 +1,344 @@
+/*
+ * The blog: a reading surface beside the landing page, not a second landing
+ * page. Type stays on the ladder in DESIGN.md — display for a page title,
+ * title for h2, title-sm for h3, and 16px copy for the body. Nothing here
+ * introduces a colour, a shadow or a type size of its own; the only new
+ * elements are the measure (68ch), the tag pill and the hairline-divided
+ * post list, which use the tokens already in `tokens.css`.
+ */
+
+.blog-main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-6) 0;
+}
+
+/* The language switch is a link between two static pages, not the landing
+   page's localStorage toggle, so it sits at the nav link's scale. */
+.nav__lang {
+  padding: 0 var(--space-2);
+  color: var(--body);
+  font-size: var(--text-caption);
+  font-weight: 500;
+}
+
+.nav__lang:hover {
+  color: var(--ink);
+}
+
+/* ---- index -------------------------------------------------------------- */
+
+.blog-index__header {
+  margin-bottom: var(--space-7);
+}
+
+.blog-index__header h1 {
+  margin: 0 0 var(--space-3);
+  color: var(--ink);
+  font-size: var(--text-display);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.blog-index__header p {
+  max-width: 52ch;
+  margin: 0;
+  color: var(--body);
+  font-size: var(--text-title-sm);
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+.post-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.post-list__link {
+  display: block;
+  padding: var(--space-5) 0;
+  color: inherit;
+}
+
+.post-list__item + .post-list__item .post-list__link {
+  border-top: 1px solid var(--hairline);
+}
+
+.post-list__date {
+  color: var(--mute);
+  font-size: var(--text-caption);
+}
+
+.post-list__title {
+  margin: var(--space-2) 0 0;
+  color: var(--ink);
+  font-size: var(--text-title);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.post-list__link:hover .post-list__title {
+  color: var(--link);
+}
+
+.post-list__description {
+  max-width: 60ch;
+  margin: var(--space-2) 0 0;
+  color: var(--body);
+  font-size: var(--text-title-sm);
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+.post-list__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tag-list li {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--canvas-soft);
+  color: var(--body);
+  font-size: var(--text-micro);
+  line-height: 1.5;
+}
+
+.post-list__language {
+  padding: 2px var(--space-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-full);
+  color: var(--mute);
+  font-size: var(--text-micro);
+  line-height: 1.5;
+}
+
+/* ---- article ------------------------------------------------------------ */
+
+.post__header {
+  margin-bottom: var(--space-7);
+}
+
+.post__eyebrow {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-caption);
+}
+
+.post__eyebrow a {
+  color: var(--mute);
+}
+
+.post__eyebrow a:hover {
+  color: var(--ink);
+}
+
+.post__title {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-display);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.post__description {
+  max-width: 60ch;
+  margin: var(--space-3) 0 0;
+  color: var(--body);
+  font-size: var(--text-title-sm);
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+.post__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 0;
+  color: var(--mute);
+  font-size: var(--text-caption);
+}
+
+.post__body {
+  color: var(--body);
+  font-size: 16px;
+  line-height: 1.75;
+  overflow-wrap: break-word;
+}
+
+.post__body > * {
+  margin: 0;
+}
+
+.post__body > * + * {
+  margin-top: var(--space-4);
+}
+
+.post__body h2 {
+  margin-top: var(--space-7);
+  color: var(--ink);
+  font-size: var(--text-title);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.post__body h3 {
+  margin-top: var(--space-5);
+  color: var(--ink);
+  font-size: var(--text-title-sm);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.post__body h4 {
+  margin-top: var(--space-4);
+  color: var(--ink);
+  font-size: var(--text-copy);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.post__body ul,
+.post__body ol {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.post__body li + li {
+  margin-top: var(--space-2);
+}
+
+.post__body a {
+  color: var(--link);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--link) 40%, transparent);
+  text-underline-offset: 2px;
+}
+
+.post__body a:hover {
+  text-decoration-color: var(--link);
+}
+
+.post__body strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.post__body blockquote {
+  margin: var(--space-5) 0;
+  padding: var(--space-3) var(--space-4);
+  border-left: 2px solid var(--hairline-strong);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--canvas-soft);
+  color: var(--body);
+}
+
+.post__body blockquote > * + * {
+  margin-top: var(--space-3);
+}
+
+.post__body code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+.post__body :not(pre) > code {
+  padding: 2px 5px;
+  border-radius: var(--radius-xs);
+  background: var(--canvas-soft-2);
+  color: var(--ink);
+}
+
+.post__body pre {
+  overflow-x: auto;
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--canvas-soft);
+  font-size: var(--text-label);
+  line-height: 1.55;
+}
+
+.post__body pre code {
+  font-size: inherit;
+}
+
+.post__body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-copy);
+}
+
+.post__body th,
+.post__body td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--hairline);
+  text-align: left;
+  vertical-align: top;
+}
+
+.post__body th {
+  color: var(--mute);
+  font-size: var(--text-caption);
+  font-weight: 500;
+}
+
+.post__body img {
+  height: auto;
+  border-radius: var(--radius-md);
+}
+
+.post__body hr {
+  margin: var(--space-6) 0;
+  border: 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.post__footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-8);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--hairline);
+  font-size: var(--text-label);
+}
+
+.post__back,
+.post__language {
+  color: var(--body);
+}
+
+.post__back:hover,
+.post__language:hover {
+  color: var(--ink);
+}
+
+/* ---- narrow ------------------------------------------------------------- */
+
+@media (max-width: 640px) {
+  .blog-main {
+    padding: var(--space-5) var(--space-4) 0;
+  }
+}

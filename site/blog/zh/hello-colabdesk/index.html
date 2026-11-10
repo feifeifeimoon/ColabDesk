@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>为什么给 Colab 做一个桌面控制台 — ColabDesk 博客</title>
+    <meta name="description" content="把 Colab 运行时的终端、文件、会话与算力消耗放进一个窗口——以及这个博客要写什么。">
+    <link rel="canonical" href="https://colabdesk.dev/blog/zh/hello-colabdesk/">
+    <link rel="alternate" hreflang="en" href="https://colabdesk.dev/blog/hello-colabdesk/">
+    <link rel="alternate" hreflang="zh-CN" href="https://colabdesk.dev/blog/zh/hello-colabdesk/">
+    <link rel="alternate" hreflang="x-default" href="https://colabdesk.dev/blog/hello-colabdesk/">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="ColabDesk">
+    <meta property="og:title" content="为什么给 Colab 做一个桌面控制台 — ColabDesk 博客">
+    <meta property="og:description" content="把 Colab 运行时的终端、文件、会话与算力消耗放进一个窗口——以及这个博客要写什么。">
+    <meta property="og:url" content="https://colabdesk.dev/blog/zh/hello-colabdesk/">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="为什么给 Colab 做一个桌面控制台 — ColabDesk 博客">
+    <meta name="twitter:description" content="把 Colab 运行时的终端、文件、会话与算力消耗放进一个窗口——以及这个博客要写什么。">
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+    <link rel="alternate" type="application/rss+xml" title="ColabDesk 博客" href="/blog/zh/feed.xml">
+    <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <script src="/theme.js"></script>
+    <link rel="stylesheet" href="/tokens.css">
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/blog/blog.css">
+  </head>
+  <body class="blog">
+    <nav class="nav">
+      <a class="nav__brand" href="/" aria-label="ColabDesk">
+        <img class="nav__lockup only-light" src="/assets/lockup.svg" alt="ColabDesk" width="125" height="24">
+        <img class="nav__lockup only-dark" src="/assets/lockup-white.svg" alt="ColabDesk" width="125" height="24">
+      </a>
+      <div class="nav__actions">
+        <a class="nav__link" href="/blog/zh/">博客</a>
+        <a class="github-badge" href="https://github.com/feifeifeimoon/ColabDesk" target="_blank" rel="noreferrer">
+          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>GitHub</span>
+        </a>
+        <a class="nav__lang" href="/blog/hello-colabdesk/" hreflang="en">English</a>
+      </div>
+    </nav>
+    <main class="blog-main">
+      <article class="post">
+        <header class="post__header">
+          <p class="post__eyebrow"><a href="/blog/zh/">博客</a></p>
+          <h1 class="post__title">为什么给 Colab 做一个桌面控制台</h1>
+          <p class="post__description">把 Colab 运行时的终端、文件、会话与算力消耗放进一个窗口——以及这个博客要写什么。</p>
+          <p class="post__meta">
+            <time datetime="2026-11-08">2026年11月8日</time>
+            <ul class="tag-list" aria-label="标签"><li>product</li></ul>
+          </p>
+        </header>
+        <div class="post__body"><p>Colab 运行时是一台 Linux 机器。它有 shell、有文件系统、有能活过单元格的进程，还有一张按计算单元计费的账单。Notebook 适合写 Python；但它不适合盯着一个 40GB 的下载、跟踪一个服务日志，或者去找脚本刚刚写出的那个文件。</p>
+<p>ColabDesk 把这四件事放进一个窗口：走 SSH 的真实终端、走 SFTP 的运行时的文件、会话控制，以及这个运行时正在消耗的计算单元。</p>
+<h2 id="这个博客写什么">这个博客写什么</h2>
+<p>这里记录我们用这个应用做真实工作时学到的东西：怎么把一个模型栈装起来、怎么让长任务在合上笔记本之后继续跑、怎么不经过 Notebook 单元格也能传文件，以及那些第一次会白白花掉一小时的坑。</p>
+<p>大概会有三类文章：</p>
+<ul>
+<li><strong>完整教程</strong>——从一台全新的运行时到一个可下载的结果，命令和验收点都写清楚；</li>
+<li><strong>实践笔记</strong>——我们遇到的问题、根因，以及第二次仍然有效的解法；</li>
+<li><strong>版本说明</strong>——当某个新能力改变了工作流的拼法时，说明它怎么用。</li>
+</ul>
+<h2 id="关于命令">关于命令</h2>
+<p>凡是写给运行时的命令，都可以直接粘进 ColabDesk 的终端执行。涉及账号、显卡或模型许可的地方，文章会直接说明前提，而不是默认你有。</p>
+<p>第一篇是完整教程：一台 G4 运行时、ComfyUI，以及 MiniMax H3 生成一段带声音的短视频。它从空运行时开始，到一个可以下载的 MP4 结束：<a href="/blog/zh/minimax-h3-video/">用 ColabDesk + ComfyUI 生成带声音的 AI 视频</a>。</p>
+<p>想让我们写某个主题，可以在 <a href="https://github.com/feifeifeimoon/ColabDesk/issues">GitHub</a> 提 issue。</p>
+</div>
+        <footer class="post__footer">
+          <a class="post__back" href="/blog/zh/">← 全部文章</a>
+          <a class="post__language" href="/blog/hello-colabdesk/" hreflang="en">English</a>
+        </footer>
+      </article>
+    </main>
+    <footer class="footer">
+      <div class="footer__main">
+        <div class="footer__brand">
+          <a class="footer__brand-link" href="/" aria-label="ColabDesk">
+            <img class="footer__lockup only-light" src="/assets/lockup.svg" alt="ColabDesk" width="125" height="24">
+            <img class="footer__lockup only-dark" src="/assets/lockup-white.svg" alt="ColabDesk" width="125" height="24">
+          </a>
+          <p class="footer__tagline">Google Colab 运行时的桌面 SSH 控制台。</p>
+        </div>
+        <nav class="footer__group" aria-label="产品">
+          <h2 class="footer__heading">产品</h2>
+          <ul class="footer__list">
+            <li><a href="/blog/zh/">博客</a></li>
+            <li><a href="https://github.com/feifeifeimoon/ColabDesk/releases/latest" target="_blank" rel="noreferrer">下载</a></li>
+            <li><a href="https://github.com/feifeifeimoon/ColabDesk/releases" target="_blank" rel="noreferrer">版本发布</a></li>
+          </ul>
+        </nav>
+        <nav class="footer__group" aria-label="资源">
+          <h2 class="footer__heading">资源</h2>
+          <ul class="footer__list">
+            <li><a href="https://github.com/feifeifeimoon/ColabDesk/blob/main/README.md" target="_blank" rel="noreferrer">说明文档</a></li>
+            <li><a href="https://github.com/feifeifeimoon/ColabDesk/blob/main/LICENSE" target="_blank" rel="noreferrer">许可证</a></li>
+            <li><a href="https://github.com/feifeifeimoon/ColabDesk" target="_blank" rel="noreferrer">GitHub</a></li>
+          </ul>
+        </nav>
+      </div>
+      <div class="footer__bottom">
+        <span>© ColabDesk · Apache-2.0</span>
+        <span>非官方产品，与 Google 无关。Colab 是 Google LLC 的商标。</span>
+      </div>
+    </footer>
+  </body>
+</html>

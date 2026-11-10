@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Why a desktop console for Colab? — ColabDesk Blog</title>
+    <meta name="description" content="The terminal, files, sessions and quota of a Colab runtime in one window — and what this blog is for.">
+    <link rel="canonical" href="https://colabdesk.dev/blog/hello-colabdesk/">
+    <link rel="alternate" hreflang="en" href="https://colabdesk.dev/blog/hello-colabdesk/">
+    <link rel="alternate" hreflang="zh-CN" href="https://colabdesk.dev/blog/zh/hello-colabdesk/">
+    <link rel="alternate" hreflang="x-default" href="https://colabdesk.dev/blog/hello-colabdesk/">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="ColabDesk">
+    <meta property="og:title" content="Why a desktop console for Colab? — ColabDesk Blog">
+    <meta property="og:description" content="The terminal, files, sessions and quota of a Colab runtime in one window — and what this blog is for.">
+    <meta property="og:url" content="https://colabdesk.dev/blog/hello-colabdesk/">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Why a desktop console for Colab? — ColabDesk Blog">
+    <meta name="twitter:description" content="The terminal, files, sessions and quota of a Colab runtime in one window — and what this blog is for.">
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+    <link rel="alternate" type="application/rss+xml" title="ColabDesk Blog" href="/blog/feed.xml">
+    <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <script src="/theme.js"></script>
+    <link rel="stylesheet" href="/tokens.css">
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/blog/blog.css">
+  </head>
+  <body class="blog">
+    <nav class="nav">
+      <a class="nav__brand" href="/" aria-label="ColabDesk">
+        <img class="nav__lockup only-light" src="/assets/lockup.svg" alt="ColabDesk" width="125" height="24">
+        <img class="nav__lockup only-dark" src="/assets/lockup-white.svg" alt="ColabDesk" width="125" height="24">
+      </a>
+      <div class="nav__actions">
+        <a class="nav__link" href="/blog/">Blog</a>
+        <a class="github-badge" href="https://github.com/feifeifeimoon/ColabDesk" target="_blank" rel="noreferrer">
+          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>GitHub</span>
+        </a>
+        <a class="nav__lang" href="/blog/zh/hello-colabdesk/" hreflang="zh-CN">中文</a>
+      </div>
+    </nav>
+    <main class="blog-main">
+      <article class="post">
+        <header class="post__header">
+          <p class="post__eyebrow"><a href="/blog/">Blog</a></p>
+          <h1 class="post__title">Why a desktop console for Colab?</h1>
+          <p class="post__description">The terminal, files, sessions and quota of a Colab runtime in one window — and what this blog is for.</p>
+          <p class="post__meta">
+            <time datetime="2026-11-08">November 8, 2026</time>
+            <ul class="tag-list" aria-label="Tags"><li>product</li></ul>
+          </p>
+        </header>
+        <div class="post__body"><p>A Colab runtime is a Linux machine. It has a shell, a filesystem, processes that outlive a cell, and a bill measured in compute units. The notebook is a good place to write Python; it is a poor place to watch a 40GB download, tail a server log, or find the file a script just wrote.</p>
+<p>ColabDesk puts those four things in one window: a real terminal over SSH, the runtime&#39;s files over SFTP, session controls, and the compute units the runtime is spending.</p>
+<h2 id="what-the-blog-is-for">What the blog is for</h2>
+<p>This is where we write down what we learn while using the app for real work: setting up a model stack, keeping a long job alive when the laptop closes, moving files without going through a notebook cell, and the mistakes that cost an hour the first time.</p>
+<p>Expect three kinds of posts:</p>
+<ul>
+<li><strong>Walkthroughs</strong> — a complete path from a fresh runtime to a result, with the commands and the checkpoints.</li>
+<li><strong>Field notes</strong> — a problem we hit, what caused it, and the fix that survived a second attempt.</li>
+<li><strong>Release notes</strong> — when a new capability changes the way a workflow fits together.</li>
+</ul>
+<h2 id="a-note-on-the-commands">A note on the commands</h2>
+<p>Every command written for the runtime is meant to be pasted into a ColabDesk terminal as-is. When a step depends on your account, your GPU, or a model&#39;s licence, the post says so instead of assuming it.</p>
+<p>The first walkthrough is a complete one: a G4 runtime, ComfyUI, and MiniMax H3 generating a short video with sound. It starts from an empty runtime and ends with an MP4 you can download. It is written in Chinese for now: <a href="/blog/zh/minimax-h3-video/">用 ColabDesk + ComfyUI 生成带声音的 AI 视频</a>.</p>
+<p>If you want a topic covered, open an issue on <a href="https://github.com/feifeifeimoon/ColabDesk/issues">GitHub</a>.</p>
+</div>
+        <footer class="post__footer">
+          <a class="post__back" href="/blog/">← All posts</a>
+          <a class="post__language" href="/blog/zh/hello-colabdesk/" hreflang="zh-CN">中文</a>
+        </footer>
+      </article>
+    </main>
+    <footer class="footer">
+      <div class="footer__main">
+        <div class="footer__brand">
+          <a class="footer__brand-link" href="/" aria-label="ColabDesk">
+            <img class="footer__lockup only-light" src="/assets/lockup.svg" alt="ColabDesk" width="125" height="24">
+            <img class="footer__lockup only-dark" src="/assets/lockup-white.svg" alt="ColabDesk" width="125" height="24">
+          </a>
+          <p class="footer__tagline">A desktop SSH console for Google Colab runtimes.</p>
+        </div>
+        <nav class="footer__group" aria-label="Product">
+          <h2 class="footer__heading">Product</h2>
+          <ul class="footer__list">
+            <li><a href="/blog/">Blog</a></li>
+            <li><a href="https://github.com/feifeifeimoon/ColabDesk/releases/latest" target="_blank" rel="noreferrer">Download</a></li>
+            <li><a href="https://github.com/feifeifeimoon/ColabDesk/releases" target="_blank" rel="noreferrer">Releases</a></li>
+          </ul>
+        </nav>
+        <nav class="footer__group" aria-label="Resources">
+          <h2 class="footer__heading">Resources</h2>
+          <ul class="footer__list">
+            <li><a href="https://github.com/feifeifeimoon/ColabDesk/blob/main/README.md" target="_blank" rel="noreferrer">README</a></li>
+            <li><a href="https://github.com/feifeifeimoon/ColabDesk/blob/main/LICENSE" target="_blank" rel="noreferrer">License</a></li>
+            <li><a href="https://github.com/feifeifeimoon/ColabDesk" target="_blank" rel="noreferrer">GitHub</a></li>
+          </ul>
+        </nav>
+      </div>
+      <div class="footer__bottom">
+        <span>© ColabDesk · Apache-2.0</span>
+        <span>Unofficial, not affiliated with Google. Colab is a trademark of Google LLC.</span>
+      </div>
+    </footer>
+  </body>
+</html>

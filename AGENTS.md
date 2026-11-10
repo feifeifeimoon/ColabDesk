@@ -36,8 +36,12 @@ sign the file has two jobs and should be split.
   `app-launch.ts`.
 - `site/` — the landing page, plain static files with no build step. Its `tokens.css` is a copy of the
   app's (`npm run site:tokens`); its i18n is a separate marketing catalog; its English screenshots come
-  from `npm run gallery`.
-- `tools/` — one-job scripts that run under bare `node`: the CLI bundle and the site token copy.
+  from `npm run gallery`. `site/blog/` is generated from `blog/posts/` by `npm run site:blog`; the
+  deployed files stay static, and `npm run site:blog:check` keeps the committed output in sync.
+- `blog/` — Markdown post sources for the site's blog (`posts/`) and the authoring guide (`README.md`).
+  Each post is `<slug>.<en|zh>.md`; the generator is `tools/build-site-blog.mjs`.
+- `tools/` — one-job scripts that run under bare `node`: the CLI bundle, the site token copy and the
+  blog generator.
 - `config/` — tooling configuration (vitest, electron-builder, playwright). `docs/` — the design system and
   reference material.
 - Tests sit next to the source they test (`*.test.ts`); there is no `__tests__`. End-to-end specs are the

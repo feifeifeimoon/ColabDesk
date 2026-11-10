@@ -64,6 +64,11 @@ function applyLanguage() {
   for (const option of langOptions) {
     option.setAttribute("aria-pressed", String(option.dataset.lang === lang));
   }
+  // The blog is static per language, so the link follows the page's language
+  // rather than the blog's own toggle.
+  for (const link of document.querySelectorAll("[data-blog-link]")) {
+    link.setAttribute("href", lang === "zh" ? "/blog/zh/" : "/blog/");
+  }
   renderDownloadCopy();
 }
 

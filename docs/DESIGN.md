@@ -135,6 +135,7 @@ Three choices belong to a desktop console in particular:
 | Theme preference | `src/renderer/src/lib/theme.ts` |
 | Feature pages | `src/renderer/src/features/*` |
 | Landing page (`site/`) | Static HTML, CSS and ES modules with no build step. `site/tokens.css` is a byte-for-byte copy of the app's tokens (`npm run site:tokens`, asserted by `site/tokens.test.mjs`); `site/i18n.js` is a separate marketing catalog; its one picture is a curated shot of a real T4/vLLM session (the mock has no vLLM server) |
+| Blog (`blog/posts/` → `site/blog/`) | Markdown sources and one author-side generator (`npm run site:blog`). The deployed files are still static; `npm run site:blog:check` in CI keeps the committed output equal to the sources. The blog is a reading surface, not a second landing page — see "The blog is a reading surface" |
 | What the renderer looks like (for a person) | `npm run gallery`: runs the **real app** against the mock backend and writes pictures to `screenshots/`. **There is no image baseline** — pictures are evidence in a review, not tests |
 | The regression net for design rules | Render assertions: real components + `renderToStaticMarkup` (no DOM needed, runs under `npm test`). Examples: `components/ui/icons.test.tsx` (icons must be distinguishable from each other), `features/workspace/Workbench.test.tsx` (a parked panel must be `hidden` + `inert`) |
 
@@ -243,6 +244,14 @@ Everything else on that page is `copy`, `caption` or `micro` from the table abov
 **The download count is a badge under the actions, not a third button.** A caption-sized pill follows the "Also for…" menu: the menu's own download glyph in `mute`, the abbreviated total in `ink` at 500, then `downloads` / `次下载` in `body`, on the app's tag recipe (`{colors.canvas-soft}` ground, `{colors.hairline}` edge, `{rounded.full}`). It has no hover state, pointer or focus ring — it is a fact, not a control. It starts `hidden`, so a blocked or rate-limited GitHub call leaves the buttons and no empty number, because a missing count beats a wrong one; when the number arrives it takes the product's ordinary entry (180ms ease-out, 8px rise, stilled under `prefers-reduced-motion`). The total is every asset of every release (update metadata included), the same definition as the README's shields.io badge, so the page and the badge never disagree.
 
 **The footer is a sitemap, not a second hero.** The brand, its one-line claim and a capability line sit on the left; `Product` and `Resources` link columns sit on the right; the licence and the unofficial notice close the page under a second hairline. Group labels are `{typography.micro}` uppercase sans in `mute`; links are `{typography.label}` in `body`, turning `ink` on hover. No buttons and no second download CTA — the footer is for finding things, not for asking again.
+
+### The blog is a reading surface
+
+`site/blog/` is generated from `blog/posts/` and shares the landing page's nav, footer, tokens and type ladder. It adds no rung: the article title is `{typography.display}` (26px), `h2` is `{typography.title}`, `h3` is `{typography.title-sm}`, body copy is 16px at 1.75, and metadata is `{typography.caption}`. The content column is 720px (about 68 characters), and every block sits on the existing surface ladder — `canvas-soft` for code and quotes, `hairline` for dividers, no cards and no shadows.
+
+The index is a **hairline-divided list**, not a grid of cards: date in `caption`/`mute`, title in `title`/`ink` (turning `link` on hover), description in `title-sm`/`body`, tags as `micro` pills on `canvas-soft`. A post written in only one language appears in both indexes with a language badge; the badge is a fact about the post, not a control.
+
+The language switch is a **link to the other static page**, not a localStorage toggle: an article has one URL per language, with `hreflang` alternates, so search engines index both. The landing page keeps its own toggle because it is one document with two catalogs.
 
 ## Layout
 
