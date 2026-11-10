@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>用 ColabDesk + ComfyUI 生成带声音的 AI 视频 — ColabDesk 博客</title>
-    <meta name="description" content="从一台空的 G4 运行时到一段带立体声的 MP4：安装 ComfyUI、下载 MiniMax H3 官方权重、跑通第一段视频。">
+    <meta name="description" content="从一个空的 G4 会话到一段带立体声的 MP4：安装 ComfyUI、下载 MiniMax H3 官方权重、跑通第一段视频。">
     <link rel="canonical" href="https://colabdesk.dev/blog/zh/minimax-h3-video/">
     <link rel="alternate" hreflang="en" href="https://colabdesk.dev/blog/minimax-h3-video/">
     <link rel="alternate" hreflang="zh-CN" href="https://colabdesk.dev/blog/zh/minimax-h3-video/">
@@ -12,11 +12,11 @@
     <meta property="og:type" content="article">
     <meta property="og:site_name" content="ColabDesk">
     <meta property="og:title" content="用 ColabDesk + ComfyUI 生成带声音的 AI 视频 — ColabDesk 博客">
-    <meta property="og:description" content="从一台空的 G4 运行时到一段带立体声的 MP4：安装 ComfyUI、下载 MiniMax H3 官方权重、跑通第一段视频。">
+    <meta property="og:description" content="从一个空的 G4 会话到一段带立体声的 MP4：安装 ComfyUI、下载 MiniMax H3 官方权重、跑通第一段视频。">
     <meta property="og:url" content="https://colabdesk.dev/blog/zh/minimax-h3-video/">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="用 ColabDesk + ComfyUI 生成带声音的 AI 视频 — ColabDesk 博客">
-    <meta name="twitter:description" content="从一台空的 G4 运行时到一段带立体声的 MP4：安装 ComfyUI、下载 MiniMax H3 官方权重、跑通第一段视频。">
+    <meta name="twitter:description" content="从一个空的 G4 会话到一段带立体声的 MP4：安装 ComfyUI、下载 MiniMax H3 官方权重、跑通第一段视频。">
     <meta property="og:image" content="https://colabdesk.dev/assets/blog/minimax-h3-video/cover-zh.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -65,7 +65,7 @@
           <a class="post__back-link" href="/blog/zh/">← 全部文章</a>
           <p class="post__category">教程</p>
           <h1 class="post__title">用 ColabDesk + ComfyUI 生成带声音的 AI 视频</h1>
-          <p class="post__description">从一台空的 G4 运行时到一段带立体声的 MP4：安装 ComfyUI、下载 MiniMax H3 官方权重、跑通第一段视频。</p>
+          <p class="post__description">从一个空的 G4 会话到一段带立体声的 MP4：安装 ComfyUI、下载 MiniMax H3 官方权重、跑通第一段视频。</p>
           <div class="post__byline">
             <span class="post__avatar" aria-hidden="true">
               <img class="only-light" src="/assets/symbol.svg" alt="">
@@ -77,15 +77,14 @@
             <span class="post__dot" aria-hidden="true">·</span>
             <span>9 分钟阅读</span>
           </div>
-          <div class="post__tags"><ul class="tag-list" aria-label="标签"><li>tutorial</li><li>comfyui</li><li>minimax</li></ul></div>
+          <div class="post__tags"><ul class="tag-list" aria-label="标签"><li>教程</li><li>ComfyUI</li><li>MiniMax</li></ul></div>
         </header>
-        <img class="post__cover" src="/assets/blog/minimax-h3-video/cover-zh.png" alt="" width="1200" height="630">
         <details class="post-toc-mobile">
           <summary>目录</summary>
           <ol class="post-toc__list">
             <li class="post-toc__item"><a href="#1-这套东西在做什么-一分钟版">1. 这套东西在做什么（一分钟版）</a></li>
             <li class="post-toc__item"><a href="#2-只靠五个文件就能跑">2. 只靠五个文件就能跑</a></li>
-            <li class="post-toc__item"><a href="#3-把运行时和-comfyui-装好">3. 把运行时和 ComfyUI 装好</a></li>
+            <li class="post-toc__item"><a href="#3-把会话和-comfyui-装好">3. 把会话和 ComfyUI 装好</a></li>
             <li class="post-toc__item"><a href="#4-把界面带到浏览器">4. 把界面带到浏览器</a></li>
             <li class="post-toc__item"><a href="#5-生成第一段视频">5. 生成第一段视频</a></li>
             <li class="post-toc__item"><a href="#6-提示词怎么写才不浪费一次生成">6. 提示词怎么写才不浪费一次生成</a></li>
@@ -98,18 +97,22 @@
         </details>
         <div class="post__body"><blockquote>
 <p>你有一台 Colab G4，想生成一段带声音的视频，但不想先读完整套部署文档。</p>
-<p>这篇教程只做一件事：从一台空的运行时开始，装好 ComfyUI 和 MiniMax H3 官方权重，跑出第一段带立体声的 MP4。每一步都有可复制的命令，以及「你应该看到什么」。</p>
+<p>这篇教程只做一件事：从一个空的 G4 会话开始，装好 ComfyUI 和 MiniMax H3 官方权重，跑出第一段带立体声的 MP4。每一步都有可复制的命令，以及「你应该看到什么」。</p>
 </blockquote>
-<p>MiniMax H3 是一个 33B 的原生音视频模型：画面和声音在同一个扩散过程里生成，所以口型、环境音和动作是对齐的，不需要先出无声视频再后期配音。官方开源权重面向约 1 百万像素（768 短边）、24fps、最长约 15 秒；2K 是托管服务的能力，本地要另外做一次超分。</p>
-<p>ComfyUI 是节点式生成界面，负责把模型、采样器和解码器连成一张图。ColabDesk 是连接 Colab 运行时的桌面控制台：创建 G4、打开终端、浏览文件、看算力消耗。三者拼起来，本地不需要显卡。</p>
+        <img class="post__cover" src="/assets/blog/minimax-h3-video/cover-zh.png" alt="" width="1200" height="630">
+
+<p>MiniMax H3 是一个 330 亿参数的原生音视频模型：画面和声音在同一个扩散过程里生成，所以口型、环境音和动作是对齐的，不需要先出无声视频再后期配音。官方开源权重面向约 100 万像素（短边 768）、24fps、最长约 15 秒；2K 需要 Comfy Cloud 这类托管服务，本地要另外做一次超分。</p>
+<p>ComfyUI 是节点式生成界面，负责把模型、采样器和解码器连成一张图。ColabDesk 是连接 Colab 会话的桌面控制台：创建 G4、打开终端、浏览文件、看算力消耗。三者拼起来，本地不需要显卡。</p>
 <p>这篇教程覆盖：</p>
-<p>① 这套工作流里每个部分分别在做什么；
-② 为什么一张 96GB 的 G4 够用；
-③ 怎么创建运行时、安装 ComfyUI、下载 39GB 权重；
-④ 怎么把 ComfyUI 的界面带到浏览器；
-⑤ 怎么生成第一段视频，提示词怎么写；
-⑥ 出问题时先检查什么，最后怎么收尾。</p>
-<table>
+<ul>
+<li>这套工作流里每个部分分别在做什么；</li>
+<li>为什么一张 96GB 的 G4 够用；</li>
+<li>怎么创建会话、安装 ComfyUI、下载 39GB 权重；</li>
+<li>怎么把 ComfyUI 的界面带到浏览器；</li>
+<li>怎么生成第一段视频，提示词怎么写；</li>
+<li>出问题时先检查什么，最后怎么收尾。</li>
+</ul>
+<div class="table-scroll"><table>
 <thead>
 <tr>
 <th>项目</th>
@@ -117,45 +120,45 @@
 </tr>
 </thead>
 <tbody><tr>
-<td>你需要</td>
-<td>一个能分配 G4 的 Colab 账号，以及已登录的 ColabDesk</td>
+<td data-label="项目">你需要</td>
+<td data-label="说明">一个能分配 G4 的 Colab 账号，以及已登录的 ColabDesk</td>
 </tr>
 <tr>
-<td>硬件</td>
-<td>Colab G4（RTX PRO 6000 Blackwell，96GB 显存）</td>
+<td data-label="项目">硬件</td>
+<td data-label="说明">Colab G4（RTX PRO 6000 Blackwell，96GB 显存）</td>
 </tr>
 <tr>
-<td>磁盘</td>
-<td>约 60GB：39GB 权重 + ComfyUI 与依赖</td>
+<td data-label="项目">磁盘</td>
+<td data-label="说明">约 60GB：39GB 权重 + ComfyUI 与依赖</td>
 </tr>
 <tr>
-<td>首次耗时</td>
-<td>约 40–60 分钟，其中下载 5–15 分钟</td>
+<td data-label="项目">首次耗时</td>
+<td data-label="说明">约 40–60 分钟，其中下载 5–15 分钟</td>
 </tr>
 <tr>
-<td>费用</td>
-<td>G4 参考 8.9 CU/小时，以 ColabDesk 状态栏为准</td>
+<td data-label="项目">费用</td>
+<td data-label="说明">G4 参考 8.9 计算单元/小时（Colab 的计费单位），以 ColabDesk 状态栏为准</td>
 </tr>
 <tr>
-<td>产出</td>
-<td>1344×768、24fps、约 5 秒、带立体声的 MP4</td>
+<td data-label="项目">产出</td>
+<td data-label="说明">1344×768、24fps、约 5 秒、带立体声的 MP4</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <hr>
 <h2 id="1-这套东西在做什么-一分钟版">1. 这套东西在做什么（一分钟版）</h2>
-<figure class="post__figure"><img src="/assets/blog/minimax-h3-video/pipeline.png" alt="图 1 · ColabDesk 通过 SSH 连接运行时；ComfyUI 通过临时 HTTPS 隧道到浏览器"><figcaption>图 1 · ColabDesk 通过 SSH 连接运行时；ComfyUI 通过临时 HTTPS 隧道到浏览器</figcaption></figure>
+<figure class="post__figure"><img src="/assets/blog/minimax-h3-video/pipeline.png" alt="图 1 · ColabDesk 通过 SSH 连接 Colab 会话；ComfyUI 通过临时 HTTPS 隧道到浏览器"><figcaption>图 1 · ColabDesk 通过 SSH 连接 Colab 会话；ComfyUI 通过临时 HTTPS 隧道到浏览器</figcaption></figure>
 <p>把四个角色分开看：</p>
 <ul>
-<li><strong>ColabDesk</strong>：桌面端 SSH 控制台。它创建 G4 会话，给你一个真实终端和 SFTP 文件面板，并显示这个运行时正在消耗多少计算单元。</li>
+<li><strong>ColabDesk</strong>：桌面端 SSH 控制台。它创建 G4 会话，给你一个真实终端和文件面板，并显示这个会话正在消耗多少计算单元。</li>
 <li><strong>Colab G4</strong>：云端 GPU，96GB 显存。它跑 ComfyUI 和权重，关机后 <code>/content</code> 清空。</li>
-<li><strong>ComfyUI</strong>：在运行时里以网页形式运行的节点式界面，默认只监听 <code>127.0.0.1:8188</code>。</li>
+<li><strong>ComfyUI</strong>：在会话里以网页形式运行的节点式界面，默认只监听 <code>127.0.0.1:8188</code>。</li>
 <li><strong>MiniMax H3</strong>：真正生成画面和声音的模型。</li>
 </ul>
-<p>MiniMax H3 不是「先出无声视频，再对口型」。它是原生音视频联合模型，视频和音频在同一个潜空间里采样，所以说话、呼吸、环境音和动作是一起算出来的。这也是它比「视频模型 + 后期配音」更自然的原因。</p>
-<p>代价是显存：33B 的模型即使做了裁剪和量化，权重仍有约 39GB；再加上采样时的激活值，24GB 或 48GB 的卡会频繁把权重换进换出，速度会慢到不适合迭代。G4 的 96GB 是这套工作流跑得舒服的前提，不是噱头。</p>
+<p>MiniMax H3 不是「先出无声视频，再对口型」。它是原生音视频联合模型，视频和音频在模型内部的特征空间（潜空间）里一起算，所以说话、呼吸、环境音和动作是同步的。这也是它比「视频模型 + 后期配音」更自然的原因。</p>
+<p>代价是显存：330 亿参数的模型即使做了裁剪和量化，权重仍有约 39GB；再加上采样时的激活值，24GB 或 48GB 的卡会频繁把权重换进换出，速度会慢到不适合迭代。G4 的 96GB 是这套工作流跑得舒服的前提，不是噱头。</p>
 <h2 id="2-只靠五个文件就能跑">2. 只靠五个文件就能跑</h2>
 <p>这套最小工作流只做「文字或图片 → 视频」这一件事，不额外加载多人一致性、潜空间超分或多段续接。它只需要五个文件：</p>
-<table>
+<div class="table-scroll"><table>
 <thead>
 <tr>
 <th>文件</th>
@@ -164,31 +167,31 @@
 </tr>
 </thead>
 <tbody><tr>
-<td><code>minimax_h3_fl2va_pruned_int8_convrot.safetensors</code></td>
-<td>扩散模型，负责出画面</td>
-<td align="right">19.53</td>
+<td data-label="文件"><code>minimax_h3_fl2va_pruned_int8_convrot.safetensors</code></td>
+<td data-label="作用">扩散模型，负责出画面</td>
+<td align="right" data-label="大小 (GB)">19.53</td>
 </tr>
 <tr>
-<td><code>qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors</code></td>
-<td>文本编码器，负责读提示词</td>
-<td align="right">14.61</td>
+<td data-label="文件"><code>qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors</code></td>
+<td data-label="作用">文本编码器，把提示词变成模型能读的表示</td>
+<td align="right" data-label="大小 (GB)">14.61</td>
 </tr>
 <tr>
-<td><code>minimax_h3_video_vae_int8_convrot.safetensors</code></td>
-<td>视频 VAE，潜空间 ↔ 像素</td>
-<td align="right">2.62</td>
+<td data-label="文件"><code>minimax_h3_video_vae_int8_convrot.safetensors</code></td>
+<td data-label="作用">视频解码器（VAE），把模型内部表示还原成画面</td>
+<td align="right" data-label="大小 (GB)">2.62</td>
 </tr>
 <tr>
-<td><code>minimax_h3_audio_vae_fp32.safetensors</code></td>
-<td>音频 VAE，潜空间 ↔ 32kHz 立体声</td>
-<td align="right">0.56</td>
+<td data-label="文件"><code>minimax_h3_audio_vae_fp32.safetensors</code></td>
+<td data-label="作用">音频解码器（VAE），还原成 32kHz 立体声</td>
+<td align="right" data-label="大小 (GB)">0.56</td>
 </tr>
 <tr>
-<td><code>minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors</code></td>
-<td>步数蒸馏 LoRA，让步数可以压得很低</td>
-<td align="right">1.82</td>
+<td data-label="文件"><code>minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors</code></td>
+<td data-label="作用">加速 LoRA（一小块附加权重），让步数可以压得很低</td>
+<td align="right" data-label="大小 (GB)">1.82</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <p>合计约 39GB，全部来自官方 <code>Comfy-Org/MiniMax-H3</code> 仓库。</p>
 <p>ComfyUI 的模板会把它们连成一张图。图大概长这样：</p>
 <figure class="post__figure"><img src="/assets/blog/minimax-h3-video/workflow.png" alt="图 2 · 模板的节点链：提示词 → 采样 → 视频与音频解码 → MP4"><figcaption>图 2 · 模板的节点链：提示词 → 采样 → 视频与音频解码 → MP4</figcaption></figure>
@@ -198,8 +201,8 @@
 <li><strong>采样器</strong>用 <code>res_multistep</code>，模板默认 4 步；</li>
 <li><strong>视频和音频各走一个 VAE 解码</strong>，最后在 <code>Create Video</code> 里合成 MP4。</li>
 </ul>
-<p>时长不是随便填的。模型按 24fps 的帧网格生成，合法帧数满足 <code>17k + 5</code>；界面会把秒数吸附到最近的合法值。5 秒对应 124 帧（5.17 秒），这也是模板的默认值。第一次跑不需要改。</p>
-<h2 id="3-把运行时和-comfyui-装好">3. 把运行时和 ComfyUI 装好</h2>
+<p>时长不是随便填的。模型按 24fps 的帧网格生成，合法帧数满足 <code>17k + 5</code>；界面会自动把秒数吸附到最近的合法值，不用手算。5 秒对应 124 帧（5.17 秒），这也是模板的默认值。第一次跑不需要改。</p>
+<h2 id="3-把会话和-comfyui-装好">3. 把会话和 ComfyUI 装好</h2>
 <h3 id="3-1-创建-g4-会话">3.1 创建 G4 会话</h3>
 <ol>
 <li>打开 ColabDesk，登录 Google 账号。</li>
@@ -284,7 +287,7 @@ dl <span class="hljs-variable">$B</span>/loras/minimax_h3_fl2v_turbo_8step_v1.0_
 <li><code>nohup ... &amp;</code>：让 ComfyUI 脱离终端。关标签页或断开 ColabDesk 不会中断生成。</li>
 </ul>
 <h3 id="4-2-开一条临时隧道">4.2 开一条临时隧道</h3>
-<p>Colab 没有固定的公网 IP，也不对外暴露 8188。运行时只有一个 SSH 通道，ColabDesk 已经占着它。所以不要在本地再 <code>ssh -L</code>，而是在运行时里开一条出站 HTTPS 隧道：</p>
+<p>Colab 没有固定的公网 IP，也不对外暴露 8188。一个会话只接受一条 SSH 连接，ColabDesk 已经占着它。所以不要在本地再 <code>ssh -L</code>，而是在会话里开一条出站 HTTPS 隧道：</p>
 <div class="code-block" data-language="bash"><pre><code class="hljs">wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
   -O /usr/local/bin/cloudflared
 <span class="hljs-built_in">chmod</span> +x /usr/local/bin/cloudflared
@@ -300,16 +303,16 @@ pkill -f cloudflared 2&gt;/dev/null || <span class="hljs-literal">true</span>
 
 <span class="hljs-built_in">sleep</span> 12
 grep -oE <span class="hljs-string">&#x27;https://[a-z0-9-]+\.trycloudflare\.com&#x27;</span> /content/cloudflared.log | <span class="hljs-built_in">tail</span> -1</code></pre></div><p>复制输出的 <code>https://....trycloudflare.com</code>，在本地浏览器打开。</p>
-<p>第一次打开可能需要十几秒。如果页面一直转圈，先在运行时里量一下延迟：</p>
+<p>第一次打开可能需要十几秒。如果页面一直转圈，先在会话里量一下延迟：</p>
 <div class="code-block" data-language="bash"><pre><code class="hljs">curl -s -o /dev/null -w <span class="hljs-string">&quot;total=%{time_total}s\n&quot;</span> https://你的地址/system_stats</code></pre></div><p>正常应该在 0.3 秒以内。如果是秒级，先换一个边缘节点：<code>pkill -f cloudflared</code>，再执行一次启动命令。仍然慢就走 4.3。</p>
 <blockquote>
 <p><strong>安全</strong>：quick tunnel 的地址是公开的，拿到链接的人都能操作你的 ComfyUI。不要分享，用完 <code>pkill -f cloudflared</code>。</p>
 </blockquote>
 <h3 id="4-3-如果隧道很慢-改用-ssh-转发">4.3 如果隧道很慢：改用 SSH 转发</h3>
-<p>如果隧道延迟一直很高，可以让本地 <code>ssh</code> 直接转发端口。代价是这条连接会占用运行时唯一的 SSH 通道，ColabDesk 在此期间连不上：</p>
+<p>如果隧道延迟一直很高，可以让本地 <code>ssh</code> 直接转发端口。代价是这条连接会占用会话唯一的 SSH 连接，ColabDesk 在此期间连不上：</p>
 <ol>
 <li>关闭 ColabDesk 里这个会话的工作区，释放 SSH 连接。</li>
-<li>在本地终端执行（别名由 ColabDesk 的 SSH 配置生成）：</li>
+<li>在 ColabDesk 的会话菜单里复制 SSH 配置，粘贴到 <code>~/.ssh/config</code>；然后在本地终端执行（别名形如 <code>colabdesk-会话名</code>）：</li>
 </ol>
 <div class="code-block" data-language="bash"><pre><code class="hljs">ssh -N -L 8188:127.0.0.1:8188 colabdesk-你的会话名</code></pre></div><ol start="3">
 <li>浏览器打开 <code>http://127.0.0.1:8188</code>。</li>
@@ -321,7 +324,7 @@ grep -oE <span class="hljs-string">&#x27;https://[a-z0-9-]+\.trycloudflare\.com&
 <p>画布上是一个大的 <strong>Image to Video (MiniMax H3)</strong> 节点。模板已经连好线，第一次不需要改。</p>
 <h3 id="5-2-认识画布上的控件">5.2 认识画布上的控件</h3>
 <p>外圈可以直接改：</p>
-<table>
+<div class="table-scroll"><table>
 <thead>
 <tr>
 <th>控件</th>
@@ -330,35 +333,36 @@ grep -oE <span class="hljs-string">&#x27;https://[a-z0-9-]+\.trycloudflare\.com&
 </tr>
 </thead>
 <tbody><tr>
-<td><code>prompt</code></td>
-<td>提示词</td>
-<td>先别改，用模板自带的</td>
+<td data-label="控件"><code>prompt</code></td>
+<td data-label="含义">提示词</td>
+<td data-label="第一次建议">先别改，用模板自带的</td>
 </tr>
 <tr>
-<td><code>width</code> / <code>height</code></td>
-<td>分辨率</td>
-<td>保持 <code>1344 × 768</code></td>
+<td data-label="控件"><code>width</code> / <code>height</code></td>
+<td data-label="含义">分辨率</td>
+<td data-label="第一次建议">保持 <code>1344 × 768</code></td>
 </tr>
 <tr>
-<td>秒数</td>
-<td>时长，自动吸附到合法帧数</td>
-<td>保持 <code>5</code>（124 帧）</td>
+<td data-label="控件">秒数</td>
+<td data-label="含义">时长，自动吸附到合法帧数</td>
+<td data-label="第一次建议">保持 <code>5</code>（124 帧）</td>
 </tr>
 <tr>
-<td><code>noise_seed</code></td>
-<td>随机种子</td>
-<td>不动</td>
+<td data-label="控件"><code>noise_seed</code></td>
+<td data-label="含义">随机种子</td>
+<td data-label="第一次建议">不动</td>
 </tr>
 <tr>
-<td>模型下拉框</td>
-<td>五个权重</td>
-<td>确认指向第 2 节下载的文件</td>
+<td data-label="控件">模型下拉框</td>
+<td data-label="含义">五个权重</td>
+<td data-label="第一次建议">确认指向第 2 节下载的文件</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <p>如果模板弹窗提示缺少模型，可以直接点弹窗里的 <strong>Download</strong>。下载完确认下拉框指向的是同一批文件。</p>
 <h3 id="5-3-点-queue-等它出片">5.3 点 Queue，等它出片</h3>
 <p>点 <strong>Queue</strong>。第一次运行会把约 39GB 权重读进显存，进度条可能静止几十秒，这是正常的。另开一个终端看显存：</p>
-<div class="code-block" data-language="bash"><pre><code class="hljs">watch -n 2 nvidia-smi</code></pre></div><p>出片后，文件在：</p>
+<div class="code-block" data-language="bash"><pre><code class="hljs">watch -n 2 nvidia-smi</code></pre></div><p>没有 <code>watch</code> 就用 <code>nvidia-smi -l 2</code>。</p>
+<p>出片后，文件在：</p>
 <div class="code-block"><pre><code class="hljs">/content/ComfyUI/output/video/MiniMax_H3_*.mp4</code></pre></div><p>自带立体声音轨，可以直接播放。第一次不用追求完美，先确认三件事：画面能动、有声音、没有报错。这三件事成立，再改提示词和时长。</p>
 <h2 id="6-提示词怎么写才不浪费一次生成">6. 提示词怎么写才不浪费一次生成</h2>
 <h3 id="6-1-五段结构">6.1 五段结构</h3>
@@ -371,6 +375,7 @@ grep -oE <span class="hljs-string">&#x27;https://[a-z0-9-]+\.trycloudflare\.com&
 <li><strong>声音</strong>：环境音、动作音效、配乐或台词。</li>
 </ol>
 <h3 id="6-2-一个可用的例子">6.2 一个可用的例子</h3>
+<p>把这段粘到模板的 <code>prompt</code> 输入框里：</p>
 <div class="code-block" data-language="text"><pre><code class="hljs">A quiet rainy street at night, neon signs reflecting on wet asphalt.
 A woman in a dark coat stands under a bus stop, holding a folded umbrella.
 
@@ -409,9 +414,9 @@ curl -s -o /dev/null -w <span class="hljs-string">&quot;tunnel=%{http_code} %{ti
 <h3 id="7-4-成片没有声音">7.4 成片没有声音</h3>
 <p>检查 <code>minimax_h3_audio_vae_fp32.safetensors</code> 是否在 <code>models/vae/</code>，以及模板里 <code>VAEDecodeAudio</code> 是否接着音频 VAE。声音是模型原生生成的，不需要额外配音插件。</p>
 <h3 id="7-5-重启后一切消失">7.5 重启后一切消失</h3>
-<p><code>/content</code> 是临时磁盘，停止会话就清空。这是 Colab 的行为，不是 ColabDesk 的缓存问题。下次重新执行 3.2 和 3.3；想省下载时间，可以把模型放到 Google Drive，再软链回 <code>models/</code>。</p>
+<p><code>/content</code> 是临时磁盘，停止会话就清空。这是 Colab 的行为，不是 ColabDesk 的缓存问题。下次重新执行 3.2 和 3.3；模型下载一次大约 5–15 分钟。</p>
 <h3 id="7-6-其他常见错误">7.6 其他常见错误</h3>
-<table>
+<div class="table-scroll"><table>
 <thead>
 <tr>
 <th>现象</th>
@@ -420,36 +425,36 @@ curl -s -o /dev/null -w <span class="hljs-string">&quot;tunnel=%{http_code} %{ti
 </tr>
 </thead>
 <tbody><tr>
-<td><code>torch.cuda.is_available()</code> 为 <code>False</code></td>
-<td>PyTorch 与显卡架构不匹配</td>
-<td>重装 cu128 wheel</td>
+<td data-label="现象"><code>torch.cuda.is_available()</code> 为 <code>False</code></td>
+<td data-label="原因">PyTorch 与显卡架构不匹配</td>
+<td data-label="处理">重装 cu128 wheel</td>
 </tr>
 <tr>
-<td><code>no kernel image is available</code></td>
-<td>同上</td>
-<td>同上</td>
+<td data-label="现象"><code>no kernel image is available</code></td>
+<td data-label="原因">同上</td>
+<td data-label="处理">同上</td>
 </tr>
 <tr>
-<td>模板里找不到 MiniMax</td>
-<td>ComfyUI 太旧</td>
-<td><code>cd /content/ComfyUI &amp;&amp; git pull</code>，重启</td>
+<td data-label="现象">模板里找不到 MiniMax</td>
+<td data-label="原因">ComfyUI 太旧</td>
+<td data-label="处理"><code>cd /content/ComfyUI &amp;&amp; git pull</code>，重启</td>
 </tr>
 <tr>
-<td>模型下拉框为空</td>
-<td>文件不在对应 <code>models/</code> 子目录</td>
-<td>按第 2 节的表检查路径</td>
+<td data-label="现象">模型下拉框为空</td>
+<td data-label="原因">文件不在对应 <code>models/</code> 子目录</td>
+<td data-label="处理">按第 2 节的表检查路径</td>
 </tr>
 <tr>
-<td>第一次 Queue 很久没动静</td>
-<td>正在把权重读进显存</td>
-<td>等；用 <code>nvidia-smi</code> 看显存增长</td>
+<td data-label="现象">第一次 Queue 很久没动静</td>
+<td data-label="原因">正在把权重读进显存</td>
+<td data-label="处理">等；用 <code>nvidia-smi</code> 看显存增长</td>
 </tr>
 <tr>
-<td>本地 <code>ssh -L</code> 连不上</td>
-<td>运行时只有一条 SSH，ColabDesk 已占用</td>
-<td>关闭工作区后再连，或走隧道</td>
+<td data-label="现象">本地 <code>ssh -L</code> 连不上</td>
+<td data-label="原因">一个会话只有一条 SSH 连接，ColabDesk 已占用</td>
+<td data-label="处理">关闭工作区后再连，或走隧道</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <h2 id="8-收尾-把成片拿走-把算力关掉">8. 收尾：把成片拿走，把算力关掉</h2>
 <ol>
 <li>在 ColabDesk 文件面板进入 <code>/content/ComfyUI/output/video/</code>，下载 MP4。</li>
@@ -468,7 +473,7 @@ curl -s -o /dev/null -w <span class="hljs-string">&quot;tunnel=%{http_code} %{ti
 <li><strong>参考生视频</strong>：打开 <strong>MiniMax H3: Reference to Video</strong>，用人物照片锁定长相；</li>
 <li><strong>更长、多镜头</strong>：把多段 5–8 秒的片段分别生成，再在本地剪辑；</li>
 <li><strong>更高分辨率</strong>：先生成 768p，再单独做一次放大；</li>
-<li><strong>更复杂的连续性</strong>：多人同框、跨段续接、远景小脸精修，是另一层能力；先把最小版本跑熟，再往上加。</li>
+<li><strong>更复杂的连续性</strong>：多人同框、跨段续接、远景小脸精修，需要额外的插件和调参；先把最小版本跑熟，再往上加。</li>
 </ul>
 <p>模型和模板的完整列表在 ComfyUI 的 Template Library 和 <a href="https://huggingface.co/Comfy-Org/MiniMax-H3">Comfy-Org/MiniMax-H3</a>。</p>
 <hr>
@@ -535,7 +540,7 @@ grep -oE <span class="hljs-string">&#x27;https://[a-z0-9-]+\.trycloudflare\.com&
         <ol class="post-toc__list">
           <li class="post-toc__item"><a href="#1-这套东西在做什么-一分钟版">1. 这套东西在做什么（一分钟版）</a></li>
             <li class="post-toc__item"><a href="#2-只靠五个文件就能跑">2. 只靠五个文件就能跑</a></li>
-            <li class="post-toc__item"><a href="#3-把运行时和-comfyui-装好">3. 把运行时和 ComfyUI 装好</a></li>
+            <li class="post-toc__item"><a href="#3-把会话和-comfyui-装好">3. 把会话和 ComfyUI 装好</a></li>
             <li class="post-toc__item"><a href="#4-把界面带到浏览器">4. 把界面带到浏览器</a></li>
             <li class="post-toc__item"><a href="#5-生成第一段视频">5. 生成第一段视频</a></li>
             <li class="post-toc__item"><a href="#6-提示词怎么写才不浪费一次生成">6. 提示词怎么写才不浪费一次生成</a></li>

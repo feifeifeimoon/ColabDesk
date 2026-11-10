@@ -188,6 +188,58 @@ function captionFigures(html) {
   });
 }
 
+/** Wraps tables for horizontal scrolling, and labels every cell for the stacked phone layout. */
+function wrapTables(html) {
+  return html.replace(/<table>([\s\S]*?)<\/table>/g, (_match, inner) => {
+    const head = /<thead>[\s\S]*?<tr>([\s\S]*?)<\/tr>[\s\S]*?<\/thead>/.exec(inner);
+    const headers = head
+      ? [...head[1].matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)].map((cell) =>
+          cell[1].replace(/<[^>]+>/g, "").trim(),
+        )
+      : [];
+
+    let body = inner;
+    if (headers.length) {
+      body = inner.replace(/<tbody>([\s\S]*?)<\/tbody>/, (_tbodyMatch, tbody) => {
+        const rows = tbody.replace(/<tr>([\s\S]*?)<\/tr>/g, (_rowMatch, row) => {
+          let column = 0;
+          const cells = row.replace(/<td([^>]*)>([\s\S]*?)<\/td>/g, (_cellMatch, attributes, cell) => {
+            const label = headers[column++] ?? "";
+            return `<td${attributes} data-label="${escapeHtml(label)}">${cell}</td>`;
+          });
+          return `<tr>${cells}</tr>`;
+        });
+        return `<tbody>${rows}</tbody>`;
+      });
+    }
+
+    return `<div class="table-scroll"><table>${body}</table></div>`;
+  });
+}
+
+/**
+ * When a post opens with an intro quote, the cover moves just below it: the
+ * reader gets the hook, then the artwork, then the detail. A post without a
+ * quote keeps the cover under the header (or before its first divider).
+ */
+function placeCover(content, cover) {
+  if (!cover) return { content, cover: "" };
+  const quoteEnd = content.indexOf("</blockquote>");
+  if (quoteEnd >= 0) {
+    const insertAt = quoteEnd + "</blockquote>".length;
+    return {
+      content: `${content.slice(0, insertAt)}${cover}\n${content.slice(insertAt)}`,
+      cover: "",
+    };
+  }
+  const divider = content.indexOf("<hr>");
+  if (divider < 0) return { content, cover };
+  return {
+    content: `${content.slice(0, divider)}${cover}\n${content.slice(divider)}`,
+    cover: "",
+  };
+}
+
 // Fenced code is highlighted at build time; the site ships classes, not a
 // highlighter. An unknown language is escaped and left plain.
 marked.use({
@@ -446,8 +498,8 @@ function renderArticle(group, post, groups) {
   }
 
   const { html: withIds, headings } = addHeadingIds(marked.parse(post.body, { gfm: true }));
-  const content = captionFigures(withIds);
-  assertSafeHtml(content, post.source);
+  const rendered = wrapTables(captionFigures(withIds));
+  assertSafeHtml(rendered, post.source);
   const minutes = readingMinutes(post.body);
 
   const tags = post.tags.length
@@ -501,9 +553,10 @@ function renderArticle(group, post, groups) {
         </section>`
     : "";
 
-  const cover = post.cover
+  const coverImage = post.cover
     ? `\n        <img class="post__cover" src="${escapeHtml(post.cover)}" alt="" width="1200" height="630">`
     : "";
+  const placed = placeCover(rendered, coverImage);
   const tocBlock = toc ? `\n      ${toc}` : "";
 
   const alternateFooter = alternate
@@ -545,9 +598,9 @@ function renderArticle(group, post, groups) {
             <span>${labels.readingTime(minutes)}</span>
           </div>
           ${tags ? `<div class="post__tags">${tags}</div>` : ""}
-        </header>${cover}
+        </header>${placed.cover}
         ${mobileToc}
-        <div class="post__body">${content}</div>
+        <div class="post__body">${placed.content}</div>
         <footer class="post__footer">
           <a class="post__back" href="${indexPath(lang)}">← ${labels.back}</a>
           ${alternateFooter}

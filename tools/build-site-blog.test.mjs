@@ -154,6 +154,14 @@ category: Tutorial
 cover: /assets/blog/x/cover.png
 ---
 
+This is the intro.
+
+| Column | Value |
+| --- | --- |
+| One | 1 |
+
+---
+
 ## One
 
 Text.
@@ -197,6 +205,10 @@ date: 2026-01-03
     expect(html).toContain('class="post__cover"');
     expect(html).toContain('property="og:image"');
     expect(html).toContain('content="summary_large_image"');
+    expect(html).toContain('<div class="table-scroll"><table>');
+    expect(html).toContain('data-label="Column"');
+    expect(html.indexOf('class="post__cover"')).toBeGreaterThan(html.indexOf("This is the intro."));
+    expect(html.indexOf('class="post__cover"')).toBeLessThan(html.indexOf("<hr>"));
     expect(html).toContain('class="code-block" data-language="bash"');
     expect(html).toContain("hljs-built_in");
     expect(html).toContain('<figure class="post__figure">');

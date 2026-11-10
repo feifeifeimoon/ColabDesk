@@ -1,6 +1,6 @@
 ---
 title: Generate Sound-Enabled AI Video with ColabDesk + ComfyUI
-description: From an empty G4 runtime to an MP4 with stereo audio — install ComfyUI, download the official MiniMax H3 weights, and generate your first clip.
+description: From an empty G4 session to an MP4 with stereo audio — install ComfyUI, download the official MiniMax H3 weights, and generate your first clip.
 date: 2026-11-10
 category: Tutorial
 tags: [tutorial, comfyui, minimax]
@@ -9,20 +9,20 @@ cover: /assets/blog/minimax-h3-video/cover-en.png
 
 > You have a Colab G4 and want a video with sound, but you do not want to read a full deployment manual first.
 >
-> This guide does one thing: start from an empty runtime, install ComfyUI and the official MiniMax H3 weights, and produce a first MP4 with stereo audio. Every step has a command you can paste, plus what you should see when it worked.
+> This guide does one thing: start from an empty G4 session, install ComfyUI and the official MiniMax H3 weights, and produce a first MP4 with stereo audio. Every step has a command you can paste, plus what you should see when it worked.
 
-MiniMax H3 is a 33B omni-modal model: picture and sound are generated in the same diffusion process, so lip movement, room tone and action are aligned instead of being stitched together afterwards. The open weights target about one megapixel (768px short edge), 24fps and up to roughly 15 seconds. 2K is a hosted-service output; locally it needs a separate upscale pass.
+MiniMax H3 is a 33-billion-parameter omni-modal model: picture and sound are generated in the same diffusion process, so lip movement, room tone and action are aligned instead of being stitched together afterwards. The open weights target about one megapixel (768px short edge), 24fps and up to roughly 15 seconds. 2K needs a hosted service such as Comfy Cloud; locally it takes a separate upscale pass.
 
-ComfyUI is the node-based interface that wires the model, sampler and decoders into a graph. ColabDesk is the desktop console for the Colab runtime: it creates the G4, opens a real terminal, browses the files and shows what the runtime is spending. Together they need no local GPU.
+ComfyUI is the node-based interface that wires the model, sampler and decoders into a graph. ColabDesk is the desktop console for the Colab session: it creates the G4, opens a real terminal, browses the files and shows what the session is spending. Together they need no local GPU.
 
 This guide covers:
 
-① What each piece in the workflow does;
-② Why a 96GB G4 is enough;
-③ How to create the runtime, install ComfyUI and download 39GB of weights;
-④ How to bring ComfyUI's interface to your browser;
-⑤ How to generate the first clip and write a prompt;
-⑥ What to check when something goes wrong, and how to clean up.
+- What each piece in the workflow does;
+- Why a 96GB G4 is enough;
+- How to create the session, install ComfyUI and download 39GB of weights;
+- How to bring ComfyUI's interface to your browser;
+- How to generate the first clip and write a prompt;
+- What to check when something goes wrong, and how to clean up.
 
 | Item | Detail |
 | --- | --- |
@@ -30,25 +30,25 @@ This guide covers:
 | Hardware | Colab G4 (RTX PRO 6000 Blackwell, 96GB VRAM) |
 | Disk | About 60GB: 39GB of weights plus ComfyUI and dependencies |
 | First run | 40–60 minutes, including 5–15 minutes of downloads |
-| Cost | G4 is about 8.9 CU/hour; use the live reading in ColabDesk's status bar |
+| Cost | G4 is about 8.9 compute units per hour (Colab's billing unit); use the live reading in ColabDesk's status bar |
 | Output | 1344×768, 24fps, about 5 seconds, stereo audio, MP4 |
 
 ---
 
 ## 1. What each piece does (the one-minute version)
 
-![Figure 1 · ColabDesk reaches the runtime over SSH; ComfyUI reaches the browser through a temporary HTTPS tunnel](/assets/blog/minimax-h3-video/pipeline.png)
+![Figure 1 · ColabDesk reaches the Colab session over SSH; ComfyUI reaches the browser through a temporary HTTPS tunnel](/assets/blog/minimax-h3-video/pipeline.png)
 
 There are four roles, and they are easier to understand separately:
 
-- **ColabDesk**: the desktop SSH console. It creates the G4 session, gives you a real terminal and an SFTP file panel, and shows what the runtime is spending.
+- **ColabDesk**: the desktop SSH console. It creates the G4 session, gives you a real terminal and a file panel, and shows what the session is spending.
 - **Colab G4**: the cloud GPU with 96GB of VRAM. It runs ComfyUI and the weights; `/content` is wiped when the session stops.
-- **ComfyUI**: the node-based interface served as a web page from the runtime. It listens only on `127.0.0.1:8188`.
+- **ComfyUI**: the node-based interface served as a web page from the session. It listens only on `127.0.0.1:8188`.
 - **MiniMax H3**: the model that actually generates picture and sound.
 
-MiniMax H3 does not produce a silent video and then dub it. It samples video and audio in one latent space, so speech, breathing, room tone and motion are computed together. That is why it sounds more natural than a video model with a separate voice pass.
+MiniMax H3 does not produce a silent video and then dub it. It samples video and audio in the model's internal feature space (the latent space), so speech, breathing, room tone and motion are computed together. That is why it sounds more natural than a video model with a separate voice pass.
 
-The price is VRAM. Even after pruning and quantization, the 33B model is about 39GB of weights; add the sampling activations and a 24GB or 48GB card spends its time swapping weights in and out. The G4's 96GB is what makes this workflow comfortable, not a marketing number.
+The price is VRAM. Even after pruning and quantization, the 33-billion-parameter model is about 39GB of weights; add the sampling activations and a 24GB or 48GB card spends its time swapping weights in and out. The G4's 96GB is what makes this workflow comfortable, not a marketing number.
 
 ## 2. Five files are enough
 
@@ -57,10 +57,10 @@ This minimal workflow does one thing — text or image to video — and leaves o
 | File | Role | Size (GB) |
 | --- | --- | ---: |
 | `minimax_h3_fl2va_pruned_int8_convrot.safetensors` | Diffusion model; produces the picture | 19.53 |
-| `qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors` | Text encoder; reads the prompt | 14.61 |
-| `minimax_h3_video_vae_int8_convrot.safetensors` | Video VAE; latent space ↔ pixels | 2.62 |
-| `minimax_h3_audio_vae_fp32.safetensors` | Audio VAE; latent space ↔ 32kHz stereo | 0.56 |
-| `minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors` | Step-distillation LoRA; lets the sampler use very few steps | 1.82 |
+| `qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors` | Text encoder; turns the prompt into something the model can read | 14.61 |
+| `minimax_h3_video_vae_int8_convrot.safetensors` | Video decoder (VAE); turns the model's internal representation into pixels | 2.62 |
+| `minimax_h3_audio_vae_fp32.safetensors` | Audio decoder (VAE); turns it into 32kHz stereo | 0.56 |
+| `minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors` | Acceleration LoRA (a small set of extra weights); lets the sampler use very few steps | 1.82 |
 
 About 39GB in total, all from the official `Comfy-Org/MiniMax-H3` repository.
 
@@ -74,9 +74,9 @@ Only three things are worth remembering before you run it:
 - the **sampler** is `res_multistep`, and the template uses 4 steps;
 - **video and audio each go through a VAE decode**, then `Create Video` muxes the MP4.
 
-Duration is not arbitrary. The model generates on a 24fps frame grid, and valid lengths follow `17k + 5`; the interface snaps the seconds you type to the nearest legal value. Five seconds is 124 frames (5.17s), which is also the template default. You do not need to change it on the first run.
+Duration is not arbitrary. The model generates on a 24fps frame grid, and valid lengths follow `17k + 5`; the interface snaps the seconds you type to the nearest legal value, so you do not need to do the math. Five seconds is 124 frames (5.17s), which is also the template default. You do not need to change it on the first run.
 
-## 3. Set up the runtime and ComfyUI
+## 3. Set up the session and ComfyUI
 
 ### 3.1 Create the G4 session
 
@@ -213,7 +213,7 @@ Why these flags:
 
 ### 4.2 Open a temporary tunnel
 
-Colab has no fixed public IP and does not expose port 8188. The runtime has one SSH channel, and ColabDesk is using it. So do not reach for a local `ssh -L`; start an outbound HTTPS tunnel inside the runtime:
+Colab has no fixed public IP and does not expose port 8188. A session accepts one SSH connection, and ColabDesk is using it. So do not reach for a local `ssh -L`; start an outbound HTTPS tunnel inside the session:
 
 ```bash
 wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
@@ -235,7 +235,7 @@ grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' /content/cloudflared.log | tai
 
 Copy the `https://....trycloudflare.com` address it prints and open it in your browser.
 
-The first load may take a while. If the page never settles, measure the tunnel from the runtime:
+The first load may take a while. If the page never settles, measure the tunnel from the session:
 
 ```bash
 curl -s -o /dev/null -w "total=%{time_total}s\n" https://your-address/system_stats
@@ -247,10 +247,10 @@ Under normal conditions this is below 0.3 seconds. If it takes seconds, restart 
 
 ### 4.3 If the tunnel is slow: use SSH forwarding
 
-If the tunnel latency stays high, let a local `ssh` forward the port. The cost is that this connection occupies the runtime's only SSH channel, so ColabDesk cannot connect while it is open:
+If the tunnel latency stays high, let a local `ssh` forward the port. The cost is that this connection occupies the session's only SSH connection, so ColabDesk cannot connect while it is open:
 
 1. Close the ColabDesk workspace for this session, which releases its SSH connection.
-2. On your computer, use the alias ColabDesk generated:
+2. Copy the SSH config from ColabDesk's session menu into `~/.ssh/config`; on your computer, use the resulting alias (it looks like `colabdesk-<session>`):
 
 ```bash
 ssh -N -L 8188:127.0.0.1:8188 colabdesk-your-session-name
@@ -290,6 +290,8 @@ Click **Queue**. The first run loads about 39GB of weights into VRAM; the progre
 watch -n 2 nvidia-smi
 ```
 
+If `watch` is not installed, use `nvidia-smi -l 2`.
+
 The result lands here:
 
 ```
@@ -311,6 +313,8 @@ MiniMax H3 responds best to a structured description. A usable prompt has five p
 5. **Sound**: ambience, Foley, music or dialogue.
 
 ### 6.2 A usable example
+
+Paste this into the template's `prompt` field:
 
 ```text
 A quiet rainy street at night, neon signs reflecting on wet asphalt.
@@ -370,7 +374,7 @@ Check that `minimax_h3_audio_vae_fp32.safetensors` is in `models/vae/`, and that
 
 ### 7.5 Everything disappeared after a restart
 
-`/content` is temporary disk; stopping the session clears it. That is Colab's behaviour, not a ColabDesk cache. Repeat 3.2 and 3.3 next time; to save the download, put the weights on Google Drive and symlink them back into `models/`.
+`/content` is temporary disk; stopping the session clears it. That is Colab's behaviour, not a ColabDesk cache. Repeat 3.2 and 3.3 next time; the download takes 5–15 minutes.
 
 ### 7.6 Other common errors
 
@@ -381,7 +385,7 @@ Check that `minimax_h3_audio_vae_fp32.safetensors` is in `models/vae/`, and that
 | MiniMax templates are missing | ComfyUI is too old | `cd /content/ComfyUI && git pull`, then restart |
 | The model dropdowns are empty | Files are not in the right `models/` subdirectory | Check the paths in section 2 |
 | The first Queue seems stuck | Weights are loading into VRAM | Wait; watch VRAM with `nvidia-smi` |
-| Local `ssh -L` cannot connect | One SSH channel, held by ColabDesk | Close the workspace first, or use the tunnel |
+| Local `ssh -L` cannot connect | One SSH connection, held by ColabDesk | Close the workspace first, or use the tunnel |
 
 ## 8. Clean up: take the clip, stop the meter
 
@@ -404,7 +408,7 @@ Once text-to-video works, the same environment covers:
 - **Reference to video**: open **MiniMax H3: Reference to Video** and lock a character with photos;
 - **Longer, multi-shot pieces**: generate several 5–8 second clips and join them in an editor;
 - **Higher resolution**: generate at 768p first, then run a separate upscale pass;
-- **Harder continuity**: multiple people in frame, cross-segment continuation, far-face refinement — another layer of capability; get the minimal version comfortable first.
+- **Harder continuity**: multiple people in frame, cross-segment continuation, far-face refinement — they need extra plugins and tuning; get the minimal version comfortable first.
 
 The full model and template list is in ComfyUI's Template Library and [Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3).
 

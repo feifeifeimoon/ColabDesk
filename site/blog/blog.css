@@ -525,6 +525,17 @@ html {
   font-size: var(--text-copy);
 }
 
+/* A wide table scrolls inside the article instead of widening the page. */
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.table-scroll table {
+  width: max-content;
+  min-width: 100%;
+}
+
 .post__body th,
 .post__body td {
   padding: var(--space-2) var(--space-3);
@@ -740,6 +751,61 @@ html {
 
   .blog-nav__github-label {
     display: none;
+  }
+
+  /* A three-column table is unreadable in 358px. Each row becomes a small
+     definition list; the header labels come from the generated data-label. */
+  .post__body table,
+  .post__body thead,
+  .post__body tbody,
+  .post__body tr,
+  .post__body td {
+    display: block;
+  }
+
+  .post__body thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .post__body table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .post__body tbody tr {
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .post__body tbody tr:first-child {
+    border-top: 1px solid var(--hairline);
+  }
+
+  .post__body td {
+    padding: 2px 0;
+    border: 0;
+  }
+
+  .post__body td::before {
+    content: attr(data-label);
+    display: block;
+    color: var(--mute);
+    font-size: var(--text-micro);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .table-scroll {
+    overflow-x: visible;
+  }
+
+  .table-scroll table {
+    width: 100%;
+    min-width: 0;
   }
 }
 

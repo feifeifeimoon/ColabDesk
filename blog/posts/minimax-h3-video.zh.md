@@ -1,28 +1,28 @@
 ---
 title: 用 ColabDesk + ComfyUI 生成带声音的 AI 视频
-description: 从一台空的 G4 运行时到一段带立体声的 MP4：安装 ComfyUI、下载 MiniMax H3 官方权重、跑通第一段视频。
+description: 从一个空的 G4 会话到一段带立体声的 MP4：安装 ComfyUI、下载 MiniMax H3 官方权重、跑通第一段视频。
 date: 2026-11-10
 category: 教程
-tags: [tutorial, comfyui, minimax]
+tags: [教程, ComfyUI, MiniMax]
 cover: /assets/blog/minimax-h3-video/cover-zh.png
 ---
 
 > 你有一台 Colab G4，想生成一段带声音的视频，但不想先读完整套部署文档。
 >
-> 这篇教程只做一件事：从一台空的运行时开始，装好 ComfyUI 和 MiniMax H3 官方权重，跑出第一段带立体声的 MP4。每一步都有可复制的命令，以及「你应该看到什么」。
+> 这篇教程只做一件事：从一个空的 G4 会话开始，装好 ComfyUI 和 MiniMax H3 官方权重，跑出第一段带立体声的 MP4。每一步都有可复制的命令，以及「你应该看到什么」。
 
-MiniMax H3 是一个 33B 的原生音视频模型：画面和声音在同一个扩散过程里生成，所以口型、环境音和动作是对齐的，不需要先出无声视频再后期配音。官方开源权重面向约 1 百万像素（768 短边）、24fps、最长约 15 秒；2K 是托管服务的能力，本地要另外做一次超分。
+MiniMax H3 是一个 330 亿参数的原生音视频模型：画面和声音在同一个扩散过程里生成，所以口型、环境音和动作是对齐的，不需要先出无声视频再后期配音。官方开源权重面向约 100 万像素（短边 768）、24fps、最长约 15 秒；2K 需要 Comfy Cloud 这类托管服务，本地要另外做一次超分。
 
-ComfyUI 是节点式生成界面，负责把模型、采样器和解码器连成一张图。ColabDesk 是连接 Colab 运行时的桌面控制台：创建 G4、打开终端、浏览文件、看算力消耗。三者拼起来，本地不需要显卡。
+ComfyUI 是节点式生成界面，负责把模型、采样器和解码器连成一张图。ColabDesk 是连接 Colab 会话的桌面控制台：创建 G4、打开终端、浏览文件、看算力消耗。三者拼起来，本地不需要显卡。
 
 这篇教程覆盖：
 
-① 这套工作流里每个部分分别在做什么；
-② 为什么一张 96GB 的 G4 够用；
-③ 怎么创建运行时、安装 ComfyUI、下载 39GB 权重；
-④ 怎么把 ComfyUI 的界面带到浏览器；
-⑤ 怎么生成第一段视频，提示词怎么写；
-⑥ 出问题时先检查什么，最后怎么收尾。
+- 这套工作流里每个部分分别在做什么；
+- 为什么一张 96GB 的 G4 够用；
+- 怎么创建会话、安装 ComfyUI、下载 39GB 权重；
+- 怎么把 ComfyUI 的界面带到浏览器；
+- 怎么生成第一段视频，提示词怎么写；
+- 出问题时先检查什么，最后怎么收尾。
 
 | 项目 | 说明 |
 | --- | --- |
@@ -30,25 +30,25 @@ ComfyUI 是节点式生成界面，负责把模型、采样器和解码器连成
 | 硬件 | Colab G4（RTX PRO 6000 Blackwell，96GB 显存） |
 | 磁盘 | 约 60GB：39GB 权重 + ComfyUI 与依赖 |
 | 首次耗时 | 约 40–60 分钟，其中下载 5–15 分钟 |
-| 费用 | G4 参考 8.9 CU/小时，以 ColabDesk 状态栏为准 |
+| 费用 | G4 参考 8.9 计算单元/小时（Colab 的计费单位），以 ColabDesk 状态栏为准 |
 | 产出 | 1344×768、24fps、约 5 秒、带立体声的 MP4 |
 
 ---
 
 ## 1. 这套东西在做什么（一分钟版）
 
-![图 1 · ColabDesk 通过 SSH 连接运行时；ComfyUI 通过临时 HTTPS 隧道到浏览器](/assets/blog/minimax-h3-video/pipeline.png)
+![图 1 · ColabDesk 通过 SSH 连接 Colab 会话；ComfyUI 通过临时 HTTPS 隧道到浏览器](/assets/blog/minimax-h3-video/pipeline.png)
 
 把四个角色分开看：
 
-- **ColabDesk**：桌面端 SSH 控制台。它创建 G4 会话，给你一个真实终端和 SFTP 文件面板，并显示这个运行时正在消耗多少计算单元。
+- **ColabDesk**：桌面端 SSH 控制台。它创建 G4 会话，给你一个真实终端和文件面板，并显示这个会话正在消耗多少计算单元。
 - **Colab G4**：云端 GPU，96GB 显存。它跑 ComfyUI 和权重，关机后 `/content` 清空。
-- **ComfyUI**：在运行时里以网页形式运行的节点式界面，默认只监听 `127.0.0.1:8188`。
+- **ComfyUI**：在会话里以网页形式运行的节点式界面，默认只监听 `127.0.0.1:8188`。
 - **MiniMax H3**：真正生成画面和声音的模型。
 
-MiniMax H3 不是「先出无声视频，再对口型」。它是原生音视频联合模型，视频和音频在同一个潜空间里采样，所以说话、呼吸、环境音和动作是一起算出来的。这也是它比「视频模型 + 后期配音」更自然的原因。
+MiniMax H3 不是「先出无声视频，再对口型」。它是原生音视频联合模型，视频和音频在模型内部的特征空间（潜空间）里一起算，所以说话、呼吸、环境音和动作是同步的。这也是它比「视频模型 + 后期配音」更自然的原因。
 
-代价是显存：33B 的模型即使做了裁剪和量化，权重仍有约 39GB；再加上采样时的激活值，24GB 或 48GB 的卡会频繁把权重换进换出，速度会慢到不适合迭代。G4 的 96GB 是这套工作流跑得舒服的前提，不是噱头。
+代价是显存：330 亿参数的模型即使做了裁剪和量化，权重仍有约 39GB；再加上采样时的激活值，24GB 或 48GB 的卡会频繁把权重换进换出，速度会慢到不适合迭代。G4 的 96GB 是这套工作流跑得舒服的前提，不是噱头。
 
 ## 2. 只靠五个文件就能跑
 
@@ -57,10 +57,10 @@ MiniMax H3 不是「先出无声视频，再对口型」。它是原生音视频
 | 文件 | 作用 | 大小 (GB) |
 | --- | --- | ---: |
 | `minimax_h3_fl2va_pruned_int8_convrot.safetensors` | 扩散模型，负责出画面 | 19.53 |
-| `qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors` | 文本编码器，负责读提示词 | 14.61 |
-| `minimax_h3_video_vae_int8_convrot.safetensors` | 视频 VAE，潜空间 ↔ 像素 | 2.62 |
-| `minimax_h3_audio_vae_fp32.safetensors` | 音频 VAE，潜空间 ↔ 32kHz 立体声 | 0.56 |
-| `minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors` | 步数蒸馏 LoRA，让步数可以压得很低 | 1.82 |
+| `qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors` | 文本编码器，把提示词变成模型能读的表示 | 14.61 |
+| `minimax_h3_video_vae_int8_convrot.safetensors` | 视频解码器（VAE），把模型内部表示还原成画面 | 2.62 |
+| `minimax_h3_audio_vae_fp32.safetensors` | 音频解码器（VAE），还原成 32kHz 立体声 | 0.56 |
+| `minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors` | 加速 LoRA（一小块附加权重），让步数可以压得很低 | 1.82 |
 
 合计约 39GB，全部来自官方 `Comfy-Org/MiniMax-H3` 仓库。
 
@@ -74,9 +74,9 @@ ComfyUI 的模板会把它们连成一张图。图大概长这样：
 - **采样器**用 `res_multistep`，模板默认 4 步；
 - **视频和音频各走一个 VAE 解码**，最后在 `Create Video` 里合成 MP4。
 
-时长不是随便填的。模型按 24fps 的帧网格生成，合法帧数满足 `17k + 5`；界面会把秒数吸附到最近的合法值。5 秒对应 124 帧（5.17 秒），这也是模板的默认值。第一次跑不需要改。
+时长不是随便填的。模型按 24fps 的帧网格生成，合法帧数满足 `17k + 5`；界面会自动把秒数吸附到最近的合法值，不用手算。5 秒对应 124 帧（5.17 秒），这也是模板的默认值。第一次跑不需要改。
 
-## 3. 把运行时和 ComfyUI 装好
+## 3. 把会话和 ComfyUI 装好
 
 ### 3.1 创建 G4 会话
 
@@ -213,7 +213,7 @@ tail -50 /content/comfyui.log
 
 ### 4.2 开一条临时隧道
 
-Colab 没有固定的公网 IP，也不对外暴露 8188。运行时只有一个 SSH 通道，ColabDesk 已经占着它。所以不要在本地再 `ssh -L`，而是在运行时里开一条出站 HTTPS 隧道：
+Colab 没有固定的公网 IP，也不对外暴露 8188。一个会话只接受一条 SSH 连接，ColabDesk 已经占着它。所以不要在本地再 `ssh -L`，而是在会话里开一条出站 HTTPS 隧道：
 
 ```bash
 wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
@@ -235,7 +235,7 @@ grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' /content/cloudflared.log | tai
 
 复制输出的 `https://....trycloudflare.com`，在本地浏览器打开。
 
-第一次打开可能需要十几秒。如果页面一直转圈，先在运行时里量一下延迟：
+第一次打开可能需要十几秒。如果页面一直转圈，先在会话里量一下延迟：
 
 ```bash
 curl -s -o /dev/null -w "total=%{time_total}s\n" https://你的地址/system_stats
@@ -247,10 +247,10 @@ curl -s -o /dev/null -w "total=%{time_total}s\n" https://你的地址/system_sta
 
 ### 4.3 如果隧道很慢：改用 SSH 转发
 
-如果隧道延迟一直很高，可以让本地 `ssh` 直接转发端口。代价是这条连接会占用运行时唯一的 SSH 通道，ColabDesk 在此期间连不上：
+如果隧道延迟一直很高，可以让本地 `ssh` 直接转发端口。代价是这条连接会占用会话唯一的 SSH 连接，ColabDesk 在此期间连不上：
 
 1. 关闭 ColabDesk 里这个会话的工作区，释放 SSH 连接。
-2. 在本地终端执行（别名由 ColabDesk 的 SSH 配置生成）：
+2. 在 ColabDesk 的会话菜单里复制 SSH 配置，粘贴到 `~/.ssh/config`；然后在本地终端执行（别名形如 `colabdesk-会话名`）：
 
 ```bash
 ssh -N -L 8188:127.0.0.1:8188 colabdesk-你的会话名
@@ -290,6 +290,8 @@ ComfyUI 是 `nohup` 起的，不受影响。用完 `Ctrl+C`，ColabDesk 才能�
 watch -n 2 nvidia-smi
 ```
 
+没有 `watch` 就用 `nvidia-smi -l 2`。
+
 出片后，文件在：
 
 ```
@@ -311,6 +313,8 @@ MiniMax H3 对结构化描述响应最好。一段可用的提示词通常有五
 5. **声音**：环境音、动作音效、配乐或台词。
 
 ### 6.2 一个可用的例子
+
+把这段粘到模板的 `prompt` 输入框里：
 
 ```text
 A quiet rainy street at night, neon signs reflecting on wet asphalt.
@@ -370,7 +374,7 @@ nvidia-smi
 
 ### 7.5 重启后一切消失
 
-`/content` 是临时磁盘，停止会话就清空。这是 Colab 的行为，不是 ColabDesk 的缓存问题。下次重新执行 3.2 和 3.3；想省下载时间，可以把模型放到 Google Drive，再软链回 `models/`。
+`/content` 是临时磁盘，停止会话就清空。这是 Colab 的行为，不是 ColabDesk 的缓存问题。下次重新执行 3.2 和 3.3；模型下载一次大约 5–15 分钟。
 
 ### 7.6 其他常见错误
 
@@ -381,7 +385,7 @@ nvidia-smi
 | 模板里找不到 MiniMax | ComfyUI 太旧 | `cd /content/ComfyUI && git pull`，重启 |
 | 模型下拉框为空 | 文件不在对应 `models/` 子目录 | 按第 2 节的表检查路径 |
 | 第一次 Queue 很久没动静 | 正在把权重读进显存 | 等；用 `nvidia-smi` 看显存增长 |
-| 本地 `ssh -L` 连不上 | 运行时只有一条 SSH，ColabDesk 已占用 | 关闭工作区后再连，或走隧道 |
+| 本地 `ssh -L` 连不上 | 一个会话只有一条 SSH 连接，ColabDesk 已占用 | 关闭工作区后再连，或走隧道 |
 
 ## 8. 收尾：把成片拿走，把算力关掉
 
@@ -404,7 +408,7 @@ pkill -f cloudflared
 - **参考生视频**：打开 **MiniMax H3: Reference to Video**，用人物照片锁定长相；
 - **更长、多镜头**：把多段 5–8 秒的片段分别生成，再在本地剪辑；
 - **更高分辨率**：先生成 768p，再单独做一次放大；
-- **更复杂的连续性**：多人同框、跨段续接、远景小脸精修，是另一层能力；先把最小版本跑熟，再往上加。
+- **更复杂的连续性**：多人同框、跨段续接、远景小脸精修，需要额外的插件和调参；先把最小版本跑熟，再往上加。
 
 模型和模板的完整列表在 ComfyUI 的 Template Library 和 [Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3)。
 
