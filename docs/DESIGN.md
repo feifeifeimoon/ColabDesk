@@ -257,7 +257,7 @@ A cover sits under the article header at 1200×630, with a `{rounded.lg}` radius
 
 The article header is a **reading header**: a back link, the category pill (`link-bg-soft` ground, `link-deep` text, `micro`), the title, the description, then a byline — the mark in a 24px circle, the team name, the date and a reading estimate — and the tag pills. The estimate counts CJK characters at 400/minute and Latin words at 200/minute after fenced code and links are removed; it is a byline fact, not a promise.
 
-The section list is a 200px sticky rail to the right of the article: `{typography.micro}` uppercase label, then `{typography.caption}` links in `mute` against a hairline rule, turning `ink` on hover. It is generated from `h2`/`h3`; below 1040px the rail is replaced by a disclosure above the body with the same list.
+The section list is a 200px sticky rail to the right of the article: `{typography.micro}` uppercase label, then `{typography.caption}` links in `mute` against a hairline rule, turning `ink` on hover. It is generated from `h2` — the article's numbered sections, not every sub-heading; below 1040px the rail is replaced by a disclosure above the body with the same list.
 
 Fenced code is highlighted **at build time**, not in the browser: the language sits in the top-left, a Copy control added by `blog.js` in the top-right, and the token theme uses four existing accents (violet keywords, teal strings, amber literals, blue functions). A paragraph containing only an image becomes a figure whose caption is the image's alt text. Up to two other posts close the article under a hairline "More from the blog" list.
 

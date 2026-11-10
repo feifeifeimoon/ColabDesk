@@ -668,11 +668,6 @@ html {
   color: var(--ink);
 }
 
-.post-toc-mobile .post-toc__item--sub a {
-  display: block;
-  padding-left: var(--space-4);
-}
-
 .post-toc {
   position: sticky;
   top: calc(var(--blog-header-height) + var(--space-5));
@@ -710,10 +705,6 @@ html {
 .post-toc .post-toc__item a:hover {
   border-left-color: var(--hairline-strong);
   color: var(--ink);
-}
-
-.post-toc .post-toc__item--sub a {
-  padding-left: var(--space-5);
 }
 
 /* ---- narrow ------------------------------------------------------------- */

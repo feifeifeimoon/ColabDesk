@@ -52,9 +52,10 @@ npx wrangler dev
   article URL (`/blog/<slug>/`), not the site root. Covers are 1200×630; the
   article body displays images at the reading-column width.
 - **The sidebar table of contents is automatic.** The generator collects `h2`
-  and `h3` headings, gives them ids, and renders the sticky "On this page" list
-  beside the article. No markup is needed in the post; keep headings short
-  enough to read in a 200px column.
+  headings, gives them ids, and renders the sticky "On this page" list beside
+  the article (a disclosure on narrow screens). No markup is needed in the
+  post; use `h2` for the article's sections and `h3` for their subsections, and
+  keep the section names short enough to read in a 200px column.
 - **No raw HTML that the CSP would block.** The generator refuses `<script>`,
   inline event handlers (`onclick=`) and inline `style=` attributes. Code
   examples that show such markup belong inside fenced code blocks.

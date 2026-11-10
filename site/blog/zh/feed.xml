@@ -10,7 +10,7 @@
       <link>https://colabdesk.dev/blog/zh/minimax-h3-video/</link>
       <guid>https://colabdesk.dev/blog/zh/minimax-h3-video/</guid>
       <pubDate>Tue, 10 Nov 2026 00:00:00 GMT</pubDate>
-      <description>从零创建 G4 会话、部署 ComfyUI、下载 MiniMax H3 官方权重，生成第一段带立体声的 MP4。</description>
+      <description>从一台空的 G4 运行时到一段带立体声的 MP4：安装 ComfyUI、下载 MiniMax H3 官方权重、跑通第一段视频。</description>
     </item>
     <item>
       <title>为什么给 Colab 做一个桌面控制台</title>

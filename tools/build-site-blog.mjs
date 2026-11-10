@@ -456,11 +456,11 @@ function renderArticle(group, post, groups) {
         .join("")}</ul>`
     : "";
 
-  const tocItems = headings.filter((heading) => heading.level <= 3);
+  const tocItems = headings.filter((heading) => heading.level === 2);
   const tocList = tocItems
     .map(
       (heading) =>
-        `<li class="post-toc__item${heading.level === 3 ? " post-toc__item--sub" : ""}"><a href="#${escapeHtml(heading.id)}">${escapeHtml(heading.text)}</a></li>`,
+        `<li class="post-toc__item"><a href="#${escapeHtml(heading.id)}">${escapeHtml(heading.text)}</a></li>`,
     )
     .join("\n            ");
   const toc =
