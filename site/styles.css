@@ -88,27 +88,39 @@ a {
   display: block;
 }
 
+.nav__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
 .nav__actions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
 }
 
-/* The blog's entrance sits at the badge's scale, not at a button's: it is a
-   link to another page, not a second thing to download. */
-.nav__link {
-  padding: 0 var(--space-2);
-  color: var(--body);
-  font-size: var(--text-caption);
+/* The blog sits beside the brand, separated by the same hairline the blog's
+   own masthead uses; it is a section of the site, not a utility button. */
+.nav__divider {
+  width: 1px;
+  height: 16px;
+  background: var(--hairline-strong);
+}
+
+.nav__section {
+  color: var(--ink);
+  font-size: var(--text-label);
   font-weight: 500;
 }
 
-.nav__link:hover {
-  color: var(--ink);
+.nav__section:hover {
+  color: var(--link);
 }
 
 .github-badge {
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: 6px;
   height: 28px;
@@ -154,6 +166,7 @@ a {
    than a border so each segment keeps the full 28px of the control's height. */
 .lang-switch {
   display: none;
+  flex: none;
   align-items: center;
   gap: 2px;
   height: 28px;
@@ -187,6 +200,7 @@ a {
   font: inherit;
   font-size: var(--text-caption);
   font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -648,6 +662,12 @@ a {
     padding: var(--space-3) var(--space-4);
   }
 
+  /* The count is a fact, not the link; at this width the badge needs the room
+     more than the number does. */
+  .github-badge__stars {
+    display: none;
+  }
+
   .hero {
     padding: var(--space-7) var(--space-4) var(--space-4);
   }
@@ -667,5 +687,20 @@ a {
   .footer__bottom span + span {
     display: block;
     margin-top: var(--space-1);
+  }
+}
+
+/* On a phone the brand and the two utilities already fill the bar; the blog
+   keeps its footer link, and the article's own eyebrow links back to it. */
+@media (max-width: 420px) {
+  .nav__divider,
+  .nav__section {
+    display: none;
+  }
+}
+
+@media (max-width: 380px) {
+  .github-badge > span[data-i18n="nav.github"] {
+    display: none;
   }
 }

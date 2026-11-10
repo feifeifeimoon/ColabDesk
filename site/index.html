@@ -51,12 +51,15 @@
   </head>
   <body>
     <nav class="nav">
-      <a class="nav__brand" href="./" aria-label="ColabDesk">
-        <img class="nav__lockup only-light" src="assets/lockup.svg" alt="ColabDesk" width="125" height="24" />
-        <img class="nav__lockup only-dark" src="assets/lockup-white.svg" alt="ColabDesk" width="125" height="24" />
-      </a>
+      <div class="nav__left">
+        <a class="nav__brand" href="./" aria-label="ColabDesk">
+          <img class="nav__lockup only-light" src="assets/lockup.svg" alt="ColabDesk" width="125" height="24" />
+          <img class="nav__lockup only-dark" src="assets/lockup-white.svg" alt="ColabDesk" width="125" height="24" />
+        </a>
+        <span class="nav__divider" aria-hidden="true"></span>
+        <a class="nav__section" href="/blog/" data-i18n="nav.blog" data-blog-link>Blog</a>
+      </div>
       <div class="nav__actions">
-        <a class="nav__link" href="/blog/" data-i18n="nav.blog" data-blog-link>Blog</a>
         <a
           id="star-badge"
           class="github-badge"
