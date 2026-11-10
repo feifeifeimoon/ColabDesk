@@ -23,6 +23,7 @@
     <link rel="alternate" type="application/rss+xml" title="ColabDesk Blog" href="/blog/feed.xml">
     <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
     <script src="/theme.js"></script>
+    <script src="/blog/blog.js" defer></script>
     <link rel="stylesheet" href="/tokens.css">
     <link rel="stylesheet" href="/styles.css">
     <link rel="stylesheet" href="/blog/blog.css">
@@ -57,14 +58,24 @@
     <main class="blog-main post-layout post-layout--single">
       <article class="post">
         <header class="post__header">
-          <p class="post__eyebrow"><a href="/blog/">Blog</a></p>
+          <a class="post__back-link" href="/blog/">← All posts</a>
+          <p class="post__category">Product</p>
           <h1 class="post__title">Why a desktop console for Colab?</h1>
           <p class="post__description">The terminal, files, sessions and quota of a Colab runtime in one window — and what this blog is for.</p>
-          <p class="post__meta">
+          <div class="post__byline">
+            <span class="post__avatar" aria-hidden="true">
+              <img class="only-light" src="/assets/symbol.svg" alt="">
+              <img class="only-dark" src="/assets/symbol-white.svg" alt="">
+            </span>
+            <span class="post__author">ColabDesk Team</span>
+            <span class="post__dot" aria-hidden="true">·</span>
             <time datetime="2026-11-08">November 8, 2026</time>
-            <ul class="tag-list" aria-label="Tags"><li>product</li></ul>
-          </p>
+            <span class="post__dot" aria-hidden="true">·</span>
+            <span>2 min read</span>
+          </div>
+          <div class="post__tags"><ul class="tag-list" aria-label="Tags"><li>product</li></ul></div>
         </header>
+        
         <div class="post__body"><p>A Colab runtime is a Linux machine. It has a shell, a filesystem, processes that outlive a cell, and a bill measured in compute units. The notebook is a good place to write Python; it is a poor place to watch a 40GB download, tail a server log, or find the file a script just wrote.</p>
 <p>ColabDesk puts those four things in one window: a real terminal over SSH, the runtime&#39;s files over SFTP, session controls, and the compute units the runtime is spending.</p>
 <h2 id="what-the-blog-is-for">What the blog is for</h2>
@@ -84,6 +95,12 @@
           <a class="post__back" href="/blog/">← All posts</a>
           <a class="post__language" href="/blog/zh/hello-colabdesk/" hreflang="zh-CN">中文</a>
         </footer>
+        <section class="post__related" aria-labelledby="more-from-the-blog">
+          <h2 id="more-from-the-blog">More from the blog</h2>
+          <ul>
+            <li><a href="/blog/minimax-h3-video/">Generate Sound-Enabled AI Video with ColabDesk + ComfyUI</a><time datetime="2026-11-10">November 10, 2026</time></li>
+          </ul>
+        </section>
       </article>
     </main>
     <footer class="footer">

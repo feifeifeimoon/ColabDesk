@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { buildBlog, parseFrontMatter, slugify } from "./build-site-blog.mjs";
+import { buildBlog, parseFrontMatter, readingMinutes, slugify } from "./build-site-blog.mjs";
 
 const roots = [];
 
@@ -76,6 +76,23 @@ describe("slugify", () => {
   });
 });
 
+describe("readingMinutes", () => {
+  it("never reports less than a minute", () => {
+    expect(readingMinutes("Short.")).toBe(1);
+  });
+
+  it("counts CJK characters and Latin words separately", () => {
+    expect(readingMinutes("中".repeat(400))).toBe(1);
+    expect(readingMinutes("中".repeat(800))).toBe(2);
+    expect(readingMinutes(Array.from({ length: 400 }, () => "word").join(" "))).toBe(2);
+  });
+
+  it("ignores fenced code and links", () => {
+    const body = ["```bash", "x".repeat(4000), "```", "[link](https://example.com)"].join("\n");
+    expect(readingMinutes(body)).toBe(1);
+  });
+});
+
 describe("buildBlog", () => {
   it("writes both language indexes, both articles, feeds and a sitemap", () => {
     const root = makeRoot({ "hello.en.md": EN, "hello.zh.md": ZH });
@@ -128,11 +145,12 @@ describe("buildBlog", () => {
     expect(zhArticle).toContain('aria-current="page">中文</span>');
   });
 
-  it("renders a cover, a table of contents and body images", () => {
+  it("renders a cover, byline, highlighted code, captions and a mobile TOC", () => {
     const post = `---
 title: With assets
 description: Assets
 date: 2026-01-04
+category: Tutorial
 cover: /assets/blog/x/cover.png
 ---
 
@@ -144,25 +162,47 @@ Text.
 
 Text.
 
+\`\`\`bash
+ls -la
+\`\`\`
+
 ## Three
 
 ![Diagram](/assets/blog/x/diagram.png)
 `;
-    const root = makeRoot({ "assets.en.md": post });
+    const other = `---
+title: Another post
+description: Another
+date: 2026-01-03
+---
+
+## Only
+`;
+    const root = makeRoot({ "assets.en.md": post, "other.en.md": other });
     mkdirSync(join(root, "site", "assets", "blog", "x"), { recursive: true });
     writeFileSync(join(root, "site", "assets", "blog", "x", "cover.png"), "png");
 
     buildBlog({ root });
     const html = read(root, "blog/assets/index.html");
 
+    expect(html).toContain('class="post__category"');
+    expect(html).toContain("Tutorial");
+    expect(html).toContain('class="post__byline"');
+    expect(html).toContain("min read");
     expect(html).toContain('class="post-toc"');
+    expect(html).toContain('class="post-toc-mobile"');
     expect(html).toContain('href="#one"');
     expect(html).toContain('href="#two"');
     expect(html).toContain('href="#three"');
     expect(html).toContain('class="post__cover"');
     expect(html).toContain('property="og:image"');
     expect(html).toContain('content="summary_large_image"');
-    expect(html).toContain('src="/assets/blog/x/diagram.png"');
+    expect(html).toContain('class="code-block" data-language="bash"');
+    expect(html).toContain("hljs-built_in");
+    expect(html).toContain('<figure class="post__figure">');
+    expect(html).toContain("<figcaption>Diagram</figcaption>");
+    expect(html).toContain('class="post__related"');
+    expect(html).toContain("Another post");
   });
 
   it("fails when a cover is declared but the file is missing", () => {
@@ -181,13 +221,16 @@ Text.
     expect(existsSync(join(root, "site", "blog", "only-zh", "index.html"))).toBe(false);
   });
 
-  it("keeps generated HTML inside the CSP: one external script, no inline handlers or styles", () => {
+  it("keeps generated HTML inside the CSP: two external scripts, no inline handlers or styles", () => {
     const root = makeRoot({ "hello.en.md": EN });
     buildBlog({ root });
 
     for (const relative of ["blog/index.html", "blog/hello/index.html"]) {
       const html = read(root, relative);
-      expect(html.match(/<script\b[^>]*>/gi) ?? []).toEqual(['<script src="/theme.js">']);
+      expect(html.match(/<script\b[^>]*>/gi) ?? []).toEqual([
+        '<script src="/theme.js">',
+        '<script src="/blog/blog.js" defer>',
+      ]);
       expect(html).not.toMatch(/\son[a-z]+\s*=/i);
       expect(html).not.toMatch(/\sstyle\s*=/i);
     }

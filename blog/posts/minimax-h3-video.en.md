@@ -2,6 +2,7 @@
 title: Generate Sound-Enabled AI Video with ColabDesk + ComfyUI
 description: From an empty G4 runtime to an MP4 with stereo audio — install ComfyUI, download the official MiniMax H3 weights, and generate your first clip.
 date: 2026-11-10
+category: Tutorial
 tags: [tutorial, comfyui, minimax]
 cover: /assets/blog/minimax-h3-video/cover-en.png
 ---

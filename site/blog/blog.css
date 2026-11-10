@@ -242,17 +242,28 @@ html {
   background: var(--canvas-soft);
 }
 
-.post__eyebrow {
+.post__back-link {
+  display: inline-flex;
   margin: 0 0 var(--space-3);
+  color: var(--mute);
   font-size: var(--text-caption);
 }
 
-.post__eyebrow a {
-  color: var(--mute);
+.post__back-link:hover {
+  color: var(--ink);
 }
 
-.post__eyebrow a:hover {
-  color: var(--ink);
+.post__category {
+  display: flex;
+  width: fit-content;
+  margin: 0 0 var(--space-3);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--link-bg-soft);
+  color: var(--link-deep);
+  font-size: var(--text-micro);
+  font-weight: 500;
+  line-height: 1.5;
 }
 
 .post__title {
@@ -274,14 +285,43 @@ html {
   text-wrap: pretty;
 }
 
-.post__meta {
+.post__byline {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
   margin: var(--space-4) 0 0;
   color: var(--mute);
   font-size: var(--text-caption);
+}
+
+.post__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-full);
+  background: var(--canvas-soft);
+}
+
+.post__avatar img {
+  width: 13px;
+  height: 13px;
+}
+
+.post__author {
+  color: var(--body);
+  font-weight: 500;
+}
+
+.post__dot {
+  color: var(--hairline-strong);
+}
+
+.post__tags {
+  margin-top: var(--space-3);
 }
 
 .post__body {
@@ -375,9 +415,52 @@ html {
   color: var(--ink);
 }
 
+/* Fenced code is highlighted at build time (classes from highlight.js), with
+   the language in the top-left and a copy control added by blog.js. */
+.code-block {
+  position: relative;
+  margin: var(--space-4) 0;
+}
+
+.post__body .code-block pre {
+  margin: 0;
+  padding: calc(var(--space-4) + 14px) var(--space-4) var(--space-4);
+}
+
+.code-block[data-language]::before {
+  content: attr(data-language);
+  position: absolute;
+  top: 8px;
+  left: 14px;
+  color: var(--mute);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.code-block__copy {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  height: 22px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-xs);
+  background: var(--canvas);
+  color: var(--body);
+  font-family: var(--font-sans);
+  font-size: var(--text-micro);
+  cursor: pointer;
+}
+
+.code-block__copy:hover {
+  border-color: var(--hairline-strong);
+  color: var(--ink);
+}
+
 .post__body pre {
   overflow-x: auto;
-  margin: var(--space-4) 0;
   padding: var(--space-4);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
@@ -387,7 +470,53 @@ html {
 }
 
 .post__body pre code {
+  color: var(--ink);
   font-size: inherit;
+}
+
+/* A restrained four-colour code theme from the existing tokens: comments are
+   mute, keywords violet, strings teal, literals amber, functions blue. */
+.post__body .hljs-comment,
+.post__body .hljs-quote {
+  color: var(--mute);
+  font-style: italic;
+}
+
+.post__body .hljs-keyword,
+.post__body .hljs-selector-tag,
+.post__body .hljs-literal,
+.post__body .hljs-doctag {
+  color: var(--violet);
+}
+
+.post__body .hljs-string,
+.post__body .hljs-attr,
+.post__body .hljs-template-variable,
+.post__body .hljs-regexp {
+  color: var(--cyan-deep);
+}
+
+.post__body .hljs-number,
+.post__body .hljs-symbol,
+.post__body .hljs-bullet,
+.post__body .hljs-variable {
+  color: var(--warning-deep);
+}
+
+.post__body .hljs-title,
+.post__body .hljs-section,
+.post__body .hljs-title.function_ {
+  color: var(--link-deep);
+}
+
+.post__body .hljs-built_in,
+.post__body .hljs-type,
+.post__body .hljs-class .hljs-title {
+  color: var(--link);
+}
+
+.post__body .hljs-meta {
+  color: var(--mute);
 }
 
 .post__body table {
@@ -414,6 +543,17 @@ html {
   height: auto;
   border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
+}
+
+.post__figure {
+  margin: 0;
+}
+
+.post__figure figcaption {
+  margin-top: var(--space-2);
+  color: var(--mute);
+  font-size: var(--text-caption);
+  line-height: 1.5;
 }
 
 .post__body hr {
@@ -443,7 +583,95 @@ html {
   color: var(--ink);
 }
 
+/* ---- more from the blog ------------------------------------------------- */
+
+.post__related {
+  margin-top: var(--space-8);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--hairline);
+}
+
+.post__related h2 {
+  margin: 0 0 var(--space-3);
+  color: var(--ink);
+  font-size: var(--text-title-sm);
+  font-weight: 600;
+}
+
+.post__related ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.post__related li + li {
+  margin-top: var(--space-3);
+}
+
+.post__related a {
+  color: var(--ink);
+  font-size: var(--text-title-sm);
+  font-weight: 500;
+}
+
+.post__related a:hover {
+  color: var(--link);
+}
+
+.post__related time {
+  display: block;
+  margin-top: 2px;
+  color: var(--mute);
+  font-size: var(--text-caption);
+}
+
 /* ---- table of contents -------------------------------------------------- */
+
+/* On a desktop the rail is sticky beside the article; on a phone the same
+   list becomes a disclosure above the body. */
+.post-toc-mobile {
+  display: none;
+  margin: 0 0 var(--space-5);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--canvas);
+}
+
+.post-toc-mobile summary {
+  padding: var(--space-3) var(--space-4);
+  color: var(--body);
+  font-size: var(--text-label);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.post-toc-mobile ol {
+  margin: 0;
+  padding: 0 var(--space-4) var(--space-3);
+  border-top: 1px solid var(--hairline);
+}
+
+.post-toc-mobile .post-toc__list {
+  border-left: 0;
+}
+
+.post-toc-mobile li {
+  padding: 4px 0;
+}
+
+.post-toc-mobile li a {
+  color: var(--mute);
+  font-size: var(--text-caption);
+}
+
+.post-toc-mobile li a:hover {
+  color: var(--ink);
+}
+
+.post-toc-mobile .post-toc__item--sub a {
+  display: block;
+  padding-left: var(--space-4);
+}
 
 .post-toc {
   position: sticky;
@@ -469,7 +697,7 @@ html {
   border-left: 1px solid var(--hairline);
 }
 
-.post-toc__item a {
+.post-toc .post-toc__item a {
   display: block;
   margin-left: -1px;
   padding: 4px 0 4px var(--space-3);
@@ -479,12 +707,12 @@ html {
   line-height: 1.5;
 }
 
-.post-toc__item a:hover {
+.post-toc .post-toc__item a:hover {
   border-left-color: var(--hairline-strong);
   color: var(--ink);
 }
 
-.post-toc__item--sub a {
+.post-toc .post-toc__item--sub a {
   padding-left: var(--space-5);
 }
 
@@ -499,6 +727,10 @@ html {
 
   .post-toc {
     display: none;
+  }
+
+  .post-toc-mobile {
+    display: block;
   }
 }
 

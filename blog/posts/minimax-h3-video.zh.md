@@ -2,6 +2,7 @@
 title: 用 ColabDesk + ComfyUI 生成带声音的 AI 视频
 description: 从零创建 G4 会话、部署 ComfyUI、下载 MiniMax H3 官方权重，生成第一段带立体声的 MP4。
 date: 2026-11-10
+category: 教程
 tags: [tutorial, comfyui, minimax]
 cover: /assets/blog/minimax-h3-video/cover-zh.png
 ---

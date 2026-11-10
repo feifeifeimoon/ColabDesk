@@ -15,6 +15,7 @@ committed.
 title: A short, specific title
 description: One sentence for the index, the meta tag and the feed.
 date: 2026-11-10
+category: Tutorial         # optional; the pill above the title
 updated: 2026-11-10        # optional
 tags: [tutorial, comfyui]  # optional
 cover: /assets/blog/<slug>/cover.png  # optional, must exist under site/

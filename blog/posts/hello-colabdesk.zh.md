@@ -2,6 +2,7 @@
 title: 为什么给 Colab 做一个桌面控制台
 description: 把 Colab 运行时的终端、文件、会话与算力消耗放进一个窗口——以及这个博客要写什么。
 date: 2026-11-08
+category: 产品
 tags: [product]
 ---
 

@@ -23,6 +23,7 @@
     <link rel="alternate" type="application/rss+xml" title="ColabDesk 博客" href="/blog/zh/feed.xml">
     <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
     <script src="/theme.js"></script>
+    <script src="/blog/blog.js" defer></script>
     <link rel="stylesheet" href="/tokens.css">
     <link rel="stylesheet" href="/styles.css">
     <link rel="stylesheet" href="/blog/blog.css">
@@ -57,14 +58,24 @@
     <main class="blog-main post-layout post-layout--single">
       <article class="post">
         <header class="post__header">
-          <p class="post__eyebrow"><a href="/blog/zh/">博客</a></p>
+          <a class="post__back-link" href="/blog/zh/">← 全部文章</a>
+          <p class="post__category">产品</p>
           <h1 class="post__title">为什么给 Colab 做一个桌面控制台</h1>
           <p class="post__description">把 Colab 运行时的终端、文件、会话与算力消耗放进一个窗口——以及这个博客要写什么。</p>
-          <p class="post__meta">
+          <div class="post__byline">
+            <span class="post__avatar" aria-hidden="true">
+              <img class="only-light" src="/assets/symbol.svg" alt="">
+              <img class="only-dark" src="/assets/symbol-white.svg" alt="">
+            </span>
+            <span class="post__author">ColabDesk 团队</span>
+            <span class="post__dot" aria-hidden="true">·</span>
             <time datetime="2026-11-08">2026年11月8日</time>
-            <ul class="tag-list" aria-label="标签"><li>product</li></ul>
-          </p>
+            <span class="post__dot" aria-hidden="true">·</span>
+            <span>2 分钟阅读</span>
+          </div>
+          <div class="post__tags"><ul class="tag-list" aria-label="标签"><li>product</li></ul></div>
         </header>
+        
         <div class="post__body"><p>Colab 运行时是一台 Linux 机器。它有 shell、有文件系统、有能活过单元格的进程，还有一张按计算单元计费的账单。Notebook 适合写 Python；但它不适合盯着一个 40GB 的下载、跟踪一个服务日志，或者去找脚本刚刚写出的那个文件。</p>
 <p>ColabDesk 把这四件事放进一个窗口：走 SSH 的真实终端、走 SFTP 的运行时的文件、会话控制，以及这个运行时正在消耗的计算单元。</p>
 <h2 id="这个博客写什么">这个博客写什么</h2>
@@ -84,6 +95,12 @@
           <a class="post__back" href="/blog/zh/">← 全部文章</a>
           <a class="post__language" href="/blog/hello-colabdesk/" hreflang="en">English</a>
         </footer>
+        <section class="post__related" aria-labelledby="more-from-the-blog">
+          <h2 id="more-from-the-blog">更多文章</h2>
+          <ul>
+            <li><a href="/blog/zh/minimax-h3-video/">用 ColabDesk + ComfyUI 生成带声音的 AI 视频</a><time datetime="2026-11-10">2026年11月10日</time></li>
+          </ul>
+        </section>
       </article>
     </main>
     <footer class="footer">

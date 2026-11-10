@@ -2,6 +2,7 @@
 title: Why a desktop console for Colab?
 description: The terminal, files, sessions and quota of a Colab runtime in one window — and what this blog is for.
 date: 2026-11-08
+category: Product
 tags: [product]
 ---
 

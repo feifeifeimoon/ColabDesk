@@ -16,7 +16,19 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import hljs from "highlight.js/lib/core";
+import bash from "highlight.js/lib/languages/bash";
+import ini from "highlight.js/lib/languages/ini";
+import javascript from "highlight.js/lib/languages/javascript";
+import json from "highlight.js/lib/languages/json";
+import python from "highlight.js/lib/languages/python";
+import typescript from "highlight.js/lib/languages/typescript";
+import yaml from "highlight.js/lib/languages/yaml";
 import { marked } from "marked";
+
+for (const [name, language] of Object.entries({ bash, ini, javascript, json, python, typescript, yaml })) {
+  hljs.registerLanguage(name, language);
+}
 
 const ROOT = resolve(import.meta.dirname, "..");
 const SITE_ORIGIN = "https://colabdesk.dev";
@@ -49,6 +61,9 @@ const LABELS = {
     tag: "Tags",
     onThisPage: "On this page",
     languageGroup: "Language",
+    author: "ColabDesk Team",
+    moreFromBlog: "More from the blog",
+    readingTime: (minutes) => `${minutes} min read`,
   },
   zh: {
     htmlLang: "zh-CN",
@@ -74,6 +89,9 @@ const LABELS = {
     tag: "标签",
     onThisPage: "目录",
     languageGroup: "语言",
+    author: "ColabDesk 团队",
+    moreFromBlog: "更多文章",
+    readingTime: (minutes) => `${minutes} 分钟阅读`,
   },
 };
 
@@ -145,6 +163,47 @@ function formatDate(iso, lang) {
   }).format(date);
 }
 
+/**
+ * A reading estimate good enough for a byline: CJK characters at ~400/min,
+ * Latin words at ~200/min, with fenced code and links removed first so a page
+ * of shell commands does not inflate it.
+ */
+export function readingMinutes(body) {
+  const plain = String(body)
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/<[^>]+>/g, " ");
+  const cjk = (plain.match(/[\u4e00-\u9fff]/g) ?? []).length;
+  const words = (plain.replace(/[\u4e00-\u9fff]/g, " ").match(/[A-Za-z0-9][A-Za-z0-9'’._-]*/g) ?? []).length;
+  return Math.max(1, Math.ceil(cjk / 400 + words / 200));
+}
+
+/** Turns a paragraph containing only an image into a figure with its alt text as the caption. */
+function captionFigures(html) {
+  return html.replace(/<p><img ([^>]*?)><\/p>/g, (match, attributes) => {
+    const alt = /alt="([^"]*)"/.exec(attributes)?.[1];
+    if (!alt) return match;
+    return `<figure class="post__figure"><img ${attributes}><figcaption>${alt}</figcaption></figure>`;
+  });
+}
+
+// Fenced code is highlighted at build time; the site ships classes, not a
+// highlighter. An unknown language is escaped and left plain.
+marked.use({
+  renderer: {
+    code({ text, lang }) {
+      const language = (lang ?? "").trim().split(/\s+/)[0].replace(/[^A-Za-z0-9_+-]/g, "");
+      const highlighted =
+        language && hljs.getLanguage(language)
+          ? hljs.highlight(text, { language, ignoreIllegals: true }).value
+          : escapeHtml(text);
+      const attribute = language ? ` data-language="${escapeHtml(language)}"` : "";
+      return `<div class="code-block"${attribute}><pre><code class="hljs">${highlighted}</code></pre></div>`;
+    },
+  },
+});
+
 function assertDate(value, where) {
   if (!DATE.test(value)) throw new Error(`${where}: date must be YYYY-MM-DD, got "${value}"`);
   const parsed = new Date(`${value}T00:00:00Z`);
@@ -214,6 +273,7 @@ function readPosts(postsDir, { includeDrafts }) {
       description: data.description,
       date: data.date,
       updated: data.updated || data.date,
+      category: typeof data.category === "string" && data.category ? data.category : null,
       tags,
       cover: typeof data.cover === "string" && data.cover ? data.cover : null,
       draft,
@@ -293,6 +353,7 @@ function renderHead({ lang, title, description, canonical, alternates = [], cove
     <link rel="alternate" type="application/rss+xml" title="${escapeHtml(LABELS[lang].feedTitle)}" href="${feed}">
     <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
     <script src="/theme.js"></script>
+    <script src="/blog/blog.js" defer></script>
     <link rel="stylesheet" href="/tokens.css">
     <link rel="stylesheet" href="/styles.css">
     <link rel="stylesheet" href="/blog/blog.css">
@@ -371,7 +432,7 @@ function renderFooter(lang) {
     </footer>`;
 }
 
-function renderArticle(group, post) {
+function renderArticle(group, post, groups) {
   const lang = post.lang;
   const labels = LABELS[lang];
   const other = LANGS.find((candidate) => candidate !== lang);
@@ -384,8 +445,10 @@ function renderArticle(group, post) {
     alternates.push({ hreflang: "x-default", href: absolute(postPath(group.slug, "en")) });
   }
 
-  const { html: content, headings } = addHeadingIds(marked.parse(post.body, { gfm: true }));
+  const { html: withIds, headings } = addHeadingIds(marked.parse(post.body, { gfm: true }));
+  const content = captionFigures(withIds);
   assertSafeHtml(content, post.source);
+  const minutes = readingMinutes(post.body);
 
   const tags = post.tags.length
     ? `<ul class="tag-list" aria-label="${labels.tag}">${post.tags
@@ -394,20 +457,49 @@ function renderArticle(group, post) {
     : "";
 
   const tocItems = headings.filter((heading) => heading.level <= 3);
+  const tocList = tocItems
+    .map(
+      (heading) =>
+        `<li class="post-toc__item${heading.level === 3 ? " post-toc__item--sub" : ""}"><a href="#${escapeHtml(heading.id)}">${escapeHtml(heading.text)}</a></li>`,
+    )
+    .join("\n            ");
   const toc =
     tocItems.length >= 3
       ? `<nav class="post-toc" aria-label="${labels.onThisPage}">
         <p class="post-toc__title">${labels.onThisPage}</p>
         <ol class="post-toc__list">
-          ${tocItems
-            .map(
-              (heading) =>
-                `<li class="post-toc__item${heading.level === 3 ? " post-toc__item--sub" : ""}"><a href="#${escapeHtml(heading.id)}">${escapeHtml(heading.text)}</a></li>`,
-            )
-            .join("\n          ")}
+          ${tocList}
         </ol>
       </nav>`
       : "";
+  const mobileToc =
+    tocItems.length >= 3
+      ? `<details class="post-toc-mobile">
+          <summary>${labels.onThisPage}</summary>
+          <ol class="post-toc__list">
+            ${tocList}
+          </ol>
+        </details>`
+      : "";
+
+  const related = groups
+    .filter((candidate) => candidate.slug !== group.slug)
+    .map((candidate) => ({ candidate, post: candidate.posts[lang] ?? candidate.posts[other] }))
+    .filter((item) => item.post)
+    .slice(0, 2);
+  const relatedBlock = related.length
+    ? `<section class="post__related" aria-labelledby="more-from-the-blog">
+          <h2 id="more-from-the-blog">${labels.moreFromBlog}</h2>
+          <ul>
+            ${related
+              .map(
+                ({ candidate, post: relatedPost }) =>
+                  `<li><a href="${postPath(candidate.slug, relatedPost.lang)}">${escapeHtml(relatedPost.title)}</a><time datetime="${relatedPost.date}">${formatDate(relatedPost.date, lang)}</time></li>`,
+              )
+              .join("\n            ")}
+          </ul>
+        </section>`
+    : "";
 
   const cover = post.cover
     ? `\n        <img class="post__cover" src="${escapeHtml(post.cover)}" alt="" width="1200" height="630">`
@@ -437,19 +529,30 @@ function renderArticle(group, post) {
     <main class="blog-main ${toc ? "post-layout" : "post-layout post-layout--single"}">
       <article class="post">
         <header class="post__header">
-          <p class="post__eyebrow"><a href="${indexPath(lang)}">${labels.blog}</a></p>
+          <a class="post__back-link" href="${indexPath(lang)}">← ${labels.back}</a>
+          ${post.category ? `<p class="post__category">${escapeHtml(post.category)}</p>` : ""}
           <h1 class="post__title">${escapeHtml(post.title)}</h1>
           <p class="post__description">${escapeHtml(post.description)}</p>
-          <p class="post__meta">
+          <div class="post__byline">
+            <span class="post__avatar" aria-hidden="true">
+              <img class="only-light" src="/assets/symbol.svg" alt="">
+              <img class="only-dark" src="/assets/symbol-white.svg" alt="">
+            </span>
+            <span class="post__author">${labels.author}</span>
+            <span class="post__dot" aria-hidden="true">·</span>
             <time datetime="${post.date}">${formatDate(post.date, lang)}</time>
-            ${tags}
-          </p>
+            <span class="post__dot" aria-hidden="true">·</span>
+            <span>${labels.readingTime(minutes)}</span>
+          </div>
+          ${tags ? `<div class="post__tags">${tags}</div>` : ""}
         </header>${cover}
+        ${mobileToc}
         <div class="post__body">${content}</div>
         <footer class="post__footer">
           <a class="post__back" href="${indexPath(lang)}">← ${labels.back}</a>
           ${alternateFooter}
         </footer>
+        ${relatedBlock}
       </article>${tocBlock}
     </main>
     ${renderFooter(lang)}
@@ -612,7 +715,7 @@ export function buildBlog({ root = ROOT, check = false, includeDrafts = false } 
     for (const lang of LANGS) {
       const post = group.posts[lang];
       if (!post) continue;
-      outputs.set(`blog/${lang === "zh" ? "zh/" : ""}${group.slug}/index.html`, renderArticle(group, post));
+      outputs.set(`blog/${lang === "zh" ? "zh/" : ""}${group.slug}/index.html`, renderArticle(group, post, groups));
     }
   }
   for (const lang of LANGS) {
