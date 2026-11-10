@@ -111,6 +111,49 @@ describe("buildBlog", () => {
     expect(read(root, "blog/zh/feed.xml")).toContain("<title>你好</title>");
   });
 
+  it("renders a cover, a table of contents and body images", () => {
+    const post = `---
+title: With assets
+description: Assets
+date: 2026-01-04
+cover: /assets/blog/x/cover.png
+---
+
+## One
+
+Text.
+
+## Two
+
+Text.
+
+## Three
+
+![Diagram](/assets/blog/x/diagram.png)
+`;
+    const root = makeRoot({ "assets.en.md": post });
+    mkdirSync(join(root, "site", "assets", "blog", "x"), { recursive: true });
+    writeFileSync(join(root, "site", "assets", "blog", "x", "cover.png"), "png");
+
+    buildBlog({ root });
+    const html = read(root, "blog/assets/index.html");
+
+    expect(html).toContain('class="post-toc"');
+    expect(html).toContain('href="#one"');
+    expect(html).toContain('href="#two"');
+    expect(html).toContain('href="#three"');
+    expect(html).toContain('class="post__cover"');
+    expect(html).toContain('property="og:image"');
+    expect(html).toContain('content="summary_large_image"');
+    expect(html).toContain('src="/assets/blog/x/diagram.png"');
+  });
+
+  it("fails when a cover is declared but the file is missing", () => {
+    const post = "---\ntitle: Missing\ndescription: Missing\ndate: 2026-01-04\ncover: /assets/blog/x/none.png\n---\n\nBody\n";
+    const root = makeRoot({ "missing.en.md": post });
+    expect(() => buildBlog({ root })).toThrow(/cover not found/);
+  });
+
   it("lists a single-language post in the other index with a language badge", () => {
     const root = makeRoot({ "only-zh.zh.md": ZH });
     buildBlog({ root });

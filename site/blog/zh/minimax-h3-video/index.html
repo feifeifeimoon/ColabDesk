@@ -6,15 +6,21 @@
     <title>用 ColabDesk + ComfyUI 生成带声音的 AI 视频 — ColabDesk 博客</title>
     <meta name="description" content="从零创建 G4 会话、部署 ComfyUI、下载 MiniMax H3 官方权重，生成第一段带立体声的 MP4。">
     <link rel="canonical" href="https://colabdesk.dev/blog/zh/minimax-h3-video/">
+    <link rel="alternate" hreflang="en" href="https://colabdesk.dev/blog/minimax-h3-video/">
     <link rel="alternate" hreflang="zh-CN" href="https://colabdesk.dev/blog/zh/minimax-h3-video/">
+    <link rel="alternate" hreflang="x-default" href="https://colabdesk.dev/blog/minimax-h3-video/">
     <meta property="og:type" content="article">
     <meta property="og:site_name" content="ColabDesk">
     <meta property="og:title" content="用 ColabDesk + ComfyUI 生成带声音的 AI 视频 — ColabDesk 博客">
     <meta property="og:description" content="从零创建 G4 会话、部署 ComfyUI、下载 MiniMax H3 官方权重，生成第一段带立体声的 MP4。">
     <meta property="og:url" content="https://colabdesk.dev/blog/zh/minimax-h3-video/">
-    <meta name="twitter:card" content="summary">
+    <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="用 ColabDesk + ComfyUI 生成带声音的 AI 视频 — ColabDesk 博客">
     <meta name="twitter:description" content="从零创建 G4 会话、部署 ComfyUI、下载 MiniMax H3 官方权重，生成第一段带立体声的 MP4。">
+    <meta property="og:image" content="https://colabdesk.dev/assets/blog/minimax-h3-video/cover-zh.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="用 ColabDesk + ComfyUI 生成带声音的 AI 视频 — ColabDesk 博客">
     <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
@@ -37,10 +43,10 @@
           <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
           <span>GitHub</span>
         </a>
-        <a class="nav__lang" href="/blog/" hreflang="en">English</a>
+        <a class="nav__lang" href="/blog/minimax-h3-video/" hreflang="en">English</a>
       </div>
     </nav>
-    <main class="blog-main">
+    <main class="blog-main post-layout">
       <article class="post">
         <header class="post__header">
           <p class="post__eyebrow"><a href="/blog/zh/">博客</a></p>
@@ -51,6 +57,7 @@
             <ul class="tag-list" aria-label="标签"><li>tutorial</li><li>comfyui</li><li>minimax</li></ul>
           </p>
         </header>
+        <img class="post__cover" src="/assets/blog/minimax-h3-video/cover-zh.png" alt="" width="1200" height="630">
         <div class="post__body"><blockquote>
 <p>一份面向首次使用者的完整教程：在 Colab G4 运行时上部署 ComfyUI 与 MiniMax H3 开源权重，生成第一段带立体声的 MP4。</p>
 <p>本文基于 ComfyUI 0.44 与 MiniMax H3 官方模板验证。全程不需要本地显卡。</p>
@@ -96,13 +103,7 @@
 <li><strong>Colab G4</strong>：提供 96GB 显存的云端 GPU。</li>
 </ul>
 <p>数据流：</p>
-<pre><code>你的电脑
-  └─ ColabDesk ──SSH──▶ Colab G4 运行时
-                          ├─ ComfyUI（127.0.0.1:8188）
-                          └─ MiniMax H3 权重
-                                │
-        浏览器 ◀── HTTPS 隧道 ───┘
-</code></pre>
+<p><img src="/assets/blog/minimax-h3-video/pipeline.png" alt="ColabDesk、Colab 运行时、ComfyUI 与浏览器之间的连接"></p>
 <blockquote>
 <p>Colab 运行时没有公网 SSH 端口，也不对外暴露任意端口。第五步会用一条临时 HTTPS 隧道把 ComfyUI 的界面带到你的浏览器。</p>
 </blockquote>
@@ -304,6 +305,10 @@ grep -oE &#39;https://[a-z0-9-]+\.trycloudflare\.com&#39; /content/cloudflared.l
 </ul>
 </li>
 <li>确认五个模型下拉框选中了第三步下载的文件。若模板弹窗提示缺少模型，也可以直接点击弹窗里的 <strong>Download</strong>。</li>
+</ol>
+<p>模板背后的节点图大致是这样，第一次跑不用改连线：</p>
+<p><img src="/assets/blog/minimax-h3-video/workflow.png" alt="ComfyUI 中 MiniMax H3 文生视频的节点图"></p>
+<ol start="5">
 <li>点击 <strong>Queue</strong>。</li>
 </ol>
 <p>第一次运行会把约 39GB 权重读入显存，进度条可能静止几十秒，这是正常现象。</p>
@@ -485,9 +490,28 @@ grep -oE &#39;https://[a-z0-9-]+\.trycloudflare\.com&#39; /content/cloudflared.l
 </div>
         <footer class="post__footer">
           <a class="post__back" href="/blog/zh/">← 全部文章</a>
-          
+          <a class="post__language" href="/blog/minimax-h3-video/" hreflang="en">English</a>
         </footer>
       </article>
+      <nav class="post-toc" aria-label="目录">
+        <p class="post-toc__title">目录</p>
+        <ol class="post-toc__list">
+          <li class="post-toc__item"><a href="#你将用到什么">你将用到什么</a></li>
+          <li class="post-toc__item"><a href="#第一步-创建-g4-会话">第一步：创建 G4 会话</a></li>
+          <li class="post-toc__item"><a href="#第二步-安装-comfyui">第二步：安装 ComfyUI</a></li>
+          <li class="post-toc__item"><a href="#第三步-下载模型">第三步：下载模型</a></li>
+          <li class="post-toc__item"><a href="#第四步-启动-comfyui">第四步：启动 ComfyUI</a></li>
+          <li class="post-toc__item"><a href="#第五步-在浏览器里打开界面">第五步：在浏览器里打开界面</a></li>
+          <li class="post-toc__item post-toc__item--sub"><a href="#备选-直连-ssh-转发">备选：直连 SSH 转发</a></li>
+          <li class="post-toc__item"><a href="#第六步-生成第一段视频">第六步：生成第一段视频</a></li>
+          <li class="post-toc__item"><a href="#第七步-把提示词写清楚">第七步：把提示词写清楚</a></li>
+          <li class="post-toc__item"><a href="#第八步-取回结果并收尾">第八步：取回结果并收尾</a></li>
+          <li class="post-toc__item"><a href="#常见问题">常见问题</a></li>
+          <li class="post-toc__item"><a href="#进阶方向">进阶方向</a></li>
+          <li class="post-toc__item"><a href="#附录-a-从零到启动的完整命令">附录 A：从零到启动的完整命令</a></li>
+          <li class="post-toc__item"><a href="#附录-b-使用须知">附录 B：使用须知</a></li>
+        </ol>
+      </nav>
     </main>
     <footer class="footer">
       <div class="footer__main">

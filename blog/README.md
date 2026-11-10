@@ -48,7 +48,12 @@ npx wrangler dev
   directories by hand.** They are generated; the next build overwrites them.
 - **Assets are absolute.** Use `/assets/blog/<slug>/photo.png` and put the file
   under `site/assets/blog/<slug>/`. A relative path resolves against the
-  article URL (`/blog/<slug>/`), not the site root.
+  article URL (`/blog/<slug>/`), not the site root. Covers are 1200×630; the
+  article body displays images at the reading-column width.
+- **The sidebar table of contents is automatic.** The generator collects `h2`
+  and `h3` headings, gives them ids, and renders the sticky "On this page" list
+  beside the article. No markup is needed in the post; keep headings short
+  enough to read in a 200px column.
 - **No raw HTML that the CSP would block.** The generator refuses `<script>`,
   inline event handlers (`onclick=`) and inline `style=` attributes. Code
   examples that show such markup belong inside fenced code blocks.

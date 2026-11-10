@@ -48,6 +48,7 @@ const LABELS = {
     feedTitle: "ColabDesk Blog",
     feedDescription: "Notes, walkthroughs, and field reports from the ColabDesk workbench.",
     tag: "Tags",
+    onThisPage: "On this page",
   },
   zh: {
     htmlLang: "zh-CN",
@@ -72,6 +73,7 @@ const LABELS = {
     feedTitle: "ColabDesk 博客",
     feedDescription: "来自 ColabDesk 工作台的实践笔记、教程与踩坑记录。",
     tag: "标签",
+    onThisPage: "目录",
   },
 };
 
@@ -151,17 +153,20 @@ function assertDate(value, where) {
   }
 }
 
-/** Adds stable ids to h2–h4 so an article can be linked by section. */
+/** Adds stable ids to h2–h4 and returns the headings the sidebar needs. */
 function addHeadingIds(html) {
   const used = new Set();
-  return html.replace(/<h([2-4])>([\s\S]*?)<\/h\1>/g, (_match, level, inner) => {
+  const headings = [];
+  const withIds = html.replace(/<h([2-4])>([\s\S]*?)<\/h\1>/g, (_match, level, inner) => {
     const text = inner.replace(/<[^>]+>/g, "").replace(/&[#\w]+;/g, " ").trim();
     const base = slugify(text) || "section";
     let id = base;
     for (let suffix = 2; used.has(id); suffix += 1) id = `${base}-${suffix}`;
     used.add(id);
+    headings.push({ level: Number(level), text, id });
     return `<h${level} id="${id}">${inner}</h${level}>`;
   });
+  return { html: withIds, headings };
 }
 
 /** The CSP has no inline-script or inline-style hole; refuse to emit either. */
@@ -257,8 +262,13 @@ function renderHead({ lang, title, description, canonical, alternates = [], cove
     .map((item) => `<link rel="alternate" hreflang="${item.hreflang}" href="${escapeHtml(item.href)}">`)
     .join("\n    ");
   const ogImage = cover
-    ? `\n    <meta property="og:image" content="${escapeHtml(absolute(cover))}">`
+    ? `
+    <meta property="og:image" content="${escapeHtml(absolute(cover))}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="${escapeHtml(title)}">`
     : "";
+  const twitterCard = cover ? "summary_large_image" : "summary";
 
   return `<!doctype html>
 <html lang="${labels.htmlLang}">
@@ -274,7 +284,7 @@ function renderHead({ lang, title, description, canonical, alternates = [], cove
     <meta property="og:title" content="${escapeHtml(title)}">
     <meta property="og:description" content="${escapeHtml(description)}">
     <meta property="og:url" content="${escapeHtml(canonical)}">
-    <meta name="twitter:card" content="summary">
+    <meta name="twitter:card" content="${twitterCard}">
     <meta name="twitter:title" content="${escapeHtml(title)}">
     <meta name="twitter:description" content="${escapeHtml(description)}">${ogImage}
     <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
@@ -355,7 +365,7 @@ function renderArticle(group, post) {
     alternates.push({ hreflang: "x-default", href: absolute(postPath(group.slug, "en")) });
   }
 
-  const content = addHeadingIds(marked.parse(post.body, { gfm: true }));
+  const { html: content, headings } = addHeadingIds(marked.parse(post.body, { gfm: true }));
   assertSafeHtml(content, post.source);
 
   const tags = post.tags.length
@@ -363,6 +373,27 @@ function renderArticle(group, post) {
         .map((tag) => `<li>${escapeHtml(tag)}</li>`)
         .join("")}</ul>`
     : "";
+
+  const tocItems = headings.filter((heading) => heading.level <= 3);
+  const toc =
+    tocItems.length >= 3
+      ? `<nav class="post-toc" aria-label="${labels.onThisPage}">
+        <p class="post-toc__title">${labels.onThisPage}</p>
+        <ol class="post-toc__list">
+          ${tocItems
+            .map(
+              (heading) =>
+                `<li class="post-toc__item${heading.level === 3 ? " post-toc__item--sub" : ""}"><a href="#${escapeHtml(heading.id)}">${escapeHtml(heading.text)}</a></li>`,
+            )
+            .join("\n          ")}
+        </ol>
+      </nav>`
+      : "";
+
+  const cover = post.cover
+    ? `\n        <img class="post__cover" src="${escapeHtml(post.cover)}" alt="" width="1200" height="630">`
+    : "";
+  const tocBlock = toc ? `\n      ${toc}` : "";
 
   const alternateFooter = alternate
     ? `<a class="post__language" href="${escapeHtml(postPath(group.slug, other))}" hreflang="${LABELS[other].hreflang}">${labels.switchLanguage}</a>`
@@ -384,7 +415,7 @@ function renderArticle(group, post) {
       alternateHref: alternate ? postPath(group.slug, other) : indexPath(other),
       alternateLabel: labels.switchLanguage,
     })}
-    <main class="blog-main">
+    <main class="blog-main ${toc ? "post-layout" : "post-layout post-layout--single"}">
       <article class="post">
         <header class="post__header">
           <p class="post__eyebrow"><a href="${indexPath(lang)}">${labels.blog}</a></p>
@@ -394,13 +425,13 @@ function renderArticle(group, post) {
             <time datetime="${post.date}">${formatDate(post.date, lang)}</time>
             ${tags}
           </p>
-        </header>
+        </header>${cover}
         <div class="post__body">${content}</div>
         <footer class="post__footer">
           <a class="post__back" href="${indexPath(lang)}">← ${labels.back}</a>
           ${alternateFooter}
         </footer>
-      </article>
+      </article>${tocBlock}
     </main>
     ${renderFooter(lang)}
   </body>
@@ -544,6 +575,18 @@ export function buildBlog({ root = ROOT, check = false, includeDrafts = false } 
 
   const groups = readPosts(postsDir, { includeDrafts });
   if (groups.length === 0) throw new Error("no posts found; add blog/posts/<slug>.<lang>.md");
+
+  // A cover is a promise the social card and the article both keep; a typo in
+  // the path should fail here, not render a broken image in production.
+  for (const group of groups) {
+    for (const post of Object.values(group.posts)) {
+      if (!post.cover) continue;
+      const asset = join(root, "site", post.cover.replace(/^\//, ""));
+      if (!existsSync(asset)) {
+        throw new Error(`${post.source}: cover not found at site${post.cover}`);
+      }
+    }
+  }
 
   const outputs = new Map();
   for (const group of groups) {

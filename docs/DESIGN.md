@@ -249,6 +249,10 @@ Everything else on that page is `copy`, `caption` or `micro` from the table abov
 
 `site/blog/` is generated from `blog/posts/` and shares the landing page's nav, footer, tokens and type ladder. It adds no rung: the article title is `{typography.display}` (26px), `h2` is `{typography.title}`, `h3` is `{typography.title-sm}`, body copy is 16px at 1.75, and metadata is `{typography.caption}`. The content column is 720px (about 68 characters), and every block sits on the existing surface ladder — `canvas-soft` for code and quotes, `hairline` for dividers, no cards and no shadows.
 
+A cover sits under the article header at 1200×630, with a `{rounded.lg}` radius and a hairline border; it is also the Open Graph image. In-body images are diagrams on the same dark brand card (the product's terminal palette), not fabricated UI screenshots — a picture that pretends to be a screenshot ages badly and is not evidence.
+
+The section list is a 200px sticky rail to the right of the article: `{typography.micro}` uppercase label, then `{typography.caption}` links in `mute` against a hairline rule, turning `ink` on hover. It is generated from `h2`/`h3`; below 1040px it disappears and the article returns to the 720px column.
+
 The index is a **hairline-divided list**, not a grid of cards: date in `caption`/`mute`, title in `title`/`ink` (turning `link` on hover), description in `title-sm`/`body`, tags as `micro` pills on `canvas-soft`. A post written in only one language appears in both indexes with a language badge; the badge is a fact about the post, not a control.
 
 The language switch is a **link to the other static page**, not a localStorage toggle: an article has one URL per language, with `hreflang` alternates, so search engines index both. The landing page keeps its own toggle because it is one document with two catalogs.

@@ -131,8 +131,33 @@
 
 /* ---- article ------------------------------------------------------------ */
 
+/* An article keeps the reading column and puts the section list beside it.
+   The index stays on the plain `.blog-main` column. */
+.post-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 720px) 200px;
+  gap: var(--space-8);
+  max-width: 1032px;
+  align-items: start;
+}
+
+.post-layout--single {
+  grid-template-columns: minmax(0, 720px);
+  max-width: 720px;
+}
+
 .post__header {
-  margin-bottom: var(--space-7);
+  margin-bottom: var(--space-6);
+}
+
+.post__cover {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 0 var(--space-6);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--canvas-soft);
 }
 
 .post__eyebrow {
@@ -305,6 +330,7 @@
 
 .post__body img {
   height: auto;
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
 }
 
@@ -335,7 +361,64 @@
   color: var(--ink);
 }
 
+/* ---- table of contents -------------------------------------------------- */
+
+.post-toc {
+  position: sticky;
+  top: var(--space-6);
+  max-height: calc(100vh - var(--space-8));
+  overflow-y: auto;
+  padding-top: var(--space-1);
+}
+
+.post-toc__title {
+  margin: 0 0 var(--space-3);
+  color: var(--mute);
+  font-size: var(--text-micro);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.post-toc__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-left: 1px solid var(--hairline);
+}
+
+.post-toc__item a {
+  display: block;
+  margin-left: -1px;
+  padding: 4px 0 4px var(--space-3);
+  border-left: 2px solid transparent;
+  color: var(--mute);
+  font-size: var(--text-caption);
+  line-height: 1.5;
+}
+
+.post-toc__item a:hover {
+  border-left-color: var(--hairline-strong);
+  color: var(--ink);
+}
+
+.post-toc__item--sub a {
+  padding-left: var(--space-5);
+}
+
 /* ---- narrow ------------------------------------------------------------- */
+
+@media (max-width: 1040px) {
+  .post-layout,
+  .post-layout--single {
+    display: block;
+    max-width: 720px;
+  }
+
+  .post-toc {
+    display: none;
+  }
+}
 
 @media (max-width: 640px) {
   .blog-main {

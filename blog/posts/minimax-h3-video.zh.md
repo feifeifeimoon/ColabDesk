@@ -3,6 +3,7 @@ title: 用 ColabDesk + ComfyUI 生成带声音的 AI 视频
 description: 从零创建 G4 会话、部署 ComfyUI、下载 MiniMax H3 官方权重，生成第一段带立体声的 MP4。
 date: 2026-11-10
 tags: [tutorial, comfyui, minimax]
+cover: /assets/blog/minimax-h3-video/cover-zh.png
 ---
 
 > 一份面向首次使用者的完整教程：在 Colab G4 运行时上部署 ComfyUI 与 MiniMax H3 开源权重，生成第一段带立体声的 MP4。
@@ -29,14 +30,7 @@ tags: [tutorial, comfyui, minimax]
 
 数据流：
 
-```
-你的电脑
-  └─ ColabDesk ──SSH──▶ Colab G4 运行时
-                          ├─ ComfyUI（127.0.0.1:8188）
-                          └─ MiniMax H3 权重
-                                │
-        浏览器 ◀── HTTPS 隧道 ───┘
-```
+![ColabDesk、Colab 运行时、ComfyUI 与浏览器之间的连接](/assets/blog/minimax-h3-video/pipeline.png)
 
 > Colab 运行时没有公网 SSH 端口，也不对外暴露任意端口。第五步会用一条临时 HTTPS 隧道把 ComfyUI 的界面带到你的浏览器。
 
@@ -258,6 +252,11 @@ ssh -N -L 8188:127.0.0.1:8188 colabdesk-你的会话名
    - 秒数：时长，默认 `5`（界面会自动吸附到模型允许的帧数）；
    - `noise_seed`：随机种子。
 4. 确认五个模型下拉框选中了第三步下载的文件。若模板弹窗提示缺少模型，也可以直接点击弹窗里的 **Download**。
+
+模板背后的节点图大致是这样，第一次跑不用改连线：
+
+![ComfyUI 中 MiniMax H3 文生视频的节点图](/assets/blog/minimax-h3-video/workflow.png)
+
 5. 点击 **Queue**。
 
 第一次运行会把约 39GB 权重读入显存，进度条可能静止几十秒，这是正常现象。
