@@ -360,7 +360,16 @@ export class PortForwardManager {
           );
           close();
         });
-        opened.on("close", close);
+        // A target that answers and then hangs up is the common case, not an
+        // abort. Send the client its FIN after the queued reply, and drain what
+        // it is still sending: closing with unread input resets the connection,
+        // and a reset discards the reply before the client reads it.
+        opened.on("close", () => {
+          if (socket.destroyed) return;
+          socket.unpipe(opened);
+          socket.resume();
+          socket.end();
+        });
       })
       .catch((cause) => {
         this.log?.write(

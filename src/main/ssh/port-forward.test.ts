@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import net from "node:net";
-import { Transform } from "node:stream";
+import { Duplex, Transform } from "node:stream";
 import { describe, expect, it } from "vitest";
 import type { PortForward } from "@shared/types";
 import {
@@ -25,7 +25,7 @@ class FakeConnection extends EventEmitter implements ForwardingConnection {
 }
 
 class FakeSsh implements ForwardingSsh {
-  constructor(readonly connection: FakeConnection) {}
+  constructor(readonly connection: ForwardingConnection) {}
 
   async acquire(): Promise<ForwardingConnection> {
     return this.connection;
@@ -51,6 +51,47 @@ class DelayedSsh implements ForwardingSsh {
 class PendingChannelConnection extends FakeConnection {
   override async forwardOut(): Promise<Transform> {
     return new Promise<Transform>(() => undefined);
+  }
+}
+
+/**
+ * A channel that answers and hangs up, the way a service that closes after
+ * responding does. The hang-up lands while the reply is still on its way to
+ * the local client.
+ */
+class AnsweringChannel extends Duplex {
+  private answered = false;
+
+  constructor() {
+    // The local client half-closes as soon as it has asked; the target still
+    // gets to answer, which is what an SSH channel allows.
+    super({ allowHalfOpen: true });
+  }
+
+  override _read(): void {
+    if (this.answered) return;
+    this.answered = true;
+    // Registered after the manager's pipe listener, so the hang-up lands in
+    // the same turn as the write it must not cut off.
+    this.once("data", () => this.emit("close"));
+    // Push outside the synchronous `_read` phase so the pipe forwards the
+    // bytes immediately, with the reply still queued on the local socket.
+    process.nextTick(() => {
+      this.push("remote:127.0.0.1:8000\n");
+      this.push(null);
+    });
+  }
+
+  override _write(_chunk: Buffer, _encoding: BufferEncoding, done: () => void): void {
+    done();
+  }
+}
+
+class AnsweringConnection extends EventEmitter implements ForwardingConnection {
+  status = "ready" as const;
+
+  async forwardOut(): Promise<Duplex> {
+    return new AnsweringChannel();
   }
 }
 
@@ -107,6 +148,19 @@ describe("the port forward manager", () => {
       expect(active.local_host).toBe("127.0.0.1");
       expect(active.local_port).toBeGreaterThan(0);
       expect(await exchange(active.local_port!, "hello\n")).toBe("hello\n");
+    } finally {
+      manager.dispose();
+    }
+  });
+
+  it("keeps the reply when the channel hangs up right after sending it", async () => {
+    const manager = new PortForwardManager(new FakeSsh(new AnsweringConnection()), () => {});
+    try {
+      manager.create({ session: "alpha", remote_port: 8000 });
+      const active = await waitFor(manager, "alpha", "active");
+      // The target's close must not cut the reply off: a service that closes
+      // after answering is the common case, not an abort.
+      expect(await exchange(active.local_port!, "ping\n")).toBe("remote:127.0.0.1:8000\n");
     } finally {
       manager.dispose();
     }
