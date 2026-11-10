@@ -17,7 +17,7 @@ ComfyUI is the node-based interface that wires the model, sampler and decoders i
 
 This guide covers:
 
-① What each piece in the pipeline does;
+① What each piece in the workflow does;
 ② Why a 96GB G4 is enough;
 ③ How to create the runtime, install ComfyUI and download 39GB of weights;
 ④ How to bring ComfyUI's interface to your browser;
@@ -48,11 +48,11 @@ There are four roles, and they are easier to understand separately:
 
 MiniMax H3 does not produce a silent video and then dub it. It samples video and audio in one latent space, so speech, breathing, room tone and motion are computed together. That is why it sounds more natural than a video model with a separate voice pass.
 
-The price is VRAM. Even after pruning and quantization, the 33B model is about 39GB of weights; add the sampling activations and a 24GB or 48GB card spends its time swapping weights in and out. The G4's 96GB is what makes this pipeline comfortable, not a marketing number.
+The price is VRAM. Even after pruning and quantization, the 33B model is about 39GB of weights; add the sampling activations and a 24GB or 48GB card spends its time swapping weights in and out. The G4's 96GB is what makes this workflow comfortable, not a marketing number.
 
 ## 2. Five files are enough
 
-This minimal pipeline does not load the multi-person consistency plugins, latent upscalers or multi-segment continuation from the advanced guide. It needs five files:
+This minimal workflow does one thing — text or image to video — and leaves out multi-person consistency, latent upscaling and multi-segment continuation. It needs five files:
 
 | File | Role | Size (GB) |
 | --- | --- | ---: |
@@ -404,7 +404,7 @@ Once text-to-video works, the same environment covers:
 - **Reference to video**: open **MiniMax H3: Reference to Video** and lock a character with photos;
 - **Longer, multi-shot pieces**: generate several 5–8 second clips and join them in an editor;
 - **Higher resolution**: generate at 768p first, then run a separate upscale pass;
-- **Harder continuity**: multiple people in frame, cross-segment continuation, far-face refinement — advanced pipelines; get the minimal version comfortable first.
+- **Harder continuity**: multiple people in frame, cross-segment continuation, far-face refinement — another layer of capability; get the minimal version comfortable first.
 
 The full model and template list is in ComfyUI's Template Library and [Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3).
 

@@ -103,7 +103,7 @@
 <p>MiniMax H3 is a 33B omni-modal model: picture and sound are generated in the same diffusion process, so lip movement, room tone and action are aligned instead of being stitched together afterwards. The open weights target about one megapixel (768px short edge), 24fps and up to roughly 15 seconds. 2K is a hosted-service output; locally it needs a separate upscale pass.</p>
 <p>ComfyUI is the node-based interface that wires the model, sampler and decoders into a graph. ColabDesk is the desktop console for the Colab runtime: it creates the G4, opens a real terminal, browses the files and shows what the runtime is spending. Together they need no local GPU.</p>
 <p>This guide covers:</p>
-<p>① What each piece in the pipeline does;
+<p>① What each piece in the workflow does;
 ② Why a 96GB G4 is enough;
 ③ How to create the runtime, install ComfyUI and download 39GB of weights;
 ④ How to bring ComfyUI&#39;s interface to your browser;
@@ -152,9 +152,9 @@
 <li><strong>MiniMax H3</strong>: the model that actually generates picture and sound.</li>
 </ul>
 <p>MiniMax H3 does not produce a silent video and then dub it. It samples video and audio in one latent space, so speech, breathing, room tone and motion are computed together. That is why it sounds more natural than a video model with a separate voice pass.</p>
-<p>The price is VRAM. Even after pruning and quantization, the 33B model is about 39GB of weights; add the sampling activations and a 24GB or 48GB card spends its time swapping weights in and out. The G4&#39;s 96GB is what makes this pipeline comfortable, not a marketing number.</p>
+<p>The price is VRAM. Even after pruning and quantization, the 33B model is about 39GB of weights; add the sampling activations and a 24GB or 48GB card spends its time swapping weights in and out. The G4&#39;s 96GB is what makes this workflow comfortable, not a marketing number.</p>
 <h2 id="2-five-files-are-enough">2. Five files are enough</h2>
-<p>This minimal pipeline does not load the multi-person consistency plugins, latent upscalers or multi-segment continuation from the advanced guide. It needs five files:</p>
+<p>This minimal workflow does one thing — text or image to video — and leaves out multi-person consistency, latent upscaling and multi-segment continuation. It needs five files:</p>
 <table>
 <thead>
 <tr>
@@ -468,7 +468,7 @@ curl -s -o /dev/null -w <span class="hljs-string">&quot;tunnel=%{http_code} %{ti
 <li><strong>Reference to video</strong>: open <strong>MiniMax H3: Reference to Video</strong> and lock a character with photos;</li>
 <li><strong>Longer, multi-shot pieces</strong>: generate several 5–8 second clips and join them in an editor;</li>
 <li><strong>Higher resolution</strong>: generate at 768p first, then run a separate upscale pass;</li>
-<li><strong>Harder continuity</strong>: multiple people in frame, cross-segment continuation, far-face refinement — advanced pipelines; get the minimal version comfortable first.</li>
+<li><strong>Harder continuity</strong>: multiple people in frame, cross-segment continuation, far-face refinement — another layer of capability; get the minimal version comfortable first.</li>
 </ul>
 <p>The full model and template list is in ComfyUI&#39;s Template Library and <a href="https://huggingface.co/Comfy-Org/MiniMax-H3">Comfy-Org/MiniMax-H3</a>.</p>
 <hr>
