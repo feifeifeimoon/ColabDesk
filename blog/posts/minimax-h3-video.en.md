@@ -116,7 +116,7 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 pip install -r requirements.txt
 ```
 
-> **If `python3 -m venv venv` fails with `ensurepip returned non-zero exit status 1`**, that is a known Colab image issue, not a typo. The `virtualenv` form above bundles pip and bypasses ensurepip. If a broken `venv/` was already created, remove it with `rm -rf venv` and retry.
+> **If `python3 -m venv venv` fails with `ensurepip returned non-zero exit status 1`**, that is a known Colab image issue, not a typo. The `virtualenv` form above bundles pip and bypasses ensurepip.
 
 Confirm that PyTorch can see the GPU:
 

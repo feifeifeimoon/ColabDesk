@@ -116,7 +116,7 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 pip install -r requirements.txt
 ```
 
-> **如果 `python3 -m venv venv` 报 `ensurepip returned non-zero exit status 1`**：这是 Colab 镜像的已知问题，不是命令写错。上面的 `virtualenv` 方式自带 pip，会绕过 ensurepip。如果已经生成了一个坏掉的 `venv/`，先 `rm -rf venv` 再重试。
+> **如果 `python3 -m venv venv` 报 `ensurepip returned non-zero exit status 1`**：这是 Colab 镜像的已知问题，不是命令写错。上面的 `virtualenv` 方式自带 pip，会绕过 ensurepip。
 
 确认 PyTorch 认到了卡：
 
