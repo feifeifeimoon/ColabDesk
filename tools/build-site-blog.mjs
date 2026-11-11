@@ -153,6 +153,15 @@ function escapeXml(text) {
     .replaceAll("'", "&apos;");
 }
 
+/** Plain text from a small rendered fragment; leaves no tag characters behind. */
+function textFromHtml(html) {
+  return String(html)
+    .replace(/<[^>]*>/g, "")
+    .replace(/[<>]/g, "")
+    .replace(/&[#\w]+;/g, " ")
+    .trim();
+}
+
 function formatDate(iso, lang) {
   const date = new Date(`${iso}T00:00:00Z`);
   return new Intl.DateTimeFormat(LABELS[lang].dateLocale, {
@@ -193,9 +202,7 @@ function wrapTables(html) {
   return html.replace(/<table>([\s\S]*?)<\/table>/g, (_match, inner) => {
     const head = /<thead>[\s\S]*?<tr>([\s\S]*?)<\/tr>[\s\S]*?<\/thead>/.exec(inner);
     const headers = head
-      ? [...head[1].matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)].map((cell) =>
-          cell[1].replace(/<[^>]+>/g, "").trim(),
-        )
+      ? [...head[1].matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)].map((cell) => textFromHtml(cell[1]))
       : [];
 
     let body = inner;
@@ -269,7 +276,7 @@ function addHeadingIds(html) {
   const used = new Set();
   const headings = [];
   const withIds = html.replace(/<h([2-4])>([\s\S]*?)<\/h\1>/g, (_match, level, inner) => {
-    const text = inner.replace(/<[^>]+>/g, "").replace(/&[#\w]+;/g, " ").trim();
+    const text = textFromHtml(inner);
     const base = slugify(text) || "section";
     let id = base;
     for (let suffix = 2; used.has(id); suffix += 1) id = `${base}-${suffix}`;
