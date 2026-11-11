@@ -105,7 +105,9 @@ cd /content
 git clone https://github.com/comfyanonymous/ComfyUI.git
 cd ComfyUI
 
-python3 -m venv venv
+# Colab 的 Python 可能没有 ensurepip；virtualenv 自带 pip
+python3 -m pip install --upgrade virtualenv
+python3 -m virtualenv venv
 source venv/bin/activate
 pip install -U pip
 
@@ -113,6 +115,8 @@ pip install -U pip
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 pip install -r requirements.txt
 ```
+
+> **如果 `python3 -m venv venv` 报 `ensurepip returned non-zero exit status 1`**：这是 Colab 镜像的已知问题，不是命令写错。上面的 `virtualenv` 方式自带 pip，会绕过 ensurepip。如果已经生成了一个坏掉的 `venv/`，先 `rm -rf venv` 再重试。
 
 确认 PyTorch 认到了卡：
 
@@ -382,6 +386,7 @@ nvidia-smi
 | --- | --- | --- |
 | `torch.cuda.is_available()` 为 `False` | PyTorch 与显卡架构不匹配 | 重装 cu128 wheel |
 | `no kernel image is available` | 同上 | 同上 |
+| `python3 -m venv` 报 `ensurepip returned non-zero exit status 1` | Colab 的 Python 缺少 ensurepip | 按 3.2 用 `virtualenv` 创建 venv |
 | 模板里找不到 MiniMax | ComfyUI 太旧 | `cd /content/ComfyUI && git pull`，重启 |
 | 模型下拉框为空 | 文件不在对应 `models/` 子目录 | 按第 2 节的表检查路径 |
 | 第一次 Queue 很久没动静 | 正在把权重读进显存 | 等；用 `nvidia-smi` 看显存增长 |
@@ -423,7 +428,8 @@ pkill -f cloudflared
 cd /content
 git clone https://github.com/comfyanonymous/ComfyUI.git
 cd ComfyUI
-python3 -m venv venv
+python3 -m pip install --upgrade virtualenv
+python3 -m virtualenv venv
 source venv/bin/activate
 pip install -U pip
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128

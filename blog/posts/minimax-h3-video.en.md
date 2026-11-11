@@ -105,7 +105,9 @@ cd /content
 git clone https://github.com/comfyanonymous/ComfyUI.git
 cd ComfyUI
 
-python3 -m venv venv
+# Colab's Python may not ship ensurepip; virtualenv bundles its own pip.
+python3 -m pip install --upgrade virtualenv
+python3 -m virtualenv venv
 source venv/bin/activate
 pip install -U pip
 
@@ -113,6 +115,8 @@ pip install -U pip
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 pip install -r requirements.txt
 ```
+
+> **If `python3 -m venv venv` fails with `ensurepip returned non-zero exit status 1`**, that is a known Colab image issue, not a typo. The `virtualenv` form above bundles pip and bypasses ensurepip. If a broken `venv/` was already created, remove it with `rm -rf venv` and retry.
 
 Confirm that PyTorch can see the GPU:
 
@@ -382,6 +386,7 @@ Check that `minimax_h3_audio_vae_fp32.safetensors` is in `models/vae/`, and that
 | --- | --- | --- |
 | `torch.cuda.is_available()` is `False` | PyTorch does not match the GPU | Reinstall the cu128 wheel |
 | `no kernel image is available` | Same as above | Same as above |
+| `python3 -m venv` fails with `ensurepip returned non-zero exit status 1` | Colab's Python lacks ensurepip | Create the venv with `virtualenv` (3.2) |
 | MiniMax templates are missing | ComfyUI is too old | `cd /content/ComfyUI && git pull`, then restart |
 | The model dropdowns are empty | Files are not in the right `models/` subdirectory | Check the paths in section 2 |
 | The first Queue seems stuck | Weights are loading into VRAM | Wait; watch VRAM with `nvidia-smi` |
@@ -423,7 +428,8 @@ The full model and template list is in ComfyUI's Template Library and [Comfy-Org
 cd /content
 git clone https://github.com/comfyanonymous/ComfyUI.git
 cd ComfyUI
-python3 -m venv venv
+python3 -m pip install --upgrade virtualenv
+python3 -m virtualenv venv
 source venv/bin/activate
 pip install -U pip
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128

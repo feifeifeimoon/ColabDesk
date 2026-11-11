@@ -222,13 +222,18 @@ free -g
 git <span class="hljs-built_in">clone</span> https://github.com/comfyanonymous/ComfyUI.git
 <span class="hljs-built_in">cd</span> ComfyUI
 
-python3 -m venv venv
+<span class="hljs-comment"># Colab&#x27;s Python may not ship ensurepip; virtualenv bundles its own pip.</span>
+python3 -m pip install --upgrade virtualenv
+python3 -m virtualenv venv
 <span class="hljs-built_in">source</span> venv/bin/activate
 pip install -U pip
 
 <span class="hljs-comment"># Blackwell needs a CUDA 12.8+ PyTorch wheel</span>
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
-pip install -r requirements.txt</code></pre></div><p>Confirm that PyTorch can see the GPU:</p>
+pip install -r requirements.txt</code></pre></div><blockquote>
+<p><strong>If <code>python3 -m venv venv</code> fails with <code>ensurepip returned non-zero exit status 1</code></strong>, that is a known Colab image issue, not a typo. The <code>virtualenv</code> form above bundles pip and bypasses ensurepip. If a broken <code>venv/</code> was already created, remove it with <code>rm -rf venv</code> and retry.</p>
+</blockquote>
+<p>Confirm that PyTorch can see the GPU:</p>
 <div class="code-block" data-language="bash"><pre><code class="hljs">python -c <span class="hljs-string">&quot;import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))&quot;</span></code></pre></div><p>Expected output:</p>
 <div class="code-block"><pre><code class="hljs">2.11.0+cu128 True NVIDIA RTX PRO 6000 Blackwell Server Edition</code></pre></div><p>If <code>cuda.is_available()</code> is <code>False</code>, or you see <code>no kernel image is available</code>, the wheel does not match the GPU architecture. Reinstall the cu128 build; do not continue.</p>
 <h3 id="3-3-download-the-models">3.3 Download the models</h3>
@@ -435,6 +440,11 @@ curl -s -o /dev/null -w <span class="hljs-string">&quot;tunnel=%{http_code} %{ti
 <td data-label="Fix">Same as above</td>
 </tr>
 <tr>
+<td data-label="Symptom"><code>python3 -m venv</code> fails with <code>ensurepip returned non-zero exit status 1</code></td>
+<td data-label="Cause">Colab&#39;s Python lacks ensurepip</td>
+<td data-label="Fix">Create the venv with <code>virtualenv</code> (3.2)</td>
+</tr>
+<tr>
 <td data-label="Symptom">MiniMax templates are missing</td>
 <td data-label="Cause">ComfyUI is too old</td>
 <td data-label="Fix"><code>cd /content/ComfyUI &amp;&amp; git pull</code>, then restart</td>
@@ -483,7 +493,8 @@ curl -s -o /dev/null -w <span class="hljs-string">&quot;tunnel=%{http_code} %{ti
 <span class="hljs-built_in">cd</span> /content
 git <span class="hljs-built_in">clone</span> https://github.com/comfyanonymous/ComfyUI.git
 <span class="hljs-built_in">cd</span> ComfyUI
-python3 -m venv venv
+python3 -m pip install --upgrade virtualenv
+python3 -m virtualenv venv
 <span class="hljs-built_in">source</span> venv/bin/activate
 pip install -U pip
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
