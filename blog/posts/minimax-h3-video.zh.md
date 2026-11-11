@@ -288,7 +288,7 @@ ComfyUI 是 `nohup` 起的，不受影响。用完 `Ctrl+C`，ColabDesk 才能�
 
 ### 5.3 点 Queue，等它出片
 
-点 **Queue**。第一次运行会把约 39GB 权重读进显存，进度条可能静止几十秒，这是正常的。另开一个终端看显存：
+点 **Queue**。第一次运行会把约 39GB 权重读进显存，然后跑 4 步采样；本次在 G4 上实测 124 帧（5 秒）约 100 秒出片。进度条可能静止几十秒，这是正常的。另开一个终端看显存：
 
 ```bash
 watch -n 2 nvidia-smi
@@ -387,6 +387,7 @@ nvidia-smi
 | `torch.cuda.is_available()` 为 `False` | PyTorch 与显卡架构不匹配 | 重装 cu128 wheel |
 | `no kernel image is available` | 同上 | 同上 |
 | `python3 -m venv` 报 `ensurepip returned non-zero exit status 1` | Colab 的 Python 缺少 ensurepip | 按 3.2 用 `virtualenv` 创建 venv |
+| 启动日志出现 `You need pytorch with cu130 or higher...` | ComfyUI 0.45 的优化算子需要 cu130；cu128 走降级路径 | 可忽略；想启用优化算子就重装 cu130 wheel |
 | 模板里找不到 MiniMax | ComfyUI 太旧 | `cd /content/ComfyUI && git pull`，重启 |
 | 模型下拉框为空 | 文件不在对应 `models/` 子目录 | 按第 2 节的表检查路径 |
 | 第一次 Queue 很久没动静 | 正在把权重读进显存 | 等；用 `nvidia-smi` 看显存增长 |
@@ -419,7 +420,7 @@ pkill -f cloudflared
 
 ---
 
-*本文基于 ComfyUI 0.44、MiniMax H3 官方模板和 Colab G4 实机验证。*
+*本文基于 ComfyUI 0.45、MiniMax H3 官方模板和 Colab G4 实机验证。*
 
 ## 附录 A：从零到启动的完整命令
 

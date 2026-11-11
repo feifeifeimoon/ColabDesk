@@ -365,7 +365,7 @@ grep -oE <span class="hljs-string">&#x27;https://[a-z0-9-]+\.trycloudflare\.com&
 </tbody></table></div>
 <p>如果模板弹窗提示缺少模型，可以直接点弹窗里的 <strong>Download</strong>。下载完确认下拉框指向的是同一批文件。</p>
 <h3 id="5-3-点-queue-等它出片">5.3 点 Queue，等它出片</h3>
-<p>点 <strong>Queue</strong>。第一次运行会把约 39GB 权重读进显存，进度条可能静止几十秒，这是正常的。另开一个终端看显存：</p>
+<p>点 <strong>Queue</strong>。第一次运行会把约 39GB 权重读进显存，然后跑 4 步采样；本次在 G4 上实测 124 帧（5 秒）约 100 秒出片。进度条可能静止几十秒，这是正常的。另开一个终端看显存：</p>
 <div class="code-block" data-language="bash"><pre><code class="hljs">watch -n 2 nvidia-smi</code></pre></div><p>没有 <code>watch</code> 就用 <code>nvidia-smi -l 2</code>。</p>
 <p>出片后，文件在：</p>
 <div class="code-block"><pre><code class="hljs">/content/ComfyUI/output/video/MiniMax_H3_*.mp4</code></pre></div><p>自带立体声音轨，可以直接播放。第一次不用追求完美，先确认三件事：画面能动、有声音、没有报错。这三件事成立，再改提示词和时长。</p>
@@ -445,6 +445,11 @@ curl -s -o /dev/null -w <span class="hljs-string">&quot;tunnel=%{http_code} %{ti
 <td data-label="处理">按 3.2 用 <code>virtualenv</code> 创建 venv</td>
 </tr>
 <tr>
+<td data-label="现象">启动日志出现 <code>You need pytorch with cu130 or higher...</code></td>
+<td data-label="原因">ComfyUI 0.45 的优化算子需要 cu130；cu128 走降级路径</td>
+<td data-label="处理">可忽略；想启用优化算子就重装 cu130 wheel</td>
+</tr>
+<tr>
 <td data-label="现象">模板里找不到 MiniMax</td>
 <td data-label="原因">ComfyUI 太旧</td>
 <td data-label="处理"><code>cd /content/ComfyUI &amp;&amp; git pull</code>，重启</td>
@@ -487,7 +492,7 @@ curl -s -o /dev/null -w <span class="hljs-string">&quot;tunnel=%{http_code} %{ti
 </ul>
 <p>模型和模板的完整列表在 ComfyUI 的 Template Library 和 <a href="https://huggingface.co/Comfy-Org/MiniMax-H3">Comfy-Org/MiniMax-H3</a>。</p>
 <hr>
-<p><em>本文基于 ComfyUI 0.44、MiniMax H3 官方模板和 Colab G4 实机验证。</em></p>
+<p><em>本文基于 ComfyUI 0.45、MiniMax H3 官方模板和 Colab G4 实机验证。</em></p>
 <h2 id="附录-a-从零到启动的完整命令">附录 A：从零到启动的完整命令</h2>
 <div class="code-block" data-language="bash"><pre><code class="hljs"><span class="hljs-comment"># 1. 安装 ComfyUI</span>
 <span class="hljs-built_in">cd</span> /content

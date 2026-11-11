@@ -365,7 +365,7 @@ grep -oE <span class="hljs-string">&#x27;https://[a-z0-9-]+\.trycloudflare\.com&
 </tbody></table></div>
 <p>If the template popup reports missing models, use its <strong>Download</strong> button and confirm the dropdowns point at the same files afterwards.</p>
 <h3 id="5-3-queue-it-and-wait">5.3 Queue it and wait</h3>
-<p>Click <strong>Queue</strong>. The first run loads about 39GB of weights into VRAM; the progress bar may sit still for tens of seconds. That is expected. Watch VRAM from a second terminal:</p>
+<p>Click <strong>Queue</strong>. The first run loads about 39GB of weights into VRAM, then samples 4 steps; on a G4 this took about 100 seconds for 124 frames (5 seconds). The progress bar may sit still for tens of seconds; that is expected. Watch VRAM from a second terminal:</p>
 <div class="code-block" data-language="bash"><pre><code class="hljs">watch -n 2 nvidia-smi</code></pre></div><p>If <code>watch</code> is not installed, use <code>nvidia-smi -l 2</code>.</p>
 <p>The result lands here:</p>
 <div class="code-block"><pre><code class="hljs">/content/ComfyUI/output/video/MiniMax_H3_*.mp4</code></pre></div><p>It carries a stereo audio track and plays directly. Do not aim for a perfect clip on the first run; confirm three things first: the picture moves, there is sound, and nothing errored. Once those hold, change the prompt and duration.</p>
@@ -445,6 +445,11 @@ curl -s -o /dev/null -w <span class="hljs-string">&quot;tunnel=%{http_code} %{ti
 <td data-label="Fix">Create the venv with <code>virtualenv</code> (3.2)</td>
 </tr>
 <tr>
+<td data-label="Symptom">Startup log says <code>You need pytorch with cu130 or higher...</code></td>
+<td data-label="Cause">ComfyUI 0.45&#39;s optimized ops need cu130; cu128 falls back</td>
+<td data-label="Fix">Ignore it, or reinstall the cu130 wheel to enable them</td>
+</tr>
+<tr>
 <td data-label="Symptom">MiniMax templates are missing</td>
 <td data-label="Cause">ComfyUI is too old</td>
 <td data-label="Fix"><code>cd /content/ComfyUI &amp;&amp; git pull</code>, then restart</td>
@@ -487,7 +492,7 @@ curl -s -o /dev/null -w <span class="hljs-string">&quot;tunnel=%{http_code} %{ti
 </ul>
 <p>The full model and template list is in ComfyUI&#39;s Template Library and <a href="https://huggingface.co/Comfy-Org/MiniMax-H3">Comfy-Org/MiniMax-H3</a>.</p>
 <hr>
-<p><em>Verified on a Colab G4 with ComfyUI 0.44 and the official MiniMax H3 templates.</em></p>
+<p><em>Verified on a Colab G4 with ComfyUI 0.45 and the official MiniMax H3 templates.</em></p>
 <h2 id="appendix-a-every-command-start-to-finish">Appendix A: every command, start to finish</h2>
 <div class="code-block" data-language="bash"><pre><code class="hljs"><span class="hljs-comment"># 1. Install ComfyUI</span>
 <span class="hljs-built_in">cd</span> /content

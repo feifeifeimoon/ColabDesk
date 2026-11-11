@@ -288,7 +288,7 @@ If the template popup reports missing models, use its **Download** button and co
 
 ### 5.3 Queue it and wait
 
-Click **Queue**. The first run loads about 39GB of weights into VRAM; the progress bar may sit still for tens of seconds. That is expected. Watch VRAM from a second terminal:
+Click **Queue**. The first run loads about 39GB of weights into VRAM, then samples 4 steps; on a G4 this took about 100 seconds for 124 frames (5 seconds). The progress bar may sit still for tens of seconds; that is expected. Watch VRAM from a second terminal:
 
 ```bash
 watch -n 2 nvidia-smi
@@ -387,6 +387,7 @@ Check that `minimax_h3_audio_vae_fp32.safetensors` is in `models/vae/`, and that
 | `torch.cuda.is_available()` is `False` | PyTorch does not match the GPU | Reinstall the cu128 wheel |
 | `no kernel image is available` | Same as above | Same as above |
 | `python3 -m venv` fails with `ensurepip returned non-zero exit status 1` | Colab's Python lacks ensurepip | Create the venv with `virtualenv` (3.2) |
+| Startup log says `You need pytorch with cu130 or higher...` | ComfyUI 0.45's optimized ops need cu130; cu128 falls back | Ignore it, or reinstall the cu130 wheel to enable them |
 | MiniMax templates are missing | ComfyUI is too old | `cd /content/ComfyUI && git pull`, then restart |
 | The model dropdowns are empty | Files are not in the right `models/` subdirectory | Check the paths in section 2 |
 | The first Queue seems stuck | Weights are loading into VRAM | Wait; watch VRAM with `nvidia-smi` |
@@ -419,7 +420,7 @@ The full model and template list is in ComfyUI's Template Library and [Comfy-Org
 
 ---
 
-*Verified on a Colab G4 with ComfyUI 0.44 and the official MiniMax H3 templates.*
+*Verified on a Colab G4 with ComfyUI 0.45 and the official MiniMax H3 templates.*
 
 ## Appendix A: every command, start to finish
 
