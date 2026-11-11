@@ -13,7 +13,7 @@
  * listed in both indexes and marked with the language it was written in.
  */
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import hljs from "highlight.js/lib/core";
@@ -805,7 +805,15 @@ export function buildBlog({ root = ROOT, check = false, includeDrafts = false } 
   for (const relative of previous) {
     if (outputs.has(relative)) continue;
     const file = join(siteDir, relative);
-    if (existsSync(file)) rmSync(file);
+    if (!existsSync(file)) continue;
+    rmSync(file);
+    // A removed post leaves an empty `<slug>/` directory behind; the site
+    // serves that as a directory listing, so take the directory with it.
+    try {
+      rmdirSync(dirname(file));
+    } catch {
+      // Not empty: another generated file still lives there.
+    }
   }
   for (const [relative, content] of outputs) {
     const file = join(siteDir, relative);

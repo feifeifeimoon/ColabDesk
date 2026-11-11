@@ -281,6 +281,7 @@ date: 2026-01-03
     rmSync(join(root, "blog", "posts", "gone.en.md"));
     buildBlog({ root });
     expect(existsSync(join(root, "site", "blog", "gone", "index.html"))).toBe(false);
+    expect(existsSync(join(root, "site", "blog", "gone"))).toBe(false);
   });
 
   it("checks the committed output against the sources", () => {
