@@ -1,8 +1,9 @@
 /** Electron main entry: lifecycle only — window, IPC and the E2E fakes live in their own modules. */
 
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, net } from "electron";
 import { dirname, join } from "node:path";
 import { setMainWindow } from "./broadcast";
+import { setHttpTransport } from "./colab/backend-http";
 import { configDir } from "./colab/sessions";
 import { Service } from "./colab/service";
 import { UsageHistory } from "./colab/usage-history";
@@ -73,6 +74,10 @@ let updater: Updater | null = null;
 registerUpdateHandlers(() => updater);
 
 app.whenReady().then(async () => {
+  // Chromium resolves the OS proxy; Node's fetch does not. Without this the
+  // usage read times out behind a local proxy even though `colab usage` works.
+  setHttpTransport((input, init) => net.fetch(input instanceof URL ? input.href : input, init));
+
   // The fake runtime listens before the window opens, because the session store
   // seeded below carries its address.
   if (mock) {

@@ -16,6 +16,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { e2eMockEnabled } from "../e2e/mode";
 import type { Session } from "@shared/types";
+import { httpFetch } from "./backend-http";
 
 /** The raw on-disk entry, including the credential. Main process only. */
 export interface RawSession extends Session {
@@ -246,7 +247,7 @@ export async function refreshAccessToken(): Promise<string | null> {
       grant_type: "refresh_token",
     });
 
-    const response = await fetch(tokenUri, {
+    const response = await httpFetch(tokenUri, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: body.toString(),

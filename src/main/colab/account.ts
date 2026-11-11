@@ -21,6 +21,7 @@ import { e2eMockEnabled } from "../e2e/mode";
 import { errorMessage, type LogSink } from "../log-file";
 import { parseEligibility } from "./accelerator-eligibility";
 import { backendGetJson } from "./backend";
+import { httpFetch } from "./backend-http";
 import { retryTransientRead } from "./network-retry";
 import { ensureAccessToken, authState } from "./sessions";
 
@@ -58,7 +59,7 @@ export function resetAccountCache(): void {
  * XSSI guard.
  */
 async function readTokenInfo(url: string, timeoutMs: number): Promise<unknown> {
-  const response = await fetch(url, {
+  const response = await httpFetch(url, {
     headers: { Accept: "application/json" },
     signal: AbortSignal.timeout(timeoutMs),
   });
