@@ -25,6 +25,7 @@ import python from "highlight.js/lib/languages/python";
 import typescript from "highlight.js/lib/languages/typescript";
 import yaml from "highlight.js/lib/languages/yaml";
 import { marked } from "marked";
+import sanitizeHtml from "sanitize-html";
 
 for (const [name, language] of Object.entries({ bash, ini, javascript, json, python, typescript, yaml })) {
   hljs.registerLanguage(name, language);
@@ -153,17 +154,9 @@ function escapeXml(text) {
     .replaceAll("'", "&apos;");
 }
 
-/** Plain text from a small rendered fragment; leaves no tag characters behind. */
+/** Plain text from a small rendered fragment; a known sanitizer, not a hand-rolled tag regex. */
 function textFromHtml(html) {
-  // The second replace removes every remaining "<" and ">", so the result
-  // cannot carry a partial tag; every sink also escapes it. CodeQL's
-  // incomplete-sanitization rule does not model the second pass.
-  // codeql[js/incomplete-multi-character-sanitization]
-  return String(html)
-    .replace(/<[^>]*>/g, "")
-    .replace(/[<>]/g, "")
-    .replace(/&[#\w]+;/g, " ")
-    .trim();
+  return sanitizeHtml(String(html), { allowedTags: [], allowedAttributes: {} }).trim();
 }
 
 function formatDate(iso, lang) {
