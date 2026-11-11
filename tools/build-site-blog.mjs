@@ -155,6 +155,10 @@ function escapeXml(text) {
 
 /** Plain text from a small rendered fragment; leaves no tag characters behind. */
 function textFromHtml(html) {
+  // The second replace removes every remaining "<" and ">", so the result
+  // cannot carry a partial tag; every sink also escapes it. CodeQL's
+  // incomplete-sanitization rule does not model the second pass.
+  // codeql[js/incomplete-multi-character-sanitization]
   return String(html)
     .replace(/<[^>]*>/g, "")
     .replace(/[<>]/g, "")
