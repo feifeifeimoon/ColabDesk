@@ -13,6 +13,7 @@
  */
 
 import { ensureAccessToken } from "./sessions";
+import { httpFetch } from "./backend-http";
 import { retryTransientRead } from "./network-retry";
 
 const COLAB_DOMAIN = "https://colab.research.google.com";
@@ -48,7 +49,7 @@ export async function backendGetJson(path: string, timeoutMs = REQUEST_TIMEOUT_M
   const headers = { ...BACKEND_HEADERS, Authorization: `Bearer ${token}` };
 
   return retryTransientRead(async () => {
-    const response = await fetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) });
+    const response = await httpFetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) });
     if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
     return JSON.parse(stripXssiPrefix(await response.text()));
   }, READ_ATTEMPTS);
