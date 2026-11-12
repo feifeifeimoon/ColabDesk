@@ -48,6 +48,13 @@ export const PYTHON_VERSION = "3.12";
 const CLI_PACKAGE = "google-colab-cli";
 export const CLI_VERSION = "0.7.5";
 
+/**
+ * Bumped whenever the prune rules below change. Without it, a checkout that
+ * bundled before a new rule existed would keep its old, larger tree forever:
+ * `isAlreadyBundled` only looks at the manifest, never at the tree.
+ */
+export const RUNTIME_LAYOUT_VERSION = 2;
+
 function log(msg) {
   console.log(`[bundle:cli] ${msg}`);
 }
@@ -64,7 +71,11 @@ export function isAlreadyBundled(targetDir = TARGET_DIR) {
   if (!existsSync(pyExe) || !existsSync(cliEntry) || !existsSync(manifestPath)) return false;
   try {
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-    return manifest.cliVersion === CLI_VERSION && manifest.pythonVersion === PYTHON_VERSION;
+    return (
+      manifest.cliVersion === CLI_VERSION &&
+      manifest.pythonVersion === PYTHON_VERSION &&
+      manifest.layoutVersion === RUNTIME_LAYOUT_VERSION
+    );
   } catch {
     return false;
   }
@@ -113,23 +124,83 @@ function findStandalonePython(uvPath) {
   return null;
 }
 
-/** Prune unneeded large directories from python distribution */
-function prunePython(dest) {
-  const toRemove = [
-    join(dest, "include"),
-    join(dest, "libs"),
-    join(dest, "tcl"),
-    join(dest, "Doc"),
-    join(dest, "Lib", "test"),
-    join(dest, "Lib", "idlelib"),
-    join(dest, "Lib", "tkinter"),
-  ];
-  for (const p of toRemove) {
-    if (existsSync(p)) {
-      try {
-        rmSync(p, { recursive: true, force: true });
-      } catch {
-        // ignore
+/**
+ * Standard-library pieces the CLI cannot reach. `site-packages` takes pip with
+ * it: `colab install` runs pip on the remote VM (it sends a code string to the
+ * kernel), and nothing in this runtime imports pip.
+ */
+const PYTHON_LIB_REMOVALS = [
+  "test",
+  "idlelib",
+  "tkinter",
+  "turtledemo",
+  "lib2to3",
+  "ensurepip",
+  "venv",
+  "pydoc_data",
+  "site-packages",
+];
+
+/** Native modules that exist only for CPython's test suite or Tk. */
+const PYTHON_NATIVE_REMOVALS = [
+  /^_test/,
+  /^_ctypes_test/,
+  /^_tkinter/,
+  /^(tcl|tk)\w*\.(dll|so|dylib)$/i,
+];
+
+/** Remove one path and say so; a release log should show what the bundle lost. */
+function prunePath(root, target) {
+  if (!existsSync(target)) return;
+  rmSync(target, { recursive: true, force: true });
+  log(`Pruned ${relative(root, target)}`);
+}
+
+/**
+ * Prune the standalone Python distribution.
+ *
+ * Both layouts are handled on purpose: Windows keeps the standard library in
+ * `Lib/` and extensions in `DLLs/`, while the POSIX build uses
+ * `lib/python<version>/` and `lib/python<version>/lib-dynload/`. The previous
+ * Windows-only list silently left pip, the test suite and Tcl/Tk in the macOS
+ * bundle, which is why the dmg was larger than the Windows installer.
+ */
+export function prunePython(dest) {
+  for (const relativePath of ["include", "libs", "tcl", "Doc", "share"]) {
+    prunePath(dest, join(dest, relativePath));
+  }
+
+  const libDirs = [join(dest, "Lib"), join(dest, "lib", `python${PYTHON_VERSION}`)].filter((dir) =>
+    existsSync(dir),
+  );
+  for (const libDir of libDirs) {
+    for (const name of PYTHON_LIB_REMOVALS) prunePath(dest, join(libDir, name));
+    // Importing this needs tkinter, which is gone above.
+    prunePath(dest, join(libDir, "turtle.py"));
+  }
+
+  // On POSIX, Tcl/Tk's runtime sits beside the lib dir rather than inside it:
+  // the package directories (`tcl8.6`, `tk8.6`, `itcl4.2.2`, `thread2.8.6`)
+  // and, on Linux/macOS, the shared libraries themselves (`libtcl8.6.so`).
+  const posixLib = join(dest, "lib");
+  if (existsSync(posixLib)) {
+    for (const entry of readdirSync(posixLib)) {
+      if (
+        /^(tcl|tk|itcl|thread)[0-9.]*$/.test(entry) ||
+        /^(lib)?(tcl|tk)[0-9.]*\.(so|dylib)/.test(entry)
+      ) {
+        prunePath(dest, join(posixLib, entry));
+      }
+    }
+  }
+
+  const moduleDirs = [join(dest, "DLLs"), ...libDirs.map((dir) => join(dir, "lib-dynload"))].filter(
+    (dir) => existsSync(dir),
+  );
+  for (const moduleDir of moduleDirs) {
+    for (const entry of readdirSync(moduleDir)) {
+      if (PYTHON_NATIVE_REMOVALS.some((pattern) => pattern.test(entry))) {
+        prunePath(dest, join(moduleDir, entry));
       }
     }
   }
@@ -239,6 +310,63 @@ function stripBytecode(dir) {
   if (removed > 0) log(`Stripped ${removed} bytecode artifacts from ${dir}`);
 }
 
+/**
+ * `jupyter-mimetypes` declares pyarrow for exactly one feature: moving pandas
+ * objects in and out of the kernel via `get_variable`/`set_variable`. The CLI
+ * never calls that API (its command groups are session, execution, files,
+ * automation, run, ssh, utility, usage), and pandas is not installed either, so
+ * the Arrow path cannot run. pyarrow costs 86 MB. Scanning the installed CLI
+ * keeps it automatically if a later CLI version starts using the API.
+ */
+const VARIABLE_TRANSFER_API = /\b(get_variable|set_variable|deserialize_object|serialize_object)\s*\(/;
+
+function* walkPythonFiles(dir) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) yield* walkPythonFiles(full);
+    else if (entry.name.endsWith(".py")) yield full;
+  }
+}
+
+export function cliUsesVariableTransfer(siteDir) {
+  const cliDir = join(siteDir, "colab_cli");
+  // An unknown layout is not a reason to delete a dependency.
+  if (!existsSync(cliDir)) return true;
+  for (const file of walkPythonFiles(cliDir)) {
+    if (VARIABLE_TRANSFER_API.test(readFileSync(file, "utf8"))) return true;
+  }
+  return false;
+}
+
+/**
+ * Prune the installed site-packages tree.
+ *
+ * `bin/` holds console-script shims whose shebangs point at the build machine;
+ * the app invokes `python -m colab_cli.cli`, so none of them are used.
+ */
+export function pruneSite(siteDir) {
+  prunePath(siteDir, join(siteDir, "bin"));
+
+  const pyarrowDir = join(siteDir, "pyarrow");
+  if (!existsSync(pyarrowDir)) return;
+
+  if (!cliUsesVariableTransfer(siteDir)) {
+    prunePath(siteDir, pyarrowDir);
+    prunePath(siteDir, join(siteDir, "pyarrow.libs"));
+    for (const entry of readdirSync(siteDir)) {
+      if (/^pyarrow-.*\.dist-info$/.test(entry)) prunePath(siteDir, join(siteDir, entry));
+    }
+    return;
+  }
+
+  // Even a kept pyarrow loses what only a C++ SDK consumes.
+  for (const name of ["include", "src", "tests"]) prunePath(siteDir, join(pyarrowDir, name));
+  for (const entry of readdirSync(pyarrowDir)) {
+    if (entry.endsWith(".lib")) prunePath(siteDir, join(pyarrowDir, entry));
+  }
+  log("Kept pyarrow: colab_cli uses the variable-transfer API");
+}
+
 async function bundle() {
   if (!force && isAlreadyBundled()) {
     log(`Runtime already bundled at ${TARGET_DIR}. Use --force to rebuild.`);
@@ -305,11 +433,21 @@ async function bundle() {
     process.exit(1);
   }
 
+  pruneSite(SITE_DEST);
   stripBytecode(SITE_DEST);
 
   // 3. Verify and read version
   log("Verifying bundled CLI invocation...");
   const env = { ...process.env, PYTHONPATH: SITE_DEST, PYTHONDONTWRITEBYTECODE: "1" };
+  const imports = spawnSync(
+    pythonBin,
+    ["-c", "import colab_cli.cli, jupyter_kernel_client, jupyter_mimetypes"],
+    { env, encoding: "utf8" },
+  );
+  if (imports.status !== 0) {
+    error(`Bundled runtime cannot import the CLI: ${imports.stderr || imports.stdout}`);
+    process.exit(1);
+  }
   const check = spawnSync(pythonBin, ["-m", "colab_cli.cli", "version"], { env, encoding: "utf8" });
   if (check.status !== 0) {
     error(`CLI verification failed: ${check.stderr || check.stdout}`);
@@ -334,6 +472,7 @@ async function bundle() {
   const manifest = {
     cliVersion: CLI_VERSION,
     pythonVersion: PYTHON_VERSION,
+    layoutVersion: RUNTIME_LAYOUT_VERSION,
     platform: process.platform,
     arch: process.arch,
     runtimeHash,

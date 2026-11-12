@@ -43,6 +43,12 @@ describe("electron-builder configuration", () => {
     expect(config.mac.artifactName).toContain("${arch}");
   });
 
+  it("ships only the Electron locales the interface has catalogs for", () => {
+    // Chromium's locale pak files are ~1 MB each and unrelated to the app's own
+    // i18n. Adding a third interface language means adding it here too.
+    expect(config.electronLanguages).toEqual(["zh-CN", "en-US"]);
+  });
+
   it("keeps the NSIS options differential updates depend on", () => {
     // Changing any of these invalidates block maps for everyone already
     // installed, so they are a contract rather than a preference.

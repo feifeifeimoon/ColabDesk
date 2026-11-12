@@ -19,6 +19,10 @@ module.exports = {
   appId: "com.colabdesk.app",
   productName: "ColabDesk",
   directories: { output: "dist", buildResources: "resources" },
+  // The interface has exactly two catalogs (src/renderer/src/i18n/locales).
+  // Electron ships Chromium's strings for ~50 locales; keeping only these two
+  // takes `locales/` from 49 MB to about 1 MB in the installed app.
+  electronLanguages: ["zh-CN", "en-US"],
   files: [
     "out/**",
     "package.json",
