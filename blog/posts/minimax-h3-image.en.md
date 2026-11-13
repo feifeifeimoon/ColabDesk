@@ -74,7 +74,7 @@ Four things in this graph are worth remembering:
 - The **sampler** uses `res_multistep`. With the turbo LoRA, 8 steps are enough; without it, the base model wants 30;
 - **`LTXVSeparateAVLatent` pulls the picture part out**, and `VAEDecode` turns it into a PNG. The image template does not decode audio, so there is no sound.
 
-The `minimax_h3_video_vae_fp16.safetensors` filename says `video` because it is the video model's VAE; the image template simply uses it to decode one frame. Do not swap in an int8 VAE: the template points at the fp16 file, so keep them matched until the pipeline is working, then experiment.
+The `minimax_h3_video_vae_fp16.safetensors` filename says `video` because it is the video model's VAE; the image template simply uses it to decode one frame. Do not swap in an int8 VAE: the template points at the fp16 file, so keep them matched until the workflow is working, then experiment.
 
 ## 3. Set up the session and ComfyUI
 
@@ -172,7 +172,7 @@ All four files should be there, with the sizes from the table in section 2.
 
 > **Slow HuggingFace access**: if the direct connection is slow, replace `https://huggingface.co` with `https://hf-mirror.com`; nothing else changes.
 >
-> **Not a Blackwell card**: use `qwen3vl_32b_minimax_h3_int8_convrot.safetensors` (25.28GB) as the text encoder. That brings the total to about 51GB, which does not fit a 40GB A100; get the pipeline working on a G4 before changing hardware.
+> **Not a Blackwell card**: use `qwen3vl_32b_minimax_h3_int8_convrot.safetensors` (25.28GB) as the text encoder. That brings the total to about 51GB, which does not fit a 40GB A100; get the workflow working on a G4 before changing hardware.
 
 ## 4. Bring the interface to the browser
 

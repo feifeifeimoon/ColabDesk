@@ -197,7 +197,7 @@
 <li><strong>采样器</strong>用 <code>res_multistep</code>；接上 turbo LoRA 时 8 步就够，不接时用基础模型的 30 步；</li>
 <li><strong><code>LTXVSeparateAVLatent</code> 把画面部分拆出来</strong>，<code>VAEDecode</code> 还原成 PNG。图像模板不接音频解码，所以没有声音。</li>
 </ul>
-<p><code>minimax_h3_video_vae_fp16.safetensors</code> 的名字里有 <code>video</code>，是因为它本来就是视频模型的 VAE；生图模板只是拿它解码一帧。不要换成 int8 版：模板默认指向 fp16 版，第一次先保持一致，确认链路通了再考虑替换。</p>
+<p><code>minimax_h3_video_vae_fp16.safetensors</code> 的名字里有 <code>video</code>，是因为它本来就是视频模型的 VAE；生图模板只是拿它解码一帧。不要换成 int8 版：模板默认指向 fp16 版，第一次先保持一致，确认这套流程能跑通再考虑替换。</p>
 <h2 id="3-把会话和-comfyui-装好">3. 把会话和 ComfyUI 装好</h2>
 <h3 id="3-1-创建-g4-会话">3.1 创建 G4 会话</h3>
 <ol>
@@ -356,7 +356,7 @@ calm and playful mood. No text, no watermark.</code></pre></div><p>这段描述�
 <ul>
 <li><strong>先固定种子，再改提示词</strong>：同一个 <code>noise_seed</code> 下比较两次结果，才能看出是提示词变了还是随机性变了；</li>
 <li><strong>一次只改一个变量</strong>：主体、构图、光线分开调，别一次换掉整段；</li>
-<li><strong>1MP 的图别塞太多小脸和文字</strong>：模型在 1344×768 下对远景小脸和长文本不擅长，想要这些细节就先生成，再单独放大；</li>
+<li><strong>1MP 的图别塞太多远景人脸和文字</strong>：模型在 1344×768 下对远景人脸和长文本不擅长，想要这些细节就先生成，再单独放大；</li>
 <li><strong>不想要的东西写成约束</strong>：这个模板只有一段正向提示词，没有单独的负面输入；把 <code>no text, no watermark, no logo</code> 写进正向描述里；</li>
 <li><strong>turbo 和基础模型不是同一个东西</strong>：turbo 8 步快，但细节和稳定性略弱；要更稳的结果，切回基础模型用 30 步，代价是时间；</li>
 <li><strong>图像提示词可以直接复用到视频</strong>：把同一段描述放进视频模板，再补时间轴、镜头和声音，省一次重新构思。</li>

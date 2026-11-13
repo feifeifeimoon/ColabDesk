@@ -197,7 +197,7 @@
 <li>The <strong>sampler</strong> uses <code>res_multistep</code>. With the turbo LoRA, 8 steps are enough; without it, the base model wants 30;</li>
 <li><strong><code>LTXVSeparateAVLatent</code> pulls the picture part out</strong>, and <code>VAEDecode</code> turns it into a PNG. The image template does not decode audio, so there is no sound.</li>
 </ul>
-<p>The <code>minimax_h3_video_vae_fp16.safetensors</code> filename says <code>video</code> because it is the video model&#39;s VAE; the image template simply uses it to decode one frame. Do not swap in an int8 VAE: the template points at the fp16 file, so keep them matched until the pipeline is working, then experiment.</p>
+<p>The <code>minimax_h3_video_vae_fp16.safetensors</code> filename says <code>video</code> because it is the video model&#39;s VAE; the image template simply uses it to decode one frame. Do not swap in an int8 VAE: the template points at the fp16 file, so keep them matched until the workflow is working, then experiment.</p>
 <h2 id="3-set-up-the-session-and-comfyui">3. Set up the session and ComfyUI</h2>
 <h3 id="3-1-create-the-g4-session">3.1 Create the G4 session</h3>
 <ol>
@@ -255,7 +255,7 @@ dl <span class="hljs-variable">$B</span>/loras/minimax_h3_fl2v_turbo_8step_v1.0_
 <div class="code-block" data-language="bash"><pre><code class="hljs">find models -name <span class="hljs-string">&quot;*.safetensors&quot;</span> -<span class="hljs-built_in">printf</span> <span class="hljs-string">&quot;%10s  %p\n&quot;</span> | <span class="hljs-built_in">sort</span> -n</code></pre></div><p>All four files should be there, with the sizes from the table in section 2.</p>
 <blockquote>
 <p><strong>Slow HuggingFace access</strong>: if the direct connection is slow, replace <code>https://huggingface.co</code> with <code>https://hf-mirror.com</code>; nothing else changes.</p>
-<p><strong>Not a Blackwell card</strong>: use <code>qwen3vl_32b_minimax_h3_int8_convrot.safetensors</code> (25.28GB) as the text encoder. That brings the total to about 51GB, which does not fit a 40GB A100; get the pipeline working on a G4 before changing hardware.</p>
+<p><strong>Not a Blackwell card</strong>: use <code>qwen3vl_32b_minimax_h3_int8_convrot.safetensors</code> (25.28GB) as the text encoder. That brings the total to about 51GB, which does not fit a 40GB A100; get the workflow working on a G4 before changing hardware.</p>
 </blockquote>
 <h2 id="4-bring-the-interface-to-the-browser">4. Bring the interface to the browser</h2>
 <h3 id="4-1-start-comfyui">4.1 Start ComfyUI</h3>
