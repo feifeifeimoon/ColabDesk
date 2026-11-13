@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Generate AI Images with ColabDesk + ComfyUI (MiniMax H3) — ColabDesk Blog</title>
+    <meta name="description" content="From an empty G4 session to a 1344×768 PNG — install ComfyUI, download the official MiniMax H3 weights, and generate your first image.">
+    <link rel="canonical" href="https://colabdesk.dev/blog/minimax-h3-image/">
+    <link rel="alternate" hreflang="en" href="https://colabdesk.dev/blog/minimax-h3-image/">
+    <link rel="alternate" hreflang="zh-CN" href="https://colabdesk.dev/blog/zh/minimax-h3-image/">
+    <link rel="alternate" hreflang="x-default" href="https://colabdesk.dev/blog/minimax-h3-image/">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="ColabDesk">
+    <meta property="og:title" content="Generate AI Images with ColabDesk + ComfyUI (MiniMax H3) — ColabDesk Blog">
+    <meta property="og:description" content="From an empty G4 session to a 1344×768 PNG — install ComfyUI, download the official MiniMax H3 weights, and generate your first image.">
+    <meta property="og:url" content="https://colabdesk.dev/blog/minimax-h3-image/">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Generate AI Images with ColabDesk + ComfyUI (MiniMax H3) — ColabDesk Blog">
+    <meta name="twitter:description" content="From an empty G4 session to a 1344×768 PNG — install ComfyUI, download the official MiniMax H3 weights, and generate your first image.">
+    <meta property="og:image" content="https://colabdesk.dev/assets/blog/minimax-h3-image/cover-en.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Generate AI Images with ColabDesk + ComfyUI (MiniMax H3) — ColabDesk Blog">
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+    <link rel="alternate" type="application/rss+xml" title="ColabDesk Blog" href="/blog/feed.xml">
+    <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <script src="/theme.js"></script>
+    <script src="/blog/blog.js" defer></script>
+    <link rel="stylesheet" href="/tokens.css">
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/blog/blog.css">
+  </head>
+  <body class="blog">
+    <header class="blog-nav">
+      <div class="blog-nav__inner">
+        <div class="blog-nav__left">
+          <a class="blog-nav__brand" href="/" aria-label="ColabDesk">
+            <img class="blog-nav__lockup only-light" src="/assets/lockup.svg" alt="ColabDesk" width="125" height="24">
+            <img class="blog-nav__lockup only-dark" src="/assets/lockup-white.svg" alt="ColabDesk" width="125" height="24">
+          </a>
+          <span class="blog-nav__divider" aria-hidden="true"></span>
+          <a class="blog-nav__section" href="/blog/">Blog</a>
+        </div>
+        <div class="blog-nav__actions">
+          <a class="blog-nav__github" href="https://github.com/feifeifeimoon/ColabDesk" target="_blank" rel="noreferrer" aria-label="ColabDesk on GitHub">
+            <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+            <span class="blog-nav__github-label">GitHub</span>
+          </a>
+          <div class="lang-switch" role="group" aria-label="Language">
+            <svg class="lang-switch__globe" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">
+              <circle cx="8" cy="8" r="6.1" />
+              <path d="M1.9 8h12.2M8 1.9c1.9 1.9 1.9 10.3 0 12.2M8 1.9c-1.9 1.9-1.9 10.3 0 12.2" />
+            </svg>
+            <a class="lang-switch__option" href="/blog/zh/minimax-h3-image/" hreflang="zh-CN" lang="zh-Hans">中文</a>
+            <span class="lang-switch__option" lang="en" aria-current="page">EN</span>
+          </div>
+        </div>
+      </div>
+    </header>
+    <main class="blog-main post-layout">
+      <article class="post">
+        <header class="post__header">
+          <a class="post__back-link" href="/blog/">← All posts</a>
+          <p class="post__category">Tutorial</p>
+          <h1 class="post__title">Generate AI Images with ColabDesk + ComfyUI (MiniMax H3)</h1>
+          <p class="post__description">From an empty G4 session to a 1344×768 PNG — install ComfyUI, download the official MiniMax H3 weights, and generate your first image.</p>
+          <div class="post__byline">
+            <span class="post__avatar" aria-hidden="true">
+              <img class="only-light" src="/assets/symbol.svg" alt="">
+              <img class="only-dark" src="/assets/symbol-white.svg" alt="">
+            </span>
+            <span class="post__author">ColabDesk Team</span>
+            <span class="post__dot" aria-hidden="true">·</span>
+            <time datetime="2026-11-13">November 13, 2026</time>
+            <span class="post__dot" aria-hidden="true">·</span>
+            <span>13 min read</span>
+          </div>
+          <div class="post__tags"><ul class="tag-list" aria-label="Tags"><li>tutorial</li><li>comfyui</li><li>minimax</li></ul></div>
+        </header>
+        <details class="post-toc-mobile">
+          <summary>On this page</summary>
+          <ol class="post-toc__list">
+            <li class="post-toc__item"><a href="#1-what-each-piece-does-the-one-minute-version">1. What each piece does (the one-minute version)</a></li>
+            <li class="post-toc__item"><a href="#2-four-files-are-enough">2. Four files are enough</a></li>
+            <li class="post-toc__item"><a href="#3-set-up-the-session-and-comfyui">3. Set up the session and ComfyUI</a></li>
+            <li class="post-toc__item"><a href="#4-bring-the-interface-to-the-browser">4. Bring the interface to the browser</a></li>
+            <li class="post-toc__item"><a href="#5-generate-the-first-image">5. Generate the first image</a></li>
+            <li class="post-toc__item"><a href="#6-write-a-prompt-that-does-not-waste-a-generation">6. Write a prompt that does not waste a generation</a></li>
+            <li class="post-toc__item"><a href="#7-what-to-check-when-something-goes-wrong">7. What to check when something goes wrong</a></li>
+            <li class="post-toc__item"><a href="#8-clean-up-take-the-image-stop-the-meter">8. Clean up: take the image, stop the meter</a></li>
+            <li class="post-toc__item"><a href="#9-where-to-go-next">9. Where to go next</a></li>
+            <li class="post-toc__item"><a href="#appendix-a-every-command-start-to-finish">Appendix A: every command, start to finish</a></li>
+            <li class="post-toc__item"><a href="#appendix-b-usage-notes">Appendix B: usage notes</a></li>
+          </ol>
+        </details>
+        <div class="post__body"><blockquote>
+<p>You have a Colab G4 and want one good image from a sentence, but you do not want to build the full video workflow first.</p>
+<p>This guide does one thing: start from an empty G4 session, install ComfyUI and the official MiniMax H3 weights, and produce a first 1344×768 PNG. Every step has a command you can paste, plus what you should see when it worked.</p>
+</blockquote>
+        <img class="post__cover" src="/assets/blog/minimax-h3-image/cover-en.png" alt="" width="1200" height="630">
+
+<p>MiniMax H3 is a 33-billion-parameter omni-modal model. It is best known for generating video with sound, but the same weights can also produce a single frame: ComfyUI&#39;s <strong>MiniMax H3: Text to Image</strong> template folds the model&#39;s joint audio-video modelling into one sampling pass and outputs a still image. There is no audio and no timeline, so it is much faster than the video template — a good place to tune a prompt, a composition and a lighting setup before you reuse them for video.</p>
+<p>ComfyUI is the node-based interface that wires the model, sampler and decoders into a graph. ColabDesk is the desktop console for the Colab session: it creates the G4, opens a real terminal, browses the files and shows what the session is spending. Together they need no local GPU.</p>
+<p>This guide covers:</p>
+<ul>
+<li>What each node in the text-to-image template does;</li>
+<li>Why a 96GB G4 is enough;</li>
+<li>How to create the session, install ComfyUI and download about 41GB of weights;</li>
+<li>How to bring ComfyUI&#39;s interface to your browser;</li>
+<li>How to generate the first image and write a prompt;</li>
+<li>What to check when something goes wrong, and how to clean up.</li>
+</ul>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody><tr>
+<td data-label="Item">You need</td>
+<td data-label="Detail">A Colab account that can allocate G4, and ColabDesk signed in</td>
+</tr>
+<tr>
+<td data-label="Item">Hardware</td>
+<td data-label="Detail">Colab G4 (RTX PRO 6000 Blackwell, 96GB VRAM)</td>
+</tr>
+<tr>
+<td data-label="Item">Disk</td>
+<td data-label="Detail">About 60GB: 41GB of weights plus ComfyUI and dependencies</td>
+</tr>
+<tr>
+<td data-label="Item">First run</td>
+<td data-label="Detail">30–40 minutes, including 3–10 minutes of downloads</td>
+</tr>
+<tr>
+<td data-label="Item">Cost</td>
+<td data-label="Detail">G4 is about 8.9 compute units per hour (Colab&#39;s billing unit); use the live reading in ColabDesk&#39;s status bar</td>
+</tr>
+<tr>
+<td data-label="Item">Output</td>
+<td data-label="Detail">One 1344×768 PNG, about 1.4MB in this test</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="1-what-each-piece-does-the-one-minute-version">1. What each piece does (the one-minute version)</h2>
+<figure class="post__figure"><img src="/assets/blog/minimax-h3-image/pipeline.png" alt="Figure 1 · ColabDesk reaches the Colab session over SSH; ComfyUI reaches the browser through a temporary HTTPS tunnel"><figcaption>Figure 1 · ColabDesk reaches the Colab session over SSH; ComfyUI reaches the browser through a temporary HTTPS tunnel</figcaption></figure>
+<p>There are four roles, and they are easier to understand separately:</p>
+<ul>
+<li><strong>ColabDesk</strong>: the desktop SSH console. It creates the G4 session, gives you a real terminal and a file panel, and shows what the session is spending.</li>
+<li><strong>Colab G4</strong>: the cloud GPU with 96GB of VRAM. It runs ComfyUI and the weights; <code>/content</code> is wiped when the session stops.</li>
+<li><strong>ComfyUI</strong>: the node-based interface served as a web page from the session. It listens only on <code>127.0.0.1:8188</code>.</li>
+<li><strong>MiniMax H3</strong>: the model that actually generates the image.</li>
+</ul>
+<p>The text-to-image template does not generate video or sound. It encodes the prompt into a representation the model can read, starts from noise in the model&#39;s compressed internal representation (the latent space), and decodes only the picture back to pixels. One sampling pass produces one frame, so there is no consistency problem between frames — and the result is much faster.</p>
+<p>The price is still VRAM. Even after pruning and quantization, the 33-billion-parameter model is about 41GB of weights; sampling activations sit on top of that. In this test a 1344×768 image used about 59GB of VRAM, leaving comfortable headroom on the G4&#39;s 96GB. A 24GB or 48GB card spends its time swapping weights in and out, which is too slow to iterate.</p>
+<h2 id="2-four-files-are-enough">2. Four files are enough</h2>
+<p>This minimal text-to-image workflow does one thing — text to image — and leaves out image-to-image, upscaling and multi-image consistency. It needs four files:</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>File</th>
+<th>Role</th>
+<th align="right">Size (GB)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td data-label="File"><code>minimax_h3_fl2va_pruned_int8_convrot.safetensors</code></td>
+<td data-label="Role">Diffusion model; produces the picture</td>
+<td align="right" data-label="Size (GB)">19.53</td>
+</tr>
+<tr>
+<td data-label="File"><code>qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors</code></td>
+<td data-label="Role">Text encoder; turns the prompt into something the model can read</td>
+<td align="right" data-label="Size (GB)">14.61</td>
+</tr>
+<tr>
+<td data-label="File"><code>minimax_h3_video_vae_fp16.safetensors</code></td>
+<td data-label="Role">Video decoder (VAE); turns the model&#39;s internal representation into pixels</td>
+<td align="right" data-label="Size (GB)">4.85</td>
+</tr>
+<tr>
+<td data-label="File"><code>minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors</code></td>
+<td data-label="Role">Acceleration LoRA (a small set of extra weights); lets the sampler use 8 steps</td>
+<td align="right" data-label="Size (GB)">1.82</td>
+</tr>
+</tbody></table></div>
+<p>About 41GB in total, all from the official <code>Comfy-Org/MiniMax-H3</code> repository.</p>
+<p>ComfyUI&#39;s template wires them into a graph. The text-to-image template is much shorter than the video one:</p>
+<figure class="post__figure"><img src="/assets/blog/minimax-h3-image/workflow.png" alt="Figure 2 · The text-to-image graph: prompt and empty canvas → sampler → picture latent → PNG"><figcaption>Figure 2 · The text-to-image graph: prompt and empty canvas → sampler → picture latent → PNG</figcaption></figure>
+<p>Four things in this graph are worth remembering:</p>
+<ul>
+<li>The <strong>prompt</strong> lives in the <code>CLIP Text Encode</code> node;</li>
+<li>The <strong>resolution</strong> lives on <code>EmptyLatentImage</code>; the template starts at <code>1344 × 768</code>;</li>
+<li>The <strong>sampler</strong> uses <code>res_multistep</code>. With the turbo LoRA, 8 steps are enough; without it, the base model wants 30;</li>
+<li><strong><code>LTXVSeparateAVLatent</code> pulls the picture part out</strong>, and <code>VAEDecode</code> turns it into a PNG. The image template does not decode audio, so there is no sound.</li>
+</ul>
+<p>The <code>minimax_h3_video_vae_fp16.safetensors</code> filename says <code>video</code> because it is the video model&#39;s VAE; the image template simply uses it to decode one frame. Do not swap in an int8 VAE: the template points at the fp16 file, so keep them matched until the workflow is working, then experiment.</p>
+<h2 id="3-set-up-the-session-and-comfyui">3. Set up the session and ComfyUI</h2>
+<h3 id="3-1-create-the-g4-session">3.1 Create the G4 session</h3>
+<ol>
+<li>Open ColabDesk and sign in with your Google account.</li>
+<li>Click <strong>New Session</strong>, choose <strong>G4</strong> as the accelerator, name it (for example <code>minimax-image</code>) and create it.</li>
+<li>Wait for the status to become READY. The terminal opens in <code>/content</code>.</li>
+</ol>
+<p>Confirm the hardware in the terminal:</p>
+<div class="code-block" data-language="bash"><pre><code class="hljs">nvidia-smi --query-gpu=name,memory.total --format=csv,noheader</code></pre></div><p>You should see something like:</p>
+<div class="code-block"><pre><code class="hljs">NVIDIA RTX PRO 6000 Blackwell Server Edition, 97887 MiB</code></pre></div><h3 id="3-2-install-comfyui">3.2 Install ComfyUI</h3>
+<p>In the ColabDesk terminal:</p>
+<div class="code-block" data-language="bash"><pre><code class="hljs"><span class="hljs-built_in">cd</span> /content
+git <span class="hljs-built_in">clone</span> https://github.com/comfyanonymous/ComfyUI.git
+<span class="hljs-built_in">cd</span> ComfyUI
+
+<span class="hljs-comment"># Colab&#x27;s Python may not ship ensurepip; virtualenv bundles its own pip.</span>
+python3 -m pip install --upgrade virtualenv
+python3 -m virtualenv venv
+<span class="hljs-built_in">source</span> venv/bin/activate
+pip install -U pip
+
+<span class="hljs-comment"># Blackwell needs a CUDA 12.8+ PyTorch wheel</span>
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+pip install -r requirements.txt</code></pre></div><blockquote>
+<p><strong>If <code>python3 -m venv venv</code> fails with <code>ensurepip returned non-zero exit status 1</code></strong>: that is a known Colab image problem, not a typo in the command. The <code>virtualenv</code> route above bundles pip and skips ensurepip.</p>
+</blockquote>
+<p>Confirm that PyTorch sees the GPU:</p>
+<div class="code-block" data-language="bash"><pre><code class="hljs">python -c <span class="hljs-string">&quot;import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))&quot;</span></code></pre></div><p>You should see something like:</p>
+<div class="code-block"><pre><code class="hljs">2.11.0+cu128 True NVIDIA RTX PRO 6000 Blackwell Server Edition</code></pre></div><p>If <code>cuda.is_available()</code> is <code>False</code>, or you see <code>no kernel image is available</code>, the wheel does not match the GPU architecture. Reinstall the cu128 build and do not continue.</p>
+<h3 id="3-3-download-the-models">3.3 Download the models</h3>
+<p>In the same terminal:</p>
+<div class="code-block" data-language="bash"><pre><code class="hljs">apt-get update -qq &amp;&amp; apt-get install -y -qq aria2
+
+<span class="hljs-built_in">cd</span> /content/ComfyUI
+<span class="hljs-built_in">mkdir</span> -p models/{diffusion_models,text_encoders,vae,loras}
+
+<span class="hljs-function"><span class="hljs-title">dl</span></span>() {
+  aria2c -x 16 -s 16 -k 1M --<span class="hljs-built_in">continue</span>=<span class="hljs-literal">true</span> --file-allocation=none \
+    --console-log-level=warn -d <span class="hljs-string">&quot;<span class="hljs-subst">$(dirname <span class="hljs-string">&quot;<span class="hljs-variable">$2</span>&quot;</span>)</span>&quot;</span> -o <span class="hljs-string">&quot;<span class="hljs-subst">$(basename <span class="hljs-string">&quot;<span class="hljs-variable">$2</span>&quot;</span>)</span>&quot;</span> <span class="hljs-string">&quot;<span class="hljs-variable">$1</span>&quot;</span>
+}
+
+B=https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main
+
+dl <span class="hljs-variable">$B</span>/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors \
+   models/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors
+
+dl <span class="hljs-variable">$B</span>/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors \
+   models/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors
+
+dl <span class="hljs-variable">$B</span>/vae/minimax_h3_video_vae_fp16.safetensors \
+   models/vae/minimax_h3_video_vae_fp16.safetensors
+
+dl <span class="hljs-variable">$B</span>/loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors \
+   models/loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors</code></pre></div><p>Check the result:</p>
+<div class="code-block" data-language="bash"><pre><code class="hljs">find models -name <span class="hljs-string">&quot;*.safetensors&quot;</span> -<span class="hljs-built_in">printf</span> <span class="hljs-string">&quot;%10s  %p\n&quot;</span> | <span class="hljs-built_in">sort</span> -n</code></pre></div><p>All four files should be there, with the sizes from the table in section 2.</p>
+<blockquote>
+<p><strong>Slow HuggingFace access</strong>: if the direct connection is slow, replace <code>https://huggingface.co</code> with <code>https://hf-mirror.com</code>; nothing else changes.</p>
+<p><strong>Not a Blackwell card</strong>: use <code>qwen3vl_32b_minimax_h3_int8_convrot.safetensors</code> (25.28GB) as the text encoder. That brings the total to about 51GB, which does not fit a 40GB A100; get the workflow working on a G4 before changing hardware.</p>
+</blockquote>
+<h2 id="4-bring-the-interface-to-the-browser">4. Bring the interface to the browser</h2>
+<h3 id="4-1-start-comfyui">4.1 Start ComfyUI</h3>
+<div class="code-block" data-language="bash"><pre><code class="hljs"><span class="hljs-built_in">cd</span> /content/ComfyUI
+<span class="hljs-built_in">source</span> venv/bin/activate
+<span class="hljs-built_in">nohup</span> python main.py --listen 127.0.0.1 --port 8188 --highvram --disable-mmap \
+  &gt; /content/comfyui.log 2&gt;&amp;1 &amp;</code></pre></div><p><code>--highvram</code> keeps the weights in VRAM as much as possible, and <code>--disable-mmap</code> avoids Colab&#39;s disk mapping slowing the first load.</p>
+<p>Wait a few seconds and check that it answers locally:</p>
+<div class="code-block" data-language="bash"><pre><code class="hljs">curl -s -o /dev/null -w <span class="hljs-string">&quot;local=%{http_code}\n&quot;</span> http://127.0.0.1:8188/</code></pre></div><p><code>local=200</code> means it is up. If not, read the log:</p>
+<div class="code-block" data-language="bash"><pre><code class="hljs"><span class="hljs-built_in">tail</span> -n 50 /content/comfyui.log</code></pre></div><h3 id="4-2-open-a-temporary-tunnel">4.2 Open a temporary tunnel</h3>
+<p>ComfyUI listens only on <code>127.0.0.1</code>, so the browser on your machine cannot reach it directly. Open a temporary HTTPS tunnel with cloudflared:</p>
+<div class="code-block" data-language="bash"><pre><code class="hljs">wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+  -O /usr/local/bin/cloudflared
+<span class="hljs-built_in">chmod</span> +x /usr/local/bin/cloudflared
+
+<span class="hljs-built_in">nohup</span> cloudflared tunnel --protocol http2 --edge-ip-version 4 --no-autoupdate \
+  --url http://127.0.0.1:8188 &gt; /content/cloudflared.log 2&gt;&amp;1 &amp;
+
+<span class="hljs-built_in">sleep</span> 12
+grep -oE <span class="hljs-string">&#x27;https://[a-z0-9-]+\.trycloudflare\.com&#x27;</span> /content/cloudflared.log | <span class="hljs-built_in">tail</span> -1</code></pre></div><p>Paste the printed address into your browser. It is temporary and changes every time the tunnel restarts.</p>
+<h3 id="4-3-if-the-tunnel-is-slow">4.3 If the tunnel is slow</h3>
+<p>First find out which hop is slow:</p>
+<div class="code-block" data-language="bash"><pre><code class="hljs">curl -s -o /dev/null -w <span class="hljs-string">&quot;local=%{http_code} %{time_total}s\n&quot;</span> http://127.0.0.1:8188/
+curl -s -o /dev/null -w <span class="hljs-string">&quot;tunnel=%{http_code} %{time_total}s\n&quot;</span> https://your-address/system_stats</code></pre></div><ul>
+<li><code>local</code> is not 200: ComfyUI is not running; read <code>/content/comfyui.log</code>;</li>
+<li><code>local</code> is fast and <code>tunnel</code> is slow: start another tunnel, or try a different <code>--protocol</code> / <code>--edge-ip-version</code>;</li>
+<li>both are fast but the browser is slow: the route from your machine to Cloudflare; change networks or proxy mode.</li>
+</ul>
+<p>A session has a single SSH connection and ColabDesk already holds it, so <code>ssh -L</code> forwarding usually cannot connect. The tunnel is the simpler route.</p>
+<h2 id="5-generate-the-first-image">5. Generate the first image</h2>
+<h3 id="5-1-open-the-official-template">5.1 Open the official template</h3>
+<p>In ComfyUI&#39;s left sidebar open <strong>Workflows → Browse Templates</strong> (or <strong>Workflow → Browse Templates</strong> at the top), search for <strong>MiniMax H3: Text to Image</strong>, and open it.</p>
+<p>The canvas holds a short graph. The template is already wired; for the first run, just confirm <code>ComfySwitchNode</code> is on the turbo side and <code>steps</code> is 8.</p>
+<h3 id="5-2-know-the-controls">5.2 Know the controls</h3>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>Control</th>
+<th>Meaning</th>
+<th>First run</th>
+</tr>
+</thead>
+<tbody><tr>
+<td data-label="Control"><code>CLIP Text Encode</code> → <code>text</code></td>
+<td data-label="Meaning">The prompt</td>
+<td data-label="First run">Replace it with what you want to draw</td>
+</tr>
+<tr>
+<td data-label="Control"><code>EmptyLatentImage</code> → <code>width</code> / <code>height</code></td>
+<td data-label="Meaning">Resolution</td>
+<td data-label="First run">Keep <code>1344 × 768</code> (16:9)</td>
+</tr>
+<tr>
+<td data-label="Control"><code>ComfySwitchNode</code></td>
+<td data-label="Meaning">Base model / turbo LoRA switch</td>
+<td data-label="First run">Switch to the turbo side and run the fast path</td>
+</tr>
+<tr>
+<td data-label="Control"><code>BasicScheduler</code> → <code>steps</code></td>
+<td data-label="Meaning">Sampling steps</td>
+<td data-label="First run"><code>8</code> with turbo, <code>30</code> with the base model</td>
+</tr>
+<tr>
+<td data-label="Control"><code>noise_seed</code></td>
+<td data-label="Meaning">Random seed</td>
+<td data-label="First run">Leave it alone; fix it when comparing prompts</td>
+</tr>
+<tr>
+<td data-label="Control"><code>SaveImage</code> → <code>filename_prefix</code></td>
+<td data-label="Meaning">Output filename prefix</td>
+<td data-label="First run">Default <code>image_minimax_h3_t2i</code></td>
+</tr>
+</tbody></table></div>
+<p><code>ComfySwitchNode</code> is the one control that is easy to misread: one side is the base model, the other adds the 8-step turbo LoRA. After switching to turbo, change <code>steps</code> to 8. Changing the step count without connecting the LoRA produces a noisy image.</p>
+<h3 id="5-3-queue-it-and-wait">5.3 Queue it and wait</h3>
+<p>Click <strong>Queue</strong>. The first run loads about 41GB of weights into VRAM, which can take anything from tens of seconds to a few minutes; later runs are much faster.</p>
+<p>In this test on a G4: <code>1344 × 768</code>, turbo LoRA, 8 steps, <strong>12.97 seconds</strong>, about <strong>59GB</strong> of VRAM. Watch it from another terminal:</p>
+<div class="code-block" data-language="bash"><pre><code class="hljs">nvidia-smi -l 2</code></pre></div><p>The file lands in:</p>
+<div class="code-block"><pre><code class="hljs">/content/ComfyUI/output/image/</code></pre></div><p>It is one 1344×768 PNG. This is the output from the test run, prompted with &quot;a red panda with a black bird perched on its head, in front of a waterfall and a zen garden&quot;:</p>
+<figure class="post__figure"><img src="/assets/blog/minimax-h3-image/example.png" alt="Figure 3 · The test output: 1344×768, 8 turbo steps, 12.97 seconds"><figcaption>Figure 3 · The test output: 1344×768, 8 turbo steps, 12.97 seconds</figcaption></figure>
+<p>The first image does not have to be perfect. Confirm three things: it opens, the dimensions are right, and there are no errors. Once those hold, start changing the prompt and the resolution.</p>
+<h2 id="6-write-a-prompt-that-does-not-waste-a-generation">6. Write a prompt that does not waste a generation</h2>
+<h3 id="6-1-the-four-part-structure">6.1 The four-part structure</h3>
+<p>An image prompt does not need a timeline or a soundtrack, but it does need the picture spelled out. A usable prompt usually has four parts:</p>
+<ol>
+<li><strong>Subject</strong>: who or what, its appearance, material, clothing and key props;</li>
+<li><strong>Composition</strong>: shot size, angle and where the subject sits in the frame;</li>
+<li><strong>Light</strong>: direction, colour temperature and contrast;</li>
+<li><strong>Style and constraints</strong>: photographic, illustration or film, plus what you do not want.</li>
+</ol>
+<h3 id="6-2-a-usable-example">6.2 A usable example</h3>
+<p>Paste this into the <code>CLIP Text Encode</code> node&#39;s <code>text</code> field:</p>
+<div class="code-block" data-language="text"><pre><code class="hljs">A photograph of a red panda with a small black bird perched on its head.
+A waterfall and a zen garden with a stone lantern in the background.
+Soft daylight, shallow depth of field, detailed fur, natural colors,
+calm and playful mood. No text, no watermark.</code></pre></div><p>This describes the test image above. English prompts are usually more stable; Chinese works too, but keep the subject and style words concrete.</p>
+<h3 id="6-3-a-few-habits">6.3 A few habits</h3>
+<ul>
+<li><strong>Fix the seed before changing the prompt</strong>: with the same <code>noise_seed</code>, two results differ because of the prompt, not because of randomness;</li>
+<li><strong>Change one variable at a time</strong>: subject, composition and light separately, not the whole paragraph at once;</li>
+<li><strong>Do not pack tiny faces or long text into a 1MP image</strong>: at 1344×768 the model struggles with distant faces and long strings; generate first, then upscale;</li>
+<li><strong>Write constraints as positive text</strong>: this template has one positive prompt and no separate negative input, so put <code>no text, no watermark, no logo</code> in the description;</li>
+<li><strong>Turbo and the base model are not the same</strong>: turbo at 8 steps is fast but slightly less detailed and stable; switch back to the base model at 30 steps when you need a cleaner result, and pay with time;</li>
+<li><strong>Reuse the prompt for video</strong>: drop the same description into the video template, then add a timeline, camera moves and audio instead of starting over.</li>
+</ul>
+<h2 id="7-what-to-check-when-something-goes-wrong">7. What to check when something goes wrong</h2>
+<h3 id="7-1-the-page-will-not-open-or-is-very-slow">7.1 The page will not open, or is very slow</h3>
+<p>Run the two commands in section 4.3 and check local before blaming the tunnel.</p>
+<h3 id="7-2-cuda-out-of-memory">7.2 CUDA out of memory</h3>
+<p>This set uses about 59GB of VRAM on a G4, so it should not run out. If it does:</p>
+<div class="code-block" data-language="bash"><pre><code class="hljs">nvidia-smi</code></pre></div><p>Make sure no other process is holding memory, and lower <code>EmptyLatentImage</code> to <code>1024 × 576</code>. A 40GB A100 cannot hold this combination; do not substitute one for the G4.</p>
+<h3 id="7-3-the-model-download-fails">7.3 The model download fails</h3>
+<ul>
+<li>401/403: the repository is public and normally needs no token; if you used a mirror, check its address;</li>
+<li>Slow or interrupted: aria2 resumes, so run the same command again;</li>
+<li>Wrong file size: delete and download again; do not start from half a file.</li>
+</ul>
+<h3 id="7-4-the-image-is-black-noisy-or-the-wrong-size">7.4 The image is black, noisy, or the wrong size</h3>
+<ul>
+<li>Black or noisy: check that <code>ComfySwitchNode</code> and <code>steps</code> agree. The turbo side needs 8 steps; the base model needs 30. Changing only one produces a bad image;</li>
+<li>Wrong size: check <code>EmptyLatentImage</code>&#39;s <code>width</code> / <code>height</code>, and look for an extra resize node after <code>VAEDecode</code>;</li>
+<li>Wrong colours: make sure the VAE is the template&#39;s <code>minimax_h3_video_vae_fp16.safetensors</code>, not an int8 VAE;</li>
+<li>Empty model dropdown: the file is not in the matching <code>models/</code> subdirectory; check the paths in section 2.</li>
+</ul>
+<h3 id="7-5-everything-disappeared-after-a-restart">7.5 Everything disappeared after a restart</h3>
+<p><code>/content</code> is temporary storage and is wiped when the session stops. That is Colab&#39;s behaviour, not a ColabDesk cache problem. Run sections 3.2 and 3.3 again next time; the download takes about 3–10 minutes.</p>
+<h3 id="7-6-other-common-errors">7.6 Other common errors</h3>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody><tr>
+<td data-label="Symptom"><code>torch.cuda.is_available()</code> is <code>False</code></td>
+<td data-label="Cause">PyTorch does not match the GPU architecture</td>
+<td data-label="Fix">Reinstall the cu128 wheel</td>
+</tr>
+<tr>
+<td data-label="Symptom"><code>no kernel image is available</code></td>
+<td data-label="Cause">Same</td>
+<td data-label="Fix">Same</td>
+</tr>
+<tr>
+<td data-label="Symptom"><code>python3 -m venv</code> reports <code>ensurepip returned non-zero exit status 1</code></td>
+<td data-label="Cause">Colab&#39;s Python lacks ensurepip</td>
+<td data-label="Fix">Create the venv with <code>virtualenv</code> as in 3.2</td>
+</tr>
+<tr>
+<td data-label="Symptom">The startup log says <code>You need pytorch with cu130 or higher...</code></td>
+<td data-label="Cause">ComfyUI 0.45&#39;s optimized kernels want cu130; cu128 takes the fallback path</td>
+<td data-label="Fix">Ignore it, or reinstall the cu130 wheel to enable the optimized kernels</td>
+</tr>
+<tr>
+<td data-label="Symptom">MiniMax is missing from the templates</td>
+<td data-label="Cause">ComfyUI is too old</td>
+<td data-label="Fix"><code>cd /content/ComfyUI &amp;&amp; git pull</code>, then restart</td>
+</tr>
+<tr>
+<td data-label="Symptom">The first Queue sits there for a long time</td>
+<td data-label="Cause">Weights are being loaded into VRAM</td>
+<td data-label="Fix">Wait; watch VRAM grow with <code>nvidia-smi</code></td>
+</tr>
+<tr>
+<td data-label="Symptom">G4 allocation keeps returning 503</td>
+<td data-label="Cause">The Colab backend has no G4 capacity right now</td>
+<td data-label="Fix">Try another time; do not force this set onto a 40GB A100</td>
+</tr>
+<tr>
+<td data-label="Symptom">Local <code>ssh -L</code> cannot connect</td>
+<td data-label="Cause">A session has one SSH connection and ColabDesk holds it</td>
+<td data-label="Fix">Close the workspace first, or use the tunnel</td>
+</tr>
+</tbody></table></div>
+<h2 id="8-clean-up-take-the-image-stop-the-meter">8. Clean up: take the image, stop the meter</h2>
+<ol>
+<li>In ColabDesk&#39;s file panel, open <code>/content/ComfyUI/output/image/</code> and download the PNG.</li>
+<li>Close the tunnel:</li>
+</ol>
+<div class="code-block" data-language="bash"><pre><code class="hljs">pkill -f cloudflared</code></pre></div><ol start="3">
+<li>Stop the session in ColabDesk.</li>
+</ol>
+<blockquote>
+<p>Stopping the session wipes <code>/content</code>: the models, ComfyUI and any image you did not download are gone. G4 bills by the hour, so stop it when you are done instead of leaving it idle.</p>
+</blockquote>
+<h2 id="9-where-to-go-next">9. Where to go next</h2>
+<p>Once text-to-image works, the same environment can also do:</p>
+<ul>
+<li><strong>Other aspect ratios</strong>: change <code>EmptyLatentImage</code> to <code>768 × 1344</code> for portrait or <code>1024 × 1024</code> for square. The model is trained around one megapixel, so keep the short edge at 768 or above;</li>
+<li><strong>Image to video</strong>: open <strong>MiniMax H3: Image to Video</strong>, connect this PNG as the first frame, and add a timeline and audio;</li>
+<li><strong>Reference to video</strong>: open <strong>MiniMax H3: Reference to Video</strong> to lock a person&#39;s face with a photo;</li>
+<li><strong>Higher resolution</strong>: generate at 1344×768, then run a separate upscale pass;</li>
+<li><strong>Batches</strong>: queue the same prompt with different <code>noise_seed</code> values and pick one to upscale; for automation, ComfyUI&#39;s <code>/prompt</code> API can submit the same graph directly.</li>
+</ul>
+<p>The full list of models and templates is in ComfyUI&#39;s Template Library and <a href="https://huggingface.co/Comfy-Org/MiniMax-H3">Comfy-Org/MiniMax-H3</a>.</p>
+<hr>
+<p><em>Verified on ComfyUI 0.45, the official MiniMax H3 templates and a Colab G4.</em></p>
+<h2 id="appendix-a-every-command-start-to-finish">Appendix A: every command, start to finish</h2>
+<div class="code-block" data-language="bash"><pre><code class="hljs"><span class="hljs-comment"># 1. Install ComfyUI</span>
+<span class="hljs-built_in">cd</span> /content
+git <span class="hljs-built_in">clone</span> https://github.com/comfyanonymous/ComfyUI.git
+<span class="hljs-built_in">cd</span> ComfyUI
+python3 -m pip install --upgrade virtualenv
+python3 -m virtualenv venv
+<span class="hljs-built_in">source</span> venv/bin/activate
+pip install -U pip
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+pip install -r requirements.txt
+
+<span class="hljs-comment"># 2. Download the models</span>
+apt-get update -qq &amp;&amp; apt-get install -y -qq aria2
+<span class="hljs-built_in">mkdir</span> -p models/{diffusion_models,text_encoders,vae,loras}
+<span class="hljs-function"><span class="hljs-title">dl</span></span>() { aria2c -x 16 -s 16 -k 1M --<span class="hljs-built_in">continue</span>=<span class="hljs-literal">true</span> --file-allocation=none \
+  --console-log-level=warn -d <span class="hljs-string">&quot;<span class="hljs-subst">$(dirname <span class="hljs-string">&quot;<span class="hljs-variable">$2</span>&quot;</span>)</span>&quot;</span> -o <span class="hljs-string">&quot;<span class="hljs-subst">$(basename <span class="hljs-string">&quot;<span class="hljs-variable">$2</span>&quot;</span>)</span>&quot;</span> <span class="hljs-string">&quot;<span class="hljs-variable">$1</span>&quot;</span>; }
+B=https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main
+dl <span class="hljs-variable">$B</span>/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors \
+   models/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors
+dl <span class="hljs-variable">$B</span>/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors \
+   models/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors
+dl <span class="hljs-variable">$B</span>/vae/minimax_h3_video_vae_fp16.safetensors \
+   models/vae/minimax_h3_video_vae_fp16.safetensors
+dl <span class="hljs-variable">$B</span>/loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors \
+   models/loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors
+
+<span class="hljs-comment"># 3. Start</span>
+<span class="hljs-built_in">nohup</span> python main.py --listen 127.0.0.1 --port 8188 --highvram --disable-mmap \
+  &gt; /content/comfyui.log 2&gt;&amp;1 &amp;
+
+<span class="hljs-comment"># 4. Tunnel</span>
+wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+  -O /usr/local/bin/cloudflared
+<span class="hljs-built_in">chmod</span> +x /usr/local/bin/cloudflared
+<span class="hljs-built_in">nohup</span> cloudflared tunnel --protocol http2 --edge-ip-version 4 --no-autoupdate \
+  --url http://127.0.0.1:8188 &gt; /content/cloudflared.log 2&gt;&amp;1 &amp;
+<span class="hljs-built_in">sleep</span> 12
+grep -oE <span class="hljs-string">&#x27;https://[a-z0-9-]+\.trycloudflare\.com&#x27;</span> /content/cloudflared.log | <span class="hljs-built_in">tail</span> -1</code></pre></div><h2 id="appendix-b-usage-notes">Appendix B: usage notes</h2>
+<ul>
+<li>ColabDesk is a third-party tool and is not affiliated with Google; available accelerators and quotas depend on your account.</li>
+<li>MiniMax H3 is released as open weights; check the model publisher&#39;s and Comfy&#39;s terms for commercial use.</li>
+<li>Using and sharing generated content must follow local law and platform rules.</li>
+</ul>
+</div>
+        <footer class="post__footer">
+          <a class="post__back" href="/blog/">← All posts</a>
+          <a class="post__language" href="/blog/zh/minimax-h3-image/" hreflang="zh-CN">中文</a>
+        </footer>
+        
+      </article>
+      <nav class="post-toc" aria-label="On this page">
+        <p class="post-toc__title">On this page</p>
+        <ol class="post-toc__list">
+          <li class="post-toc__item"><a href="#1-what-each-piece-does-the-one-minute-version">1. What each piece does (the one-minute version)</a></li>
+            <li class="post-toc__item"><a href="#2-four-files-are-enough">2. Four files are enough</a></li>
+            <li class="post-toc__item"><a href="#3-set-up-the-session-and-comfyui">3. Set up the session and ComfyUI</a></li>
+            <li class="post-toc__item"><a href="#4-bring-the-interface-to-the-browser">4. Bring the interface to the browser</a></li>
+            <li class="post-toc__item"><a href="#5-generate-the-first-image">5. Generate the first image</a></li>
+            <li class="post-toc__item"><a href="#6-write-a-prompt-that-does-not-waste-a-generation">6. Write a prompt that does not waste a generation</a></li>
+            <li class="post-toc__item"><a href="#7-what-to-check-when-something-goes-wrong">7. What to check when something goes wrong</a></li>
+            <li class="post-toc__item"><a href="#8-clean-up-take-the-image-stop-the-meter">8. Clean up: take the image, stop the meter</a></li>
+            <li class="post-toc__item"><a href="#9-where-to-go-next">9. Where to go next</a></li>
+            <li class="post-toc__item"><a href="#appendix-a-every-command-start-to-finish">Appendix A: every command, start to finish</a></li>
+            <li class="post-toc__item"><a href="#appendix-b-usage-notes">Appendix B: usage notes</a></li>
+        </ol>
+      </nav>
+    </main>
+    <footer class="footer">
+      <div class="footer__main">
+        <div class="footer__brand">
+          <a class="footer__brand-link" href="/" aria-label="ColabDesk">
+            <img class="footer__lockup only-light" src="/assets/lockup.svg" alt="ColabDesk" width="125" height="24">
+            <img class="footer__lockup only-dark" src="/assets/lockup-white.svg" alt="ColabDesk" width="125" height="24">
+          </a>
+          <p class="footer__tagline">A desktop SSH console for Google Colab runtimes.</p>
+        </div>
+        <nav class="footer__group" aria-label="Product">
+          <h2 class="footer__heading">Product</h2>
+          <ul class="footer__list">
+            <li><a href="/blog/">Blog</a></li>
+            <li><a href="https://github.com/feifeifeimoon/ColabDesk/releases/latest" target="_blank" rel="noreferrer">Download</a></li>
+            <li><a href="https://github.com/feifeifeimoon/ColabDesk/releases" target="_blank" rel="noreferrer">Releases</a></li>
+          </ul>
+        </nav>
+        <nav class="footer__group" aria-label="Resources">
+          <h2 class="footer__heading">Resources</h2>
+          <ul class="footer__list">
+            <li><a href="https://github.com/feifeifeimoon/ColabDesk/blob/main/README.md" target="_blank" rel="noreferrer">README</a></li>
+            <li><a href="https://github.com/feifeifeimoon/ColabDesk/blob/main/LICENSE" target="_blank" rel="noreferrer">License</a></li>
+            <li><a href="https://github.com/feifeifeimoon/ColabDesk" target="_blank" rel="noreferrer">GitHub</a></li>
+          </ul>
+        </nav>
+      </div>
+      <div class="footer__bottom">
+        <span>© ColabDesk · Apache-2.0</span>
+        <span>Unofficial, not affiliated with Google. Colab is a trademark of Google LLC.</span>
+      </div>
+    </footer>
+  </body>
+</html>

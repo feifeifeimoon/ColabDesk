@@ -47,13 +47,18 @@
     <script src="theme.js"></script>
     <link rel="stylesheet" href="tokens.css" />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="alternate" type="application/rss+xml" title="ColabDesk Blog" href="/blog/feed.xml" />
   </head>
   <body>
     <nav class="nav">
-      <a class="nav__brand" href="./" aria-label="ColabDesk">
-        <img class="nav__lockup only-light" src="assets/lockup.svg" alt="ColabDesk" width="125" height="24" />
-        <img class="nav__lockup only-dark" src="assets/lockup-white.svg" alt="ColabDesk" width="125" height="24" />
-      </a>
+      <div class="nav__left">
+        <a class="nav__brand" href="./" aria-label="ColabDesk">
+          <img class="nav__lockup only-light" src="assets/lockup.svg" alt="ColabDesk" width="125" height="24" />
+          <img class="nav__lockup only-dark" src="assets/lockup-white.svg" alt="ColabDesk" width="125" height="24" />
+        </a>
+        <span class="nav__divider" aria-hidden="true"></span>
+        <a class="nav__section" href="/blog/" data-i18n="nav.blog" data-blog-link>Blog</a>
+      </div>
       <div class="nav__actions">
         <a
           id="star-badge"
@@ -285,6 +290,9 @@
         <nav class="footer__group" aria-label="Resources" data-i18n-aria="footer.resources">
           <h2 class="footer__heading" data-i18n="footer.resources">Resources</h2>
           <ul class="footer__list">
+            <li>
+              <a href="/blog/" data-i18n="footer.blog" data-blog-link>Blog</a>
+            </li>
             <li>
               <a
                 href="https://github.com/feifeifeimoon/ColabDesk/blob/main/README.md"

@@ -1,0 +1,11 @@
+{
+  "generated": [
+    "blog/feed.xml",
+    "blog/index.html",
+    "blog/minimax-h3-image/index.html",
+    "blog/zh/feed.xml",
+    "blog/zh/index.html",
+    "blog/zh/minimax-h3-image/index.html",
+    "sitemap.xml"
+  ]
+}

@@ -48,6 +48,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # The blog's HTML is committed, not built at deploy time. This catches a
+      # post edited without regenerating the pages and the sitemap.
+      - name: Check the blog output
+        run: npm run site:blog:check
+
   test:
     strategy:
       # One platform failing must not cancel the others' answers.

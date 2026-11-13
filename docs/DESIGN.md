@@ -135,6 +135,7 @@ Three choices belong to a desktop console in particular:
 | Theme preference | `src/renderer/src/lib/theme.ts` |
 | Feature pages | `src/renderer/src/features/*` |
 | Landing page (`site/`) | Static HTML, CSS and ES modules with no build step. `site/tokens.css` is a byte-for-byte copy of the app's tokens (`npm run site:tokens`, asserted by `site/tokens.test.mjs`); `site/i18n.js` is a separate marketing catalog; its one picture is a curated shot of a real T4/vLLM session (the mock has no vLLM server) |
+| Blog (`blog/posts/` → `site/blog/`) | Markdown sources and one author-side generator (`npm run site:blog`). The deployed files are still static; `npm run site:blog:check` in CI keeps the committed output equal to the sources. The blog is a reading surface, not a second landing page — see "The blog is a reading surface" |
 | What the renderer looks like (for a person) | `npm run gallery`: runs the **real app** against the mock backend and writes pictures to `screenshots/`. **There is no image baseline** — pictures are evidence in a review, not tests |
 | The regression net for design rules | Render assertions: real components + `renderToStaticMarkup` (no DOM needed, runs under `npm test`). Examples: `components/ui/icons.test.tsx` (icons must be distinguishable from each other), `features/workspace/Workbench.test.tsx` (a parked panel must be `hidden` + `inert`) |
 
@@ -242,7 +243,29 @@ Everything else on that page is `copy`, `caption` or `micro` from the table abov
 
 **The download count is a badge under the actions, not a third button.** A caption-sized pill follows the "Also for…" menu: the menu's own download glyph in `mute`, the abbreviated total in `ink` at 500, then `downloads` / `次下载` in `body`, on the app's tag recipe (`{colors.canvas-soft}` ground, `{colors.hairline}` edge, `{rounded.full}`). It has no hover state, pointer or focus ring — it is a fact, not a control. It starts `hidden`, so a blocked or rate-limited GitHub call leaves the buttons and no empty number, because a missing count beats a wrong one; when the number arrives it takes the product's ordinary entry (180ms ease-out, 8px rise, stilled under `prefers-reduced-motion`). The total is every asset of every release (update metadata included), the same definition as the README's shields.io badge, so the page and the badge never disagree.
 
+**The blog is a section of the site, not a utility.** The landing page's nav reads brand, a hairline divider, then `Blog` beside the brand — the same shape as the blog's own masthead — with the GitHub badge and the language switch on the right. On a phone the divider and the section name drop (the footer still carries the link), and the GitHub badge loses its count so the two utilities fit.
+
 **The footer is a sitemap, not a second hero.** The brand, its one-line claim and a capability line sit on the left; `Product` and `Resources` link columns sit on the right; the licence and the unofficial notice close the page under a second hairline. Group labels are `{typography.micro}` uppercase sans in `mute`; links are `{typography.label}` in `body`, turning `ink` on hover. No buttons and no second download CTA — the footer is for finding things, not for asking again.
+
+### The blog is a reading surface
+
+`site/blog/` is generated from `blog/posts/` and shares the landing page's footer, tokens and type ladder. It adds no rung: the article title is `{typography.display}` (26px), `h2` is `{typography.title}`, `h3` is `{typography.title-sm}`, body copy is 16px at 1.75, and metadata is `{typography.caption}`. The content column is 720px (about 68 characters), and every block sits on the existing surface ladder — `canvas-soft` for code and quotes, `hairline` for dividers, no cards and no shadows.
+
+The header is a **reading masthead, not the landing page's sales bar**: 60px tall, sticky, `86%` page colour with a 12px backdrop blur and a hairline bottom, so the column passes underneath without the header becoming a second surface. On the left are the lockup, a hairline divider and the section name; on the right a **ghost** GitHub button (inset hairline, not the landing page's filled primary) and the landing page's language segmented control. There is no download CTA here — the blog's job is reading, and the footer carries the product links. Anchored sections stop below the header (`scroll-padding-top`), and the section rail starts below it; below 420px the section name and divider drop, below 640px the GitHub label becomes icon-only.
+
+A cover sits at 1200×630, with a `{rounded.lg}` radius and a hairline border; it is also the Open Graph image. It is placed just below the article's opening quote (or under the header when there is no quote), so the hook reaches the reader before the artwork. In-body images are diagrams on the same dark brand card (the product's terminal palette), not fabricated UI screenshots — a picture that pretends to be a screenshot ages badly and is not evidence.
+
+Tables scroll inside the reading column when they are wider than it; below 640px every row stacks, with the column header rendered from the cell's `data-label` as a `micro` label. A three-column table is not squeezed into 358px.
+
+The article header is a **reading header**: a back link, the category pill (`link-bg-soft` ground, `link-deep` text, `micro`), the title, the description, then a byline — the mark in a 24px circle, the team name, the date and a reading estimate — and the tag pills. The estimate counts CJK characters at 400/minute and Latin words at 200/minute after fenced code and links are removed; it is a byline fact, not a promise.
+
+The section list is a 200px sticky rail to the right of the article: `{typography.micro}` uppercase label, then `{typography.caption}` links in `mute` against a hairline rule, turning `ink` on hover. It is generated from `h2` — the article's numbered sections, not every sub-heading; below 1040px the rail is replaced by a disclosure above the body with the same list.
+
+Fenced code is highlighted **at build time**, not in the browser: the language sits in the top-left, a Copy control added by `blog.js` in the top-right, and the token theme uses four existing accents (violet keywords, teal strings, amber literals, blue functions). A paragraph containing only an image becomes a figure whose caption is the image's alt text. Up to two other posts close the article under a hairline "More from the blog" list.
+
+The index is a **hairline-divided list**, not a grid of cards: date in `caption`/`mute`, title in `title`/`ink` (turning `link` on hover), description in `title-sm`/`body`, tags as `micro` pills on `canvas-soft`. A post written in only one language appears in both indexes with a language badge; the badge is a fact about the post, not a control.
+
+The language switch is a **link to the other static page**, not a localStorage toggle: an article has one URL per language, with `hreflang` alternates, so search engines index both. The landing page keeps its own toggle because it is one document with two catalogs.
 
 ## Layout
 

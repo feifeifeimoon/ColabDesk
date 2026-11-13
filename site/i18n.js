@@ -8,6 +8,7 @@ export const I18N = {
     "meta.title": "ColabDesk — a desktop SSH console for Google Colab runtimes",
     "nav.star": "Star ColabDesk on GitHub",
     "nav.github": "GitHub",
+    "nav.blog": "Blog",
     "lang.group": "Language",
     "hero.title": "A desktop SSH console\nfor Google Colab runtimes.",
     "hero.sub":
@@ -33,6 +34,7 @@ export const I18N = {
     "footer.capabilities": "Terminal · Files · Editor · Sessions · Quota · SSH",
     "footer.product": "Product",
     "footer.resources": "Resources",
+    "footer.blog": "Blog",
     "footer.download": "Download",
     "footer.releases": "Releases",
     "footer.issues": "Issues",
@@ -46,6 +48,7 @@ export const I18N = {
     "meta.title": "ColabDesk — Google Colab 运行时的桌面 SSH 控制台",
     "nav.star": "在 GitHub 上为 ColabDesk 加星",
     "nav.github": "GitHub",
+    "nav.blog": "博客",
     "lang.group": "语言",
     "hero.title": "Google Colab 运行时的\n桌面 SSH 控制台",
     "hero.sub":
@@ -71,6 +74,7 @@ export const I18N = {
     "footer.capabilities": "终端 · 文件 · 编辑器 · 会话 · 额度 · SSH",
     "footer.product": "产品",
     "footer.resources": "资源",
+    "footer.blog": "博客",
     "footer.download": "下载",
     "footer.releases": "版本发布",
     "footer.issues": "问题反馈",

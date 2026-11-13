@@ -1,0 +1,817 @@
+/*
+ * The blog: a reading surface beside the landing page, not a second landing
+ * page. Type stays on the ladder in DESIGN.md — display for a page title,
+ * title for h2, title-sm for h3, and 16px copy for the body. Nothing here
+ * introduces a colour, a shadow or a type size of its own; the only new
+ * elements are the measure (68ch), the tag pill and the hairline-divided
+ * post list, which use the tokens already in `tokens.css`.
+ */
+
+/* The header is sticky, so an anchored section has to stop below it and the
+   section rail has to start below it. */
+:root {
+  --blog-header-height: 60px;
+}
+
+html {
+  scroll-padding-top: calc(var(--blog-header-height) + var(--space-4));
+}
+
+.blog-main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-6) 0;
+}
+
+/* ---- header ------------------------------------------------------------- */
+
+/* A blog masthead, not the landing page's sales bar: brand, the section it
+   belongs to, then the two utilities a reader needs (the repository and the
+   language). The translucent ground keeps the page visible while scrolling
+   without turning the header into a second surface. */
+.blog-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: 1px solid var(--hairline);
+  background: color-mix(in srgb, var(--page) 86%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  backdrop-filter: saturate(180%) blur(12px);
+}
+
+.blog-nav__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  max-width: 1080px;
+  height: var(--blog-header-height);
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+}
+
+.blog-nav__left,
+.blog-nav__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.blog-nav__brand {
+  display: inline-flex;
+  align-items: center;
+}
+
+.blog-nav__lockup {
+  display: block;
+  width: auto;
+  height: 24px;
+}
+
+.blog-nav__divider {
+  width: 1px;
+  height: 16px;
+  background: var(--hairline-strong);
+}
+
+.blog-nav__section {
+  color: var(--ink);
+  font-size: var(--text-label);
+  font-weight: 500;
+}
+
+.blog-nav__section:hover {
+  color: var(--link);
+}
+
+.blog-nav__github {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--canvas);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  color: var(--body);
+  font-size: var(--text-caption);
+  font-weight: 500;
+}
+
+.blog-nav__github:hover {
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+}
+
+.blog-nav__github svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* ---- index -------------------------------------------------------------- */
+
+.blog-index__header {
+  margin-bottom: var(--space-7);
+}
+
+.blog-index__header h1 {
+  margin: 0 0 var(--space-3);
+  color: var(--ink);
+  font-size: var(--text-display);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.blog-index__header p {
+  max-width: 52ch;
+  margin: 0;
+  color: var(--body);
+  font-size: var(--text-title-sm);
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+.post-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.post-list__link {
+  display: block;
+  padding: var(--space-5) 0;
+  color: inherit;
+}
+
+.post-list__item + .post-list__item .post-list__link {
+  border-top: 1px solid var(--hairline);
+}
+
+.post-list__date {
+  color: var(--mute);
+  font-size: var(--text-caption);
+}
+
+.post-list__title {
+  margin: var(--space-2) 0 0;
+  color: var(--ink);
+  font-size: var(--text-title);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.post-list__link:hover .post-list__title {
+  color: var(--link);
+}
+
+.post-list__description {
+  max-width: 60ch;
+  margin: var(--space-2) 0 0;
+  color: var(--body);
+  font-size: var(--text-title-sm);
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+.post-list__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tag-list li {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--canvas-soft);
+  color: var(--body);
+  font-size: var(--text-micro);
+  line-height: 1.5;
+}
+
+.post-list__language {
+  padding: 2px var(--space-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-full);
+  color: var(--mute);
+  font-size: var(--text-micro);
+  line-height: 1.5;
+}
+
+/* ---- article ------------------------------------------------------------ */
+
+/* An article keeps the reading column and puts the section list beside it.
+   The index stays on the plain `.blog-main` column. */
+.post-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 720px) 200px;
+  gap: var(--space-8);
+  max-width: 1032px;
+  align-items: start;
+}
+
+.post-layout--single {
+  grid-template-columns: minmax(0, 720px);
+  max-width: 720px;
+}
+
+.post__header {
+  margin-bottom: var(--space-6);
+}
+
+.post__cover {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 0 var(--space-6);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--canvas-soft);
+}
+
+.post__back-link {
+  display: inline-flex;
+  margin: 0 0 var(--space-3);
+  color: var(--mute);
+  font-size: var(--text-caption);
+}
+
+.post__back-link:hover {
+  color: var(--ink);
+}
+
+.post__category {
+  display: flex;
+  width: fit-content;
+  margin: 0 0 var(--space-3);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--link-bg-soft);
+  color: var(--link-deep);
+  font-size: var(--text-micro);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.post__title {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-display);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.post__description {
+  max-width: 60ch;
+  margin: var(--space-3) 0 0;
+  color: var(--body);
+  font-size: var(--text-title-sm);
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+.post__byline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+  color: var(--mute);
+  font-size: var(--text-caption);
+}
+
+.post__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-full);
+  background: var(--canvas-soft);
+}
+
+.post__avatar img {
+  width: 13px;
+  height: 13px;
+}
+
+.post__author {
+  color: var(--body);
+  font-weight: 500;
+}
+
+.post__dot {
+  color: var(--hairline-strong);
+}
+
+.post__tags {
+  margin-top: var(--space-3);
+}
+
+.post__body {
+  color: var(--body);
+  font-size: 16px;
+  line-height: 1.75;
+  overflow-wrap: break-word;
+}
+
+.post__body > * {
+  margin: 0;
+}
+
+.post__body > * + * {
+  margin-top: var(--space-4);
+}
+
+.post__body h2 {
+  margin-top: var(--space-7);
+  color: var(--ink);
+  font-size: var(--text-title);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.post__body h3 {
+  margin-top: var(--space-5);
+  color: var(--ink);
+  font-size: var(--text-title-sm);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.post__body h4 {
+  margin-top: var(--space-4);
+  color: var(--ink);
+  font-size: var(--text-copy);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.post__body ul,
+.post__body ol {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.post__body li + li {
+  margin-top: var(--space-2);
+}
+
+.post__body a {
+  color: var(--link);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--link) 40%, transparent);
+  text-underline-offset: 2px;
+}
+
+.post__body a:hover {
+  text-decoration-color: var(--link);
+}
+
+.post__body strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.post__body blockquote {
+  margin: var(--space-5) 0;
+  padding: var(--space-3) var(--space-4);
+  border-left: 2px solid var(--hairline-strong);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--canvas-soft);
+  color: var(--body);
+}
+
+.post__body blockquote > * + * {
+  margin-top: var(--space-3);
+}
+
+.post__body code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+.post__body :not(pre) > code {
+  padding: 2px 5px;
+  border-radius: var(--radius-xs);
+  background: var(--canvas-soft-2);
+  color: var(--ink);
+}
+
+/* Fenced code is highlighted at build time (classes from highlight.js), with
+   the language in the top-left and a copy control added by blog.js. */
+.code-block {
+  position: relative;
+  margin: var(--space-4) 0;
+}
+
+.post__body .code-block pre {
+  margin: 0;
+  padding: calc(var(--space-4) + 14px) var(--space-4) var(--space-4);
+}
+
+.code-block[data-language]::before {
+  content: attr(data-language);
+  position: absolute;
+  top: 8px;
+  left: 14px;
+  color: var(--mute);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.code-block__copy {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  height: 22px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-xs);
+  background: var(--canvas);
+  color: var(--body);
+  font-family: var(--font-sans);
+  font-size: var(--text-micro);
+  cursor: pointer;
+}
+
+.code-block__copy:hover {
+  border-color: var(--hairline-strong);
+  color: var(--ink);
+}
+
+.post__body pre {
+  overflow-x: auto;
+  padding: var(--space-4);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--canvas-soft);
+  font-size: var(--text-label);
+  line-height: 1.55;
+}
+
+.post__body pre code {
+  color: var(--ink);
+  font-size: inherit;
+}
+
+/* A restrained four-colour code theme from the existing tokens: comments are
+   mute, keywords violet, strings teal, literals amber, functions blue. */
+.post__body .hljs-comment,
+.post__body .hljs-quote {
+  color: var(--mute);
+  font-style: italic;
+}
+
+.post__body .hljs-keyword,
+.post__body .hljs-selector-tag,
+.post__body .hljs-literal,
+.post__body .hljs-doctag {
+  color: var(--violet);
+}
+
+.post__body .hljs-string,
+.post__body .hljs-attr,
+.post__body .hljs-template-variable,
+.post__body .hljs-regexp {
+  color: var(--cyan-deep);
+}
+
+.post__body .hljs-number,
+.post__body .hljs-symbol,
+.post__body .hljs-bullet,
+.post__body .hljs-variable {
+  color: var(--warning-deep);
+}
+
+.post__body .hljs-title,
+.post__body .hljs-section,
+.post__body .hljs-title.function_ {
+  color: var(--link-deep);
+}
+
+.post__body .hljs-built_in,
+.post__body .hljs-type,
+.post__body .hljs-class .hljs-title {
+  color: var(--link);
+}
+
+.post__body .hljs-meta {
+  color: var(--mute);
+}
+
+.post__body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-copy);
+}
+
+/* A wide table scrolls inside the article instead of widening the page. */
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.table-scroll table {
+  width: max-content;
+  min-width: 100%;
+}
+
+.post__body th,
+.post__body td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--hairline);
+  text-align: left;
+  vertical-align: top;
+}
+
+.post__body th {
+  color: var(--mute);
+  font-size: var(--text-caption);
+  font-weight: 500;
+}
+
+.post__body img {
+  height: auto;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+}
+
+.post__figure {
+  margin: 0;
+}
+
+.post__figure figcaption {
+  margin-top: var(--space-2);
+  color: var(--mute);
+  font-size: var(--text-caption);
+  line-height: 1.5;
+}
+
+.post__body hr {
+  margin: var(--space-6) 0;
+  border: 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.post__footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-8);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--hairline);
+  font-size: var(--text-label);
+}
+
+.post__back,
+.post__language {
+  color: var(--body);
+}
+
+.post__back:hover,
+.post__language:hover {
+  color: var(--ink);
+}
+
+/* ---- more from the blog ------------------------------------------------- */
+
+.post__related {
+  margin-top: var(--space-8);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--hairline);
+}
+
+.post__related h2 {
+  margin: 0 0 var(--space-3);
+  color: var(--ink);
+  font-size: var(--text-title-sm);
+  font-weight: 600;
+}
+
+.post__related ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.post__related li + li {
+  margin-top: var(--space-3);
+}
+
+.post__related a {
+  color: var(--ink);
+  font-size: var(--text-title-sm);
+  font-weight: 500;
+}
+
+.post__related a:hover {
+  color: var(--link);
+}
+
+.post__related time {
+  display: block;
+  margin-top: 2px;
+  color: var(--mute);
+  font-size: var(--text-caption);
+}
+
+/* ---- table of contents -------------------------------------------------- */
+
+/* On a desktop the rail is sticky beside the article; on a phone the same
+   list becomes a disclosure above the body. */
+.post-toc-mobile {
+  display: none;
+  margin: 0 0 var(--space-5);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--canvas);
+}
+
+.post-toc-mobile summary {
+  padding: var(--space-3) var(--space-4);
+  color: var(--body);
+  font-size: var(--text-label);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.post-toc-mobile ol {
+  margin: 0;
+  padding: 0 var(--space-4) var(--space-3);
+  border-top: 1px solid var(--hairline);
+}
+
+.post-toc-mobile .post-toc__list {
+  border-left: 0;
+}
+
+.post-toc-mobile li {
+  padding: 4px 0;
+}
+
+.post-toc-mobile li a {
+  color: var(--mute);
+  font-size: var(--text-caption);
+}
+
+.post-toc-mobile li a:hover {
+  color: var(--ink);
+}
+
+.post-toc {
+  position: sticky;
+  top: calc(var(--blog-header-height) + var(--space-5));
+  max-height: calc(100vh - var(--blog-header-height) - var(--space-8));
+  overflow-y: auto;
+  padding-top: var(--space-1);
+}
+
+.post-toc__title {
+  margin: 0 0 var(--space-3);
+  color: var(--mute);
+  font-size: var(--text-micro);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.post-toc__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-left: 1px solid var(--hairline);
+}
+
+.post-toc .post-toc__item a {
+  display: block;
+  margin-left: -1px;
+  padding: 4px 0 4px var(--space-3);
+  border-left: 2px solid transparent;
+  color: var(--mute);
+  font-size: var(--text-caption);
+  line-height: 1.5;
+}
+
+.post-toc .post-toc__item a:hover {
+  border-left-color: var(--hairline-strong);
+  color: var(--ink);
+}
+
+/* ---- narrow ------------------------------------------------------------- */
+
+@media (max-width: 1040px) {
+  .post-layout,
+  .post-layout--single {
+    display: block;
+    max-width: 720px;
+  }
+
+  .post-toc {
+    display: none;
+  }
+
+  .post-toc-mobile {
+    display: block;
+  }
+}
+
+@media (max-width: 640px) {
+  .blog-main {
+    padding: var(--space-5) var(--space-4) 0;
+  }
+
+  .blog-nav__inner {
+    padding: 0 var(--space-4);
+  }
+
+  .blog-nav__github {
+    padding: 0 7px;
+  }
+
+  .blog-nav__github-label {
+    display: none;
+  }
+
+  /* A three-column table is unreadable in 358px. Each row becomes a small
+     definition list; the header labels come from the generated data-label. */
+  .post__body table,
+  .post__body thead,
+  .post__body tbody,
+  .post__body tr,
+  .post__body td {
+    display: block;
+  }
+
+  .post__body thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .post__body table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .post__body tbody tr {
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .post__body tbody tr:first-child {
+    border-top: 1px solid var(--hairline);
+  }
+
+  .post__body td {
+    padding: 2px 0;
+    border: 0;
+  }
+
+  .post__body td::before {
+    content: attr(data-label);
+    display: block;
+    color: var(--mute);
+    font-size: var(--text-micro);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .table-scroll {
+    overflow-x: visible;
+  }
+
+  .table-scroll table {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 420px) {
+  .blog-nav__divider,
+  .blog-nav__section {
+    display: none;
+  }
+}
