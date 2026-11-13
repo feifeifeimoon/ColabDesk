@@ -6,11 +6,11 @@
     <description>Notes, walkthroughs, and field reports from the ColabDesk workbench.</description>
     <language>en</language>
     <item>
-      <title>Generate Sound-Enabled AI Video with ColabDesk + ComfyUI</title>
-      <link>https://colabdesk.dev/blog/minimax-h3-video/</link>
-      <guid>https://colabdesk.dev/blog/minimax-h3-video/</guid>
-      <pubDate>Tue, 10 Nov 2026 00:00:00 GMT</pubDate>
-      <description>From an empty G4 session to an MP4 with stereo audio — install ComfyUI, download the official MiniMax H3 weights, and generate your first clip.</description>
+      <title>Generate AI Images with ColabDesk + ComfyUI (MiniMax H3)</title>
+      <link>https://colabdesk.dev/blog/minimax-h3-image/</link>
+      <guid>https://colabdesk.dev/blog/minimax-h3-image/</guid>
+      <pubDate>Fri, 13 Nov 2026 00:00:00 GMT</pubDate>
+      <description>From an empty G4 session to a 1344×768 PNG — install ComfyUI, download the official MiniMax H3 weights, and generate your first image.</description>
     </item>
   </channel>
 </rss>

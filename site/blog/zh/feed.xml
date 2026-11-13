@@ -6,11 +6,11 @@
     <description>来自 ColabDesk 工作台的实践笔记、教程与踩坑记录。</description>
     <language>zh</language>
     <item>
-      <title>用 ColabDesk + ComfyUI 生成带声音的 AI 视频</title>
-      <link>https://colabdesk.dev/blog/zh/minimax-h3-video/</link>
-      <guid>https://colabdesk.dev/blog/zh/minimax-h3-video/</guid>
-      <pubDate>Tue, 10 Nov 2026 00:00:00 GMT</pubDate>
-      <description>从一个空的 G4 会话到一段带立体声的 MP4：安装 ComfyUI、下载 MiniMax H3 官方权重、跑通第一段视频。</description>
+      <title>用 ColabDesk + ComfyUI 生成 AI 图像（MiniMax H3）</title>
+      <link>https://colabdesk.dev/blog/zh/minimax-h3-image/</link>
+      <guid>https://colabdesk.dev/blog/zh/minimax-h3-image/</guid>
+      <pubDate>Fri, 13 Nov 2026 00:00:00 GMT</pubDate>
+      <description>从一个空的 G4 会话到一张 1344×768 的 PNG：安装 ComfyUI、下载 MiniMax H3 官方权重、跑通第一张图。</description>
     </item>
   </channel>
 </rss>
