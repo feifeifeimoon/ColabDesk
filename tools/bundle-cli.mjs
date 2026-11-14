@@ -46,7 +46,7 @@ const force = process.argv.includes("--force");
  */
 export const PYTHON_VERSION = "3.12";
 const CLI_PACKAGE = "google-colab-cli";
-export const CLI_VERSION = "0.7.5";
+export const CLI_VERSION = "0.8.0";
 
 function log(msg) {
   console.log(`[bundle:cli] ${msg}`);
