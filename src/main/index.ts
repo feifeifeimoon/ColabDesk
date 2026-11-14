@@ -4,6 +4,8 @@ import { app, BrowserWindow, net } from "electron";
 import { dirname, join } from "node:path";
 import { setMainWindow } from "./broadcast";
 import { setHttpTransport } from "./colab/backend-http";
+import { resolveCli } from "./colab/cli";
+import { setCredentialCli } from "./colab/credential-store";
 import { configDir } from "./colab/sessions";
 import { Service } from "./colab/service";
 import { UsageHistory } from "./colab/usage-history";
@@ -37,6 +39,9 @@ const log = new LogFile(join(app.getPath("userData"), "logs"));
 installProcessErrorGuards(log);
 
 const bundledDir = bundledCliDir();
+// The credential lives in the OS keyring since CLI 0.8.0, and the only thing
+// that can read it is the CLI's own interpreter.
+setCredentialCli(resolveCli(bundledDir));
 const service = new Service(bundledDir, log);
 const ssh = new SshManager((name) => service.sshTarget(name));
 // The copied Host block names this stable launcher; keep it current before the
@@ -87,7 +92,7 @@ app.whenReady().then(async () => {
   }
 
   updater = await setupUpdater(() => {
-    login.cancel();
+    void login.cancel();
     ssh.dropAll();
   });
 
@@ -108,11 +113,19 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-app.on("before-quit", () => {
-  login.cancel();
+// A login in progress has removed the stored credential; quitting before the
+// flow settles would leave the user signed out. Give the cancel one event-loop
+// turn to put it back, then really quit.
+let credentialsRestored = false;
+app.on("before-quit", (event) => {
   ssh.dropAll();
   // Stopped alongside the sessions: an update handoff cannot replace files a
   // live process still holds, and a pending check would only fire into a
   // process that is on its way out.
   updater?.stop();
+  if (!credentialsRestored) {
+    credentialsRestored = true;
+    event.preventDefault();
+    void login.cancel().finally(() => app.quit());
+  }
 });

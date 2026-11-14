@@ -6,13 +6,24 @@
  * the exact same flow — `colab usage` is the cheapest command that triggers it
  * — but surfaces the URL as a button and pipes the pasted code back in, so the
  * token lands in the CLI's own store and every other feature keeps working.
+ *
+ * A stored credential is removed first, because that is what makes `colab usage`
+ * ask for a sign-in instead of answering with the current account's numbers.
+ * It is kept in memory and put back if the flow fails or is cancelled.
  */
 
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createInterface } from "node:readline";
 import type { LogSink } from "../log-file";
 import type { ResolvedCli } from "./cli";
-import { backupToken, removeTokenBackup, restoreTokenBackup } from "./sessions";
+import {
+  deleteCredential,
+  invalidateCredentialCache,
+  readCredential,
+  writeCredential,
+  type StoredCredential,
+} from "./credential-store";
+import { tokenFile } from "./sessions";
 
 export interface LoginEvents {
   onUrl(url: string): void;
@@ -32,7 +43,7 @@ export class LoginFlow {
   private child: ChildProcessWithoutNullStreams | null = null;
   private output: string[] = [];
   private timer: NodeJS.Timeout | null = null;
-  private backedUp = false;
+  private previous: StoredCredential | null = null;
 
   constructor(
     private readonly cli: ResolvedCli,
@@ -45,14 +56,17 @@ export class LoginFlow {
     return this.child !== null && this.child.exitCode === null;
   }
 
-  start(): void {
-    this.cancel();
+  async start(): Promise<void> {
+    await this.cancel();
     this.output = [];
     this.log?.write("login", `登录开始：${this.cli.label} usage（触发 OAuth 授权）`);
 
-    // If an existing token file exists, back it up so `colab usage` is forced to
-    // initiate a fresh OAuth handshake instead of silently returning usage.
-    this.backedUp = backupToken();
+    // Without a stored credential, `colab usage` runs the OAuth flow instead of
+    // silently answering with the account already signed in. The read is fresh:
+    // a sign-in from a terminal a moment ago must be what gets backed up.
+    invalidateCredentialCache();
+    this.previous = await readCredential(tokenFile());
+    if (this.previous) await deleteCredential(tokenFile());
 
     const child = spawn(this.cli.exe, [...this.cli.prefix, "usage"], {
       env: { ...process.env, ...this.cli.env },
@@ -63,7 +77,7 @@ export class LoginFlow {
 
     this.timer = setTimeout(() => {
       this.output.push("登录超时（5 分钟未完成），已取消。");
-      this.cancel();
+      void this.cancel();
     }, this.timeoutMs);
 
     const collect = (line: string): void => {
@@ -85,19 +99,25 @@ export class LoginFlow {
       this.log?.write("login", `启动登录进程失败：${error.message}`);
     });
     child.on("close", (code) => {
-      if (this.timer) {
-        clearTimeout(this.timer);
-        this.timer = null;
-      }
-      this.child = null;
-      if (code === 0) {
-        removeTokenBackup();
-      } else if (this.backedUp) {
-        // Failed or aborted: restore previous session so user is not stuck logged out
-        restoreTokenBackup();
-      }
-      this.log?.write("login", `登录结束：exit ${code ?? "(无退出码)"}\n${this.output.join("\n")}`);
-      this.events.onDone(code);
+      void (async () => {
+        if (this.timer) {
+          clearTimeout(this.timer);
+          this.timer = null;
+        }
+        this.child = null;
+        if (code === 0) {
+          // The CLI wrote the new credential itself; the cache still holds the
+          // one removed before the flow started.
+          invalidateCredentialCache();
+          this.previous = null;
+        } else {
+          // Failed or aborted: put the previous session back so the user is not
+          // stuck logged out.
+          await this.restorePrevious();
+        }
+        this.log?.write("login", `登录结束：exit ${code ?? "(无退出码)"}\n${this.output.join("\n")}`);
+        this.events.onDone(code);
+      })();
     });
   }
 
@@ -110,7 +130,7 @@ export class LoginFlow {
     this.child.stdin.write(`${clean}\n`);
   }
 
-  cancel(): void {
+  async cancel(): Promise<void> {
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;
@@ -119,10 +139,14 @@ export class LoginFlow {
       this.log?.write("login", "登录取消（用户操作或超时）");
       this.child.kill();
       this.child = null;
-      if (this.backedUp) {
-        restoreTokenBackup();
-        this.backedUp = false;
-      }
     }
+    // Also covers the timeout's own call, and a start() that never spawned.
+    await this.restorePrevious();
+  }
+
+  private async restorePrevious(): Promise<void> {
+    const previous = this.previous;
+    this.previous = null;
+    if (previous) await writeCredential(tokenFile(), previous.json);
   }
 }
