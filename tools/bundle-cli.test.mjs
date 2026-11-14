@@ -97,8 +97,8 @@ describe("isAlreadyBundled", () => {
     writeFileSync(join(dir, "manifest.json"), JSON.stringify(manifest));
   }
 
-  it("pins google-colab-cli 0.7.5", () => {
-    expect(CLI_VERSION).toBe("0.7.5");
+  it("pins google-colab-cli 0.8.0", () => {
+    expect(CLI_VERSION).toBe("0.8.0");
   });
 
   it("returns false when manifest cliVersion lags the pinned CLI_VERSION", () => {

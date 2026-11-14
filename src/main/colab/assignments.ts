@@ -84,7 +84,7 @@ export async function fetchAssignments(log?: LogSink): Promise<Assignment[] | nu
   // The container has no backend to reach; the answer below is the shape the
   // real one returns, so the same parser and the same failure paths run.
   if (e2eMockEnabled()) {
-    return accessToken() ? parseAssignments(mockAssignments()) : null;
+    return (await accessToken()) ? parseAssignments(mockAssignments()) : null;
   }
 
   try {

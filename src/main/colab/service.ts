@@ -176,7 +176,7 @@ export class Service {
     const cli = resolveCli(this.bundledDir);
     const cliVersion = await this.cliVersion(cli);
 
-    const auth = authState();
+    const auth = await authState();
     const dir = configDir();
 
     return {
@@ -185,7 +185,7 @@ export class Service {
       cli_version: cliVersion,
       config_dir: dir,
       sessions_file_exists: existsSync(sessionsFile()),
-      authenticated: auth.token_file_exists,
+      authenticated: auth.credential_exists,
       account: account_.account,
       accelerator_eligibility: account_.eligibility,
       token_expiry: auth.expiry,

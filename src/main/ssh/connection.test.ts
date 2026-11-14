@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { WebSocketServer, type WebSocket } from "ws";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ColabSshConnection } from "./connection";
+import { ColabSshConnection, explainHandshakeFailure } from "./connection";
 
 /**
  * The handshake needs an identity, and the point of these cases is the socket:
@@ -214,5 +214,28 @@ describe("ColabSshConnection handshake settlement", () => {
     channel.emit("close");
 
     expect(exited).toEqual([id]);
+  });
+});
+
+describe("the 429 explanation", () => {
+  it("names the plan's limit when the server reports one", () => {
+    const message = explainHandshakeFailure(429, '{"error":"already-active-session","limit":5}');
+    expect(message).toContain("5 个连接全部占用");
+    expect(message).toContain("订阅方案");
+  });
+
+  it("keeps a generic message for a 429 without a usable limit", () => {
+    const bodies = [
+      "",
+      "not json",
+      '{"error":"already-active-session"}',
+      '{"error":"already-active-session","limit":0}',
+      '{"error":"other","limit":3}',
+    ];
+    for (const body of bodies) {
+      const message = explainHandshakeFailure(429, body);
+      expect(message).toContain("SSH 会话数已达上限");
+      expect(message).not.toContain("个连接全部占用");
+    }
   });
 });

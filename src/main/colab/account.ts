@@ -6,8 +6,9 @@
  *
  *   - Identity: `colab whoami` prints the email, but only as text, and pays a
  *     Python start-up and a tokeninfo round trip for the privilege. The CLI
- *     writes no email anywhere on disk (`token.json`'s `account` key is always
- *     empty), so the value has to come from the token itself.
+ *     stores no email anywhere (`Credentials.to_json()` has an `account` key
+ *     and always leaves it empty), so the value has to come from the token
+ *     itself.
  *   - Accelerator eligibility: `GET /tun/m/ccu-info` returns which GPUs and
  *     TPUs this account may use; `colab usage` formats three numbers out of the
  *     same response and drops these (see `colab_cli/consumption.py`).
@@ -46,7 +47,7 @@ const cache = {
   eligibility: null as CacheEntry<AcceleratorEligibility> | null,
 };
 
-/** The CLI rewrote `token.json` — whoever is signed in now is not who was before. */
+/** The CLI rewrote its credential — whoever is signed in now is not who was before. */
 export function resetAccountCache(): void {
   cache.identity = null;
   cache.eligibility = null;
@@ -79,7 +80,9 @@ export async function fetchAccountInfo(log?: LogSink): Promise<AccountInfo | nul
   // A container has no Google account to introspect. The answer below is the
   // shape tokeninfo returns, so the same parsing and the same failure paths run.
   if (e2eMockEnabled()) {
-    return authState().token_file_exists ? { email: "e2e@example.com", subject: "e2e-subject-1" } : null;
+    return (await authState()).credential_exists
+      ? { email: "e2e@example.com", subject: "e2e-subject-1" }
+      : null;
   }
 
   const token = await ensureAccessToken();
@@ -116,7 +119,7 @@ export async function fetchAcceleratorEligibility(log?: LogSink): Promise<Accele
   // Same idea as `fetchAccountInfo`: the shape of a live answer, parsed by the
   // same rules. `ineligibleTpus` is left out on purpose — the backend omits it,
   // and that omission is the thing most likely to break the parser.
-  if (e2eMockEnabled() && authState().token_file_exists) {
+  if (e2eMockEnabled() && (await authState()).credential_exists) {
     return parseEligibility({
       eligibleGpus: ["G4", "A100", "L4", "T4"],
       ineligibleGpus: ["H100"],
@@ -147,7 +150,7 @@ export interface AccountStatus {
  * but only for the same account — a different `sub` invalidates it on its own.
  */
 export async function accountStatus(log?: LogSink): Promise<AccountStatus> {
-  if (!authState().token_file_exists) {
+  if (!(await authState()).credential_exists) {
     resetAccountCache();
     return { account: null, eligibility: null };
   }

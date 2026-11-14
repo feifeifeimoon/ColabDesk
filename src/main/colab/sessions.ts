@@ -6,17 +6,22 @@
  * local half of the list — runtimes the store has never heard of exist in it
  * nowhere — so the server's own half is read in `assignments.ts`.
  *
+ * The OAuth credential is the one thing that left the file in CLI 0.8.0 (the
+ * OS keyring now); `credential-store.ts` knows both stores, and the functions
+ * below ask it rather than reading a path.
+ *
  * The file's `token` field is a bearer credential for the runtime proxy: it
  * stays inside the main process (the SSH bridge needs it) and is stripped from
  * anything the renderer receives.
  */
 
-import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { e2eMockEnabled } from "../e2e/mode";
 import type { Session } from "@shared/types";
 import { httpFetch } from "./backend-http";
+import { deleteCredential, readCredential, writeCredential } from "./credential-store";
 
 /** The raw on-disk entry, including the credential. Main process only. */
 export interface RawSession extends Session {
@@ -31,60 +36,14 @@ export function sessionsFile(): string {
   return join(configDir(), "sessions.json");
 }
 
+/** The pre-0.8.0 credential; still the store for an older CLI. */
 export function tokenFile(): string {
   return join(configDir(), "token.json");
 }
 
-export function tokenBackupFile(): string {
-  return join(configDir(), "token.json.bak");
-}
-
-export function clearToken(): boolean {
-  const path = tokenFile();
-  if (existsSync(path)) {
-    try {
-      unlinkSync(path);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  return false;
-}
-
-export function backupToken(): boolean {
-  const src = tokenFile();
-  if (!existsSync(src)) return false;
-  try {
-    writeFileSync(tokenBackupFile(), readFileSync(src));
-    unlinkSync(src);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export function restoreTokenBackup(): boolean {
-  const bak = tokenBackupFile();
-  if (!existsSync(bak)) return false;
-  try {
-    writeFileSync(tokenFile(), readFileSync(bak));
-    unlinkSync(bak);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export function removeTokenBackup(): void {
-  const bak = tokenBackupFile();
-  if (existsSync(bak)) {
-    try {
-      unlinkSync(bak);
-    } catch {
-      // ignore
-    }
-  }
+/** Sign out of whichever store the CLI uses. */
+export async function clearCredential(): Promise<void> {
+  await deleteCredential(tokenFile());
 }
 
 function normalize(name: string, raw: Record<string, unknown>): RawSession {
@@ -161,36 +120,36 @@ export function findRawSession(name: string): RawSession | null {
 }
 
 export interface AuthState {
-  token_file_exists: boolean;
+  credential_exists: boolean;
   expiry: string | null;
   has_refresh_token: boolean;
 }
 
 /**
- * The parts of `token.json` worth showing; no raw tokens are read out.
+ * The parts of the CLI's credential worth showing; no raw tokens are read out.
  *
- * The file's own `account` key is deliberately not read: the CLI writes it as an
- * empty string (it comes from `Credentials.to_json()`, which has no such field),
- * so the address has to be fetched from the token — see `account.ts`.
+ * The credential's own `account` key is deliberately not read: the CLI writes it
+ * as an empty string (it comes from `Credentials.to_json()`, which has no such
+ * field), so the address has to be fetched from the token — see `account.ts`.
  */
-export function authState(): AuthState {
-  const path = tokenFile();
-  if (!existsSync(path)) {
-    return { token_file_exists: false, expiry: null, has_refresh_token: false };
+export async function authState(): Promise<AuthState> {
+  const credential = await readCredential(tokenFile());
+  if (!credential) {
+    return { credential_exists: false, expiry: null, has_refresh_token: false };
   }
   try {
-    const value = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
+    const value = JSON.parse(credential.json) as Record<string, unknown>;
     const field = (key: string): string | null => {
       const raw = value[key];
       return typeof raw === "string" && raw.length > 0 ? raw : null;
     };
     return {
-      token_file_exists: true,
+      credential_exists: true,
       expiry: field("expiry"),
       has_refresh_token: field("refresh_token") !== null,
     };
   } catch {
-    return { token_file_exists: true, expiry: null, has_refresh_token: false };
+    return { credential_exists: true, expiry: null, has_refresh_token: false };
   }
 }
 
@@ -201,10 +160,11 @@ export function authState(): AuthState {
  * deliberately does not do that, so callers treat null as "ask again later"
  * and every read that needs it fails soft.
  */
-export function accessToken(): string | null {
-  if (!authState().token_file_exists) return null;
+export async function accessToken(): Promise<string | null> {
+  const credential = await readCredential(tokenFile());
+  if (!credential) return null;
   try {
-    const value = JSON.parse(readFileSync(tokenFile(), "utf8")) as Record<string, unknown>;
+    const value = JSON.parse(credential.json) as Record<string, unknown>;
     const token = value.token;
     const expiry = value.expiry;
     if (typeof token !== "string" || !token) return null;
@@ -221,17 +181,16 @@ const DEFAULT_CLIENT_SECRET = "d-FL95Q19q7MQmFpd7hHD0Ty";
 
 /**
  * Actively refreshes an expired access token using the stored refresh_token,
- * writing the refreshed credentials back to `token.json`.
+ * writing the refreshed credentials back to whichever store they came from.
  */
 export async function refreshAccessToken(): Promise<string | null> {
   if (e2eMockEnabled()) return "e2e-access-token";
 
-  const path = tokenFile();
-  if (!existsSync(path)) return null;
+  const stored = await readCredential(tokenFile());
+  if (!stored) return null;
 
   try {
-    const raw = readFileSync(path, "utf8");
-    const creds = JSON.parse(raw) as Record<string, unknown>;
+    const creds = JSON.parse(stored.json) as Record<string, unknown>;
     const refreshToken = creds.refresh_token;
     if (typeof refreshToken !== "string" || !refreshToken) return null;
 
@@ -262,7 +221,9 @@ export async function refreshAccessToken(): Promise<string | null> {
     const expiresInSec = typeof data.expires_in === "number" ? data.expires_in : 3600;
     creds.expiry = new Date(Date.now() + expiresInSec * 1000).toISOString();
 
-    writeFileSync(path, JSON.stringify(creds, null, 2), "utf8");
+    // Best-effort: the minted token still works for this process even if the
+    // store refused it, and the next refresh simply runs again.
+    await writeCredential(tokenFile(), JSON.stringify(creds, null, 2));
     return data.access_token;
   } catch {
     return null;
@@ -274,11 +235,11 @@ export async function refreshAccessToken(): Promise<string | null> {
  * but a refresh token is present, refreshes and returns the new token.
  */
 export async function ensureAccessToken(): Promise<string | null> {
-  const current = accessToken();
+  const current = await accessToken();
   if (current) return current;
 
-  const auth = authState();
-  if (auth.token_file_exists && auth.has_refresh_token) {
+  const auth = await authState();
+  if (auth.credential_exists && auth.has_refresh_token) {
     return refreshAccessToken();
   }
   return null;
