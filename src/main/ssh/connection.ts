@@ -12,10 +12,11 @@
  * as its transport, which needs no system OpenSSH, no node-pty, and no child
  * Python process per connection.
  *
- * One caveat from the server side: a runtime accepts a single SSH connection
- * (a second upgrade gets HTTP 429). So everything — terminal channels and SFTP
- * — must multiplex over one connection per session, which is what this class
- * provides.
+ * One caveat from the server side: a runtime accepts only a handful of SSH
+ * connections — how many depends on the Colab plan, and the server answers the
+ * upgrade beyond that with HTTP 429. So everything — terminal channels and
+ * SFTP — must multiplex over one connection per session, which is what this
+ * class provides.
  */
 
 import { EventEmitter } from "node:events";
@@ -68,6 +69,25 @@ const FLOW_LOW_WATER = 256 * 1024;
 /** A failure worth retrying: the request never reached Colab intact. */
 class TransientConnectError extends Error {}
 
+/**
+ * The plan's SSH-session limit, when a 429 body carries one.
+ *
+ * The server answers `{"error":"already-active-session","limit":N}`; the CLI
+ * reads the same field (`colab_cli/commands/ssh.py`). A body without a sane
+ * limit keeps the generic message.
+ */
+function sshSessionLimit(body: string): number | null {
+  try {
+    const value = JSON.parse(body) as { error?: unknown; limit?: unknown };
+    if (value?.error !== "already-active-session") return null;
+    const limit = value.limit;
+    if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1 || limit > 5) return null;
+    return limit;
+  } catch {
+    return null;
+  }
+}
+
 /** Maps upgrade-handshake failures to messages that say what to do. */
 export function explainHandshakeFailure(status: number | undefined, body: string): string {
   const snippet = body.trim().slice(0, 200);
@@ -92,7 +112,12 @@ export function explainHandshakeFailure(status: number | undefined, body: string
       + "旧运行时不可用——请用 colab new 建一个新会话。";
   }
   if (status === 429) {
-    return "该运行时已有一个 SSH 会话（HTTP 429）：同一时间只允许一个连接，"
+    const limit = sshSessionLimit(body);
+    if (limit !== null) {
+      return `该运行时的 SSH 会话数已达上限（HTTP 429）：${limit} 个连接全部占用，`
+        + "请先断开另一处（另一个窗口 / 终端 / VS Code）。上限取决于你的 Colab 订阅方案。";
+    }
+    return "该运行时的 SSH 会话数已达上限（HTTP 429）："
       + "请先断开另一处（另一个窗口 / 终端 / VS Code），或在本应用内重试。";
   }
   if (status === 502) {

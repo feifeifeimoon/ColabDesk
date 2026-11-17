@@ -55,8 +55,8 @@ export function registerIpc(context: IpcContext): LoginHandle {
   });
 
   return {
-    cancel() {
-      login.cancel();
+    async cancel() {
+      await login.cancel();
       ports.cancel();
     },
   };

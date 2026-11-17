@@ -7,12 +7,12 @@ import { broadcast } from "../../broadcast";
 import { resetAccountCache } from "../../colab/account";
 import { LoginFlow } from "../../colab/login";
 import { resolveCli } from "../../colab/cli";
-import { clearToken } from "../../colab/sessions";
+import { clearCredential } from "../../colab/sessions";
 import { ensureIdentity, findIdentity } from "../../ssh/identity";
 import type { IpcContext } from "../register";
 
 export interface LoginHandle {
-  cancel(): void;
+  cancel(): Promise<void>;
 }
 
 export interface SessionLifecycle {
@@ -76,10 +76,10 @@ export function registerColabHandlers(
     return report;
   });
 
-  ipcMain.handle(IPC.startLogin, () => {
+  ipcMain.handle(IPC.startLogin, async () => {
     const cli = resolveCli(bundledDir);
     if (!cli) throw new Error("未找到 colab 命令，无法登录。");
-    loginFlow?.cancel();
+    await loginFlow?.cancel();
     loginFlow = new LoginFlow(
       cli,
       {
@@ -94,14 +94,16 @@ export function registerColabHandlers(
       },
       log,
     );
-    loginFlow.start();
+    await loginFlow.start();
   });
   ipcMain.handle(IPC.submitLoginCode, (_event, code: string) => loginFlow?.submit(code));
   ipcMain.handle(IPC.cancelLogin, () => loginFlow?.cancel());
-  ipcMain.handle(IPC.logout, () => {
-    loginFlow?.cancel();
+  ipcMain.handle(IPC.logout, async () => {
+    // Cancel first: it restores the credential the flow removed, which the
+    // sign-out below would otherwise put back after it was cleared.
+    await loginFlow?.cancel();
     loginFlow = null;
-    clearToken();
+    await clearCredential();
     resetAccountCache();
     broadcast(EVENTS.authDone, { code: 0 });
   });
@@ -117,8 +119,8 @@ export function registerColabHandlers(
   });
 
   return {
-    cancel() {
-      loginFlow?.cancel();
+    async cancel() {
+      await loginFlow?.cancel();
       loginFlow = null;
     },
   };

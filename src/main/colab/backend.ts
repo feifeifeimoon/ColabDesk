@@ -42,7 +42,7 @@ export function stripXssiPrefix(text: string): string {
  */
 export async function backendGetJson(path: string, timeoutMs = REQUEST_TIMEOUT_MS): Promise<unknown> {
   const token = await ensureAccessToken();
-  if (!token) throw new Error("token.json 里没有可用的访问令牌。");
+  if (!token) throw new Error("CLI 的凭据存储里没有可用的访问令牌。");
 
   const url = new URL(path, COLAB_DOMAIN);
   url.searchParams.set("authuser", "0");

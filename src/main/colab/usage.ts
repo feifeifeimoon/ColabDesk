@@ -53,7 +53,7 @@ export async function fetchUsage(log?: LogSink): Promise<UsageReport> {
   // The container has no backend to reach; the answer below is the body the
   // real one returns, so the same parser and the same failure paths run.
   if (e2eMockEnabled()) {
-    if (!authState().token_file_exists) {
+    if (!(await authState()).credential_exists) {
       return { ok: false, needs_login: true, usage: noReading(), error: null, attempts: 0 };
     }
     return {
